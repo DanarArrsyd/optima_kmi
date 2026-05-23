@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreMasterKaryawanRequest extends FormRequest
 {
@@ -8,9 +9,12 @@ class StoreMasterKaryawanRequest extends FormRequest
 
     public function rules(): array
     {
-        $id = $this->route('karyawan');
+        $id = $this->route('karyawan')?->id;
         return [
-            'nik'           => 'required|string|max:50|unique:master_karyawan,nik,' . ($id?->id ?? 'NULL'),
+            'nik'           => [
+                'required', 'string', 'max:50',
+                Rule::unique('master_karyawan', 'nik')->ignore($id)->whereNull('deleted_at'),
+            ],
             'nama_karyawan' => 'required|string|max:100',
             'departemen'    => 'required|in:Produksi,QC',
         ];

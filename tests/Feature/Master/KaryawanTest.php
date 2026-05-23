@@ -47,6 +47,19 @@ class KaryawanTest extends TestCase
         $this->assertSoftDeleted('master_karyawan', ['id' => $k->id]);
     }
 
+    public function test_admin_can_update_karyawan(): void
+    {
+        $k = MasterKaryawan::create(['nik' => 'K010', 'nama_karyawan' => 'Dewi', 'departemen' => 'Produksi']);
+        $this->actingAs($this->admin)
+             ->put("/master/karyawan/{$k->id}", [
+                 'nik'           => 'K010',        // same NIK — must not fail unique check
+                 'nama_karyawan' => 'Dewi Edited',
+                 'departemen'    => 'QC',
+             ])
+             ->assertRedirect('/master/karyawan');
+        $this->assertDatabaseHas('master_karyawan', ['id' => $k->id, 'nama_karyawan' => 'Dewi Edited']);
+    }
+
     public function test_staff_produksi_cannot_access_karyawan(): void
     {
         $staff = User::factory()->create(['role' => 'staff_produksi']);
