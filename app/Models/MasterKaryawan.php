@@ -29,4 +29,8 @@ class MasterKaryawan extends Model
     {
         return $this->hasMany(TransaksiDandori::class, 'id_karyawan');
     }
+    public function user(): HasMany
+    {
+        return $this->hasMany(User::class, 'id_karyawan');
+    }
 }
