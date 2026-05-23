@@ -33,7 +33,7 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:admin')->prefix('master')->name('master.')->group(function () {
         Route::resource('karyawan', KaryawanController::class);
         Route::resource('mesin', MesinController::class);
-        Route::resource('part', PartController::class);
+        Route::resource('part', PartController::class)->except(['show']);
         Route::resource('losstime', LosstimeController::class);
         Route::resource('shift', ShiftController::class);
         Route::resource('users', UserController::class);

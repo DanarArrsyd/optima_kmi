@@ -108,22 +108,22 @@
                 <div class="col-md-3">
                     <label class="form-label">SPH Standar Produksi</label>
                     <input type="number" step="0.01" name="sph_standar_produksi" class="form-control"
-                           value="{{ old('sph_standar_produksi', 0) }}" min="0">
+                           value="{{ old('sph_standar_produksi', 0) }}" min="0" required>
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">Cycle Time Prod (dtk)</label>
                     <input type="number" step="0.01" name="cycle_time_standar_produksi" class="form-control"
-                           value="{{ old('cycle_time_standar_produksi', 0) }}" min="0">
+                           value="{{ old('cycle_time_standar_produksi', 0) }}" min="0" required>
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">SPH Standar QC</label>
                     <input type="number" step="0.01" name="sph_standar_qc" class="form-control"
-                           value="{{ old('sph_standar_qc', 0) }}" min="0">
+                           value="{{ old('sph_standar_qc', 0) }}" min="0" required>
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">Cycle Time QC (dtk)</label>
                     <input type="number" step="0.01" name="cycle_time_standar_qc" class="form-control"
-                           value="{{ old('cycle_time_standar_qc', 0) }}" min="0">
+                           value="{{ old('cycle_time_standar_qc', 0) }}" min="0" required>
                 </div>
             </div>
             <button type="submit" class="btn btn-success mt-3">
