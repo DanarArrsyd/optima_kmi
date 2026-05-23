@@ -45,4 +45,10 @@ class LosstimeTest extends TestCase
         $this->actingAs($this->admin)->delete("/master/losstime/{$lt->id}")->assertRedirect('/master/losstime');
         $this->assertSoftDeleted('master_losstime', ['id' => $lt->id]);
     }
+
+    public function test_non_admin_cannot_access_losstime(): void
+    {
+        $staff = User::factory()->create(['role' => 'staff_produksi']);
+        $this->actingAs($staff)->get('/master/losstime')->assertStatus(403);
+    }
 }

@@ -1,10 +1,12 @@
 <?php
 namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class MasterShift extends Model
 {
+    use SoftDeletes;
     protected $table = 'master_shift';
     protected $fillable = ['nama_shift', 'jam_start', 'jam_finish'];
 

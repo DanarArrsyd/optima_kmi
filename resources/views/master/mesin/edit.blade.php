@@ -30,6 +30,7 @@
             <div class="mb-3">
                 <label class="form-label">Tipe Mesin <span class="text-danger">*</span></label>
                 <select name="tipe_mesin" class="form-select @error('tipe_mesin') is-invalid @enderror">
+                    <option value="" disabled>-- Pilih --</option>
                     <option value="PROGRESSIVE" {{ old('tipe_mesin', $mesin->tipe_mesin) === 'PROGRESSIVE' ? 'selected' : '' }}>PROGRESSIVE</option>
                     <option value="STAMPING" {{ old('tipe_mesin', $mesin->tipe_mesin) === 'STAMPING' ? 'selected' : '' }}>STAMPING</option>
                 </select>

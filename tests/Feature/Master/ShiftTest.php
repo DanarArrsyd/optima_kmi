@@ -39,10 +39,16 @@ class ShiftTest extends TestCase
         $this->assertDatabaseHas('master_shift', ['id' => $s->id, 'nama_shift' => 'Shift X Updated']);
     }
 
-    public function test_admin_can_delete_shift(): void
+    public function test_admin_can_soft_delete_shift(): void
     {
         $s = MasterShift::create(['nama_shift' => 'Shift Del', 'jam_start' => '06:00', 'jam_finish' => '14:00']);
         $this->actingAs($this->admin)->delete("/master/shift/{$s->id}")->assertRedirect('/master/shift');
-        $this->assertDatabaseMissing('master_shift', ['id' => $s->id]);
+        $this->assertSoftDeleted('master_shift', ['id' => $s->id]);
+    }
+
+    public function test_non_admin_cannot_access_shift(): void
+    {
+        $staff = User::factory()->create(['role' => 'staff_produksi']);
+        $this->actingAs($staff)->get('/master/shift')->assertStatus(403);
     }
 }
