@@ -14,7 +14,7 @@ class TransaksiProduksi extends Model
         'tanggal_produksi', 'id_shift', 'id_karyawan', 'id_mesin', 'id_part_proses',
         'jam_start', 'jam_finish', 'qty_aktual', 'actual_cycle_time', 'created_by', 'updated_by',
     ];
-    protected $casts = ['tanggal_produksi' => 'date'];
+    protected $casts = ['tanggal_produksi' => 'date:Y-m-d'];
 
     public function getActivitylogOptions(): LogOptions
     {
