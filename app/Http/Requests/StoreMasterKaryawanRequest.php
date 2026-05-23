@@ -1,0 +1,18 @@
+<?php
+namespace App\Http\Requests;
+use Illuminate\Foundation\Http\FormRequest;
+
+class StoreMasterKaryawanRequest extends FormRequest
+{
+    public function authorize(): bool { return $this->user()->hasRole('admin'); }
+
+    public function rules(): array
+    {
+        $id = $this->route('karyawan');
+        return [
+            'nik'           => 'required|string|max:50|unique:master_karyawan,nik,' . ($id?->id ?? 'NULL'),
+            'nama_karyawan' => 'required|string|max:100',
+            'departemen'    => 'required|in:Produksi,QC',
+        ];
+    }
+}

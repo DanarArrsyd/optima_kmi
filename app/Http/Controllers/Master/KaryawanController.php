@@ -1,65 +1,42 @@
 <?php
-
 namespace App\Http\Controllers\Master;
-
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
+use App\Http\Requests\StoreMasterKaryawanRequest;
+use App\Models\MasterKaryawan;
 
 class KaryawanController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
-        return response('ok', 200);
+        $karyawan = MasterKaryawan::orderBy('nama_karyawan')->paginate(20);
+        return view('master.karyawan.index', compact('karyawan'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
-        //
+        return view('master.karyawan.create');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function store(StoreMasterKaryawanRequest $request)
     {
-        //
+        MasterKaryawan::create($request->validated());
+        return redirect()->route('master.karyawan.index')->with('success', 'Karyawan berhasil ditambahkan.');
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
+    public function edit(MasterKaryawan $karyawan)
     {
-        //
+        return view('master.karyawan.edit', compact('karyawan'));
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
+    public function update(StoreMasterKaryawanRequest $request, MasterKaryawan $karyawan)
     {
-        //
+        $karyawan->update($request->validated());
+        return redirect()->route('master.karyawan.index')->with('success', 'Karyawan berhasil diupdate.');
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
+    public function destroy(MasterKaryawan $karyawan)
     {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
+        $karyawan->delete();
+        return redirect()->route('master.karyawan.index')->with('success', 'Karyawan berhasil dihapus.');
     }
 }
