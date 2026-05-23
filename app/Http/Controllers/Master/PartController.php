@@ -1,68 +1,57 @@
 <?php
-
 namespace App\Http\Controllers\Master;
-
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
+use App\Http\Requests\StoreMasterPartRequest;
+use App\Http\Requests\StoreMasterPartProsesRequest;
+use App\Models\MasterPart;
+use App\Models\MasterPartProses;
 
 class PartController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
-        return response('ok', 200);
+        $parts = MasterPart::withCount('proses')->orderBy('part_name')->paginate(20);
+        return view('master.part.index', compact('parts'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
-        //
+        return view('master.part.create');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function store(StoreMasterPartRequest $request)
     {
-        //
+        MasterPart::create($request->validated());
+        return redirect()->route('master.part.index')->with('success', 'Part berhasil ditambahkan. Tambahkan proses di halaman edit.');
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
+    public function edit(MasterPart $part)
     {
-        //
+        $part->load('proses');
+        return view('master.part.edit', compact('part'));
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
+    public function update(StoreMasterPartRequest $request, MasterPart $part)
     {
-        //
+        $part->update($request->validated());
+        return redirect()->route('master.part.edit', $part)->with('success', 'Part berhasil diupdate.');
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
+    public function destroy(MasterPart $part)
     {
-        //
+        $part->delete();
+        return redirect()->route('master.part.index')->with('success', 'Part berhasil dihapus.');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
+    public function storeProses(StoreMasterPartProsesRequest $request, MasterPart $part)
     {
-        //
+        $part->proses()->create($request->validated());
+        return redirect()->route('master.part.edit', $part)->with('success', 'Proses berhasil ditambahkan.');
     }
 
-    public function storeProses(Request $request, $part) { return response('ok', 200); }
-    public function destroyProses($part, $proses) { return response('ok', 200); }
+    public function destroyProses(MasterPart $part, MasterPartProses $proses)
+    {
+        $proses->delete();
+        return redirect()->route('master.part.edit', $part)->with('success', 'Proses berhasil dihapus.');
+    }
 }
