@@ -1,65 +1,63 @@
 <?php
-
 namespace App\Http\Controllers\Master;
-
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
+use App\Http\Requests\StoreMasterUserRequest;
+use App\Models\User;
+use App\Models\MasterKaryawan;
 
 class UserController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
-        return response('ok', 200);
+        $users = User::with('karyawan')->orderBy('name')->paginate(20);
+        return view('master.users.index', compact('users'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
-        //
+        $karyawan = MasterKaryawan::orderBy('nama_karyawan')->get();
+        return view('master.users.create', compact('karyawan'));
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function store(StoreMasterUserRequest $request)
     {
-        //
+        User::create([
+            'name'        => $request->name,
+            'email'       => $request->email,
+            'password'    => $request->password,  // model 'hashed' cast handles hashing
+            'role'        => $request->role,
+            'id_karyawan' => $request->id_karyawan,
+        ]);
+        return redirect()->route('master.users.index')->with('success', 'User berhasil dibuat.');
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
+    public function edit(User $user)
     {
-        //
+        $karyawan = MasterKaryawan::orderBy('nama_karyawan')->get();
+        return view('master.users.edit', compact('user', 'karyawan'));
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
+    public function update(StoreMasterUserRequest $request, User $user)
     {
-        //
+        $data = [
+            'name'        => $request->name,
+            'email'       => $request->email,
+            'role'        => $request->role,
+            'id_karyawan' => $request->id_karyawan,
+        ];
+        if ($request->filled('password')) {
+            $data['password'] = $request->password;  // model 'hashed' cast handles hashing
+        }
+        $user->update($data);
+        return redirect()->route('master.users.index')->with('success', 'User berhasil diupdate.');
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
+    public function destroy(User $user)
     {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
+        if ($user->id === auth()->id()) {
+            return redirect()->route('master.users.index')->with('error', 'Tidak bisa menghapus akun sendiri.');
+        }
+        $user->delete();
+        return redirect()->route('master.users.index')->with('success', 'User berhasil dihapus.');
     }
 }
