@@ -1,65 +1,60 @@
 <?php
-
 namespace App\Http\Controllers\Input;
-
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
+use App\Http\Requests\StoreQcRequest;
+use App\Models\MasterKaryawan;
+use App\Models\MasterPart;
+use App\Models\MasterShift;
+use App\Models\TransaksiQc;
+use App\Services\QcService;
 
 class QcController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
+    public function __construct(private QcService $qcService) {}
+
     public function index()
     {
-        return response('ok', 200);
+        $transaksi = TransaksiQc::with(['karyawanQc', 'partProses.part', 'shift'])
+            ->orderByDesc('tgl_pengecekan')
+            ->orderByDesc('created_at')
+            ->paginate(30);
+        return view('input.qc.index', compact('transaksi'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
-        //
+        $shifts   = MasterShift::orderBy('jam_start')->get();
+        $karyawan = MasterKaryawan::where('departemen', 'QC')->orderBy('nama_karyawan')->get();
+        $parts    = MasterPart::with('proses')->orderBy('part_name')->get();
+        return view('input.qc.create', compact('shifts', 'karyawan', 'parts'));
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function store(StoreQcRequest $request)
     {
-        //
+        $validated = $request->validated();
+
+        $cycleTime = $this->qcService->calculateActualCycleTime(
+            $validated['jam_start'] . ':00',
+            $validated['jam_finish'] . ':00',
+            (int) $validated['qty_ok'],
+            (int) $validated['qty_ng']
+        );
+
+        TransaksiQc::create([
+            ...$validated,
+            'actual_cycle_time' => $cycleTime,
+            'created_by'        => auth()->id(),
+        ]);
+
+        return redirect()->route('input.qc.index')->with('success', 'LHP Quality berhasil disimpan.');
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
+    public function destroy(TransaksiQc $qc)
     {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
+        if (auth()->user()->role !== 'admin' && $qc->created_by !== auth()->id()) {
+            abort(403);
+        }
+        $qc->delete();
+        return redirect()->route('input.qc.index')->with('success', 'Data berhasil dihapus.');
     }
 }
