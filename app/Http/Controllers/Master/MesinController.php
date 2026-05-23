@@ -1,65 +1,31 @@
 <?php
-
 namespace App\Http\Controllers\Master;
-
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
+use App\Http\Requests\StoreMasterMesinRequest;
+use App\Models\MasterMesin;
 
 class MesinController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
-        return response('ok', 200);
+        $mesin = MasterMesin::orderBy('line')->orderBy('id_mesin')->paginate(20);
+        return view('master.mesin.index', compact('mesin'));
     }
-
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function create() { return view('master.mesin.create'); }
+    public function store(StoreMasterMesinRequest $request)
     {
-        //
+        MasterMesin::create($request->validated());
+        return redirect()->route('master.mesin.index')->with('success', 'Mesin berhasil ditambahkan.');
     }
-
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function edit(MasterMesin $mesin) { return view('master.mesin.edit', compact('mesin')); }
+    public function update(StoreMasterMesinRequest $request, MasterMesin $mesin)
     {
-        //
+        $mesin->update($request->validated());
+        return redirect()->route('master.mesin.index')->with('success', 'Mesin berhasil diupdate.');
     }
-
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
+    public function destroy(MasterMesin $mesin)
     {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
+        $mesin->delete();
+        return redirect()->route('master.mesin.index')->with('success', 'Mesin berhasil dihapus.');
     }
 }

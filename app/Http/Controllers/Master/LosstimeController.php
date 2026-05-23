@@ -1,65 +1,31 @@
 <?php
-
 namespace App\Http\Controllers\Master;
-
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
+use App\Http\Requests\StoreMasterLosstimeRequest;
+use App\Models\MasterLosstime;
 
 class LosstimeController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
-        return response('ok', 200);
+        $losstimes = MasterLosstime::orderBy('kode')->paginate(20);
+        return view('master.losstime.index', compact('losstimes'));
     }
-
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function create() { return view('master.losstime.create'); }
+    public function store(StoreMasterLosstimeRequest $request)
     {
-        //
+        MasterLosstime::create($request->validated());
+        return redirect()->route('master.losstime.index')->with('success', 'Loss time berhasil ditambahkan.');
     }
-
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function edit(MasterLosstime $losstime) { return view('master.losstime.edit', compact('losstime')); }
+    public function update(StoreMasterLosstimeRequest $request, MasterLosstime $losstime)
     {
-        //
+        $losstime->update($request->validated());
+        return redirect()->route('master.losstime.index')->with('success', 'Loss time berhasil diupdate.');
     }
-
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
+    public function destroy(MasterLosstime $losstime)
     {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
+        $losstime->delete();
+        return redirect()->route('master.losstime.index')->with('success', 'Loss time berhasil dihapus.');
     }
 }
