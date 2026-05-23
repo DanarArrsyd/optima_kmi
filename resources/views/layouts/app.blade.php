@@ -54,7 +54,9 @@
         @endif
         @endif
 
+        @if(in_array($role, ['admin', 'staff_produksi', 'staff_qc', 'manager']))
         <div class="nav-header">VCB Dashboard</div>
+        @endif
         @if(in_array($role, ['admin', 'staff_produksi', 'manager']))
         <a href="{{ route('vcb.produksi') }}" class="nav-link {{ request()->is('vcb/produksi*') ? 'active' : '' }}">
             <i class="bi bi-bar-chart me-2"></i>VCB Produksi
