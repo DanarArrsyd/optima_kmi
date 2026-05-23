@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Vcb;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 
 class VcbProduksiController extends Controller
 {

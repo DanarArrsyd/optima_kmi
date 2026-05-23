@@ -30,4 +30,28 @@ class CheckRoleTest extends TestCase
     {
         $this->get('/master/karyawan')->assertRedirect('/login');
     }
+
+    public function test_staff_qc_can_access_vcb_quality(): void
+    {
+        $user = User::factory()->create(['role' => 'staff_qc']);
+        $this->actingAs($user)->get('/vcb/quality')->assertStatus(200);
+    }
+
+    public function test_staff_qc_cannot_access_vcb_produksi(): void
+    {
+        $user = User::factory()->create(['role' => 'staff_qc']);
+        $this->actingAs($user)->get('/vcb/produksi')->assertStatus(403);
+    }
+
+    public function test_staff_produksi_can_access_vcb_produksi(): void
+    {
+        $user = User::factory()->create(['role' => 'staff_produksi']);
+        $this->actingAs($user)->get('/vcb/produksi')->assertStatus(200);
+    }
+
+    public function test_staff_produksi_cannot_access_export(): void
+    {
+        $user = User::factory()->create(['role' => 'staff_produksi']);
+        $this->actingAs($user)->get('/export/produksi')->assertStatus(403);
+    }
 }

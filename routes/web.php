@@ -1,5 +1,6 @@
 <?php
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Master\KaryawanController;
 use App\Http\Controllers\Master\MesinController;
 use App\Http\Controllers\Master\PartController;
@@ -19,7 +20,14 @@ Route::get('/', fn() => redirect('/dashboard'));
 
 Route::middleware('auth')->group(function () {
 
-    Route::get('/dashboard', fn() => redirect('/vcb/produksi'))->name('dashboard');
+    Route::get('/dashboard', function () {
+        $role = Auth::user()->role;
+        return redirect(match(true) {
+            in_array($role, ['admin', 'staff_produksi', 'manager']) => '/vcb/produksi',
+            $role === 'staff_qc' => '/vcb/quality',
+            default => '/vcb/produksi',
+        });
+    })->name('dashboard');
 
     // --- MASTER DATA (admin only) ---
     Route::middleware('role:admin')->prefix('master')->name('master.')->group(function () {
@@ -64,8 +72,8 @@ Route::middleware('auth')->group(function () {
         Route::get('quality/data', [VcbQualityController::class, 'data'])->name('quality.data');
     });
 
-    // --- EXPORT (role filter inside controller) ---
-    Route::prefix('export')->name('export.')->group(function () {
+    // --- EXPORT (admin, manager only) ---
+    Route::middleware('role:admin,manager')->prefix('export')->name('export.')->group(function () {
         Route::get('produksi', [ExportController::class, 'produksi'])->name('produksi');
         Route::get('qc', [ExportController::class, 'qc'])->name('qc');
         Route::get('dandori', [ExportController::class, 'dandori'])->name('dandori');
