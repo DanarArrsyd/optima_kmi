@@ -25,4 +25,5 @@ class TransaksiQc extends Model
     public function karyawanQc(): BelongsTo { return $this->belongsTo(MasterKaryawan::class, 'id_karyawan_qc'); }
     public function partProses(): BelongsTo { return $this->belongsTo(MasterPartProses::class, 'id_part_proses'); }
     public function createdBy(): BelongsTo { return $this->belongsTo(User::class, 'created_by'); }
+    public function updatedBy(): BelongsTo { return $this->belongsTo(User::class, 'updated_by'); }
 }

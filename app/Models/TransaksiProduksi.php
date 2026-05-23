@@ -26,4 +26,5 @@ class TransaksiProduksi extends Model
     public function mesin(): BelongsTo { return $this->belongsTo(MasterMesin::class, 'id_mesin'); }
     public function partProses(): BelongsTo { return $this->belongsTo(MasterPartProses::class, 'id_part_proses'); }
     public function createdBy(): BelongsTo { return $this->belongsTo(User::class, 'created_by'); }
+    public function updatedBy(): BelongsTo { return $this->belongsTo(User::class, 'updated_by'); }
 }

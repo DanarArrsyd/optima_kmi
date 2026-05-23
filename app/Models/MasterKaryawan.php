@@ -3,6 +3,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
 
@@ -29,8 +30,8 @@ class MasterKaryawan extends Model
     {
         return $this->hasMany(TransaksiDandori::class, 'id_karyawan');
     }
-    public function user(): HasMany
+    public function user(): HasOne
     {
-        return $this->hasMany(User::class, 'id_karyawan');
+        return $this->hasOne(User::class, 'id_karyawan');
     }
 }
