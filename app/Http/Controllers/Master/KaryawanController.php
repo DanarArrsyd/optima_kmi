@@ -3,6 +3,11 @@ namespace App\Http\Controllers\Master;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreMasterKaryawanRequest;
 use App\Models\MasterKaryawan;
+use App\Imports\KaryawanImport;
+use Maatwebsite\Excel\Facades\Excel;
+use Maatwebsite\Excel\Concerns\FromArray;
+use Maatwebsite\Excel\Concerns\WithHeadings;
+use Illuminate\Http\Request;
 
 class KaryawanController extends Controller
 {
@@ -38,5 +43,32 @@ class KaryawanController extends Controller
     {
         $karyawan->delete();
         return redirect()->route('master.karyawan.index')->with('success', 'Karyawan berhasil dihapus.');
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate(['file' => 'required|file|mimes:xlsx,xls,csv|max:5120']);
+        $import = new KaryawanImport;
+        Excel::import($import, $request->file('file'));
+        return redirect()->route('master.karyawan.index')
+            ->with('success', "Import berhasil: {$import->imported} data diproses, {$import->skipped} baris dilewati.");
+    }
+
+    public function importTemplate()
+    {
+        $export = new class implements FromArray, WithHeadings {
+            public function headings(): array
+            {
+                return ['NIK', 'Nama Karyawan', 'Departemen'];
+            }
+            public function array(): array
+            {
+                return [
+                    ['K001', 'Ahmad Fauzi', 'Produksi'],
+                    ['K002', 'Siti Rahayu', 'QC'],
+                ];
+            }
+        };
+        return Excel::download($export, 'template_karyawan.xlsx');
     }
 }

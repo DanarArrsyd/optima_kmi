@@ -1,12 +1,22 @@
 @extends('layouts.app')
 @section('title', 'Edit Loss Time')
 @section('content')
-<div class="d-flex align-items-center gap-3 mb-4">
-    <a href="{{ route('master.losstime.index') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i></a>
-    <h4 class="mb-0">Edit Loss Time</h4>
+<div class="page-header">
+    <h1 class="page-title"><i class="bi bi-exclamation-triangle"></i>Edit Loss Time</h1>
+    <a href="{{ route('master.losstime.index') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>Kembali
+    </a>
 </div>
-<div class="card shadow-sm" style="max-width:500px">
-    <div class="card-body">
+
+@if($errors->any())
+    <div class="alert alert-danger mb-3">
+        <ul class="mb-0">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
+    </div>
+@endif
+
+<div class="erp-panel" style="max-width:480px">
+    <div class="erp-panel-header">Form Edit Loss Time — {{ $losstime->kode }}</div>
+    <div class="erp-panel-body">
         <form method="POST" action="{{ route('master.losstime.update', $losstime) }}">
             @csrf @method('PUT')
             <div class="mb-3">
@@ -25,17 +35,20 @@
                 <label class="form-label">Std Menit Default</label>
                 <input type="number" name="std_menit_default" class="form-control @error('std_menit_default') is-invalid @enderror"
                        value="{{ old('std_menit_default', $losstime->std_menit_default) }}" min="0">
-                <div class="form-text text-muted">Kosongkan jika loss ini dihitung penuh (full loss).</div>
+                <small class="text-muted">Kosongkan = full loss</small>
                 @error('std_menit_default')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
             <div class="mb-4">
                 <label class="form-label">Std Menit Progressive</label>
                 <input type="number" name="std_menit_progressive" class="form-control @error('std_menit_progressive') is-invalid @enderror"
                        value="{{ old('std_menit_progressive', $losstime->std_menit_progressive) }}" min="0">
-                <div class="form-text text-muted">Kosongkan jika loss ini dihitung penuh (full loss).</div>
+                <small class="text-muted">Kosongkan = full loss</small>
                 @error('std_menit_progressive')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
-            <button type="submit" class="btn btn-primary">Update</button>
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-save me-1"></i>Update</button>
+                <a href="{{ route('master.losstime.index') }}" class="btn btn-outline-secondary btn-sm">Batal</a>
+            </div>
         </form>
     </div>
 </div>

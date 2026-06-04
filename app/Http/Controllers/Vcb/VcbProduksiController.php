@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers\Vcb;
 use App\Http\Controllers\Controller;
+use App\Models\MasterKaryawan;
 use App\Models\MasterShift;
 use App\Services\DashboardService;
 use Illuminate\Http\Request;
@@ -12,10 +13,17 @@ class VcbProduksiController extends Controller
 
     public function index()
     {
-        $shifts = MasterShift::orderBy('jam_start')->get();
-        return view('vcb.produksi', compact('shifts'));
+        $shifts   = MasterShift::orderBy('jam_start')->get();
+        $karyawan = MasterKaryawan::whereRaw('LOWER(departemen) = ?', ['produksi'])
+            ->orderBy('nama_karyawan')
+            ->get();
+
+        return view('vcb.produksi', compact('shifts', 'karyawan'));
     }
 
+    /**
+     * Endpoint lama: summary per-operator (masih digunakan jika dibutuhkan).
+     */
     public function data(Request $request)
     {
         $dateFrom = Carbon::parse($request->input('date_from', today()->toDateString()));
@@ -25,19 +33,41 @@ class VcbProduksiController extends Controller
         $rows = $this->dashboardService->getVcbProduksi($dateFrom, $dateTo, $shiftId);
 
         $labels       = array_column($rows, 'karyawan');
-        $targets      = array_column($rows, 'total_target_qty');
-        $actuals      = array_column($rows, 'total_qty_aktual');
         $achievements = array_column($rows, 'achievement_pct');
         $colors       = array_map(fn($r) => $this->trafficColor($r['traffic_light']), $rows);
 
         return response()->json([
             'labels'       => $labels,
-            'datasets'     => [
-                ['label' => 'Target QTY',  'data' => $targets, 'backgroundColor' => 'rgba(99,102,241,0.6)'],
-                ['label' => 'Actual QTY',  'data' => $actuals, 'backgroundColor' => $colors],
-            ],
-            'table'        => $rows,
             'achievements' => $achievements,
+            'colors'       => $colors,
+            'table'        => $rows,
+        ]);
+    }
+
+    /**
+     * Endpoint baru: per-tanggal untuk satu operator spesifik.
+     */
+    public function operatorData(Request $request)
+    {
+        $dateFrom   = Carbon::parse($request->input('date_from', today()->toDateString()));
+        $dateTo     = Carbon::parse($request->input('date_to', today()->toDateString()));
+        $karyawanId = (int) $request->input('karyawan_id');
+        $shiftId    = $request->filled('shift_id') ? (int) $request->input('shift_id') : null;
+
+        if (!$karyawanId) {
+            return response()->json(['error' => 'Pilih operator terlebih dahulu.'], 422);
+        }
+
+        $rows = $this->dashboardService->getVcbProduksiByDate($dateFrom, $dateTo, $karyawanId, $shiftId);
+
+        $operator = MasterKaryawan::find($karyawanId)?->nama_karyawan ?? '—';
+
+        return response()->json([
+            'operator'     => $operator,
+            'labels'       => array_column($rows, 'tanggal'),
+            'achievements' => array_column($rows, 'achievement_pct'),
+            'colors'       => array_map(fn($r) => $this->trafficHex($r['traffic_light']), $rows),
+            'table'        => $rows,
         ]);
     }
 
@@ -47,6 +77,15 @@ class VcbProduksiController extends Controller
             'success' => 'rgba(34,197,94,0.8)',
             'warning' => 'rgba(234,179,8,0.8)',
             default   => 'rgba(239,68,68,0.8)',
+        };
+    }
+
+    private function trafficHex(string $light): string
+    {
+        return match($light) {
+            'success' => '#15803d',
+            'warning' => '#a16207',
+            default   => '#b91c1c',
         };
     }
 }

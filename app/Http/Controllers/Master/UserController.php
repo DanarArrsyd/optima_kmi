@@ -9,8 +9,9 @@ class UserController extends Controller
 {
     public function index()
     {
-        $users = User::with('karyawan')->orderBy('name')->paginate(20);
-        return view('master.users.index', compact('users'));
+        $users    = User::with('karyawan')->orderBy('name')->paginate(20);
+        $karyawan = MasterKaryawan::orderBy('nama_karyawan')->get();
+        return view('master.users.index', compact('users', 'karyawan'));
     }
 
     public function create()

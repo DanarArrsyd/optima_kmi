@@ -1,12 +1,22 @@
 @extends('layouts.app')
 @section('title', 'Edit Karyawan')
 @section('content')
-<div class="d-flex align-items-center gap-3 mb-4">
-    <a href="{{ route('master.karyawan.index') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i></a>
-    <h4 class="mb-0">Edit Karyawan</h4>
+<div class="page-header">
+    <h1 class="page-title"><i class="bi bi-people"></i>Edit Karyawan</h1>
+    <a href="{{ route('master.karyawan.index') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>Kembali
+    </a>
 </div>
-<div class="card shadow-sm" style="max-width:500px">
-    <div class="card-body">
+
+@if($errors->any())
+    <div class="alert alert-danger mb-3">
+        <ul class="mb-0">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
+    </div>
+@endif
+
+<div class="erp-panel" style="max-width:480px">
+    <div class="erp-panel-header">Form Edit Karyawan</div>
+    <div class="erp-panel-body">
         <form method="POST" action="{{ route('master.karyawan.update', $karyawan) }}">
             @csrf @method('PUT')
             <div class="mb-3">
@@ -29,7 +39,10 @@
                 </select>
                 @error('departemen')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
-            <button type="submit" class="btn btn-primary">Update</button>
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-save me-1"></i>Update</button>
+                <a href="{{ route('master.karyawan.index') }}" class="btn btn-outline-secondary btn-sm">Batal</a>
+            </div>
         </form>
     </div>
 </div>

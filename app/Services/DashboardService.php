@@ -2,7 +2,7 @@
 namespace App\Services;
 use App\Models\TransaksiProduksi;
 use App\Models\TransaksiQc;
-use App\Models\TransaksiDandori;
+use App\Models\TransaksiDandoriRincian;
 use Illuminate\Support\Carbon;
 
 class DashboardService
@@ -32,6 +32,7 @@ class DashboardService
                 : 0;
 
             return [
+                'id_karyawan'          => $rows->first()->id_karyawan,
                 'karyawan'             => $rows->first()->karyawan->nama_karyawan,
                 'total_qty_aktual'     => $totalQtyAktual,
                 'total_target_qty'     => round($totalTargetQty, 2),
@@ -49,6 +50,63 @@ class DashboardService
                     'qty_aktual' => $r->qty_aktual,
                     'target_qty' => round($this->durationHours($r->jam_start, $r->jam_finish) * $r->partProses->sph_standar_produksi, 0),
                     'actual_ct'  => $r->actual_cycle_time,
+                ])->values()->toArray(),
+            ];
+        })->values()->toArray();
+    }
+
+    /**
+     * VCB Produksi: aggregate by DATE for a specific operator.
+     * Returns daily achievement breakdown with per-session detail.
+     */
+    public function getVcbProduksiByDate(Carbon $dateFrom, Carbon $dateTo, int $karyawanId, ?int $shiftId = null): array
+    {
+        $records = TransaksiProduksi::with(['partProses.part', 'mesin'])
+            ->whereBetween('tanggal_produksi', [$dateFrom->toDateString(), $dateTo->toDateString()])
+            ->where('id_karyawan', $karyawanId)
+            ->when($shiftId, fn($q) => $q->where('id_shift', $shiftId))
+            ->orderBy('tanggal_produksi')
+            ->orderBy('jam_start')
+            ->get();
+
+        return $records->groupBy('tanggal_produksi')->map(function ($dayRows, $date) {
+            $totalQtyAktual     = $dayRows->sum('qty_aktual');
+            $totalDurationHours = $dayRows->sum(fn($r) => $this->durationHours($r->jam_start, $r->jam_finish));
+            $totalTargetQty     = $dayRows->sum(fn($r) =>
+                $this->durationHours($r->jam_start, $r->jam_finish) * ($r->partProses?->sph_standar_produksi ?? 0)
+            );
+
+            $achievementPct = $totalTargetQty > 0
+                ? round($totalQtyAktual / $totalTargetQty * 100, 1)
+                : 0;
+            $avgSphStd = $totalDurationHours > 0
+                ? (int) round($totalTargetQty / $totalDurationHours)
+                : 0;
+            $avgSphAct = $totalDurationHours > 0
+                ? (int) round($totalQtyAktual / $totalDurationHours)
+                : 0;
+
+            return [
+                'tanggal'         => Carbon::parse($date)->format('d/m/y'),
+                'tanggal_raw'     => $date,
+                'achievement_pct' => $achievementPct,
+                'avg_sph_std'     => $avgSphStd,
+                'avg_sph_act'     => $avgSphAct,
+                'traffic_light'   => $this->getTrafficLight($achievementPct),
+                'sessions'        => $dayRows->map(fn($r) => [
+                    'mesin'       => $r->mesin?->id_mesin ?? '—',
+                    'nama_mesin'  => $r->mesin?->nama_mesin ?? '—',
+                    'customer'    => $r->partProses?->part?->customer ?? '—',
+                    'part_no'     => $r->partProses?->part?->part_no ?? '—',
+                    'part_name'   => $r->partProses?->part?->part_name ?? '—',
+                    'id_proses'   => $r->partProses?->id_proses ?? '—',
+                    'nama_proses' => $r->partProses?->nama_proses ?? '—',
+                    'waktu_kerja' => round($this->durationHours($r->jam_start, $r->jam_finish), 1),
+                    'sph_std'     => (int) ($r->partProses?->sph_standar_produksi ?? 0),
+                    'sph_act'     => (int) $r->sph_aktual,
+                    'pct'         => ($r->partProses?->sph_standar_produksi ?? 0) > 0
+                        ? round($r->sph_aktual / $r->partProses->sph_standar_produksi * 100, 1)
+                        : 0,
                 ])->values()->toArray(),
             ];
         })->values()->toArray();
@@ -121,10 +179,12 @@ class DashboardService
                 : 0;
 
             return [
+                'id_karyawan_qc'       => $rows->first()->id_karyawan_qc,
                 'karyawan'             => $rows->first()->karyawanQc->nama_karyawan,
                 'total_qty_ok'         => $totalQtyOk,
                 'total_qty_ng'         => $totalQtyNg,
                 'total_qty_check'      => $totalQtyCheck,
+                'ng_rate'              => $totalQtyCheck > 0 ? round($totalQtyNg / $totalQtyCheck * 100, 1) : 0,
                 'total_target_qty'     => round($totalTargetQty, 2),
                 'total_duration_hours' => round($totalDurationHours, 2),
                 'achievement_pct'      => $achievementPct,
@@ -135,65 +195,156 @@ class DashboardService
     }
 
     /**
+     * VCB Quality: aggregate by DATE for a specific QC inspector.
+     */
+    public function getVcbQualityByDate(Carbon $dateFrom, Carbon $dateTo, int $karyawanQcId, ?int $shiftId = null): array
+    {
+        $records = TransaksiQc::with(['partProses.part'])
+            ->whereBetween('tgl_pengecekan', [$dateFrom->toDateString(), $dateTo->toDateString()])
+            ->where('id_karyawan_qc', $karyawanQcId)
+            ->when($shiftId, fn($q) => $q->where('id_shift', $shiftId))
+            ->orderBy('tgl_pengecekan')
+            ->orderBy('jam_start')
+            ->get();
+
+        return $records->groupBy('tgl_pengecekan')->map(function ($dayRows, $date) {
+            $totalQtyOk         = $dayRows->sum('qty_ok');
+            $totalQtyNg         = $dayRows->sum('qty_ng');
+            $totalQtyCheck      = $totalQtyOk + $totalQtyNg;
+            $totalDurationHours = $dayRows->sum(fn($r) => $this->durationHours($r->jam_start, $r->jam_finish));
+            $totalTargetQty     = $dayRows->sum(fn($r) =>
+                $this->durationHours($r->jam_start, $r->jam_finish) * ($r->partProses?->sph_standar_qc ?? 0)
+            );
+
+            $achievementPct = $totalTargetQty > 0
+                ? round($totalQtyCheck / $totalTargetQty * 100, 1)
+                : 0;
+            $avgSphStd = $totalDurationHours > 0
+                ? (int) round($totalTargetQty / $totalDurationHours)
+                : 0;
+            $avgSphAct = $totalDurationHours > 0
+                ? (int) round($totalQtyCheck / $totalDurationHours)
+                : 0;
+
+            return [
+                'tanggal'         => Carbon::parse($date)->format('d/m/y'),
+                'tanggal_raw'     => $date,
+                'achievement_pct' => $achievementPct,
+                'avg_sph_std'     => $avgSphStd,
+                'avg_sph_act'     => $avgSphAct,
+                'total_qty_ok'    => $totalQtyOk,
+                'total_qty_ng'    => $totalQtyNg,
+                'ng_rate'         => $totalQtyCheck > 0 ? round($totalQtyNg / $totalQtyCheck * 100, 1) : 0,
+                'traffic_light'   => $this->getTrafficLight($achievementPct),
+                'sessions'        => $dayRows->map(fn($r) => [
+                    'customer'    => $r->partProses?->part?->customer ?? '—',
+                    'part_no'     => $r->partProses?->part?->part_no ?? '—',
+                    'part_name'   => $r->partProses?->part?->part_name ?? '—',
+                    'id_proses'   => $r->partProses?->id_proses ?? '—',
+                    'nama_proses' => $r->partProses?->nama_proses ?? '—',
+                    'waktu_kerja' => round($this->durationHours($r->jam_start, $r->jam_finish), 1),
+                    'qty_ok'      => (int) $r->qty_ok,
+                    'qty_ng'      => (int) $r->qty_ng,
+                    'ng_rate'     => ($r->qty_ok + $r->qty_ng) > 0
+                        ? round($r->qty_ng / ($r->qty_ok + $r->qty_ng) * 100, 1)
+                        : 0,
+                    'sph_std'     => (int) ($r->partProses?->sph_standar_qc ?? 0),
+                    'sph_act'     => (int) $r->sph_aktual,
+                    'pct'         => ($r->partProses?->sph_standar_qc ?? 0) > 0
+                        ? round($r->sph_aktual / $r->partProses->sph_standar_qc * 100, 1)
+                        : 0,
+                ])->values()->toArray(),
+            ];
+        })->values()->toArray();
+    }
+
+    /**
      * VCB Dandori: aggregate menit_loss and menit_over by mesin × jenis_loss.
      */
-    public function getVcbDandori(?string $bulan = null, ?string $week = null, ?int $mesinId = null, ?int $shiftId = null): array
+    public function getVcbDandori(string $dateFrom, string $dateTo, array $mesinIds = []): array
     {
-        $query = TransaksiDandori::with(['mesin', 'rincian.losstime'])
-            ->when($shiftId, fn($q) => $q->where('id_shift', $shiftId))
-            ->when($mesinId, fn($q) => $q->where('id_mesin', $mesinId))
-            ->when($bulan, function ($q) use ($bulan) {
-                $monthNum = date('m', strtotime("1 {$bulan} 2000"));
-                $q->whereMonth('tanggal', $monthNum);
-            })
-            ->when($week, function ($q) use ($week) {
-                $weekNum = (int) str_replace('WEEK ', '', $week);
-                $start   = ($weekNum - 1) * 7 + 1;
-                $end     = min($weekNum * 7, 31);
-                $q->whereDay('tanggal', '>=', $start)->whereDay('tanggal', '<=', $end);
-            });
+        $records = TransaksiDandoriRincian::with(['mesin', 'losstime'])
+            ->whereDate('tanggal', '>=', $dateFrom)
+            ->whereDate('tanggal', '<=', $dateTo)
+            ->when(!empty($mesinIds), fn($q) => $q->whereIn('id_mesin', $mesinIds))
+            ->orderBy('tanggal')
+            ->get();
 
-        $dandoriRecords = $query->get();
+        $totalActual = 0.0;
+        $totalOver   = 0.0;
+        $byJenis     = [];   // kode  => [kode, jenis, actual, over]
+        $byMesin     = [];   // mesin DB id => [id_mesin, nama_mesin, actual, over]
+        $byWeek      = [];   // "WEEK N (Mon)" => [label, sort_key, actual, over]
+        $byMonth     = [];   // "Jan 2026" => [label, sort_key, actual, over]
 
-        $pivot    = [];
-        $mesinMap = [];
-        $jenisSet = [];
+        foreach ($records as $r) {
+            $actual = (float) $r->actual_menit;
+            $over   = (float) $r->over_menit;
+            $totalActual += $actual;
+            $totalOver   += $over;
 
-        foreach ($dandoriRecords as $d) {
-            $mesinKey = $d->mesin->nama_mesin;
-            $mesinMap[$mesinKey] = $d->mesin;
-            if (!isset($pivot[$mesinKey])) {
-                $pivot[$mesinKey] = [];
+            /* ── By jenis loss time ─────────────────── */
+            $kode  = $r->losstime->kode;
+            $jenis = $r->losstime->jenis_losstime;
+            if (!isset($byJenis[$kode])) {
+                $byJenis[$kode] = ['kode' => $kode, 'jenis' => $jenis, 'actual' => 0.0, 'over' => 0.0];
             }
-            foreach ($d->rincian as $r) {
-                $jenis = $r->losstime->jenis_losstime;
-                $jenisSet[$jenis] = true;
-                if (!isset($pivot[$mesinKey][$jenis])) {
-                    $pivot[$mesinKey][$jenis] = ['total_loss' => 0, 'total_over' => 0];
-                }
-                $pivot[$mesinKey][$jenis]['total_loss'] += $r->menit_loss;
-                $pivot[$mesinKey][$jenis]['total_over'] += $r->menit_over;
+            $byJenis[$kode]['actual'] += $actual;
+            $byJenis[$kode]['over']   += $over;
+
+            /* ── By mesin ───────────────────────────── */
+            $mid = $r->id_mesin;
+            if (!isset($byMesin[$mid])) {
+                $byMesin[$mid] = [
+                    'id_mesin'   => $r->mesin->id_mesin,
+                    'nama_mesin' => $r->mesin->nama_mesin,
+                    'actual' => 0.0, 'over' => 0.0,
+                ];
             }
+            $byMesin[$mid]['actual'] += $actual;
+            $byMesin[$mid]['over']   += $over;
+
+            /* ── By ISO week ────────────────────────── */
+            $tanggal  = $r->tanggal; // Carbon date
+            $weekNum  = (int) $tanggal->format('W');
+            $yearWeek = $tanggal->format('o') . sprintf('%02d', $weekNum); // e.g. 202620
+            $weekLbl  = 'W' . $weekNum . ' (' . $tanggal->startOfWeek()->format('d M') . ')';
+            if (!isset($byWeek[$yearWeek])) {
+                $byWeek[$yearWeek] = ['label' => $weekLbl, 'sort' => $yearWeek, 'actual' => 0.0, 'over' => 0.0];
+            }
+            $byWeek[$yearWeek]['actual'] += $actual;
+            $byWeek[$yearWeek]['over']   += $over;
+
+            /* ── By month ───────────────────────────── */
+            $monthKey = $r->tanggal->format('Y-m');
+            $monthLbl = $r->tanggal->format('M Y');
+            if (!isset($byMonth[$monthKey])) {
+                $byMonth[$monthKey] = ['label' => $monthLbl, 'sort' => $monthKey, 'actual' => 0.0, 'over' => 0.0];
+            }
+            $byMonth[$monthKey]['actual'] += $actual;
+            $byMonth[$monthKey]['over']   += $over;
         }
 
-        $jenisList = array_keys($jenisSet);
-        sort($jenisList);
+        /* Sort: jenis & mesin by over desc; week & month by date asc */
+        usort($byJenis, fn($a, $b) => $b['over'] <=> $a['over']);
+        usort($byMesin, fn($a, $b) => $b['over'] <=> $a['over']);
+        ksort($byWeek);
+        ksort($byMonth);
 
-        $rows = [];
-        foreach ($pivot as $mesinKey => $jenisPivot) {
-            $row = ['mesin' => $mesinKey, 'total_loss' => 0, 'total_over' => 0];
-            foreach ($jenisList as $jenis) {
-                $row[$jenis . '_loss'] = $jenisPivot[$jenis]['total_loss'] ?? 0;
-                $row[$jenis . '_over'] = $jenisPivot[$jenis]['total_over'] ?? 0;
-                $row['total_loss'] += $row[$jenis . '_loss'];
-                $row['total_over'] += $row[$jenis . '_over'];
-            }
-            $rows[] = $row;
-        }
+        /* Round all floats */
+        $round = fn($arr) => array_map(function ($row) {
+            $row['actual'] = round($row['actual'], 1);
+            $row['over']   = round($row['over'], 1);
+            return $row;
+        }, array_values($arr));
 
         return [
-            'rows'       => $rows,
-            'jenis_list' => $jenisList,
+            'total_actual' => round($totalActual, 1),
+            'total_over'   => round($totalOver, 1),
+            'by_jenis'     => $round($byJenis),
+            'by_mesin'     => $round($byMesin),
+            'by_week'      => $round($byWeek),
+            'by_month'     => $round($byMonth),
         ];
     }
 

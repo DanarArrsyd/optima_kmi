@@ -1,12 +1,22 @@
 @extends('layouts.app')
 @section('title', 'Tambah User')
 @section('content')
-<div class="d-flex align-items-center gap-3 mb-4">
-    <a href="{{ route('master.users.index') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i></a>
-    <h4 class="mb-0">Tambah User</h4>
+<div class="page-header">
+    <h1 class="page-title"><i class="bi bi-person-gear"></i>Tambah User</h1>
+    <a href="{{ route('master.users.index') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>Kembali
+    </a>
 </div>
-<div class="card shadow-sm" style="max-width:520px">
-    <div class="card-body">
+
+@if($errors->any())
+    <div class="alert alert-danger mb-3">
+        <ul class="mb-0">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
+    </div>
+@endif
+
+<div class="erp-panel" style="max-width:500px">
+    <div class="erp-panel-header">Form Tambah User</div>
+    <div class="erp-panel-body">
         <form method="POST" action="{{ route('master.users.store') }}">
             @csrf
             <div class="mb-3">
@@ -38,7 +48,7 @@
                 @error('role')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
             <div class="mb-4">
-                <label class="form-label">Karyawan (opsional)</label>
+                <label class="form-label">Tautkan ke Karyawan (opsional)</label>
                 <select name="id_karyawan" class="form-select @error('id_karyawan') is-invalid @enderror">
                     <option value="">-- Tidak ditautkan --</option>
                     @foreach($karyawan as $k)
@@ -49,7 +59,10 @@
                 </select>
                 @error('id_karyawan')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
-            <button type="submit" class="btn btn-primary">Simpan</button>
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-save me-1"></i>Simpan</button>
+                <a href="{{ route('master.users.index') }}" class="btn btn-outline-secondary btn-sm">Batal</a>
+            </div>
         </form>
     </div>
 </div>

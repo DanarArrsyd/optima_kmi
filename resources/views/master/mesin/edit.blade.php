@@ -1,12 +1,22 @@
 @extends('layouts.app')
 @section('title', 'Edit Mesin')
 @section('content')
-<div class="d-flex align-items-center gap-3 mb-4">
-    <a href="{{ route('master.mesin.index') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i></a>
-    <h4 class="mb-0">Edit Mesin</h4>
+<div class="page-header">
+    <h1 class="page-title"><i class="bi bi-cpu"></i>Edit Mesin</h1>
+    <a href="{{ route('master.mesin.index') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>Kembali
+    </a>
 </div>
-<div class="card shadow-sm" style="max-width:520px">
-    <div class="card-body">
+
+@if($errors->any())
+    <div class="alert alert-danger mb-3">
+        <ul class="mb-0">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
+    </div>
+@endif
+
+<div class="erp-panel" style="max-width:500px">
+    <div class="erp-panel-header">Form Edit Mesin — {{ $mesin->id_mesin }}</div>
+    <div class="erp-panel-body">
         <form method="POST" action="{{ route('master.mesin.update', $mesin) }}">
             @csrf @method('PUT')
             <div class="mb-3">
@@ -30,7 +40,6 @@
             <div class="mb-3">
                 <label class="form-label">Tipe Mesin <span class="text-danger">*</span></label>
                 <select name="tipe_mesin" class="form-select @error('tipe_mesin') is-invalid @enderror">
-                    <option value="" disabled>-- Pilih --</option>
                     <option value="PROGRESSIVE" {{ old('tipe_mesin', $mesin->tipe_mesin) === 'PROGRESSIVE' ? 'selected' : '' }}>PROGRESSIVE</option>
                     <option value="STAMPING" {{ old('tipe_mesin', $mesin->tipe_mesin) === 'STAMPING' ? 'selected' : '' }}>STAMPING</option>
                 </select>
@@ -42,7 +51,10 @@
                        value="{{ old('kapasitas_max_stroke', $mesin->kapasitas_max_stroke) }}" min="0">
                 @error('kapasitas_max_stroke')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
-            <button type="submit" class="btn btn-primary">Update</button>
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-save me-1"></i>Update</button>
+                <a href="{{ route('master.mesin.index') }}" class="btn btn-outline-secondary btn-sm">Batal</a>
+            </div>
         </form>
     </div>
 </div>

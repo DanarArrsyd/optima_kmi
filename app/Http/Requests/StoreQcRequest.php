@@ -21,6 +21,7 @@ class StoreQcRequest extends FormRequest
             'jam_finish'        => 'required|date_format:H:i',
             'qty_ok'            => 'required|integer|min:0',
             'qty_ng'            => 'required|integer|min:0',
+            'id_jenis_ng'       => 'nullable|exists:master_jenis_ng,id',
         ];
     }
 

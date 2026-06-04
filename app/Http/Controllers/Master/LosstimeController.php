@@ -3,6 +3,11 @@ namespace App\Http\Controllers\Master;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreMasterLosstimeRequest;
 use App\Models\MasterLosstime;
+use App\Imports\LosstimeImport;
+use Maatwebsite\Excel\Facades\Excel;
+use Maatwebsite\Excel\Concerns\FromArray;
+use Maatwebsite\Excel\Concerns\WithHeadings;
+use Illuminate\Http\Request;
 
 class LosstimeController extends Controller
 {
@@ -27,5 +32,33 @@ class LosstimeController extends Controller
     {
         $losstime->delete();
         return redirect()->route('master.losstime.index')->with('success', 'Loss time berhasil dihapus.');
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate(['file' => 'required|file|mimes:xlsx,xls,csv|max:5120']);
+        $import = new LosstimeImport;
+        Excel::import($import, $request->file('file'));
+        return redirect()->route('master.losstime.index')
+            ->with('success', "Import berhasil: {$import->imported} data diproses, {$import->skipped} baris dilewati.");
+    }
+
+    public function importTemplate()
+    {
+        $export = new class implements FromArray, WithHeadings {
+            public function headings(): array
+            {
+                return ['Kode', 'Jenis Losstime', 'Std Menit Default', 'Std Menit Progressive'];
+            }
+            public function array(): array
+            {
+                return [
+                    ['BK', 'Breakdown Mesin', 30, 15],
+                    ['MT', 'Maintenance', 60, 30],
+                    ['ST', 'Setup / Dandori', 15, 10],
+                ];
+            }
+        };
+        return Excel::download($export, 'template_losstime.xlsx');
     }
 }

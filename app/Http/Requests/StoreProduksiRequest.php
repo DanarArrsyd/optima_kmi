@@ -20,6 +20,17 @@ class StoreProduksiRequest extends FormRequest
             'jam_start'        => 'required|date_format:H:i',
             'jam_finish'       => 'required|date_format:H:i',
             'qty_aktual'       => 'required|integer|min:1',
+            'ada_ng'           => 'nullable|boolean',
+            'qty_ng'           => 'nullable|integer|min:1|required_if:ada_ng,1',
+            'id_jenis_ng'      => 'nullable|exists:master_jenis_ng,id|required_if:ada_ng,1',
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        /* Kalau ada_ng tidak dicentang, clear qty_ng dan id_jenis_ng */
+        if (!$this->boolean('ada_ng')) {
+            $this->merge(['qty_ng' => null, 'id_jenis_ng' => null]);
+        }
     }
 }

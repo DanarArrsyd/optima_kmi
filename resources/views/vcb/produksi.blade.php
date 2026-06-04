@@ -1,108 +1,634 @@
 @extends('layouts.app')
 @section('title', 'VCB Produksi')
 @section('content')
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h4 class="mb-0"><i class="bi bi-bar-chart me-2"></i>VCB Produksi — Operator Achievement</h4>
+
+<div class="page-header">
+    <h1 class="page-title"><i class="bi bi-bar-chart"></i>VCB Produksi — Achievement Operator</h1>
+    {{-- Mode tabs --}}
+    <div style="display:flex;gap:0;border:1px solid #d1d5db;border-radius:2px;overflow:hidden">
+        <button id="tabAll" onclick="switchMode('all')"
+            style="padding:5px 14px;font-size:11.5px;font-weight:700;border:none;cursor:pointer;
+                   background:#4b5563;color:#fff;letter-spacing:0.3px">
+            <i class="bi bi-people me-1"></i>Semua Operator
+        </button>
+        <button id="tabOne" onclick="switchMode('one')"
+            style="padding:5px 14px;font-size:11.5px;font-weight:700;border:none;cursor:pointer;
+                   background:#f3f4f6;color:#6b7280;letter-spacing:0.3px;border-left:1px solid #d1d5db">
+            <i class="bi bi-person me-1"></i>Per Operator
+        </button>
+    </div>
 </div>
 
-<div class="card shadow-sm mb-4">
-    <div class="card-body py-3">
-        <form id="filterForm" class="row g-2 align-items-end">
-            <div class="col-md-3">
-                <label class="form-label small mb-1">Tanggal Dari</label>
-                <input type="date" id="date_from" name="date_from" class="form-control form-control-sm" value="{{ date('Y-m-01') }}">
+{{-- ══════════════════════════════════════════════════
+     MODE 1 — SEMUA OPERATOR
+══════════════════════════════════════════════════ --}}
+<div id="modeAll">
+
+    {{-- Filter --}}
+    <div class="filter-bar mb-3">
+        <form id="formAll" style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;width:100%">
+            <div class="filter-group">
+                <label>Dari Tanggal</label>
+                <input type="date" id="all_date_from" class="form-control form-control-sm" value="{{ date('Y-m-01') }}">
             </div>
-            <div class="col-md-3">
-                <label class="form-label small mb-1">Tanggal Sampai</label>
-                <input type="date" id="date_to" name="date_to" class="form-control form-control-sm" value="{{ date('Y-m-d') }}">
+            <div class="filter-group">
+                <label>Sampai Tanggal</label>
+                <input type="date" id="all_date_to" class="form-control form-control-sm" value="{{ date('Y-m-d') }}">
             </div>
-            <div class="col-md-2">
-                <label class="form-label small mb-1">Shift</label>
-                <select id="shift_id" name="shift_id" class="form-select form-select-sm">
+            <div class="filter-group">
+                <label>Shift</label>
+                <select id="all_shift_id" class="form-select form-select-sm" style="min-width:120px">
                     <option value="">Semua Shift</option>
-                    @foreach($shifts as $shift)
-                        <option value="{{ $shift->id }}">{{ $shift->nama_shift }}</option>
+                    @foreach($shifts as $s)
+                        <option value="{{ $s->id }}">{{ $s->nama_shift }}</option>
                     @endforeach
                 </select>
             </div>
-            <div class="col-md-2">
-                <button type="submit" class="btn btn-primary btn-sm w-100"><i class="bi bi-search me-1"></i>Tampilkan</button>
+            <div class="filter-group" style="flex-direction:row;gap:6px;align-items:flex-end">
+                <button type="submit" class="btn btn-secondary btn-sm">
+                    <i class="bi bi-funnel me-1"></i>Tampilkan
+                </button>
             </div>
-            <div class="col-md-2">
-                <a id="exportExcel" href="#" class="btn btn-success btn-sm w-100">
-                    <i class="bi bi-file-earmark-excel me-1"></i>Export Excel
+            <div style="margin-left:auto;display:flex;align-items:flex-end">
+                <span id="allPeriodLabel" style="font-size:0.75rem;color:#5d7283;background:#f0f2f5;border:1px solid #d4dbe3;padding:4px 10px;white-space:nowrap"></span>
+            </div>
+        </form>
+    </div>
+
+    {{-- KPI Cards --}}
+    <div id="allKpi" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px"></div>
+
+    {{-- Chart --}}
+    <div class="erp-panel mb-3" id="allChartPanel" style="display:none">
+        <div class="erp-panel-header">
+            <i class="bi bi-graph-up me-1"></i>Achievement % per Operator
+            <span style="margin-left:auto;font-size:10px;font-weight:400;color:#9ca3af">— — —  = 100% target</span>
+        </div>
+        <div class="erp-panel-body" style="padding:14px">
+            <canvas id="allChart" height="70"></canvas>
+        </div>
+    </div>
+
+    {{-- Ranking Table --}}
+    <div class="erp-panel" id="allTablePanel">
+        <div class="erp-panel-header"><i class="bi bi-list-ol me-1"></i>Ranking Achievement Operator</div>
+        <div style="overflow-x:auto">
+            <table class="erp-table">
+                <thead>
+                    <tr>
+                        <th style="width:36px;text-align:center">No</th>
+                        <th style="min-width:140px">Operator</th>
+                        <th style="width:50px;text-align:center">Sesi</th>
+                        <th style="width:80px;text-align:right">W. Kerja</th>
+                        <th style="width:100px;text-align:right">Target QTY</th>
+                        <th style="width:100px;text-align:right">Actual QTY</th>
+                        <th style="width:75px;text-align:right">SPH Std</th>
+                        <th style="width:75px;text-align:right">SPH Act</th>
+                        <th style="min-width:200px">Achievement</th>
+                        <th style="width:75px;text-align:center">Status</th>
+                    </tr>
+                </thead>
+                <tbody id="allTableBody">
+                    <tr><td colspan="10" style="text-align:center;color:#888;padding:24px">Klik <strong>Tampilkan</strong> untuk melihat data.</td></tr>
+                </tbody>
+                <tfoot id="allTableFoot" style="display:none">
+                    <tr style="background:#e5e7eb;font-weight:700;font-size:11.5px">
+                        <td colspan="3" style="padding:7px 10px;color:#374151;text-transform:uppercase;letter-spacing:0.4px">Total</td>
+                        <td style="text-align:right;padding:7px 10px" id="ftAllDur"></td>
+                        <td style="text-align:right;padding:7px 10px" id="ftAllTgt"></td>
+                        <td style="text-align:right;padding:7px 10px" id="ftAllAct"></td>
+                        <td colspan="2" style="padding:7px 10px"></td>
+                        <td id="ftAllPct" style="padding:7px 10px"></td>
+                        <td style="padding:7px 10px"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+</div>{{-- /modeAll --}}
+
+{{-- ══════════════════════════════════════════════════
+     MODE 2 — PER OPERATOR (DRILL-DOWN)
+══════════════════════════════════════════════════ --}}
+<div id="modeOne" style="display:none">
+
+    {{-- Filter --}}
+    <div class="filter-bar mb-3">
+        <form id="formOne" style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;width:100%">
+            <div class="filter-group">
+                <label>Dari Tanggal</label>
+                <input type="date" id="one_date_from" class="form-control form-control-sm" value="{{ date('Y-m-01') }}">
+            </div>
+            <div class="filter-group">
+                <label>Sampai Tanggal</label>
+                <input type="date" id="one_date_to" class="form-control form-control-sm" value="{{ date('Y-m-d') }}">
+            </div>
+            <div class="filter-group">
+                <label>Operator <span class="text-danger">*</span></label>
+                <select id="one_karyawan_id" class="form-select form-select-sm" style="min-width:180px">
+                    <option value="">— Pilih Operator —</option>
+                    @foreach($karyawan as $k)
+                        <option value="{{ $k->id }}">{{ $k->nama_karyawan }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Shift</label>
+                <select id="one_shift_id" class="form-select form-select-sm" style="min-width:120px">
+                    <option value="">Semua Shift</option>
+                    @foreach($shifts as $s)
+                        <option value="{{ $s->id }}">{{ $s->nama_shift }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="filter-group" style="flex-direction:row;gap:6px;align-items:flex-end">
+                <button type="submit" class="btn btn-secondary btn-sm">
+                    <i class="bi bi-search me-1"></i>Search
+                </button>
+                <a id="oneExportBtn" href="#" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-file-earmark-excel me-1"></i>Export
                 </a>
             </div>
         </form>
     </div>
-</div>
 
-<div class="card shadow-sm mb-4">
-    <div class="card-body"><canvas id="vcbChart" height="100"></canvas></div>
-</div>
+    {{-- Prompt state --}}
+    <div id="oneEmpty" class="erp-panel" style="text-align:center;padding:40px;color:#9ca3af">
+        <i class="bi bi-person-lines-fill" style="font-size:32px;display:block;margin-bottom:10px;color:#d1d5db"></i>
+        Pilih operator dan klik <strong style="color:#4b5563">Search</strong> untuk melihat detail achievement harian.
+    </div>
 
-<div class="card shadow-sm">
-    <div class="card-header fw-semibold">Detail per Operator</div>
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-sm table-hover mb-0">
-                <thead class="table-dark">
-                    <tr><th>Operator</th><th>Target QTY</th><th>Actual QTY</th><th>Duration (jam)</th><th>Achievement %</th><th>Avg SPH</th></tr>
+    {{-- Chart --}}
+    <div class="erp-panel mb-3" id="oneChartPanel" style="display:none">
+        <div class="erp-panel-header" style="justify-content:center;font-size:12px;letter-spacing:1px">
+            ACHIEVEMENT — <span id="oneChartLabel" style="color:#111827">—</span>
+            <span style="margin-left:auto;font-size:10px;font-weight:400;color:#9ca3af">— — —  = 100% target</span>
+        </div>
+        <div class="erp-panel-body" style="padding:14px">
+            <canvas id="oneChart" height="75"></canvas>
+        </div>
+    </div>
+
+    {{-- Detail table --}}
+    <div class="erp-panel" id="oneDetailPanel" style="display:none">
+        <div class="erp-panel-header">
+            <i class="bi bi-table me-1"></i>Detail Harian
+            <span id="oneDetailLabel" style="margin-left:6px;font-weight:400;color:#9ca3af;text-transform:none;letter-spacing:0;font-size:11px"></span>
+            <span style="margin-left:auto;font-size:10px;font-weight:400;color:#9ca3af;text-transform:none;letter-spacing:0">Klik tanggal untuk expand/collapse</span>
+        </div>
+        <div style="overflow-x:auto">
+            <table class="erp-table" style="min-width:1050px">
+                <thead>
+                    <tr>
+                        <th style="width:80px">Tanggal</th>
+                        <th style="width:60px">Mesin</th>
+                        <th style="width:130px">Nama Mesin</th>
+                        <th style="width:75px">Customer</th>
+                        <th style="width:90px">Part No.</th>
+                        <th style="width:140px">Part Name</th>
+                        <th style="width:48px;text-align:center">ID<br>Proses</th>
+                        <th style="width:100px">Proses</th>
+                        <th style="width:70px;text-align:right">W. Kerja</th>
+                        <th style="width:72px;text-align:right">SPH Std</th>
+                        <th style="width:72px;text-align:right">SPH Act</th>
+                        <th style="width:62px;text-align:right">%</th>
+                        <th style="width:40px;text-align:center"><i class="bi bi-chevron-expand" style="font-size:10px"></i></th>
+                    </tr>
                 </thead>
-                <tbody id="vcbTableBody">
-                    <tr><td colspan="6" class="text-center text-muted py-3">Klik Tampilkan untuk melihat data.</td></tr>
-                </tbody>
+                <tbody id="oneBody"></tbody>
             </table>
         </div>
     </div>
-</div>
+
+</div>{{-- /modeOne --}}
+
 @endsection
 
 @push('scripts')
 <script>
-let vcbChart = null;
+/* ═══════════════════════════════════════════════════════════
+   OPTIMA — VCB Produksi Controller
+═══════════════════════════════════════════════════════════ */
 
-async function loadData() {
-    const params = new URLSearchParams({
-        date_from: document.getElementById('date_from').value,
-        date_to:   document.getElementById('date_to').value,
-        shift_id:  document.getElementById('shift_id').value,
-    });
-    document.getElementById('exportExcel').href = `/export/produksi?${params}&format=excel`;
+let allChart = null;
+let oneChart = null;
 
-    const res  = await fetch(`/vcb/produksi/data?${params}`);
-    const data = await res.json();
-
-    if (vcbChart) vcbChart.destroy();
-    vcbChart = new Chart(document.getElementById('vcbChart'), {
-        type: 'bar',
-        data: { labels: data.labels, datasets: data.datasets },
-        options: {
-            responsive: true,
-            plugins: { legend: { position: 'top' } },
-            scales: { y: { beginAtZero: true } }
-        }
-    });
-
-    const tbody = document.getElementById('vcbTableBody');
-    if (!data.table.length) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">Tidak ada data.</td></tr>';
-        return;
-    }
-    tbody.innerHTML = data.table.map(row => {
-        const badge = row.traffic_light === 'success' ? 'bg-success' : row.traffic_light === 'warning' ? 'bg-warning text-dark' : 'bg-danger';
-        return `<tr class="table-${row.traffic_light}">
-            <td>${row.karyawan}</td>
-            <td>${Number(row.total_target_qty).toLocaleString()}</td>
-            <td>${Number(row.total_qty_aktual).toLocaleString()}</td>
-            <td>${row.total_duration_hours}</td>
-            <td><span class="badge ${badge}">${row.achievement_pct}%</span></td>
-            <td>${row.avg_actual_sph}</td>
-        </tr>`;
-    }).join('');
+/* ── Helpers ───────────────────────────────────────────── */
+function n(v, dec = 0) {
+    return Number(v).toLocaleString('id-ID', { maximumFractionDigits: dec });
+}
+function pctColor(pct) {
+    return pct >= 100 ? '#15803d' : pct >= 85 ? '#a16207' : '#b91c1c';
+}
+function statusLabel(tl) {
+    const map = { success: ['ACHIEVED','#15803d'], warning: ['NEAR','#a16207'], danger: ['BELOW','#b91c1c'] };
+    const [label, color] = map[tl] ?? ['—','#9ca3af'];
+    return `<span style="font-size:10px;font-weight:700;color:${color};letter-spacing:0.4px">${label}</span>`;
+}
+function progressBar(pct) {
+    const color = pctColor(pct);
+    return `<div style="display:flex;align-items:center;gap:8px">
+        <div style="flex:1;height:7px;background:#e5e7eb;border-radius:1px;overflow:hidden">
+            <div style="width:${Math.min(pct,100)}%;height:100%;background:${color}"></div>
+        </div>
+        <span style="font-size:12px;font-weight:700;color:${color};min-width:44px;text-align:right">${pct}%</span>
+    </div>`;
 }
 
-document.getElementById('filterForm').addEventListener('submit', e => { e.preventDefault(); loadData(); });
-loadData();
+/* ── Mode switcher ─────────────────────────────────────── */
+function switchMode(mode, karyawanId = null) {
+    const isAll = mode === 'all';
+    document.getElementById('modeAll').style.display = isAll ? '' : 'none';
+    document.getElementById('modeOne').style.display = isAll ? 'none' : '';
+
+    document.getElementById('tabAll').style.background = isAll ? '#4b5563' : '#f3f4f6';
+    document.getElementById('tabAll').style.color      = isAll ? '#fff'    : '#6b7280';
+    document.getElementById('tabOne').style.background = isAll ? '#f3f4f6' : '#4b5563';
+    document.getElementById('tabOne').style.color      = isAll ? '#6b7280' : '#fff';
+
+    if (!isAll && karyawanId) {
+        // Pre-select operator and carry over dates
+        document.getElementById('one_karyawan_id').value  = karyawanId;
+        document.getElementById('one_date_from').value    = document.getElementById('all_date_from').value;
+        document.getElementById('one_date_to').value      = document.getElementById('all_date_to').value;
+        document.getElementById('one_shift_id').value     = document.getElementById('all_shift_id').value;
+        loadOneOperator();
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   MODE 1 — SEMUA OPERATOR
+═══════════════════════════════════════════════════════════ */
+function buildAllChart(labels, achievements, trafficLights) {
+    if (allChart) allChart.destroy();
+
+    const colors = trafficLights.map(tl =>
+        tl === 'success' ? '#15803d' : tl === 'warning' ? '#a16207' : '#b91c1c'
+    );
+    const maxY = Math.max(110, ...achievements.map(v => Math.ceil(v / 10) * 10 + 10));
+
+    allChart = new Chart(document.getElementById('allChart'), {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                data: achievements,
+                backgroundColor: colors.map(c => c + '22'),
+                borderColor: colors,
+                borderWidth: 1.5,
+                borderRadius: 1,
+                borderSkipped: false,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: { label: ctx => ` ${ctx.parsed.y}%` },
+                    bodyFont: { family:'Arial', size:12, weight:'700' },
+                    titleFont: { family:'Arial', size:11 },
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true, max: maxY,
+                    ticks: { callback: v => v + '%', font: { family:'Arial', size:10 }, color:'#6b7280' },
+                    grid: { color: '#f0f0f0' },
+                    border: { color:'#d1d5db' },
+                },
+                x: {
+                    ticks: { font: { family:'Arial', size:11, weight:'600' }, color:'#374151' },
+                    grid: { display: false },
+                    border: { color:'#d1d5db' },
+                }
+            }
+        },
+        plugins: [{
+            id: 'dataLabels',
+            afterDatasetsDraw(chart) {
+                const { ctx } = chart;
+                chart.data.datasets.forEach((ds, di) => {
+                    chart.getDatasetMeta(di).data.forEach((bar, i) => {
+                        const val = ds.data[i];
+                        ctx.save();
+                        ctx.font = '700 11px Arial';
+                        ctx.fillStyle = ds.borderColor[i];
+                        ctx.textAlign = 'center';
+                        ctx.fillText(val + '%', bar.x, bar.y - 5);
+                        ctx.restore();
+                    });
+                });
+            }
+        }, {
+            id: 'refLine',
+            afterDraw(chart) {
+                const { ctx, chartArea, scales } = chart;
+                const y = scales.y.getPixelForValue(100);
+                if (y < chartArea.top || y > chartArea.bottom) return;
+                ctx.save();
+                ctx.setLineDash([6,4]);
+                ctx.strokeStyle = '#374151';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(chartArea.left, y);
+                ctx.lineTo(chartArea.right, y);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.font = '600 10px Arial';
+                ctx.fillStyle = '#374151';
+                ctx.fillText('100%', chartArea.right + 4, y + 4);
+                ctx.restore();
+            }
+        }]
+    });
+}
+
+function renderAllKpi(table) {
+    const totalQty    = table.reduce((s,r) => s + r.total_qty_aktual, 0);
+    const totalTarget = table.reduce((s,r) => s + r.total_target_qty, 0);
+    const totalHours  = table.reduce((s,r) => s + r.total_duration_hours, 0);
+    const overallPct  = totalTarget > 0 ? Math.round(totalQty / totalTarget * 1000) / 10 : 0;
+    const achieved    = table.filter(r => r.traffic_light === 'success').length;
+    const pctC        = pctColor(overallPct);
+
+    const cards = [
+        { label:'Total Operator',      value: table.length,          sub: `${achieved} achieved`,                   icon:'bi-people',        color:'#111827' },
+        { label:'Total Qty Actual',    value: n(totalQty),           sub: `Target: ${n(Math.round(totalTarget))} pcs`, icon:'bi-boxes',      color:'#111827' },
+        { label:'Overall Achievement', value: overallPct + '%',      sub: overallPct >= 100 ? 'On Target' : `Kurang ${(100-overallPct).toFixed(1)}%`, icon:'bi-graph-up-arrow', color: pctC },
+        { label:'Total Waktu Kerja',   value: totalHours.toFixed(1), sub: 'jam',                                    icon:'bi-clock-history', color:'#111827' },
+    ];
+    document.getElementById('allKpi').innerHTML = cards.map(c => `
+        <div style="background:#fff;border:1px solid #d1d5db;border-radius:2px;padding:12px 14px">
+            <div style="font-size:9.5px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">
+                <i class="bi ${c.icon} me-1"></i>${c.label}
+            </div>
+            <div style="font-size:22px;font-weight:700;color:${c.color};line-height:1.1;margin-bottom:3px">${c.value}</div>
+            <div style="font-size:10.5px;color:#9ca3af">${c.sub}</div>
+        </div>`).join('');
+}
+
+function renderAllTable(table) {
+    const tbody = document.getElementById('allTableBody');
+    const tfoot = document.getElementById('allTableFoot');
+
+    if (!table.length) {
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#888;padding:24px">Tidak ada data pada rentang tanggal ini.</td></tr>';
+        tfoot.style.display = 'none';
+        return;
+    }
+
+    tbody.innerHTML = table.map((row, i) => {
+        const sessions    = row.detail ? row.detail.length : '—';
+        const sphStdAvg   = row.total_duration_hours > 0 ? n(Math.round(row.total_target_qty / row.total_duration_hours)) : '—';
+        const sphActColor = row.avg_actual_sph >= (row.total_duration_hours > 0 ? row.total_target_qty / row.total_duration_hours : 0)
+            ? '#15803d' : '#b91c1c';
+        const rowBg = i % 2 === 1 ? 'background:#f9fafb' : '';
+
+        return `<tr style="${rowBg};cursor:pointer" onclick="switchMode('one', ${row.id_karyawan ?? ''})"
+                    title="Klik untuk lihat detail ${row.karyawan}">
+            <td style="text-align:center;color:#9ca3af;font-size:11px">${i+1}</td>
+            <td style="font-weight:600;color:#111827">
+                ${row.karyawan}
+                <i class="bi bi-box-arrow-in-right" style="font-size:10px;color:#9ca3af;margin-left:4px"></i>
+            </td>
+            <td style="text-align:center;color:#6b7280">${sessions}</td>
+            <td style="text-align:right;color:#6b7280">${row.total_duration_hours}j</td>
+            <td style="text-align:right;color:#6b7280">${n(Math.round(row.total_target_qty))}</td>
+            <td style="text-align:right;font-weight:600">${n(row.total_qty_aktual)}</td>
+            <td style="text-align:right;color:#6b7280">${sphStdAvg}</td>
+            <td style="text-align:right;font-weight:600;color:${sphActColor}">${n(Math.round(row.avg_actual_sph))}</td>
+            <td>${progressBar(row.achievement_pct)}</td>
+            <td style="text-align:center">${statusLabel(row.traffic_light)}</td>
+        </tr>`;
+    }).join('');
+
+    // Footer
+    const totalDur = table.reduce((s,r) => s + r.total_duration_hours, 0);
+    const totalTgt = table.reduce((s,r) => s + r.total_target_qty, 0);
+    const totalAct = table.reduce((s,r) => s + r.total_qty_aktual, 0);
+    const oPct     = totalTgt > 0 ? Math.round(totalAct / totalTgt * 1000) / 10 : 0;
+
+    document.getElementById('ftAllDur').textContent = totalDur.toFixed(1) + 'j';
+    document.getElementById('ftAllTgt').textContent = n(Math.round(totalTgt));
+    document.getElementById('ftAllAct').textContent = n(totalAct);
+    document.getElementById('ftAllPct').innerHTML   = progressBar(oPct);
+    tfoot.style.display = '';
+}
+
+async function loadAllOperators() {
+    const params = new URLSearchParams({
+        date_from: document.getElementById('all_date_from').value,
+        date_to:   document.getElementById('all_date_to').value,
+        shift_id:  document.getElementById('all_shift_id').value,
+    });
+    document.getElementById('allPeriodLabel').textContent =
+        document.getElementById('all_date_from').value + ' — ' + document.getElementById('all_date_to').value;
+
+    try {
+        const res  = await fetch(`/vcb/produksi/data?${params}`);
+        const data = await res.json();
+
+        const sorted = [...data.table].sort((a,b) => b.achievement_pct - a.achievement_pct);
+
+        if (sorted.length) {
+            renderAllKpi(sorted);
+            document.getElementById('allChartPanel').style.display = '';
+            buildAllChart(
+                sorted.map(r => r.karyawan),
+                sorted.map(r => r.achievement_pct),
+                sorted.map(r => r.traffic_light)
+            );
+        } else {
+            document.getElementById('allKpi').innerHTML = '';
+            document.getElementById('allChartPanel').style.display = 'none';
+        }
+        renderAllTable(sorted);
+
+    } catch(err) { console.error('loadAllOperators error:', err); }
+}
+
+document.getElementById('formAll').addEventListener('submit', e => { e.preventDefault(); loadAllOperators(); });
+
+/* ═══════════════════════════════════════════════════════════
+   MODE 2 — PER OPERATOR (DRILL-DOWN)
+═══════════════════════════════════════════════════════════ */
+function buildOneChart(labels, achievements, colors) {
+    if (oneChart) oneChart.destroy();
+    const maxY = Math.max(110, ...achievements.map(v => Math.ceil(v/10)*10+10));
+
+    oneChart = new Chart(document.getElementById('oneChart'), {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                data: achievements,
+                backgroundColor: colors.map(c => c + '22'),
+                borderColor: colors,
+                borderWidth: 1.5,
+                borderRadius: 1,
+                borderSkipped: false,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: { label: ctx => ` ${ctx.parsed.y}%` },
+                    bodyFont: { family:'Arial', size:12, weight:'700' },
+                    titleFont: { family:'Arial', size:11 },
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true, max: maxY,
+                    ticks: { callback: v => v + '%', font:{ family:'Arial', size:10 }, color:'#6b7280' },
+                    grid: { color:'#f0f0f0' }, border: { color:'#d1d5db' },
+                },
+                x: {
+                    ticks: { font:{ family:'Arial', size:11, weight:'600' }, color:'#374151' },
+                    grid: { display:false }, border: { color:'#d1d5db' },
+                }
+            }
+        },
+        plugins: [{
+            id: 'dataLabels',
+            afterDatasetsDraw(chart) {
+                const { ctx } = chart;
+                chart.data.datasets.forEach((ds, di) => {
+                    chart.getDatasetMeta(di).data.forEach((bar, i) => {
+                        ctx.save();
+                        ctx.font = '700 11px Arial';
+                        ctx.fillStyle = ds.borderColor[i];
+                        ctx.textAlign = 'center';
+                        ctx.fillText(ds.data[i] + '%', bar.x, bar.y - 5);
+                        ctx.restore();
+                    });
+                });
+            }
+        }, {
+            id: 'refLine',
+            afterDraw(chart) {
+                const { ctx, chartArea, scales } = chart;
+                const y = scales.y.getPixelForValue(100);
+                if (y < chartArea.top || y > chartArea.bottom) return;
+                ctx.save();
+                ctx.setLineDash([6,4]); ctx.strokeStyle='#374151'; ctx.lineWidth=1;
+                ctx.beginPath(); ctx.moveTo(chartArea.left, y); ctx.lineTo(chartArea.right, y); ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.font='600 10px Arial'; ctx.fillStyle='#374151';
+                ctx.fillText('100%', chartArea.right+4, y+4);
+                ctx.restore();
+            }
+        }]
+    });
+}
+
+function buildOneRows(table) {
+    const tbody = document.getElementById('oneBody');
+    let html = '';
+
+    table.forEach((day, di) => {
+        const color   = pctColor(day.achievement_pct);
+        const expanded = di === 0;
+
+        // Date header row
+        html += `
+        <tr style="background:#f3f4f6;cursor:pointer" onclick="toggleDay(${di})">
+            <td style="font-weight:700;font-size:12px;padding:8px 10px;color:#111827">
+                <i class="bi bi-chevron-right" id="icon-${di}"
+                   style="font-size:10px;color:#6b7280;transition:transform 0.15s;margin-right:5px;${expanded?'transform:rotate(90deg)':''}"></i>${day.tanggal}
+            </td>
+            <td colspan="7" style="padding:8px 10px;color:#6b7280;font-size:11px">${day.sessions.length} sesi</td>
+            <td style="text-align:right;padding:8px 10px;color:#6b7280">—</td>
+            <td style="text-align:right;padding:8px 10px;font-weight:600;color:#6b7280">${n(day.avg_sph_std)}</td>
+            <td style="text-align:right;padding:8px 10px;font-weight:700;color:${color}">${n(day.avg_sph_act)}</td>
+            <td style="text-align:right;padding:8px 10px;font-weight:700;color:${color}">${day.achievement_pct}%</td>
+            <td></td>
+        </tr>`;
+
+        // Session rows
+        day.sessions.forEach((s, si) => {
+            const sc  = pctColor(s.pct);
+            const bg  = si % 2 === 0 ? '#fff' : '#f9fafb';
+            html += `
+            <tr class="day-rows-${di}" style="display:${expanded?'table-row':'none'};background:${bg}">
+                <td style="padding:6px 10px;padding-left:22px;color:#9ca3af;font-size:11px">↳</td>
+                <td style="padding:6px 10px">${s.mesin}</td>
+                <td style="padding:6px 10px;font-size:11.5px;color:#374151">${s.nama_mesin}</td>
+                <td style="padding:6px 10px;font-size:11px;color:#6b7280">${s.customer}</td>
+                <td style="padding:6px 10px;font-size:11.5px">${s.part_no}</td>
+                <td style="padding:6px 10px;font-size:11.5px">${s.part_name}</td>
+                <td style="padding:6px 10px;text-align:center;font-weight:600">${s.id_proses}</td>
+                <td style="padding:6px 10px;font-size:11.5px">${s.nama_proses}</td>
+                <td style="padding:6px 10px;text-align:right;color:#6b7280">${s.waktu_kerja}j</td>
+                <td style="padding:6px 10px;text-align:right;color:#6b7280">${n(s.sph_std)}</td>
+                <td style="padding:6px 10px;text-align:right;font-weight:600;color:${sc}">${n(s.sph_act)}</td>
+                <td style="padding:6px 10px;text-align:right;font-weight:700;color:${sc}">${s.pct}%</td>
+                <td></td>
+            </tr>`;
+        });
+
+        // Average row
+        html += `
+        <tr class="day-rows-${di}" style="display:${expanded?'table-row':'none'};background:#f0f4f8;border-top:1px solid #d1d5db">
+            <td colspan="8" style="padding:6px 10px 6px 22px;font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:0.5px">
+                Average ${day.tanggal}
+            </td>
+            <td style="padding:6px 10px;text-align:right;color:#6b7280">—</td>
+            <td style="padding:6px 10px;text-align:right;font-weight:700;color:#374151">${n(day.avg_sph_std)}</td>
+            <td style="padding:6px 10px;text-align:right;font-weight:700;color:${color}">${n(day.avg_sph_act)}</td>
+            <td style="padding:6px 10px;text-align:right;font-weight:700;color:${color}">${day.achievement_pct}%</td>
+            <td></td>
+        </tr>`;
+    });
+
+    tbody.innerHTML = html;
+}
+
+function toggleDay(di) {
+    const rows   = document.querySelectorAll(`.day-rows-${di}`);
+    const icon   = document.getElementById(`icon-${di}`);
+    const isOpen = rows.length && rows[0].style.display !== 'none';
+    rows.forEach(r => r.style.display = isOpen ? 'none' : 'table-row');
+    icon.style.transform = isOpen ? '' : 'rotate(90deg)';
+}
+
+async function loadOneOperator() {
+    const karyawanId = document.getElementById('one_karyawan_id').value;
+    if (!karyawanId) { alert('Pilih operator terlebih dahulu.'); return; }
+
+    const params = new URLSearchParams({
+        date_from:   document.getElementById('one_date_from').value,
+        date_to:     document.getElementById('one_date_to').value,
+        karyawan_id: karyawanId,
+        shift_id:    document.getElementById('one_shift_id').value,
+    });
+    document.getElementById('oneExportBtn').href = `/export/produksi?${params}&format=excel`;
+
+    try {
+        const res  = await fetch(`/vcb/produksi/operator-data?${params}`);
+        const data = await res.json();
+        if (data.error) { alert(data.error); return; }
+
+        document.getElementById('oneEmpty').style.display       = 'none';
+        document.getElementById('oneChartPanel').style.display  = '';
+        document.getElementById('oneDetailPanel').style.display = '';
+
+        document.getElementById('oneChartLabel').textContent  = data.operator.toUpperCase();
+        document.getElementById('oneDetailLabel').textContent = `— ${data.operator}`;
+
+        buildOneChart(data.labels, data.achievements, data.colors);
+        buildOneRows(data.table);
+
+    } catch(err) { console.error('loadOneOperator error:', err); }
+}
+
+document.getElementById('formOne').addEventListener('submit', e => { e.preventDefault(); loadOneOperator(); });
+
+/* ── Init ──────────────────────────────────────────────── */
+loadAllOperators();
 </script>
 @endpush

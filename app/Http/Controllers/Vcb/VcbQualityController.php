@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers\Vcb;
 use App\Http\Controllers\Controller;
+use App\Models\MasterKaryawan;
 use App\Models\MasterShift;
 use App\Services\DashboardService;
 use Illuminate\Http\Request;
@@ -12,8 +13,12 @@ class VcbQualityController extends Controller
 
     public function index()
     {
-        $shifts = MasterShift::orderBy('jam_start')->get();
-        return view('vcb.quality', compact('shifts'));
+        $shifts   = MasterShift::orderBy('jam_start')->get();
+        $karyawan = MasterKaryawan::whereRaw('LOWER(departemen) = ?', ['qc'])
+            ->orderBy('nama_karyawan')
+            ->get();
+
+        return view('vcb.quality', compact('shifts', 'karyawan'));
     }
 
     public function data(Request $request)
@@ -22,27 +27,48 @@ class VcbQualityController extends Controller
         $dateTo   = Carbon::parse($request->input('date_to', today()->toDateString()));
         $shiftId  = $request->filled('shift_id') ? (int) $request->input('shift_id') : null;
 
-        $rows = $this->dashboardService->getVcbQuality($dateFrom, $dateTo, $shiftId);
-
-        $labels  = array_column($rows, 'karyawan');
-        $targets = array_column($rows, 'total_target_qty');
-        $ok      = array_column($rows, 'total_qty_ok');
-        $ng      = array_column($rows, 'total_qty_ng');
-        $colors  = array_map(fn($r) => match($r['traffic_light']) {
-            'success' => 'rgba(34,197,94,0.8)',
-            'warning' => 'rgba(234,179,8,0.8)',
-            default   => 'rgba(239,68,68,0.8)',
-        }, $rows);
+        $rows         = $this->dashboardService->getVcbQuality($dateFrom, $dateTo, $shiftId);
+        $labels       = array_column($rows, 'karyawan');
+        $achievements = array_column($rows, 'achievement_pct');
+        $colors       = array_map(fn($r) => $this->trafficHex($r['traffic_light']), $rows);
 
         return response()->json([
             'labels'       => $labels,
-            'datasets'     => [
-                ['label' => 'Target QTY', 'data' => $targets, 'backgroundColor' => 'rgba(99,102,241,0.6)'],
-                ['label' => 'Qty OK',     'data' => $ok,      'backgroundColor' => $colors],
-                ['label' => 'Qty NG',     'data' => $ng,      'backgroundColor' => 'rgba(239,68,68,0.5)'],
-            ],
+            'achievements' => $achievements,
+            'colors'       => $colors,
             'table'        => $rows,
-            'achievements' => array_column($rows, 'achievement_pct'),
         ]);
+    }
+
+    public function operatorData(Request $request)
+    {
+        $dateFrom      = Carbon::parse($request->input('date_from', today()->toDateString()));
+        $dateTo        = Carbon::parse($request->input('date_to', today()->toDateString()));
+        $karyawanQcId  = (int) $request->input('karyawan_id');
+        $shiftId       = $request->filled('shift_id') ? (int) $request->input('shift_id') : null;
+
+        if (!$karyawanQcId) {
+            return response()->json(['error' => 'Pilih inspector terlebih dahulu.'], 422);
+        }
+
+        $rows      = $this->dashboardService->getVcbQualityByDate($dateFrom, $dateTo, $karyawanQcId, $shiftId);
+        $inspector = MasterKaryawan::find($karyawanQcId)?->nama_karyawan ?? '—';
+
+        return response()->json([
+            'inspector'    => $inspector,
+            'labels'       => array_column($rows, 'tanggal'),
+            'achievements' => array_column($rows, 'achievement_pct'),
+            'colors'       => array_map(fn($r) => $this->trafficHex($r['traffic_light']), $rows),
+            'table'        => $rows,
+        ]);
+    }
+
+    private function trafficHex(string $light): string
+    {
+        return match($light) {
+            'success' => '#15803d',
+            'warning' => '#a16207',
+            default   => '#b91c1c',
+        };
     }
 }

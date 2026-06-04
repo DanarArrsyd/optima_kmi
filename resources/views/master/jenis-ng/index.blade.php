@@ -1,0 +1,180 @@
+@extends('layouts.app')
+@section('title', 'Master Jenis NG')
+@section('content')
+
+<div class="page-header">
+    <h1 class="page-title"><i class="bi bi-exclamation-octagon"></i>Master Jenis NG</h1>
+    <div class="action-btns">
+        <button class="btn btn-primary btn-sm" onclick="document.getElementById('add-panel').classList.toggle('d-none')">
+            <i class="bi bi-plus-lg me-1"></i>Tambah
+        </button>
+        <button class="btn btn-outline-success btn-sm" onclick="document.getElementById('import-panel').classList.toggle('d-none')">
+            <i class="bi bi-file-earmark-arrow-up me-1"></i>Import Excel
+        </button>
+    </div>
+</div>
+
+@if(session('success'))
+    <div class="alert alert-success alert-dismissible fade show mb-3">
+        <i class="bi bi-check-circle-fill"></i> {{ session('success') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+@endif
+@if(session('error'))
+    <div class="alert alert-danger alert-dismissible fade show mb-3">
+        {{ session('error') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+@endif
+
+{{-- Add Panel --}}
+<div id="add-panel" class="erp-panel mb-3 {{ $errors->any() ? '' : 'd-none' }}">
+    <div class="erp-panel-header"><i class="bi bi-plus-circle me-1"></i>Tambah Jenis NG</div>
+    <div class="erp-panel-body">
+        <form method="POST" action="{{ route('master.jenis-ng.store') }}">
+            @csrf
+            <div class="row g-2 align-items-end">
+                <div class="col-md-2">
+                    <label class="form-label mb-1">Kode <span class="text-danger">*</span></label>
+                    <input type="text" name="kode" class="form-control form-control-sm @error('kode') is-invalid @enderror"
+                           value="{{ old('kode') }}" placeholder="DIM" style="text-transform:uppercase" maxlength="20">
+                    @error('kode')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label mb-1">Nama NG <span class="text-danger">*</span></label>
+                    <input type="text" name="nama_ng" class="form-control form-control-sm @error('nama_ng') is-invalid @enderror"
+                           value="{{ old('nama_ng') }}" placeholder="Dimensi Over/Under" maxlength="100">
+                    @error('nama_ng')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label mb-1">Deskripsi</label>
+                    <input type="text" name="deskripsi" class="form-control form-control-sm"
+                           value="{{ old('deskripsi') }}" placeholder="Opsional" maxlength="255">
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="bi bi-save me-1"></i>Simpan
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+{{-- Import Panel --}}
+<div id="import-panel" class="erp-panel mb-3 d-none">
+    <div class="erp-panel-header" style="display:flex;justify-content:space-between;align-items:center">
+        <span><i class="bi bi-file-earmark-arrow-up me-1"></i>Import Jenis NG dari Excel</span>
+        <a href="{{ route('master.jenis-ng.import-template') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-download me-1"></i>Download Template
+        </a>
+    </div>
+    <div class="erp-panel-body">
+        <form method="POST" action="{{ route('master.jenis-ng.import') }}" enctype="multipart/form-data">
+            @csrf
+            <div class="row g-2 align-items-end">
+                <div class="col-md-6">
+                    <label class="form-label mb-1" style="font-size:0.8rem">File Excel (.xlsx / .xls / .csv)</label>
+                    <input type="file" name="file" class="form-control form-control-sm" accept=".xlsx,.xls,.csv">
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-success btn-sm">
+                        <i class="bi bi-upload me-1"></i>Upload & Import
+                    </button>
+                </div>
+            </div>
+            <div class="mt-2" style="font-size:0.75rem;color:#6c757d">
+                Kolom wajib: <strong>Kode</strong>, <strong>Nama NG</strong>. Opsional: Deskripsi.
+            </div>
+        </form>
+    </div>
+</div>
+
+{{-- Table --}}
+<div class="erp-panel">
+    <div class="erp-panel-header">Daftar Jenis NG</div>
+    <table class="erp-table">
+        <thead>
+            <tr>
+                <th style="width:100px">Kode</th>
+                <th>Nama NG</th>
+                <th>Deskripsi</th>
+                <th style="width:200px">Aksi</th>
+            </tr>
+        </thead>
+        <tbody>
+        @forelse($jenisNg as $ng)
+            <tr>
+                <td style="font-weight:600;letter-spacing:0.3px">{{ $ng->kode }}</td>
+                <td>{{ $ng->nama_ng }}</td>
+                <td style="color:#6b7280">{{ $ng->deskripsi ?? '—' }}</td>
+                <td>
+                    <div class="action-btns">
+                        <button class="btn btn-warning btn-sm"
+                                onclick="openEdit({{ $ng->id }}, '{{ addslashes($ng->kode) }}', '{{ addslashes($ng->nama_ng) }}', '{{ addslashes($ng->deskripsi ?? '') }}')">
+                            Edit
+                        </button>
+                        <form method="POST" action="{{ route('master.jenis-ng.destroy', $ng) }}"
+                              onsubmit="return confirm('Hapus jenis NG ini?')">
+                            @csrf @method('DELETE')
+                            <button class="btn btn-danger btn-sm">Hapus</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+        @empty
+            <tr><td colspan="4" style="text-align:center;color:#888;padding:20px">Belum ada data jenis NG. Tambahkan di atas.</td></tr>
+        @endforelse
+        </tbody>
+    </table>
+</div>
+<div class="mt-3">{{ $jenisNg->links() }}</div>
+
+{{-- Edit Modal --}}
+<div class="modal fade" id="editModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Jenis NG</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" id="editForm">
+                @csrf @method('PUT')
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Kode <span class="text-danger">*</span></label>
+                        <input type="text" name="kode" id="edit_kode" class="form-control"
+                               style="text-transform:uppercase" maxlength="20" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Nama NG <span class="text-danger">*</span></label>
+                        <input type="text" name="nama_ng" id="edit_nama_ng" class="form-control"
+                               maxlength="100" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Deskripsi</label>
+                        <input type="text" name="deskripsi" id="edit_deskripsi" class="form-control"
+                               maxlength="255">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-save me-1"></i>Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@endsection
+@push('scripts')
+<script>
+function openEdit(id, kode, nama, deskripsi) {
+    document.getElementById('editForm').action = `/master/jenis-ng/${id}`;
+    document.getElementById('edit_kode').value     = kode;
+    document.getElementById('edit_nama_ng').value  = nama;
+    document.getElementById('edit_deskripsi').value = deskripsi;
+    new bootstrap.Modal(document.getElementById('editModal')).show();
+}
+</script>
+@endpush

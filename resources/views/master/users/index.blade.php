@@ -1,51 +1,189 @@
 @extends('layouts.app')
 @section('title', 'Manajemen Users')
 @section('content')
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h4 class="mb-0"><i class="bi bi-person-gear me-2"></i>Manajemen Users</h4>
-    <a href="{{ route('master.users.create') }}" class="btn btn-primary btn-sm">
-        <i class="bi bi-plus-lg me-1"></i>Tambah User
-    </a>
+
+{{-- ══ ALPINE SCOPE ══ --}}
+<div x-data="{ drawerOpen: {{ $errors->any() ? 'true' : 'false' }} }">
+
+{{-- ── DRAWER BACKDROP ──────────────────────────────────────────── --}}
+<div x-show="drawerOpen"
+     x-cloak
+     @click="drawerOpen = false"
+     x-transition:enter="transition ease-out duration-200"
+     x-transition:enter-start="opacity-0"
+     x-transition:enter-end="opacity-100"
+     x-transition:leave="transition ease-in duration-150"
+     x-transition:leave-start="opacity-100"
+     x-transition:leave-end="opacity-0"
+     style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1040">
 </div>
-<div class="card shadow-sm">
-    <div class="card-body p-0">
-        <table class="table table-hover mb-0">
-            <thead class="table-dark">
-                <tr><th>Nama</th><th>Email</th><th>Role</th><th>Karyawan</th><th width="120">Aksi</th></tr>
-            </thead>
-            <tbody>
-            @forelse($users as $u)
-                @php
-                    $badgeClass = match($u->role) {
-                        'admin'         => 'bg-danger',
-                        'staff_produksi'=> 'bg-primary',
-                        'staff_qc'      => 'bg-info text-dark',
-                        'manager'       => 'bg-success',
-                        default         => 'bg-secondary',
-                    };
-                @endphp
-                <tr>
-                    <td>{{ $u->name }}</td>
-                    <td>{{ $u->email }}</td>
-                    <td><span class="badge {{ $badgeClass }}">{{ strtoupper(str_replace('_', ' ', $u->role)) }}</span></td>
-                    <td>{!! $u->karyawan?->nama_karyawan ?? '<span class="text-muted">-</span>' !!}</td>
-                    <td>
-                        <a href="{{ route('master.users.edit', $u) }}" class="btn btn-sm btn-outline-warning">Edit</a>
+
+{{-- ── DRAWER PANEL ─────────────────────────────────────────────── --}}
+<div x-show="drawerOpen"
+     x-cloak
+     x-transition:enter="transition ease-out duration-250"
+     x-transition:enter-start="transform translate-x-full"
+     x-transition:enter-end="transform translate-x-0"
+     x-transition:leave="transition ease-in duration-200"
+     x-transition:leave-start="transform translate-x-0"
+     x-transition:leave-end="transform translate-x-full"
+     style="position:fixed;top:0;right:0;height:100vh;width:480px;max-width:100vw;background:#fff;z-index:1050;display:flex;flex-direction:column;box-shadow:-4px 0 24px rgba(0,0,0,.18)">
+
+    {{-- Header --}}
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:#111827;color:#fff;flex-shrink:0">
+        <div style="font-weight:700;font-size:0.95rem;letter-spacing:.02em">
+            <i class="bi bi-person-plus me-2"></i>Tambah User
+        </div>
+        <button type="button" @click="drawerOpen = false"
+                style="background:none;border:none;color:#fff;font-size:1.25rem;cursor:pointer;padding:0;line-height:1">
+            <i class="bi bi-x-lg"></i>
+        </button>
+    </div>
+
+    {{-- Body (scrollable) --}}
+    <div style="flex:1;overflow-y:auto;padding:20px">
+
+        @if($errors->any())
+        <div class="alert alert-danger mb-3" style="font-size:0.82rem">
+            <ul class="mb-0 ps-3">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
+        </div>
+        @endif
+
+        <form method="POST" action="{{ route('master.users.store') }}" novalidate>
+            @csrf
+            <div class="row g-3">
+
+                {{-- Nama --}}
+                <div class="col-12">
+                    <label class="form-label" style="font-size:0.8rem">Nama <span class="text-danger">*</span></label>
+                    <input type="text" name="name"
+                           class="form-control form-control-sm @error('name') is-invalid @enderror"
+                           value="{{ old('name') }}"
+                           placeholder="Nama lengkap">
+                    @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+
+                {{-- Email --}}
+                <div class="col-12">
+                    <label class="form-label" style="font-size:0.8rem">Email <span class="text-danger">*</span></label>
+                    <input type="email" name="email"
+                           class="form-control form-control-sm @error('email') is-invalid @enderror"
+                           value="{{ old('email') }}"
+                           placeholder="email@perusahaan.com">
+                    @error('email')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+
+                {{-- Password --}}
+                <div class="col-12">
+                    <label class="form-label" style="font-size:0.8rem">Password <span class="text-danger">*</span></label>
+                    <input type="password" name="password"
+                           class="form-control form-control-sm @error('password') is-invalid @enderror"
+                           placeholder="Minimal 8 karakter">
+                    @error('password')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+
+                {{-- Role --}}
+                <div class="col-12">
+                    <label class="form-label" style="font-size:0.8rem">Role <span class="text-danger">*</span></label>
+                    <select name="role" class="form-select form-select-sm @error('role') is-invalid @enderror">
+                        <option value="">-- Pilih Role --</option>
+                        <option value="admin"          {{ old('role') === 'admin'          ? 'selected' : '' }}>Admin</option>
+                        <option value="staff_produksi" {{ old('role') === 'staff_produksi' ? 'selected' : '' }}>Staff Produksi</option>
+                        <option value="staff_qc"       {{ old('role') === 'staff_qc'       ? 'selected' : '' }}>Staff QC</option>
+                        <option value="manager"        {{ old('role') === 'manager'        ? 'selected' : '' }}>Manager</option>
+                    </select>
+                    @error('role')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+
+                {{-- Tautkan ke Karyawan (optional) --}}
+                <div class="col-12">
+                    <label class="form-label" style="font-size:0.8rem">Tautkan ke Karyawan <span class="text-muted">(opsional)</span></label>
+                    <select name="id_karyawan" class="form-select form-select-sm @error('id_karyawan') is-invalid @enderror">
+                        <option value="">-- Tidak ditautkan --</option>
+                        @foreach($karyawan as $k)
+                            <option value="{{ $k->id }}" {{ old('id_karyawan') == $k->id ? 'selected' : '' }}>
+                                {{ $k->nama_karyawan }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('id_karyawan')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+
+            </div>
+
+            <div style="margin-top:20px;padding-top:16px;border-top:1px solid #e5e7eb;display:flex;gap:8px">
+                <button type="submit" class="btn btn-primary btn-sm" style="flex:1">
+                    <i class="bi bi-save me-1"></i>Simpan User
+                </button>
+                <button type="button" @click="drawerOpen = false" class="btn btn-outline-secondary btn-sm">
+                    Batal
+                </button>
+            </div>
+        </form>
+    </div>{{-- /drawer body --}}
+</div>{{-- /drawer panel --}}
+
+{{-- ══ KONTEN HALAMAN ══════════════════════════════════════════ --}}
+
+<div class="page-header">
+    <h1 class="page-title"><i class="bi bi-person-gear"></i>Manajemen Users</h1>
+    <button class="btn btn-primary btn-sm" @click="drawerOpen = true">
+        <i class="bi bi-plus-lg me-1"></i>Tambah User
+    </button>
+</div>
+
+@if(session('success'))
+    <div class="alert alert-success alert-dismissible fade show mb-3">
+        <i class="bi bi-check-circle-fill me-1"></i>{{ session('success') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+@endif
+@if(session('error'))
+    <div class="alert alert-danger alert-dismissible fade show mb-3">
+        {{ session('error') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+@endif
+
+<div class="erp-panel">
+    <div class="erp-panel-header">Daftar User Sistem</div>
+    <table class="erp-table">
+        <thead>
+            <tr>
+                <th>Nama</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Karyawan</th>
+                <th style="width:130px">Aksi</th>
+            </tr>
+        </thead>
+        <tbody>
+        @forelse($users as $u)
+            <tr>
+                <td>{{ $u->name }}</td>
+                <td>{{ $u->email }}</td>
+                <td>{{ strtoupper(str_replace('_', ' ', $u->role)) }}</td>
+                <td>{{ $u->karyawan?->nama_karyawan ?? '—' }}</td>
+                <td>
+                    <div class="action-btns">
+                        <a href="{{ route('master.users.edit', $u) }}" class="btn btn-warning btn-sm">Edit</a>
                         @if($u->id !== auth()->id())
-                        <form method="POST" action="{{ route('master.users.destroy', $u) }}" class="d-inline"
+                        <form method="POST" action="{{ route('master.users.destroy', $u) }}"
                               onsubmit="return confirm('Hapus user ini?')">
                             @csrf @method('DELETE')
-                            <button class="btn btn-sm btn-outline-danger">Hapus</button>
+                            <button class="btn btn-danger btn-sm">Hapus</button>
                         </form>
                         @endif
-                    </td>
-                </tr>
-            @empty
-                <tr><td colspan="5" class="text-center text-muted py-3">Belum ada user.</td></tr>
-            @endforelse
-            </tbody>
-        </table>
-    </div>
+                    </div>
+                </td>
+            </tr>
+        @empty
+            <tr><td colspan="5" style="text-align:center;color:#888;padding:20px">Belum ada user.</td></tr>
+        @endforelse
+        </tbody>
+    </table>
 </div>
 <div class="mt-3">{{ $users->links() }}</div>
+
+</div>{{-- /alpine outer scope --}}
 @endsection

@@ -12,8 +12,9 @@ class StoreMasterPartRequest extends FormRequest
         return [
             'part_no'   => [
                 'required', 'string', 'max:50',
-                Rule::unique('master_part', 'part_no')->ignore($id)->whereNull('deleted_at'),
+                Rule::unique('master_part', 'part_no')->ignore($id),
             ],
+            'customer'  => 'nullable|string|max:100',
             'part_name' => 'required|string|max:200',
         ];
     }

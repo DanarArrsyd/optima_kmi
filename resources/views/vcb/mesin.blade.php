@@ -5,7 +5,7 @@
     <h4 class="mb-0"><i class="bi bi-gear me-2"></i>VCB Mesin — Machine Achievement</h4>
 </div>
 
-<div class="card shadow-sm mb-4">
+<div class="erp-panel mb-4">
     <div class="card-body py-3">
         <form id="filterForm" class="row g-2 align-items-end">
             <div class="col-md-3">
@@ -37,16 +37,16 @@
     </div>
 </div>
 
-<div class="card shadow-sm mb-4">
+<div class="erp-panel mb-4">
     <div class="card-body"><canvas id="vcbChart" height="100"></canvas></div>
 </div>
 
-<div class="card shadow-sm">
-    <div class="card-header fw-semibold">Detail per Mesin</div>
-    <div class="card-body p-0">
+<div class="erp-panel">
+    <div class="erp-panel-header">Detail per Mesin</div>
+    <div class="erp-panel-body p-0">
         <div class="table-responsive">
-            <table class="table table-sm table-hover mb-0">
-                <thead class="table-dark">
+            <table class="erp-table">
+                <thead>
                     <tr><th>Mesin</th><th>ID</th><th>Line</th><th>Tipe</th><th>Target QTY</th><th>Actual QTY</th><th>Duration (jam)</th><th>Achievement %</th><th>Avg SPH</th></tr>
                 </thead>
                 <tbody id="vcbTableBody">

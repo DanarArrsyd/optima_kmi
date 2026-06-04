@@ -4,24 +4,16 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Spatie\Activitylog\Models\Concerns\LogsActivity;
-use Spatie\Activitylog\Support\LogOptions;
 
 class TransaksiDandori extends Model
 {
-    use SoftDeletes, LogsActivity;
+    use SoftDeletes;
     protected $table = 'transaksi_dandori';
     protected $fillable = [
         'tanggal', 'id_shift', 'id_karyawan', 'id_mesin', 'id_part_proses',
         'total_aktual_menit', 'standard_time_menit', 'status', 'created_by', 'updated_by',
     ];
     protected $casts = ['tanggal' => 'date'];
-
-    public function getActivitylogOptions(): LogOptions
-    {
-        return LogOptions::defaults()->logAll()->useLogName('transaksi_dandori');
-    }
-
     public function shift(): BelongsTo { return $this->belongsTo(MasterShift::class, 'id_shift'); }
     public function karyawan(): BelongsTo { return $this->belongsTo(MasterKaryawan::class, 'id_karyawan'); }
     public function mesin(): BelongsTo { return $this->belongsTo(MasterMesin::class, 'id_mesin'); }
