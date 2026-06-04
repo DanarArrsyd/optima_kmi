@@ -15,7 +15,7 @@
     'dateFrom'   => '',
     'dateTo'     => '',
     'showProses' => true,
-    'modalId'    => null,  {{-- legacy alias, ignored --}}
+    'modalId'    => null,
 ])
 
 <div id="{{ $panelId }}" class="d-none" style="margin-bottom:12px">
