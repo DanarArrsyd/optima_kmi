@@ -3,6 +3,7 @@ namespace App\Http\Controllers\Maintenance;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreBreakdownMesinRequest;
+use App\Http\Requests\UpdateBreakdownMesinRequest;
 use App\Models\MasterMesin;
 use App\Models\TransaksiBreakdownMesin;
 use App\Services\BreakdownMesinService;
@@ -75,18 +76,47 @@ class BreakdownMesinController extends Controller
         return redirect()->route('maintenance.breakdown.index')->with('success', "Breakdown {$noLkm} tersimpan.");
     }
 
-    public function edit($breakdown)
+    public function edit(TransaksiBreakdownMesin $breakdown)
     {
-        return redirect()->route('maintenance.breakdown.index');
+        return view('maintenance.breakdown.edit', [
+            'b'         => $breakdown,
+            'mesinList' => MasterMesin::orderBy('id_mesin')->get(),
+        ]);
     }
 
-    public function update(Request $request, $breakdown)
+    public function update(UpdateBreakdownMesinRequest $request, TransaksiBreakdownMesin $breakdown)
     {
-        return redirect()->route('maintenance.breakdown.index');
+        $data  = $request->validated();
+        $noLkm = $this->svc->generateNoLkm((int) $data['nomor_urut'], $data['tanggal_breakdown']);
+
+        $dupe = TransaksiBreakdownMesin::where('no_lkm', $noLkm)->where('id', '!=', $breakdown->id)->exists();
+        if ($dupe) {
+            return back()->withInput()->withErrors(['nomor_urut' => "No LKM {$noLkm} sudah ada, gunakan nomor lain."]);
+        }
+
+        $derived = $this->svc->computeDerived($data);
+        $breakdown->update([
+            'no_lkm'                    => $noLkm,
+            'id_mesin'                  => $data['id_mesin'],
+            'tanggal_breakdown'         => $data['tanggal_breakdown'],
+            'jam_breakdown'             => $data['jam_breakdown'],
+            'tanggal_mulai_perbaikan'   => $data['tanggal_mulai_perbaikan'],
+            'jam_mulai_perbaikan'       => $data['jam_mulai_perbaikan'],
+            'tanggal_selesai_perbaikan' => $data['tanggal_selesai_perbaikan'],
+            'jam_selesai_perbaikan'     => $data['jam_selesai_perbaikan'],
+            'problem_mesin'             => $data['problem_mesin'],
+            'penyebab_breakdown'        => $data['penyebab_breakdown'],
+            'tindakan_perbaikan'        => $data['tindakan_perbaikan'],
+            'pic_maintenance'           => $data['pic_maintenance'],
+            ...$derived,
+        ]);
+
+        return redirect()->route('maintenance.breakdown.index')->with('success', "Breakdown {$noLkm} diperbarui.");
     }
 
-    public function destroy($breakdown)
+    public function destroy(TransaksiBreakdownMesin $breakdown)
     {
-        return redirect()->route('maintenance.breakdown.index');
+        $breakdown->delete();
+        return redirect()->route('maintenance.breakdown.index')->with('success', 'Breakdown dihapus.');
     }
 }

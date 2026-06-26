@@ -1,0 +1,30 @@
+<?php
+namespace App\Http\Requests;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class UpdateBreakdownMesinRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return $this->user()?->role === 'admin';
+    }
+
+    public function rules(): array
+    {
+        return [
+            'nomor_urut'                 => ['required', 'integer', 'min:1'],
+            'id_mesin'                   => ['required', 'exists:master_mesin,id'],
+            'tanggal_breakdown'          => ['required', 'date'],
+            'jam_breakdown'              => ['required'],
+            'tanggal_mulai_perbaikan'    => ['required', 'date', 'after_or_equal:tanggal_breakdown'],
+            'jam_mulai_perbaikan'        => ['required'],
+            'tanggal_selesai_perbaikan'  => ['required', 'date', 'after_or_equal:tanggal_mulai_perbaikan'],
+            'jam_selesai_perbaikan'      => ['required'],
+            'problem_mesin'              => ['required', 'string'],
+            'penyebab_breakdown'         => ['required', 'string'],
+            'tindakan_perbaikan'         => ['required', 'string'],
+            'pic_maintenance'            => ['required', 'string', 'max:255'],
+        ];
+    }
+}
