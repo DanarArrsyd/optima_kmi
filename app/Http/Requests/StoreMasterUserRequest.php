@@ -20,7 +20,7 @@ class StoreMasterUserRequest extends FormRequest
             'password'    => $id
                 ? ['nullable', 'string', Password::min(8)]
                 : ['required', 'string', Password::min(8)],
-            'role'        => 'required|in:admin,staff_produksi,staff_qc,manager',
+            'role'        => 'required|in:admin,staff_produksi,staff_qc,manager,staff_maintenance',
             'id_karyawan' => 'nullable|exists:master_karyawan,id',
         ];
     }

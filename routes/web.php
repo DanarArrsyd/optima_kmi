@@ -15,6 +15,11 @@ use App\Http\Controllers\Vcb\VcbProduksiController;
 use App\Http\Controllers\Vcb\VcbMesinController;
 use App\Http\Controllers\Vcb\VcbQualityController;
 use App\Http\Controllers\Vcb\VcbDandoriController;
+use App\Http\Controllers\Admin\AnomalyController;
+use App\Http\Controllers\Maintenance\BreakdownMesinController;
+use App\Http\Controllers\Maintenance\MttrController;
+use App\Http\Controllers\Maintenance\MtbfController;
+use App\Http\Controllers\Maintenance\AvailabilityController;
 
 Route::get('/', fn() => redirect('/dashboard'));
 
@@ -23,6 +28,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/dashboard', function () {
         $role = Auth::user()->role;
         return redirect(match(true) {
+            $role === 'staff_maintenance' => '/maintenance/mttr',
             in_array($role, ['admin', 'staff_produksi', 'manager']) => '/vcb/produksi',
             $role === 'staff_qc' => '/vcb/quality',
             default => '/vcb/produksi',
@@ -32,14 +38,17 @@ Route::middleware('auth')->group(function () {
     // --- MASTER DATA (admin only) ---
     Route::middleware('role:admin')->prefix('master')->name('master.')->group(function () {
         // Import routes must come BEFORE resource routes to avoid model-binding conflicts
-        Route::post('karyawan/import',           [KaryawanController::class, 'import'])->name('karyawan.import');
-        Route::get('karyawan/import-template',   [KaryawanController::class, 'importTemplate'])->name('karyawan.import-template');
+        Route::post('karyawan/import',                          [KaryawanController::class, 'import'])->name('karyawan.import');
+        Route::get('karyawan/import-template',                  [KaryawanController::class, 'importTemplate'])->name('karyawan.import-template');
+        Route::patch('karyawan/{karyawan}/toggle-aktif',        [KaryawanController::class, 'toggleAktif'])->name('karyawan.toggle-aktif');
 
         Route::post('mesin/import',              [MesinController::class, 'import'])->name('mesin.import');
         Route::get('mesin/import-template',      [MesinController::class, 'importTemplate'])->name('mesin.import-template');
 
         Route::post('part/import',               [PartController::class, 'import'])->name('part.import');
         Route::get('part/import-template',       [PartController::class, 'importTemplate'])->name('part.import-template');
+        Route::post('part/sph-dismiss',          [PartController::class, 'dismissSphRecommendation'])->name('part.sph-dismiss');
+        Route::post('part/sph-dismiss-reset',    [PartController::class, 'resetSphDismissed'])->name('part.sph-dismiss-reset');
 
         Route::post('losstime/import',           [LosstimeController::class, 'import'])->name('losstime.import');
         Route::get('losstime/import-template',   [LosstimeController::class, 'importTemplate'])->name('losstime.import-template');
@@ -69,20 +78,33 @@ Route::middleware('auth')->group(function () {
         Route::post('produksi/import', [ProduksiController::class, 'import'])->name('produksi.import');
         Route::get('produksi/import-template', [ProduksiController::class, 'importTemplate'])->name('produksi.import-template');
         Route::get('produksi/export', [ProduksiController::class, 'export'])->name('produksi.export');
+        Route::post('produksi-note', [ProduksiController::class, 'note'])->name('produksi.note');
         Route::resource('dandori', DandoriController::class)->only(['index', 'create', 'store', 'destroy']);
         Route::post('dandori/import',          [DandoriController::class, 'import'])->name('dandori.import');
         Route::get('dandori/import-template',  [DandoriController::class, 'importTemplate'])->name('dandori.import-template');
         Route::get('dandori/export',           [DandoriController::class, 'export'])->name('dandori.export');
+        Route::post('dandori-note', [DandoriController::class, 'note'])->name('dandori.note');
         // AJAX: get proses list for a part (used by form JS)
         Route::get('dandori/part-proses/{part}', [DandoriController::class, 'getPartProses'])->name('dandori.part-proses');
+    });
+
+    // --- ADMIN TOOLS (admin only) ---
+    Route::middleware('role:admin')->name('admin.')->group(function () {
+        Route::get('admin/anomali', [AnomalyController::class, 'index'])->name('anomali');
+        Route::post('admin/anomali/{transaksi}/approve', [AnomalyController::class, 'approve'])->name('anomali.approve');
     });
 
     // --- EDIT/UPDATE LHP — admin only ---
     Route::middleware('role:admin')->prefix('input')->name('input.')->group(function () {
         Route::get('produksi/{produksi}/edit', [ProduksiController::class, 'edit'])->name('produksi.edit');
         Route::put('produksi/{produksi}', [ProduksiController::class, 'update'])->name('produksi.update');
+        Route::post('produksi-note-resolve', [ProduksiController::class, 'resolveNote'])->name('produksi.note-resolve');
         Route::get('qc/{qc}/edit', [QcController::class, 'edit'])->name('qc.edit');
         Route::put('qc/{qc}', [QcController::class, 'update'])->name('qc.update');
+        Route::post('qc-note-resolve', [QcController::class, 'resolveNote'])->name('qc.note-resolve');
+        Route::get('dandori/{dandori}/edit', [DandoriController::class, 'edit'])->name('dandori.edit');
+        Route::put('dandori/{dandori}', [DandoriController::class, 'update'])->name('dandori.update');
+        Route::post('dandori-note-resolve', [DandoriController::class, 'resolveNote'])->name('dandori.note-resolve');
     });
 
     // --- INPUT QC (admin, staff_qc) ---
@@ -91,6 +113,7 @@ Route::middleware('auth')->group(function () {
         Route::post('qc/import', [QcController::class, 'import'])->name('qc.import');
         Route::get('qc/import-template', [QcController::class, 'importTemplate'])->name('qc.import-template');
         Route::get('qc/export', [QcController::class, 'export'])->name('qc.export');
+        Route::post('qc-note', [QcController::class, 'note'])->name('qc.note');
     });
 
     // --- VCB PRODUKSI & MESIN (admin, staff_produksi, manager) ---
@@ -102,6 +125,7 @@ Route::middleware('auth')->group(function () {
         Route::get('mesin/data', [VcbMesinController::class, 'data'])->name('mesin.data');
         Route::get('dandori', [VcbDandoriController::class, 'index'])->name('dandori');
         Route::get('dandori/data', [VcbDandoriController::class, 'data'])->name('dandori.data');
+        Route::get('dandori/export', [VcbDandoriController::class, 'export'])->name('dandori.export');
     });
 
     // --- VCB QUALITY (admin, staff_qc, manager) ---
@@ -109,6 +133,25 @@ Route::middleware('auth')->group(function () {
         Route::get('quality', [VcbQualityController::class, 'index'])->name('quality');
         Route::get('quality/data', [VcbQualityController::class, 'data'])->name('quality.data');
         Route::get('quality/operator-data', [VcbQualityController::class, 'operatorData'])->name('quality.operator-data');
+    });
+
+    // --- MAINTENANCE MESIN (admin, staff_maintenance, manager) ---
+    Route::middleware('role:admin,staff_maintenance,manager')->prefix('maintenance')->name('maintenance.')->group(function () {
+        Route::get('breakdown/last-no-lkm', [BreakdownMesinController::class, 'lastNoLkm'])->name('breakdown.last-no-lkm');
+        Route::resource('breakdown', BreakdownMesinController::class)->only(['index', 'create', 'store']);
+        Route::get('mttr',          [MttrController::class, 'index'])->name('mttr');
+        Route::get('mttr/data',     [MttrController::class, 'data'])->name('mttr.data');
+        Route::get('mtbf',          [MtbfController::class, 'index'])->name('mtbf');
+        Route::get('mtbf/data',     [MtbfController::class, 'data'])->name('mtbf.data');
+        Route::get('availability',      [AvailabilityController::class, 'index'])->name('availability');
+        Route::get('availability/data', [AvailabilityController::class, 'data'])->name('availability.data');
+    });
+
+    // --- MAINTENANCE edit/hapus (admin only) ---
+    Route::middleware('role:admin')->prefix('maintenance')->name('maintenance.')->group(function () {
+        Route::get('breakdown/{breakdown}/edit', [BreakdownMesinController::class, 'edit'])->name('breakdown.edit');
+        Route::put('breakdown/{breakdown}',      [BreakdownMesinController::class, 'update'])->name('breakdown.update');
+        Route::delete('breakdown/{breakdown}',   [BreakdownMesinController::class, 'destroy'])->name('breakdown.destroy');
     });
 });
 

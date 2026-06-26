@@ -74,8 +74,8 @@
         html, body { height: 100%; }
         body {
             margin: 0;
-            font-size: 13px;
-            line-height: 1.45;
+            font-size: 15px;
+            line-height: 1.5;
             background: var(--bg);
             color: var(--text);
             overflow-x: hidden;
@@ -150,13 +150,13 @@
             display: block;
         }
         .brand-name {
-            font-size: 13px;
+            font-size: 15px;
             font-weight: 700;
             color: #f3f4f6;
             letter-spacing: 0.5px;
         }
         .brand-tag {
-            font-size: 9.5px;
+            font-size: 11px;
             font-weight: 700;
             color: #6b7280;
             letter-spacing: 1.5px;
@@ -173,10 +173,10 @@
             gap: 6px;
             padding: 0 16px;
             color: #9ca3af;
-            font-size: 12px;
+            font-size: 14px;
             font-weight: 500;
         }
-        .topbar-page i { font-size: 11px; color: #6b7280; }
+        .topbar-page i { font-size: 13px; color: #6b7280; }
         .topbar-page strong {
             color: #e5e7eb;
             font-weight: 600;
@@ -198,9 +198,9 @@
             height: var(--tb-h);
             border-left: 1px solid var(--sb-border);
             color: #d1d5db;
-            font-size: 12px;
+            font-size: 14px;
         }
-        .topbar-item i { font-size: 13px; color: #9ca3af; }
+        .topbar-item i { font-size: 15px; color: #9ca3af; }
         .topbar-item.user-block {
             gap: 9px;
         }
@@ -210,12 +210,12 @@
             text-align: left;
         }
         .user-info .name {
-            font-size: 12px;
+            font-size: 14px;
             font-weight: 600;
             color: #f3f4f6;
         }
         .user-info .role {
-            font-size: 10px;
+            font-size: 11px;
             color: #9ca3af;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -228,14 +228,14 @@
             padding: 0 14px;
             height: var(--tb-h);
             color: #d1d5db;
-            font-size: 12px;
+            font-size: 14px;
             font-weight: 500;
             cursor: pointer;
             display: flex; align-items: center; gap: 6px;
             transition: background var(--t), color var(--t);
         }
         .topbar-logout:hover { background: #374151; color: #fff; }
-        .topbar-logout i { font-size: 13px; }
+        .topbar-logout i { font-size: 15px; }
 
         /* ══ Sidebar ════════════════════════════════════════════════ */
         #sidebar {
@@ -251,7 +251,9 @@
             transition: width var(--t);
         }
         body.sb-pinned #sidebar { overflow-y: auto; }
-        #sidebar::-webkit-scrollbar { width: 0; }
+        #sidebar::-webkit-scrollbar { width: 4px; }
+        #sidebar::-webkit-scrollbar-track { background: transparent; }
+        #sidebar::-webkit-scrollbar-thumb { background: #374151; border-radius: 2px; }
 
         /* Expanded: pinned only */
         body.sb-pinned #sidebar { width: var(--sb-exp-w); }
@@ -266,7 +268,7 @@
             margin-top: 2px;
         }
         .nav-section-label {
-            font-size: 9.5px;
+            font-size: 11px;
             font-weight: 700;
             letter-spacing: 1.5px;
             text-transform: uppercase;
@@ -280,10 +282,10 @@
             display: flex;
             align-items: center;
             padding: 0 0 0 24px;
-            height: 36px;
+            height: 40px;
             color: var(--sb-text);
             text-decoration: none;
-            font-size: 12.5px;
+            font-size: 14px;
             font-weight: 500;
             white-space: nowrap;
             border-left: 2px solid transparent;
@@ -302,7 +304,7 @@
             font-weight: 600;
         }
         .nav-item-link i {
-            font-size: 15px;
+            font-size: 17px;
             width: 24px;
             text-align: center;
             margin-left: -8px;
@@ -322,7 +324,7 @@
         }
         @media (max-width: 767px) {
             body.sb-mobile-open #sb-overlay { display: block; }
-            body.sb-mobile-open #sidebar    { width: var(--sb-exp-w); }
+            body.sb-mobile-open #sidebar    { width: var(--sb-exp-w); overflow-y: auto; }
             body:not(.sb-mobile-open) #sidebar { width: 0; }
             #main { margin-left: 0 !important; }
         }
@@ -353,7 +355,7 @@
             gap: 12px;
         }
         .page-title {
-            font-size: 15px;
+            font-size: 19px;
             font-weight: 700;
             color: var(--text);
             margin: 0;
@@ -361,7 +363,7 @@
         }
         .page-title i {
             color: var(--text-2);
-            font-size: 14px;
+            font-size: 18px;
         }
 
         /* ══ ERP Panels ═════════════════════════════════════════════ */
@@ -374,8 +376,8 @@
         .erp-panel-header {
             background: var(--surface-2);
             border-bottom: 1px solid var(--border);
-            padding: 8px 12px;
-            font-size: 11px;
+            padding: 9px 14px;
+            font-size: 13px;
             font-weight: 700;
             color: var(--text-2);
             text-transform: uppercase;
@@ -391,7 +393,7 @@
         .erp-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 12px;
+            font-size: 14px;
             background: var(--surface);
         }
         .erp-table thead tr {
@@ -399,11 +401,11 @@
             border-bottom: 1px solid #9ca3af;
         }
         .erp-table thead th {
-            padding: 7px 10px;
+            padding: 9px 12px;
             font-weight: 700;
             color: var(--text);
             text-transform: uppercase;
-            font-size: 10.5px;
+            font-size: 12px;
             letter-spacing: 0.6px;
             border-right: 1px solid var(--border);
             white-space: nowrap;
@@ -419,18 +421,18 @@
         .erp-table tbody tr:hover { background: #eef2f6; }
         .erp-table tbody tr:last-child { border-bottom: none; }
         .erp-table tbody td {
-            padding: 6px 10px;
+            padding: 8px 12px;
             color: var(--text);
             border-right: 1px solid var(--border-3);
             vertical-align: middle;
-            font-size: 12px;
+            font-size: 14px;
         }
         .erp-table tbody td:last-child { border-right: none; }
 
         /* Code/monospace cells */
         code {
             font-family: 'Courier New', monospace !important;
-            font-size: 11.5px;
+            font-size: 13px;
             background: var(--surface-3);
             color: var(--text);
             padding: 1px 5px;
@@ -441,9 +443,9 @@
         /* ══ Buttons ════════════════════════════════════════════════ */
         .btn {
             border-radius: 2px;
-            font-size: 12px;
+            font-size: 14px;
             font-weight: 600;
-            padding: 6px 12px;
+            padding: 7px 14px;
             transition: background var(--t), border-color var(--t), color var(--t);
             border: 1px solid transparent;
             line-height: 1.4;
@@ -511,16 +513,16 @@
         .btn-outline-warning:hover { background: #fefce8; border-color: #854d0e; color: #713f12; }
 
         .btn-sm {
-            padding: 4px 10px;
-            font-size: 11.5px;
+            padding: 5px 11px;
+            font-size: 13px;
         }
 
         /* ══ Forms ══════════════════════════════════════════════════ */
         .form-control, .form-select {
             border-radius: 2px;
             border: 1px solid var(--border);
-            font-size: 12.5px;
-            padding: 5px 9px;
+            font-size: 14px;
+            padding: 7px 10px;
             color: var(--text);
             background: var(--surface);
             transition: border-color var(--t);
@@ -535,19 +537,19 @@
             color: var(--text-3);
         }
         .form-label {
-            font-size: 11px;
+            font-size: 13px;
             font-weight: 700;
             color: var(--text-2);
-            margin-bottom: 4px;
+            margin-bottom: 5px;
             text-transform: uppercase;
             letter-spacing: 0.4px;
         }
         .form-control-sm, .form-select-sm {
-            font-size: 11.5px;
-            padding: 4px 7px;
+            font-size: 13px;
+            padding: 5px 8px;
         }
         .invalid-feedback {
-            font-size: 11px;
+            font-size: 12px;
             color: var(--c-danger);
             margin-top: 3px;
         }
@@ -561,7 +563,7 @@
             border-radius: 2px;
             border: 1px solid;
             border-left-width: 3px;
-            font-size: 12.5px;
+            font-size: 14px;
             padding: 9px 12px;
             display: flex;
             align-items: flex-start;
@@ -581,7 +583,7 @@
         /* ══ Badges ═════════════════════════════════════════════════ */
         .badge {
             border-radius: 2px;
-            font-size: 10px;
+            font-size: 11.5px;
             font-weight: 700;
             padding: 3px 7px;
             text-transform: uppercase;
@@ -614,7 +616,7 @@
             gap: 3px;
         }
         .filter-bar label {
-            font-size: 10px;
+            font-size: 12px;
             font-weight: 700;
             color: var(--text-3);
             text-transform: uppercase;
@@ -625,8 +627,8 @@
         .pagination { gap: 0; margin: 0; }
         .page-link {
             border-radius: 0 !important;
-            font-size: 11.5px;
-            padding: 5px 10px;
+            font-size: 13px;
+            padding: 6px 12px;
             color: var(--text-2);
             border: 1px solid var(--border);
             margin: 0 -1px 0 0;
@@ -649,9 +651,9 @@
             flex-wrap: nowrap;
         }
         .action-btns .btn {
-            min-width: 50px;
-            padding: 3px 9px;
-            font-size: 11px;
+            min-width: 54px;
+            padding: 4px 10px;
+            font-size: 12.5px;
             font-weight: 600;
             text-align: center;
             white-space: nowrap;
@@ -669,8 +671,8 @@
         .card-header {
             background: var(--surface-2);
             border-bottom: 1px solid var(--border);
-            padding: 8px 12px;
-            font-size: 11px;
+            padding: 9px 14px;
+            font-size: 13px;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.6px;
@@ -681,15 +683,15 @@
         .dropdown-menu {
             border-radius: 2px;
             border-color: var(--border);
-            font-size: 12.5px;
+            font-size: 14px;
             padding: 4px 0;
         }
-        .dropdown-item { padding: 6px 14px; font-size: 12.5px; }
+        .dropdown-item { padding: 7px 16px; font-size: 14px; }
         .dropdown-item:hover { background: var(--surface-2); color: var(--text); }
         .modal-content { border-radius: 2px; border: 1px solid var(--border); }
         .modal-header { background: var(--surface-2); border-bottom: 1px solid var(--border); padding: 10px 14px; }
-        .modal-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
-        .modal-body { padding: 14px; font-size: 13px; }
+        .modal-title { font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+        .modal-body { padding: 16px; font-size: 15px; }
         .modal-footer { padding: 10px 14px; border-top: 1px solid var(--border); }
 
         /* ══ Charts (Chart.js wrapper) ═══════════════════════════════ */
@@ -710,8 +712,8 @@
             z-index: 200;
         }
         .ta-item {
-            padding: 6px 10px;
-            font-size: 12px;
+            padding: 8px 12px;
+            font-size: 14px;
             cursor: pointer;
             border-bottom: 1px solid #f3f4f6;
             color: #111827;
@@ -722,12 +724,12 @@
         .ta-item:last-child { border-bottom: none; }
         .ta-item:hover, .ta-item.ta-active { background: #e5e7eb; }
         .ta-empty {
-            padding: 8px 10px;
-            font-size: 12px;
+            padding: 8px 12px;
+            font-size: 13px;
             color: #9ca3af;
         }
         .ta-hint {
-            font-size: 10.5px;
+            font-size: 12px;
             color: #9ca3af;
             margin-top: 3px;
         }
@@ -738,7 +740,39 @@
         .text-danger  { color: var(--c-danger)  !important; }
         .text-warning { color: var(--c-warn)    !important; }
         hr { border-color: var(--border); margin: 12px 0; }
-        small, .small { font-size: 11.5px; }
+        small, .small { font-size: 13px; }
+
+        /* ══ Sticky freeze columns (shared) ═══════════════════════════
+           Dipakai tabel dengan kolom yang di-freeze horizontal.
+           border-collapse:separate → tiap cell punya border sendiri,
+           wajib agar border ikut menempel saat cell di-sticky-kan. */
+        .tbl-freeze { border-collapse: separate !important; border-spacing: 0 !important; }
+        .tbl-freeze thead tr { background: #e5e7eb; }
+        .tbl-freeze thead th { border-right: 1px solid #d1d5db; border-bottom: 2px solid #9ca3af; }
+        .tbl-freeze tbody td { border-right: 1px solid #ebebeb; border-bottom: 1px solid #ebebeb; }
+        .tbl-freeze tbody tr:last-child td { border-bottom: none; }
+        .tbl-freeze thead th:last-child, .tbl-freeze tbody td:last-child { border-right: none; }
+
+        /* Sticky cell WAJIB background opak → menutup konten yang discroll di belakangnya */
+        .tbl-freeze .sc { position: sticky; z-index: 2; background: #fff; }
+        .tbl-freeze thead th.sc { z-index: 12; background: #e5e7eb; }  /* pojok freeze di atas header(10) & sticky body(2) */
+        .tbl-freeze tbody tr:nth-child(even) td.sc { background: #f9fafb; }
+        .tbl-freeze tbody tr:hover td.sc { background: #eef2f6; }
+        .tbl-freeze tbody tr.anomaly-row td.sc { background: #fefce8; }
+        .tbl-freeze tbody tr.anomaly-row:hover td.sc { background: #fef3c7; }
+        .tbl-freeze tbody tr.last-row td.sc { background: #f0f9ff; }
+
+        /* Offset kiri tiap kolom freeze diisi via JS (lebar NYATA kolom) → tidak ada gap */
+        .tbl-freeze .sc-1 { left: var(--sc1, 0px); }
+        .tbl-freeze .sc-2 { left: var(--sc2, 0px); }
+        .tbl-freeze .sc-3 { left: var(--sc3, 0px); }
+        .tbl-freeze .sc-4 { left: var(--sc4, 0px); }
+        .tbl-freeze .sc-5 { left: var(--sc5, 0px); }
+
+        /* Separator kolom freeze terakhir sebagai box-shadow → digambar oleh sticky
+           cell sendiri, selalu menempel & tak pernah ter-clip / bergeser saat scroll. */
+        .tbl-freeze .sc-sep { border-right: none; box-shadow: 2px 0 0 0 #9ca3af; }
+        .tbl-freeze thead th.sc-sep { box-shadow: 2px 0 0 0 #6b7280; }
     </style>
     @stack('styles')
 </head>
@@ -832,6 +866,15 @@
             <span class="nav-text">LHP Quality</span>
         </a>
         @endif
+        @if($role === 'admin')
+        <a href="{{ route('admin.anomali') }}"
+           class="nav-item-link {{ str_starts_with($uri, 'admin/anomali') ? 'active' : '' }}"
+           data-tip="Anomali LHP"
+           style="{{ str_starts_with($uri, 'admin/anomali') ? '' : 'color:#ca8a04' }}">
+            <i class="bi bi-exclamation-triangle-fill" style="color:#ca8a04"></i>
+            <span class="nav-text">Anomali LHP</span>
+        </a>
+        @endif
     </div>
     @endif
 
@@ -869,6 +912,36 @@
     </div>
     @endif
 
+
+    @if(in_array($role, ['admin', 'staff_maintenance', 'manager']))
+    <div class="nav-section">
+        <span class="nav-section-label">Maintenance</span>
+        <a href="{{ route('maintenance.breakdown.index') }}"
+           class="nav-item-link {{ str_starts_with($uri, 'maintenance/breakdown') ? 'active' : '' }}"
+           data-tip="Breakdown Mesin">
+            <i class="bi bi-tools"></i>
+            <span class="nav-text">Breakdown Mesin</span>
+        </a>
+        <a href="{{ route('maintenance.mttr') }}"
+           class="nav-item-link {{ str_starts_with($uri, 'maintenance/mttr') ? 'active' : '' }}"
+           data-tip="MTTR">
+            <i class="bi bi-clock-history"></i>
+            <span class="nav-text">MTTR</span>
+        </a>
+        <a href="{{ route('maintenance.mtbf') }}"
+           class="nav-item-link {{ str_starts_with($uri, 'maintenance/mtbf') ? 'active' : '' }}"
+           data-tip="MTBF">
+            <i class="bi bi-arrow-repeat"></i>
+            <span class="nav-text">MTBF</span>
+        </a>
+        <a href="{{ route('maintenance.availability') }}"
+           class="nav-item-link {{ str_starts_with($uri, 'maintenance/availability') ? 'active' : '' }}"
+           data-tip="Availability">
+            <i class="bi bi-graph-up"></i>
+            <span class="nav-text">Availability</span>
+        </a>
+    </div>
+    @endif
 
     @if($role === 'admin')
     <div class="nav-section">
@@ -921,20 +994,22 @@
 
 {{-- ═══ MAIN ══════════════════════════════════════════════════════════ --}}
 <main id="main">
-    @if(session('success'))
-        <div class="alert alert-success alert-dismissible" role="alert">
-            <i class="bi bi-check-circle-fill"></i>
-            <span>{{ session('success') }}</span>
-            <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
-    @if(session('error'))
-        <div class="alert alert-danger alert-dismissible" role="alert">
-            <i class="bi bi-x-octagon-fill"></i>
-            <span>{{ session('error') }}</span>
-            <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
+    @unless(View::hasSection('suppress_layout_flash'))
+        @if(session('success'))
+            <div class="alert alert-success alert-dismissible" role="alert">
+                <i class="bi bi-check-circle-fill"></i>
+                <span>{{ session('success') }}</span>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+            </div>
+        @endif
+        @if(session('error'))
+            <div class="alert alert-danger alert-dismissible" role="alert">
+                <i class="bi bi-x-octagon-fill"></i>
+                <span>{{ session('error') }}</span>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+            </div>
+        @endif
+    @endunless
     @yield('content')
 </main>
 
@@ -1025,6 +1100,42 @@ document.querySelectorAll('form').forEach(form => {
     });
 });
 </script>
+
+{{-- ══ Sticky freeze: hitung offset kiri tiap kolom dari lebar NYATA header cell ══
+     getBoundingClientRect().width bersifat sub-pixel & scroll-independent → offset
+     selalu pas, tidak ada gap. Berlaku untuk SEMUA tabel ber-class .tbl-freeze. --}}
+<script>
+(function () {
+    function syncFreeze(table) {
+        if (!table.tHead || !table.tHead.rows.length) return;
+        var cells = table.tHead.rows[0].querySelectorAll('th.sc');
+        var acc = 0;
+        cells.forEach(function (cell, i) {
+            table.style.setProperty('--sc' + (i + 1), acc + 'px');
+            acc += cell.getBoundingClientRect().width;
+        });
+    }
+    function syncAll() {
+        document.querySelectorAll('table.tbl-freeze').forEach(syncFreeze);
+    }
+
+    syncAll();
+    window.addEventListener('load', syncAll);   // re-hitung setelah font/layout final
+
+    var raf = null;
+    window.addEventListener('resize', function () {
+        if (raf) cancelAnimationFrame(raf);
+        raf = requestAnimationFrame(syncAll);
+    });
+
+    if (window.ResizeObserver) {
+        document.querySelectorAll('table.tbl-freeze').forEach(function (t) {
+            new ResizeObserver(function () { syncFreeze(t); }).observe(t);
+        });
+    }
+})();
+</script>
+
 @stack('scripts')
 </body>
 </html>
