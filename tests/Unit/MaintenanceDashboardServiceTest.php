@@ -47,6 +47,13 @@ class MaintenanceDashboardServiceTest extends TestCase
         $this->assertTrue($rows[0]['instalasi_set']);
         $this->assertGreaterThan(0, $rows[0]['availability_pct']);
         $this->assertLessThanOrEqual(100, $rows[0]['availability_pct']);
+
+        // availability == (operating - sum_downtime) / operating * 100, computed from the same window
+        $row = $rows[0];
+        $operating = \Illuminate\Support\Carbon::parse('2026-01-01')
+            ->diffInRealHours(\Illuminate\Support\Carbon::parse('2026-06-30')->endOfDay(), false);
+        $expectedAvail = ($operating - $row['sum_downtime']) / $operating * 100;
+        $this->assertEqualsWithDelta($expectedAvail, $row['availability_pct'], 0.5);
     }
 
     public function test_null_instalasi_marks_row_and_nulls_mtbf_availability(): void
@@ -68,6 +75,7 @@ class MaintenanceDashboardServiceTest extends TestCase
 
         $this->assertFalse($rows[0]['instalasi_set']);
         $this->assertNull($rows[0]['mtbf_jam']);
+        $this->assertNull($rows[0]['mtbf_hari']);
         $this->assertNull($rows[0]['availability_pct']);
         $this->assertSame(1.0, $rows[0]['mttr_jam']);
     }
