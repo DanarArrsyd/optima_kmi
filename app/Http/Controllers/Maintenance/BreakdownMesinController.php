@@ -52,7 +52,7 @@ class BreakdownMesinController extends Controller
         $data = $request->validated();
         $noLkm = $this->svc->generateNoLkm((int) $data['nomor_urut'], $data['tanggal_breakdown']);
 
-        if (TransaksiBreakdownMesin::where('no_lkm', $noLkm)->exists()) {
+        if (TransaksiBreakdownMesin::withTrashed()->where('no_lkm', $noLkm)->exists()) {
             return back()->withInput()->withErrors(['nomor_urut' => "No LKM {$noLkm} sudah ada, gunakan nomor lain."]);
         }
 
@@ -89,7 +89,7 @@ class BreakdownMesinController extends Controller
         $data  = $request->validated();
         $noLkm = $this->svc->generateNoLkm((int) $data['nomor_urut'], $data['tanggal_breakdown']);
 
-        $dupe = TransaksiBreakdownMesin::where('no_lkm', $noLkm)->where('id', '!=', $breakdown->id)->exists();
+        $dupe = TransaksiBreakdownMesin::withTrashed()->where('no_lkm', $noLkm)->where('id', '!=', $breakdown->id)->exists();
         if ($dupe) {
             return back()->withInput()->withErrors(['nomor_urut' => "No LKM {$noLkm} sudah ada, gunakan nomor lain."]);
         }
