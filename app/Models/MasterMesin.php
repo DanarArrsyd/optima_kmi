@@ -8,7 +8,7 @@ class MasterMesin extends Model
 {
     use SoftDeletes;
     protected $table = 'master_mesin';
-    protected $fillable = ['id_mesin', 'nama_mesin', 'line', 'tipe_mesin', 'kapasitas_max_stroke'];
+    protected $fillable = ['id_mesin', 'nama_mesin', 'line', 'tipe_mesin', 'kapasitas_max_stroke', 'tanggal_instalasi'];
     public function transaksiProduksi(): HasMany
     {
         return $this->hasMany(TransaksiProduksi::class, 'id_mesin');
@@ -16,5 +16,9 @@ class MasterMesin extends Model
     public function transaksiDandori(): HasMany
     {
         return $this->hasMany(TransaksiDandoriRincian::class, 'id_mesin');
+    }
+    public function breakdownMesin(): HasMany
+    {
+        return $this->hasMany(TransaksiBreakdownMesin::class, 'id_mesin');
     }
 }
