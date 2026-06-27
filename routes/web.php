@@ -20,6 +20,10 @@ use App\Http\Controllers\Maintenance\BreakdownMesinController;
 use App\Http\Controllers\Maintenance\MttrController;
 use App\Http\Controllers\Maintenance\MtbfController;
 use App\Http\Controllers\Maintenance\AvailabilityController;
+use App\Http\Controllers\Maintenance\BreakdownDiesController;
+use App\Http\Controllers\Maintenance\MttrDiesController;
+use App\Http\Controllers\Maintenance\MtbfDiesController;
+use App\Http\Controllers\Maintenance\AvailabilityDiesController;
 
 Route::get('/', fn() => redirect('/dashboard'));
 
@@ -138,6 +142,9 @@ Route::middleware('auth')->group(function () {
     // --- MAINTENANCE MESIN (admin, staff_maintenance, manager) ---
     Route::middleware('role:admin,staff_maintenance,manager')->prefix('maintenance')->name('maintenance.')->group(function () {
         Route::get('breakdown/last-no-lkm', [BreakdownMesinController::class, 'lastNoLkm'])->name('breakdown.last-no-lkm');
+        Route::get('breakdown/export', [BreakdownMesinController::class, 'export'])->name('breakdown.export');
+        Route::post('breakdown/import', [BreakdownMesinController::class, 'import'])->name('breakdown.import');
+        Route::get('breakdown/import-template', [BreakdownMesinController::class, 'importTemplate'])->name('breakdown.import-template');
         Route::resource('breakdown', BreakdownMesinController::class)->only(['index', 'create', 'store']);
         Route::get('mttr',          [MttrController::class, 'index'])->name('mttr');
         Route::get('mttr/data',     [MttrController::class, 'data'])->name('mttr.data');
@@ -145,13 +152,35 @@ Route::middleware('auth')->group(function () {
         Route::get('mtbf/data',     [MtbfController::class, 'data'])->name('mtbf.data');
         Route::get('availability',      [AvailabilityController::class, 'index'])->name('availability');
         Route::get('availability/data', [AvailabilityController::class, 'data'])->name('availability.data');
+
+        // ── MTC DIES ──
+        Route::get('breakdown-dies/last-no-lkd', [BreakdownDiesController::class, 'lastNoLkd'])->name('breakdown-dies.last-no-lkd');
+        Route::get('breakdown-dies/export', [BreakdownDiesController::class, 'export'])->name('breakdown-dies.export');
+        Route::post('breakdown-dies/import', [BreakdownDiesController::class, 'import'])->name('breakdown-dies.import');
+        Route::get('breakdown-dies/import-template', [BreakdownDiesController::class, 'importTemplate'])->name('breakdown-dies.import-template');
+        Route::resource('breakdown-dies', BreakdownDiesController::class)->only(['index', 'store'])->parameters(['breakdown-dies' => 'breakdownDy']);
+        Route::get('mttr-dies',          [MttrDiesController::class, 'index'])->name('mttr-dies');
+        Route::get('mttr-dies/data',     [MttrDiesController::class, 'data'])->name('mttr-dies.data');
+        Route::get('mtbf-dies',          [MtbfDiesController::class, 'index'])->name('mtbf-dies');
+        Route::get('mtbf-dies/data',     [MtbfDiesController::class, 'data'])->name('mtbf-dies.data');
+        Route::get('availability-dies',      [AvailabilityDiesController::class, 'index'])->name('availability-dies');
+        Route::get('availability-dies/data', [AvailabilityDiesController::class, 'data'])->name('availability-dies.data');
     });
+
+    // --- NOTIFICATIONS (all authenticated users) ---
+    Route::get('/notifications/poll', [\App\Http\Controllers\NotificationController::class, 'poll']);
+    Route::post('/notifications/read-all', [\App\Http\Controllers\NotificationController::class, 'markAllRead']);
+    Route::post('/notifications/{id}/read', [\App\Http\Controllers\NotificationController::class, 'markRead']);
 
     // --- MAINTENANCE edit/hapus (admin only) ---
     Route::middleware('role:admin')->prefix('maintenance')->name('maintenance.')->group(function () {
         Route::get('breakdown/{breakdown}/edit', [BreakdownMesinController::class, 'edit'])->name('breakdown.edit');
         Route::put('breakdown/{breakdown}',      [BreakdownMesinController::class, 'update'])->name('breakdown.update');
         Route::delete('breakdown/{breakdown}',   [BreakdownMesinController::class, 'destroy'])->name('breakdown.destroy');
+
+        Route::get('breakdown-dies/{breakdownDy}/edit', [BreakdownDiesController::class, 'edit'])->name('breakdown-dies.edit');
+        Route::put('breakdown-dies/{breakdownDy}',      [BreakdownDiesController::class, 'update'])->name('breakdown-dies.update');
+        Route::delete('breakdown-dies/{breakdownDy}',   [BreakdownDiesController::class, 'destroy'])->name('breakdown-dies.destroy');
     });
 });
 
