@@ -11,28 +11,48 @@ use App\Models\MasterKaryawan;
 use App\Models\MasterPart;
 use App\Models\MasterShift;
 use App\Models\TransaksiQc;
+use App\Services\NotificationService;
 use App\Services\QcService;
 use Maatwebsite\Excel\Facades\Excel;
 
 class QcController extends Controller
 {
-    public function __construct(private QcService $qcService) {}
+    public function __construct(
+        private QcService $qcService,
+        private NotificationService $notifSvc,
+    ) {}
 
     public function index(\Illuminate\Http\Request $request)
     {
-        $dateFrom = $request->input('date_from', date('Y-m-01'));   // awal bulan ini
-        $dateTo   = $request->input('date_to',   date('Y-m-d'));    // hari ini
+        $dateFrom = $request->input('date_from', date('Y-m-01'));
+        $dateTo   = $request->input('date_to',   date('Y-m-d'));
+        $search   = trim((string) $request->input('q', ''));
 
-        $transaksi = TransaksiQc::with(['karyawanQc', 'partProses.part', 'shift', 'jenisNg'])
+        $q = TransaksiQc::with(['karyawanQc', 'partProses.part', 'shift', 'jenisNg', 'noteResolvedBy'])
             ->whereDate('tgl_pengecekan', '>=', $dateFrom)
-            ->whereDate('tgl_pengecekan', '<=', $dateTo)
-            ->orderByDesc('tgl_pengecekan')
+            ->whereDate('tgl_pengecekan', '<=', $dateTo);
+
+        if ($search !== '') {
+            $like = '%' . $search . '%';
+            $q->where(function ($sub) use ($like) {
+                $sub->whereHas('karyawanQc',     fn($k) => $k->where('nama_karyawan', 'like', $like))
+                    ->orWhereHas('shift',         fn($s) => $s->where('nama_shift', 'like', $like))
+                    ->orWhereHas('partProses',    fn($pp) => $pp->where('nama_proses', 'like', $like))
+                    ->orWhereHas('partProses.part', fn($p) =>
+                        $p->where('part_no',   'like', $like)
+                          ->orWhere('part_name', 'like', $like)
+                          ->orWhere('customer',  'like', $like)
+                    );
+            });
+        }
+
+        $transaksi = $q->orderByDesc('tgl_pengecekan')
             ->orderByDesc('created_at')
             ->paginate(30)
             ->withQueryString();
 
         $shifts   = MasterShift::orderBy('jam_start')->get();
-        $karyawan = MasterKaryawan::where('departemen', 'QC')->orderBy('nama_karyawan')->get();
+        $karyawan = MasterKaryawan::where('departemen', 'QC')->aktif()->orderBy('nama_karyawan')->get();
         $parts = MasterPart::with(['proses' => fn($q) => $q->orderByDesc('id_proses')])
             ->has('proses')
             ->orderBy('part_name')
@@ -43,13 +63,21 @@ class QcController extends Controller
             });
         $jenisNg = MasterJenisNg::orderBy('kode')->get();
 
-        return view('input.qc.index', compact('transaksi', 'dateFrom', 'dateTo', 'shifts', 'karyawan', 'parts', 'jenisNg'));
+        $myLastRecord = TransaksiQc::with(['karyawanQc', 'partProses.part'])
+            ->where('created_by', auth()->id())
+            ->latest()
+            ->first();
+        $myLastOnPage = $myLastRecord
+            ? $transaksi->getCollection()->contains('id', $myLastRecord->id)
+            : false;
+
+        return view('input.qc.index', compact('transaksi', 'dateFrom', 'dateTo', 'search', 'shifts', 'karyawan', 'parts', 'jenisNg', 'myLastRecord', 'myLastOnPage'));
     }
 
     public function create()
     {
         $shifts   = MasterShift::orderBy('jam_start')->get();
-        $karyawan = MasterKaryawan::where('departemen', 'QC')->orderBy('nama_karyawan')->get();
+        $karyawan = MasterKaryawan::where('departemen', 'QC')->aktif()->orderBy('nama_karyawan')->get();
 
         // Finish-good logic: QC hanya inspect produk jadi (proses terakhir = id_proses tertinggi)
         $parts = MasterPart::with(['proses' => fn($q) => $q->orderByDesc('id_proses')])
@@ -90,7 +118,7 @@ class QcController extends Controller
     {
         $qc->load(['karyawanQc', 'partProses.part.proses', 'jenisNg']);
         $shifts   = MasterShift::orderBy('jam_start')->get();
-        $karyawan = MasterKaryawan::where('departemen', 'QC')->orderBy('nama_karyawan')->get();
+        $karyawan = MasterKaryawan::where('departemen', 'QC')->aktif()->orderBy('nama_karyawan')->get();
         $parts    = MasterPart::with(['proses' => fn($q) => $q->orderByDesc('id_proses')])
             ->has('proses')
             ->orderBy('part_name')
@@ -150,6 +178,48 @@ class QcController extends Controller
     public function importTemplate()
     {
         return Excel::download(new QcImportTemplate(), 'template_lhp_quality.xlsx');
+    }
+
+    public function note(\Illuminate\Http\Request $request)
+    {
+        $request->validate(['staff_note' => 'nullable|string|max:1000', 'record_id' => 'required|integer']);
+        $qc = TransaksiQc::find($request->input('record_id'));
+        if (!$qc) return back()->with('error', 'Data tidak ditemukan.');
+        try {
+            $qc->update([
+                'staff_note'    => $request->input('staff_note') ?: null,
+                'staff_note_at' => $request->input('staff_note') ? now() : null,
+                'staff_note_by' => $request->input('staff_note') ? auth()->id() : null,
+            ]);
+        } catch (\Throwable) { /* kolom belum ada di hosting */ }
+        if ($request->input('staff_note')) {
+            $qc->refresh();
+            $this->notifSvc->insertNoteSubmitted(
+                $qc, 'qc',
+                $qc->tgl_pengecekan->format('Y-m-d')
+            );
+        }
+        $msg = $request->input('staff_note') ? 'Note berhasil dikirim ke admin.' : 'Note berhasil dihapus.';
+        return redirect()->route('input.qc.index')->with('success', $msg);
+    }
+
+    public function resolveNote(\Illuminate\Http\Request $request)
+    {
+        $request->validate(['record_id' => 'required|integer']);
+        $qc = TransaksiQc::find($request->input('record_id'));
+        if (!$qc) return back()->with('error', 'Data tidak ditemukan.');
+        try {
+            $qc->update([
+                'staff_note_resolved_at' => now(),
+                'staff_note_resolved_by' => auth()->id(),
+            ]);
+        } catch (\Throwable) {}
+        $qc->refresh();
+        $this->notifSvc->insertNoteResolved(
+            $qc, 'qc',
+            $qc->tgl_pengecekan->format('Y-m-d')
+        );
+        return redirect()->route('input.qc.index')->with('success', 'Note ditandai sudah ditangani.');
     }
 
     public function destroy(TransaksiQc $qc)
