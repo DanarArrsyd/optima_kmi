@@ -315,6 +315,28 @@
             white-space: nowrap;
         }
 
+        /* ── Nav accordion group (Dashboard) ── */
+        .nav-group-header {
+            display: flex; align-items: center; width: 100%;
+            background: none; border: none; cursor: pointer;
+            padding: 0 14px 0 24px; height: 40px;
+            color: var(--sb-text); font-size: 14px; font-weight: 500;
+            white-space: nowrap; border-left: 2px solid transparent;
+            transition: background var(--t), color var(--t);
+        }
+        .nav-group-header:hover { background: var(--sb-hover); color: var(--sb-text-h); }
+        .nav-group-header.has-active { color: var(--sb-text-a); font-weight: 600; }
+        .nav-group-header > i:first-child {
+            font-size: 17px; width: 24px; text-align: center;
+            margin-left: -8px; margin-right: 12px;
+        }
+        .nav-group-header .nav-caret {
+            margin-left: auto; font-size: 12px; transition: transform var(--t);
+        }
+        .nav-group-header.open .nav-caret { transform: rotate(180deg); }
+        .nav-group-body .nav-item-link { padding-left: 44px; height: 36px; font-size: 13px; }
+        .nav-group-body .nav-item-link i { font-size: 15px; }
+
         /* ══ Mobile ═════════════════════════════════════════════════ */
         #sb-overlay {
             display: none;
@@ -773,6 +795,25 @@
            cell sendiri, selalu menempel & tak pernah ter-clip / bergeser saat scroll. */
         .tbl-freeze .sc-sep { border-right: none; box-shadow: 2px 0 0 0 #9ca3af; }
         .tbl-freeze thead th.sc-sep { box-shadow: 2px 0 0 0 #6b7280; }
+
+        /* ══ Notification Bell ══════════════════════════════════ */
+        .notif-btn { background: none; border: none; color: #9ca3af; font-size: 1.05rem; position: relative; cursor: pointer; padding: 5px 7px; border-radius: 4px; display:flex;align-items:center; }
+        .notif-btn:hover { color: #fff; background: rgba(255,255,255,.08); }
+        .notif-badge { position: absolute; top: 2px; right: 2px; background: #ef4444; color: #fff; font-size: 0.6rem; font-weight: 700; border-radius: 999px; padding: 1px 4px; min-width: 15px; text-align: center; line-height: 1.4; }
+        .notif-dropdown { position: absolute; right: 0; top: calc(100% + 6px); width: 310px; background: #fff; border: 1px solid var(--border); border-radius: 4px; box-shadow: 0 6px 20px rgba(0,0,0,.14); z-index: 1060; }
+        .notif-dd-header { display: flex; justify-content: space-between; align-items: center; padding: 9px 13px; border-bottom: 1px solid var(--border); font-size: 0.82rem; font-weight: 700; color: var(--text); }
+        .notif-read-all { font-size: 0.75rem; color: #3b82f6; background: none; border: none; cursor: pointer; padding: 0; }
+        .notif-read-all:hover { text-decoration: underline; }
+        .notif-dd-body { max-height: 360px; overflow-y: auto; }
+        .notif-item { display: flex; gap: 9px; padding: 9px 13px; cursor: pointer; border-bottom: 1px solid #f3f4f6; transition: background .1s; }
+        .notif-item:last-child { border-bottom: none; }
+        .notif-item:hover { background: #f9fafb; }
+        .notif-item.is-unread { background: #fefce8; }
+        .notif-item.is-unread:hover { background: #fef9c3; }
+        .notif-item-icon { font-size: 0.95rem; flex-shrink: 0; padding-top: 2px; }
+        .notif-item-text { font-size: 0.81rem; color: var(--text); line-height: 1.4; }
+        .notif-item-time { font-size: 0.73rem; color: var(--text-2); margin-top: 2px; }
+        .notif-empty { padding: 22px 13px; text-align: center; color: var(--text-2); font-size: 0.82rem; }
     </style>
     @stack('styles')
 </head>
@@ -806,6 +847,36 @@
 
     {{-- Right side --}}
     <div class="topbar-right">
+        {{-- Notification Bell --}}
+        <div x-data="notifBell()" class="position-relative" style="display:flex;align-items:center">
+            <button class="notif-btn" @click="open = !open" title="Notifikasi">
+                <i class="bi bi-bell-fill"></i>
+                <span class="notif-badge" x-show="count > 0" x-text="count" x-cloak></span>
+            </button>
+            <div class="notif-dropdown" x-show="open" x-cloak @click.outside="open = false">
+                <div class="notif-dd-header">
+                    <span>Notifikasi</span>
+                    <button class="notif-read-all" x-show="count > 0" @click.stop="readAll()">Tandai Semua Dibaca</button>
+                </div>
+                <div class="notif-dd-body">
+                    <template x-if="items.length === 0">
+                        <div class="notif-empty">Tidak ada notifikasi.</div>
+                    </template>
+                    <template x-for="item in items" :key="item.id">
+                        <div class="notif-item" :class="{'is-unread': !item.read_at}" @click="clickItem(item.id, item.url)">
+                            <div class="notif-item-icon">
+                                <i :class="item.type === 'note_submitted' ? 'bi bi-chat-left-text-fill text-warning' : 'bi bi-check-circle-fill text-success'"></i>
+                            </div>
+                            <div>
+                                <div class="notif-item-text" x-text="item.text"></div>
+                                <div class="notif-item-time" x-text="item.created_at"></div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+
         @php
             $u = auth()->user();
             $initial = strtoupper(substr($u->name ?? 'U', 0, 1));
@@ -841,7 +912,7 @@
         $uri  = request()->path();
     @endphp
 
-    @if(in_array($role, ['admin', 'staff_produksi', 'staff_qc']))
+    @if(in_array($role, ['admin', 'staff_produksi', 'staff_qc', 'staff_maintenance', 'manager']))
     <div class="nav-section">
         <span class="nav-section-label">Input Data</span>
         @if(in_array($role, ['admin', 'staff_produksi']))
@@ -875,71 +946,115 @@
             <span class="nav-text">Anomali LHP</span>
         </a>
         @endif
-    </div>
-    @endif
-
-    @if(in_array($role, ['admin', 'staff_produksi', 'staff_qc', 'manager']))
-    <div class="nav-section">
-        <span class="nav-section-label">Dashboard VCB</span>
-        @if(in_array($role, ['admin', 'staff_produksi', 'manager']))
-        <a href="{{ route('vcb.produksi') }}"
-           class="nav-item-link {{ str_starts_with($uri, 'vcb/produksi') ? 'active' : '' }}"
-           data-tip="VCB Produksi">
-            <i class="bi bi-bar-chart"></i>
-            <span class="nav-text">VCB Produksi</span>
-        </a>
-        <a href="{{ route('vcb.mesin') }}"
-           class="nav-item-link {{ str_starts_with($uri, 'vcb/mesin') ? 'active' : '' }}"
-           data-tip="VCB Mesin">
-            <i class="bi bi-gear"></i>
-            <span class="nav-text">VCB Mesin</span>
-        </a>
-        <a href="{{ route('vcb.dandori') }}"
-           class="nav-item-link {{ str_starts_with($uri, 'vcb/dandori') ? 'active' : '' }}"
-           data-tip="VCB Dandori">
-            <i class="bi bi-clock-history"></i>
-            <span class="nav-text">VCB Dandori</span>
-        </a>
-        @endif
-        @if(in_array($role, ['admin', 'staff_qc', 'manager']))
-        <a href="{{ route('vcb.quality') }}"
-           class="nav-item-link {{ str_starts_with($uri, 'vcb/quality') ? 'active' : '' }}"
-           data-tip="VCB Quality">
-            <i class="bi bi-shield-check"></i>
-            <span class="nav-text">VCB Quality</span>
-        </a>
-        @endif
-    </div>
-    @endif
-
-
-    @if(in_array($role, ['admin', 'staff_maintenance', 'manager']))
-    <div class="nav-section">
-        <span class="nav-section-label">Maintenance</span>
+        @if(in_array($role, ['admin', 'staff_maintenance', 'manager']))
         <a href="{{ route('maintenance.breakdown.index') }}"
-           class="nav-item-link {{ str_starts_with($uri, 'maintenance/breakdown') ? 'active' : '' }}"
+           class="nav-item-link {{ str_starts_with($uri, 'maintenance/breakdown') && !str_starts_with($uri, 'maintenance/breakdown-dies') ? 'active' : '' }}"
            data-tip="Breakdown Mesin">
             <i class="bi bi-tools"></i>
             <span class="nav-text">Breakdown Mesin</span>
         </a>
-        <a href="{{ route('maintenance.mttr') }}"
-           class="nav-item-link {{ str_starts_with($uri, 'maintenance/mttr') ? 'active' : '' }}"
-           data-tip="MTTR">
-            <i class="bi bi-clock-history"></i>
-            <span class="nav-text">MTTR</span>
+        <a href="{{ route('maintenance.breakdown-dies.index') }}"
+           class="nav-item-link {{ str_starts_with($uri, 'maintenance/breakdown-dies') ? 'active' : '' }}"
+           data-tip="Breakdown Dies">
+            <i class="bi bi-hammer"></i>
+            <span class="nav-text">Breakdown Dies</span>
         </a>
-        <a href="{{ route('maintenance.mtbf') }}"
-           class="nav-item-link {{ str_starts_with($uri, 'maintenance/mtbf') ? 'active' : '' }}"
-           data-tip="MTBF">
-            <i class="bi bi-arrow-repeat"></i>
-            <span class="nav-text">MTBF</span>
-        </a>
-        <a href="{{ route('maintenance.availability') }}"
-           class="nav-item-link {{ str_starts_with($uri, 'maintenance/availability') ? 'active' : '' }}"
-           data-tip="Availability">
-            <i class="bi bi-graph-up"></i>
-            <span class="nav-text">Availability</span>
-        </a>
+        @endif
+    </div>
+    @endif
+
+    @if(in_array($role, ['admin', 'staff_produksi', 'staff_qc', 'staff_maintenance', 'manager']))
+    @php
+        $vcbActive = match(true) {
+            str_starts_with($uri, 'vcb/produksi'),
+            str_starts_with($uri, 'vcb/mesin'),
+            str_starts_with($uri, 'vcb/dandori')          => 'produksi',
+            str_starts_with($uri, 'vcb/quality')           => 'quality',
+            str_starts_with($uri, 'maintenance/mttr-dies'),
+            str_starts_with($uri, 'maintenance/mtbf-dies'),
+            str_starts_with($uri, 'maintenance/availability-dies') => 'mtcdies',
+            str_starts_with($uri, 'maintenance/mttr'),
+            str_starts_with($uri, 'maintenance/mtbf'),
+            str_starts_with($uri, 'maintenance/availability') => 'mtcmesin',
+            default => '',
+        };
+    @endphp
+    <div class="nav-section" x-data="vcbGroups('{{ $vcbActive }}')">
+        <span class="nav-section-label">Dashboard</span>
+
+        {{-- ── PRODUKSI ── --}}
+        @if(in_array($role, ['admin', 'staff_produksi', 'manager']))
+        <button type="button" class="nav-group-header {{ $vcbActive==='produksi' ? 'has-active' : '' }}"
+                :class="{ 'open': isOpen('produksi') }" @click="toggle('produksi')">
+            <i class="bi bi-box-seam"></i><span class="nav-text">Produksi</span>
+            <i class="bi bi-chevron-down nav-caret"></i>
+        </button>
+        <div class="nav-group-body" x-show="isOpen('produksi')" x-cloak>
+            <a href="{{ route('vcb.produksi') }}" class="nav-item-link {{ str_starts_with($uri,'vcb/produksi')?'active':'' }}">
+                <i class="bi bi-bar-chart"></i><span class="nav-text">VCB Produksi</span>
+            </a>
+            <a href="{{ route('vcb.mesin') }}" class="nav-item-link {{ str_starts_with($uri,'vcb/mesin')?'active':'' }}">
+                <i class="bi bi-gear"></i><span class="nav-text">VCB Mesin</span>
+            </a>
+            <a href="{{ route('vcb.dandori') }}" class="nav-item-link {{ str_starts_with($uri,'vcb/dandori')?'active':'' }}">
+                <i class="bi bi-clock-history"></i><span class="nav-text">VCB Dandori</span>
+            </a>
+        </div>
+        @endif
+
+        {{-- ── QUALITY ── --}}
+        @if(in_array($role, ['admin', 'staff_qc', 'manager']))
+        <button type="button" class="nav-group-header {{ $vcbActive==='quality' ? 'has-active' : '' }}"
+                :class="{ 'open': isOpen('quality') }" @click="toggle('quality')">
+            <i class="bi bi-shield-check"></i><span class="nav-text">Quality</span>
+            <i class="bi bi-chevron-down nav-caret"></i>
+        </button>
+        <div class="nav-group-body" x-show="isOpen('quality')" x-cloak>
+            <a href="{{ route('vcb.quality') }}" class="nav-item-link {{ str_starts_with($uri,'vcb/quality')?'active':'' }}">
+                <i class="bi bi-shield-check"></i><span class="nav-text">VCB Quality</span>
+            </a>
+        </div>
+        @endif
+
+        {{-- ── MTC MESIN ── --}}
+        @if(in_array($role, ['admin', 'staff_maintenance', 'manager']))
+        <button type="button" class="nav-group-header {{ $vcbActive==='mtcmesin' ? 'has-active' : '' }}"
+                :class="{ 'open': isOpen('mtcmesin') }" @click="toggle('mtcmesin')">
+            <i class="bi bi-tools"></i><span class="nav-text">MTC Mesin</span>
+            <i class="bi bi-chevron-down nav-caret"></i>
+        </button>
+        <div class="nav-group-body" x-show="isOpen('mtcmesin')" x-cloak>
+            <a href="{{ route('maintenance.mttr') }}" class="nav-item-link {{ $vcbActive==='mtcmesin' && str_starts_with($uri,'maintenance/mttr')?'active':'' }}">
+                <i class="bi bi-clock-history"></i><span class="nav-text">MTTR</span>
+            </a>
+            <a href="{{ route('maintenance.mtbf') }}" class="nav-item-link {{ $vcbActive==='mtcmesin' && str_starts_with($uri,'maintenance/mtbf')?'active':'' }}">
+                <i class="bi bi-arrow-repeat"></i><span class="nav-text">MTBF</span>
+            </a>
+            <a href="{{ route('maintenance.availability') }}" class="nav-item-link {{ $vcbActive==='mtcmesin' && str_starts_with($uri,'maintenance/availability')?'active':'' }}">
+                <i class="bi bi-graph-up"></i><span class="nav-text">Availability</span>
+            </a>
+        </div>
+        @endif
+
+        {{-- ── MTC DIES ── --}}
+        @if(in_array($role, ['admin', 'staff_maintenance', 'manager']))
+        <button type="button" class="nav-group-header {{ $vcbActive==='mtcdies' ? 'has-active' : '' }}"
+                :class="{ 'open': isOpen('mtcdies') }" @click="toggle('mtcdies')">
+            <i class="bi bi-hammer"></i><span class="nav-text">MTC Dies</span>
+            <i class="bi bi-chevron-down nav-caret"></i>
+        </button>
+        <div class="nav-group-body" x-show="isOpen('mtcdies')" x-cloak>
+            <a href="{{ route('maintenance.mttr-dies') }}" class="nav-item-link {{ str_starts_with($uri,'maintenance/mttr-dies')?'active':'' }}">
+                <i class="bi bi-clock-history"></i><span class="nav-text">MTTR</span>
+            </a>
+            <a href="{{ route('maintenance.mtbf-dies') }}" class="nav-item-link {{ str_starts_with($uri,'maintenance/mtbf-dies')?'active':'' }}">
+                <i class="bi bi-arrow-repeat"></i><span class="nav-text">MTBF</span>
+            </a>
+            <a href="{{ route('maintenance.availability-dies') }}" class="nav-item-link {{ str_starts_with($uri,'maintenance/availability-dies')?'active':'' }}">
+                <i class="bi bi-graph-up"></i><span class="nav-text">Availability</span>
+            </a>
+        </div>
+        @endif
     </div>
     @endif
 
@@ -1028,6 +1143,59 @@ const $sb    = document.getElementById('sidebar');
 const $main  = document.getElementById('main');
 const $prog  = document.getElementById('page-progress');
 const isMobile = () => window.innerWidth < 768;
+
+/* ─ Notification Bell ───────────────────────────────────────── */
+function notifBell() {
+    return {
+        count: 0,
+        items: [],
+        open: false,
+        csrfToken: document.querySelector('meta[name="csrf-token"]')?.content ?? '',
+        init() {
+            this.poll();
+            setInterval(() => this.poll(), 30000);
+        },
+        async poll() {
+            try {
+                const r = await fetch('/notifications/poll');
+                const d = await r.json();
+                this.count = d.count ?? 0;
+                this.items = d.items ?? [];
+            } catch (e) { /* silent — network hiccup */ }
+        },
+        async clickItem(id, url) {
+            try {
+                await fetch('/notifications/' + id + '/read', {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': this.csrfToken, 'Accept': 'application/json' },
+                });
+            } catch (e) { /* ignore */ }
+            window.location.href = url;
+        },
+        async readAll() {
+            try {
+                await fetch('/notifications/read-all', {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': this.csrfToken, 'Accept': 'application/json' },
+                });
+                this.count = 0;
+                this.items = this.items.map(i => ({ ...i, read_at: 'now' }));
+            } catch (e) { /* ignore */ }
+        },
+    };
+}
+
+/* ─ Dashboard accordion (single-open + ingat via localStorage) ─ */
+function vcbGroups(active = '') {
+    return {
+        open: active || localStorage.getItem('optima_vcb_group') || 'produksi',
+        isOpen(g) { return this.open === g; },
+        toggle(g) {
+            this.open = this.open === g ? null : g;
+            localStorage.setItem('optima_vcb_group', this.open || '');
+        },
+    };
+}
 
 /* ─ Restore open state on desktop ───────────────────────────── */
 if (!isMobile() && localStorage.getItem(SB_KEY) === '1') {
