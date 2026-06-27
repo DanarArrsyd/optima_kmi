@@ -717,7 +717,8 @@ foreach ($transaksi as $_t) {
                     $isMyLast   = $myLastRecord && $t->id === $myLastRecord->id;
                 @endphp
                 <tr id="{{ $isMyLast ? 'last-input' : '' }}"
-                    class="{{ $isAnomaly ? 'anomaly-row' : '' }} {{ $isMyLast ? 'last-row' : '' }}">
+                    data-row-id="{{ $t->id }}"
+                    class="{{ $isAnomaly ? 'anomaly-row' : '' }} {{ $isMyLast ? 'last-row' : '' }} {{ request('highlight_id') == $t->id ? 'notif-highlight' : '' }}">
                     <td class="sc sc-1" style="{{ $isMyLast ? 'box-shadow:inset 3px 0 0 #0284c7;' : '' }}">
                         {{ \Carbon\Carbon::parse($t->tanggal_produksi)->format('d/m/Y') }}
                         @if($isMyLast)
@@ -1000,6 +1001,17 @@ function openNoteDrawer(type, id, existingNote, isAdmin, updatedAt, noteAt, reso
         }
     }));
 }
+
+(function() {
+    const row = document.querySelector('.notif-highlight');
+    if (!row) return;
+    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => {
+        row.style.transition = 'background 1.5s ease';
+        row.classList.remove('notif-highlight');
+        row.querySelectorAll('td').forEach(td => { td.style.transition = 'background 1.5s ease'; td.style.background = ''; });
+    }, 2000);
+})();
 </script>
 
 </div>{{-- /alpine outer scope --}}

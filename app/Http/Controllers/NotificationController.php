@@ -70,6 +70,7 @@ class NotificationController extends Controller
         $path = $paths[$n->notifiable_type] ?? '/';
         $tgl  = $n->data['tanggal'] ?? null;
 
-        return $tgl ? $path . '?date_from=' . $tgl . '&date_to=' . $tgl : $path;
+        $base = $tgl ? $path . '?date_from=' . $tgl . '&date_to=' . $tgl : $path;
+        return $base . ($tgl ? '&' : '?') . 'highlight_id=' . $n->notifiable_id;
     }
 }

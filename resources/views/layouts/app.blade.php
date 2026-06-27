@@ -814,6 +814,8 @@
         .notif-item-text { font-size: 0.81rem; color: var(--text); line-height: 1.4; }
         .notif-item-time { font-size: 0.73rem; color: var(--text-2); margin-top: 2px; }
         .notif-empty { padding: 22px 13px; text-align: center; color: var(--text-2); font-size: 0.82rem; }
+        .notif-highlight { background: #dbeafe !important; }
+        .notif-highlight td { background: #dbeafe !important; }
     </style>
     @stack('styles')
 </head>

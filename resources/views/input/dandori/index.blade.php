@@ -533,6 +533,8 @@ $oldMesinTxt = $oldMesinObj ? "{$oldMesinObj->id_mesin} - {$oldMesinObj->nama_me
                     $isMyLast     = $myLastRecord && $r->id === $myLastRecord->id;
                 @endphp
                 <tr id="{{ $isMyLast ? 'last-input' : '' }}"
+                    data-row-id="{{ $r->id }}"
+                    class="{{ request('highlight_id') == $r->id ? 'notif-highlight' : '' }}"
                     style="{{ $isNewSession && !$loop->first ? 'border-top:2px solid #d1d5db;' : '' }}{{ $isMyLast ? 'box-shadow:inset 3px 0 0 #0284c7;' : '' }}">
                     <td class="sc sc-1" style="{{ $isNewSession ? 'font-weight:600' : 'color:#c4c9d4;font-size:0.78rem' }}">
                         {{ $r->tanggal->format('d/m/Y') }}
@@ -789,6 +791,17 @@ function openNoteDrawer(type, id, existingNote, isAdmin, updatedAt, noteAt, reso
         }
     }));
 }
+
+(function() {
+    const row = document.querySelector('.notif-highlight');
+    if (!row) return;
+    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => {
+        row.style.transition = 'background 1.5s ease';
+        row.classList.remove('notif-highlight');
+        row.querySelectorAll('td').forEach(td => { td.style.transition = 'background 1.5s ease'; td.style.background = ''; });
+    }, 2000);
+})();
 </script>
 
 </div>{{-- /alpine outer scope --}}

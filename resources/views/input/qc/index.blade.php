@@ -468,6 +468,8 @@ $oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->n
                     $isMyLast = $myLastRecord && $t->id === $myLastRecord->id;
                 @endphp
                 <tr id="{{ $isMyLast ? 'last-input' : '' }}"
+                    data-row-id="{{ $t->id }}"
+                    class="{{ request('highlight_id') == $t->id ? 'notif-highlight' : '' }}"
                     style="{{ $isMyLast ? 'box-shadow:inset 3px 0 0 #0284c7;' : '' }}">
                     <td>
                         {{ \Carbon\Carbon::parse($t->tgl_pengecekan)->format('d/m/Y') }}
@@ -729,6 +731,17 @@ function openNoteDrawer(type, id, existingNote, isAdmin, updatedAt, noteAt, reso
         }
     }));
 }
+
+(function() {
+    const row = document.querySelector('.notif-highlight');
+    if (!row) return;
+    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => {
+        row.style.transition = 'background 1.5s ease';
+        row.classList.remove('notif-highlight');
+        row.querySelectorAll('td').forEach(td => { td.style.transition = 'background 1.5s ease'; td.style.background = ''; });
+    }, 2000);
+})();
 </script>
 
 </div>{{-- /alpine outer scope --}}
