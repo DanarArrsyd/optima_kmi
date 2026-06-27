@@ -193,11 +193,13 @@ class QcController extends Controller
             ]);
         } catch (\Throwable) { /* kolom belum ada di hosting */ }
         if ($request->input('staff_note')) {
-            $qc->refresh();
-            $this->notifSvc->insertNoteSubmitted(
-                $qc, 'qc',
-                $qc->tgl_pengecekan->format('Y-m-d')
-            );
+            try {
+                $qc->refresh();
+                $this->notifSvc->insertNoteSubmitted(
+                    $qc, 'qc',
+                    $qc->tgl_pengecekan->format('Y-m-d')
+                );
+            } catch (\Throwable $e) { /* notification failure must not break main flow */ }
         }
         $msg = $request->input('staff_note') ? 'Note berhasil dikirim ke admin.' : 'Note berhasil dihapus.';
         return redirect()->route('input.qc.index')->with('success', $msg);
@@ -215,10 +217,12 @@ class QcController extends Controller
             ]);
         } catch (\Throwable) {}
         $qc->refresh();
-        $this->notifSvc->insertNoteResolved(
-            $qc, 'qc',
-            $qc->tgl_pengecekan->format('Y-m-d')
-        );
+        try {
+            $this->notifSvc->insertNoteResolved(
+                $qc, 'qc',
+                $qc->tgl_pengecekan->format('Y-m-d')
+            );
+        } catch (\Throwable $e) { /* notification failure must not break main flow */ }
         return redirect()->route('input.qc.index')->with('success', 'Note ditandai sudah ditangani.');
     }
 

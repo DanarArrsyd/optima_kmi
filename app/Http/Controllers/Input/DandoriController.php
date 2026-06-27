@@ -174,11 +174,13 @@ class DandoriController extends Controller
             ]);
         } catch (\Throwable) { /* kolom belum ada di hosting */ }
         if ($request->input('staff_note')) {
-            $dandori->refresh();
-            $this->notifSvc->insertNoteSubmitted(
-                $dandori, 'dandori',
-                $dandori->tanggal->format('Y-m-d')
-            );
+            try {
+                $dandori->refresh();
+                $this->notifSvc->insertNoteSubmitted(
+                    $dandori, 'dandori',
+                    $dandori->tanggal->format('Y-m-d')
+                );
+            } catch (\Throwable $e) { /* notification failure must not break main flow */ }
         }
         $msg = $request->input('staff_note') ? 'Note berhasil dikirim ke admin.' : 'Note berhasil dihapus.';
         return redirect()->route('input.dandori.index')->with('success', $msg);
@@ -196,10 +198,12 @@ class DandoriController extends Controller
             ]);
         } catch (\Throwable) {}
         $dandori->refresh();
-        $this->notifSvc->insertNoteResolved(
-            $dandori, 'dandori',
-            $dandori->tanggal->format('Y-m-d')
-        );
+        try {
+            $this->notifSvc->insertNoteResolved(
+                $dandori, 'dandori',
+                $dandori->tanggal->format('Y-m-d')
+            );
+        } catch (\Throwable $e) { /* notification failure must not break main flow */ }
         return redirect()->route('input.dandori.index')->with('success', 'Note ditandai sudah ditangani.');
     }
 
