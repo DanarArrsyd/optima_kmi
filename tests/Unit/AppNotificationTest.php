@@ -57,7 +57,7 @@ class AppNotificationTest extends TestCase
         $this->makeNotif($user->id, $actor->id);                        // unread
         $this->makeNotif($user->id, $actor->id, now()->toDateTimeString()); // read
 
-        $unread = AppNotification::unread()->get();
+        $unread = AppNotification::forUser($user->id)->unread()->get();
         $this->assertCount(1, $unread);
         $this->assertNull($unread->first()->read_at);
     }
