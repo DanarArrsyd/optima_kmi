@@ -1,5 +1,6 @@
 @extends('layouts.app')
 @section('title', 'LHP Dandori')
+@section('suppress_layout_flash', 'yes')
 
 @php
 $oldKaryawanId  = old('id_karyawan');
@@ -14,7 +15,7 @@ $oldMesinTxt = $oldMesinObj ? "{$oldMesinObj->id_mesin} - {$oldMesinObj->nama_me
 @section('content')
 
 {{-- ══ SATU ALPINE SCOPE — mengontrol drawer sekaligus konten halaman ══ --}}
-<div x-data="{ drawerOpen: {{ $errors->any() ? 'true' : 'false' }} }">
+<div x-data="{ drawerOpen: {{ $errors->any() ? 'true' : 'false' }}, filterOpen: {{ ($search ?? '') !== '' ? 'true' : 'false' }} }">
 
 {{-- ── DRAWER BACKDROP ──────────────────────────────────────────── --}}
 <div x-show="drawerOpen"
@@ -30,6 +31,7 @@ $oldMesinTxt = $oldMesinObj ? "{$oldMesinObj->id_mesin} - {$oldMesinObj->nama_me
 </div>
 
 {{-- ── DRAWER PANEL ─────────────────────────────────────────────── --}}
+{{-- x-show HANYA mengontrol visibility — JANGAN taruh display:flex di sini --}}
 <div x-show="drawerOpen"
      x-cloak
      x-transition:enter="transition ease-out duration-250"
@@ -38,7 +40,10 @@ $oldMesinTxt = $oldMesinObj ? "{$oldMesinObj->id_mesin} - {$oldMesinObj->nama_me
      x-transition:leave="transition ease-in duration-200"
      x-transition:leave-start="transform translate-x-0"
      x-transition:leave-end="transform translate-x-full"
-     style="position:fixed;top:0;right:0;height:100vh;width:700px;max-width:100vw;background:#fff;z-index:1050;display:flex;flex-direction:column;box-shadow:-4px 0 24px rgba(0,0,0,.18)">
+     style="position:fixed;top:0;right:0;height:100dvh;width:700px;max-width:100vw;z-index:1050;">
+
+    {{-- Inner flex container: SELALU flex, tidak disentuh x-show --}}
+    <div style="display:flex;flex-direction:column;height:100%;background:#fff;box-shadow:-4px 0 24px rgba(0,0,0,.18)">
 
     {{-- Header --}}
     <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:#111827;color:#fff;flex-shrink:0">
@@ -51,28 +56,30 @@ $oldMesinTxt = $oldMesinObj ? "{$oldMesinObj->id_mesin} - {$oldMesinObj->nama_me
         </button>
     </div>
 
-    {{-- Body (scrollable) --}}
-    <div style="flex:1;overflow-y:auto;padding:20px">
+    {{-- Alpine + Form wrapper --}}
+    <div x-data="dandoriMain()" style="flex:1;min-height:0;display:flex;flex-direction:column">
+        <form method="POST" action="{{ route('input.dandori.store') }}" id="formDandori" novalidate
+              style="flex:1;min-height:0;display:flex;flex-direction:column">
+            @csrf
 
-        @if($errors->any())
-        <div class="alert alert-danger mb-3" style="font-size:0.82rem">
-            <ul class="mb-0 ps-3">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
-        </div>
-        @endif
+            {{-- Body (scrollable) --}}
+            <div style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:20px 24px;overscroll-behavior:contain">
 
-        @if($karyawan->isEmpty() || $mesin->isEmpty() || $parts->isEmpty() || $losstimes->isEmpty())
-        <div class="alert alert-warning mb-3" style="font-size:0.82rem">
-            <strong>Master data belum lengkap:</strong>
-            @if($karyawan->isEmpty()) <a href="{{ route('master.karyawan.index') }}">Tambah Karyawan/Operator</a>. @endif
-            @if($mesin->isEmpty()) <a href="{{ route('master.mesin.index') }}">Tambah Mesin</a>. @endif
-            @if($parts->isEmpty()) <a href="{{ route('master.part.index') }}">Tambah Part</a>. @endif
-            @if($losstimes->isEmpty()) <a href="{{ route('master.losstime.index') }}">Tambah Loss Time</a>. @endif
-        </div>
-        @endif
+                @if($errors->any())
+                <div class="alert alert-danger mb-3" style="font-size:0.82rem">
+                    <ul class="mb-0 ps-3">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
+                </div>
+                @endif
 
-        <div x-data="dandoriMain()">
-            <form method="POST" action="{{ route('input.dandori.store') }}" id="formDandori" novalidate>
-                @csrf
+                @if($karyawan->isEmpty() || $mesin->isEmpty() || $parts->isEmpty() || $losstimes->isEmpty())
+                <div class="alert alert-warning mb-3" style="font-size:0.82rem">
+                    <strong>Master data belum lengkap:</strong>
+                    @if($karyawan->isEmpty()) <a href="{{ route('master.karyawan.index') }}">Tambah Karyawan/Operator</a>. @endif
+                    @if($mesin->isEmpty()) <a href="{{ route('master.mesin.index') }}">Tambah Mesin</a>. @endif
+                    @if($parts->isEmpty()) <a href="{{ route('master.part.index') }}">Tambah Part</a>. @endif
+                    @if($losstimes->isEmpty()) <a href="{{ route('master.losstime.index') }}">Tambah Loss Time</a>. @endif
+                </div>
+                @endif
 
                 {{-- ── INFORMASI SESI ──────────────────────────────── --}}
                 <div style="font-size:0.7rem;font-weight:700;letter-spacing:.06em;color:#6b7280;text-transform:uppercase;margin-bottom:8px">
@@ -293,24 +300,27 @@ $oldMesinTxt = $oldMesinObj ? "{$oldMesinObj->id_mesin} - {$oldMesinObj->nama_me
                     </table>
                 </div>
 
-                <p style="font-size:0.75rem;color:#6b7280;margin-bottom:16px">
+                <p style="font-size:0.75rem;color:#6b7280;margin-bottom:0">
                     <i class="bi bi-info-circle me-1"></i>
                     Kolom <strong>Std</strong> dan <strong>Over</strong> otomatis terisi setelah memilih jenis loss time dan memasukkan waktu aktual.
                 </p>
 
-                <div style="padding-top:14px;border-top:1px solid #e5e7eb;display:flex;gap:8px">
-                    <button type="submit" class="btn btn-primary btn-sm" style="flex:1">
-                        <i class="bi bi-save me-1"></i>Simpan Data Dandori
-                    </button>
-                    <button type="button" @click="drawerOpen = false" class="btn btn-outline-secondary btn-sm">
-                        Batal
-                    </button>
-                </div>
+            </div>{{-- /scrollable body --}}
 
-            </form>
-        </div>{{-- /dandoriMain --}}
+            {{-- Footer sticky — selalu terlihat di bawah drawer --}}
+            <div style="flex-shrink:0;padding:14px 20px;border-top:2px solid #e5e7eb;display:flex;gap:10px;background:#f9fafb">
+                <button type="submit" class="btn btn-primary" style="flex:1;font-size:0.95rem">
+                    <i class="bi bi-save me-1"></i>Simpan Data Dandori
+                </button>
+                <button type="button" @click="drawerOpen = false" class="btn btn-outline-secondary" style="font-size:0.95rem">
+                    Batal
+                </button>
+            </div>
 
-    </div>{{-- /drawer body --}}
+        </form>
+    </div>{{-- /alpine + form wrapper --}}
+
+    </div>{{-- /inner flex container --}}
 </div>{{-- /drawer panel --}}
 
 {{-- ══ KONTEN HALAMAN ══════════════════════════════════════════ --}}
@@ -326,6 +336,14 @@ $oldMesinTxt = $oldMesinObj ? "{$oldMesinObj->id_mesin} - {$oldMesinObj->nama_me
         @endif
         <button class="btn btn-primary btn-sm" @click="drawerOpen = true">
             <i class="bi bi-plus-lg me-1"></i>Input Baru
+        </button>
+        <button type="button" @click="filterOpen = !filterOpen"
+                :class="filterOpen ? 'btn-secondary' : 'btn-outline-secondary'"
+                class="btn btn-sm" style="position:relative">
+            <i class="bi bi-funnel me-1"></i>Filter
+            @if(($search ?? '') !== '')
+            <span style="position:absolute;top:-5px;right:-5px;width:8px;height:8px;background:#ef4444;border-radius:50%;border:1.5px solid #fff"></span>
+            @endif
         </button>
         <button class="btn btn-outline-secondary btn-sm"
                 onclick="document.getElementById('exportDandoriPanel').classList.toggle('d-none')">
@@ -401,6 +419,13 @@ $oldMesinTxt = $oldMesinObj ? "{$oldMesinObj->id_mesin} - {$oldMesinObj->nama_me
 </div>
 @endif
 
+<div x-show="filterOpen" x-cloak
+     x-transition:enter="transition ease-out duration-150"
+     x-transition:enter-start="opacity-0 -translate-y-1"
+     x-transition:enter-end="opacity-100 translate-y-0"
+     x-transition:leave="transition ease-in duration-100"
+     x-transition:leave-start="opacity-100 translate-y-0"
+     x-transition:leave-end="opacity-0 -translate-y-1">
 <div class="filter-bar mb-3">
     <form method="GET" action="{{ route('input.dandori.index') }}"
           style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;width:100%">
@@ -412,29 +437,78 @@ $oldMesinTxt = $oldMesinObj ? "{$oldMesinObj->id_mesin} - {$oldMesinObj->nama_me
             <label>Sampai Tanggal</label>
             <input type="date" name="date_to" class="form-control form-control-sm" value="{{ $dateTo }}">
         </div>
+        <div class="filter-group" style="min-width:220px;flex:1">
+            <label>Cari</label>
+            <div style="position:relative">
+                <i class="bi bi-search" style="position:absolute;left:8px;top:50%;transform:translateY(-50%);color:#9ca3af;font-size:0.8rem;pointer-events:none"></i>
+                <input type="text" name="q" value="{{ $search ?? '' }}" class="form-control form-control-sm"
+                       style="padding-left:28px" placeholder="Operator, mesin, part, proses, loss time…">
+            </div>
+        </div>
         <div class="filter-group" style="flex-direction:row;gap:6px;align-items:flex-end">
             <button type="submit" class="btn btn-secondary btn-sm"><i class="bi bi-funnel me-1"></i>Tampilkan</button>
             <a href="{{ route('input.dandori.index') }}" class="btn btn-outline-secondary btn-sm">Reset</a>
         </div>
         <div style="margin-left:auto;display:flex;align-items:flex-end">
             <span style="font-size:0.75rem;color:#5d7283;background:#f0f2f5;border:1px solid #d4dbe3;padding:4px 10px;">
-                {{ $rincian->total() }} baris
+                {{ $rincian->total() }} baris{{ ($search ?? '') ? ' (filter aktif)' : '' }}
             </span>
         </div>
     </form>
 </div>
+</div>{{-- /filterOpen wrapper --}}
+
+@if($myLastRecord)
+@php
+    $lastUrl = route('input.dandori.index', [
+        'date_from' => $myLastRecord->tanggal->format('Y-m-d'),
+        'date_to'   => $myLastRecord->tanggal->format('Y-m-d'),
+    ]) . '#last-input';
+@endphp
+<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:2px;padding:9px 14px;margin-bottom:10px;display:flex;align-items:center;gap:10px">
+    <i class="bi bi-clock-history" style="color:#0284c7;font-size:1rem;flex-shrink:0"></i>
+    <div style="flex:1;font-size:0.83rem;min-width:0;color:#0c4a6e">
+        <strong style="color:#075985">{{ auth()->user()->name }}</strong>
+        <span style="color:#94a3b8;margin:0 3px">·</span>
+        <span style="color:#94a3b8;font-size:0.75rem">{{ auth()->user()->email }}</span>
+        <span style="color:#cbd5e1;margin:0 6px">|</span>
+        <span style="color:#64748b;font-size:0.78rem">{{ $myLastRecord->tanggal->format('d/m/Y') }}</span>
+        <span style="color:#94a3b8;margin:0 4px">·</span>
+        <span style="color:#374151">{{ $myLastRecord->karyawan?->nama_karyawan ?? '—' }}</span>
+        <span style="color:#94a3b8"> — </span>
+        <span style="color:#374151">{{ $myLastRecord->mesin?->id_mesin ?? '—' }}</span>
+        <span style="color:#94a3b8"> — </span>
+        <span style="color:#374151">{{ $myLastRecord->partProses?->part?->part_name ?? '—' }}</span>
+        <span style="color:#94a3b8;margin:0 5px">·</span>
+        <span style="color:#64748b;font-size:0.78rem">{{ $myLastRecord->created_at->diffForHumans() }}</span>
+    </div>
+    @if($myLastOnPage)
+    <a href="#last-input"
+       style="display:inline-flex;align-items:center;gap:4px;height:26px;padding:0 10px;border-radius:2px;background:#0284c7;color:#fff;font-size:0.78rem;font-weight:600;text-decoration:none;white-space:nowrap;flex-shrink:0;transition:background 100ms"
+       onmouseenter="this.style.background='#0369a1'" onmouseleave="this.style.background='#0284c7'">
+        <i class="bi bi-arrow-down" style="font-size:0.7rem"></i>Lihat
+    </a>
+    @else
+    <a href="{{ $lastUrl }}"
+       style="display:inline-flex;align-items:center;gap:4px;height:26px;padding:0 10px;border-radius:2px;border:1px solid #bae6fd;background:#fff;color:#0284c7;font-size:0.78rem;font-weight:600;text-decoration:none;white-space:nowrap;flex-shrink:0;transition:all 100ms"
+       onmouseenter="this.style.background='#e0f2fe'" onmouseleave="this.style.background='#fff'">
+        <i class="bi bi-box-arrow-up-right" style="font-size:0.7rem"></i>Buka
+    </a>
+    @endif
+</div>
+@endif
 
 <div class="erp-panel">
     <div class="erp-panel-header">Daftar LHP Dandori</div>
-    <div style="overflow-x:auto">
-        <table class="erp-table" style="min-width:1350px">
-            <thead>
+    <div style="overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 340px);min-height:200px">
+        <table class="erp-table tbl-freeze" style="min-width:1350px">
+            <thead style="position:sticky;top:0;z-index:10">
                 <tr>
-                    <th style="width:85px">Tanggal</th>
-                    <th style="width:65px">Shift</th>
-                    <th style="width:140px">Operator</th>
-                    <th style="width:55px">Mesin</th>
-                    <th style="width:110px">Nama Mesin</th>
+                    <th class="sc sc-1" style="width:85px">Tanggal</th>
+                    <th class="sc sc-2" style="width:65px">Shift</th>
+                    <th class="sc sc-3" style="width:140px">Operator</th>
+                    <th class="sc sc-4" style="width:55px">Mesin</th>
+                    <th class="sc sc-5 sc-sep" style="width:110px">Nama Mesin</th>
                     <th style="width:85px">Part No</th>
                     <th style="width:120px">Part Name</th>
                     <th style="width:40px;text-align:center">ID<br>Proses</th>
@@ -444,9 +518,7 @@ $oldMesinTxt = $oldMesinObj ? "{$oldMesinObj->id_mesin} - {$oldMesinObj->nama_me
                     <th style="width:70px;text-align:right">Actual<br>(mnt)</th>
                     <th style="width:60px;text-align:right">Std<br>(mnt)</th>
                     <th style="width:65px;text-align:right">Over<br>(mnt)</th>
-                    @if(auth()->user()->role === 'admin')
-                    <th style="width:70px">Aksi</th>
-                    @endif
+                    <th style="width:90px">Aksi</th>
                 </tr>
             </thead>
             <tbody>
@@ -458,17 +530,24 @@ $oldMesinTxt = $oldMesinObj ? "{$oldMesinObj->id_mesin} - {$oldMesinObj->nama_me
                     $sessionKey   = $r->tanggal->format('Ymd').'_'.$r->id_shift.'_'.$r->id_karyawan.'_'.$r->id_mesin.'_'.$r->id_part_proses;
                     $isNewSession = $sessionKey !== $prevSession;
                     $prevSession  = $sessionKey;
+                    $isMyLast     = $myLastRecord && $r->id === $myLastRecord->id;
                 @endphp
-                <tr style="{{ $isNewSession && !$loop->first ? 'border-top:2px solid #d1d5db' : '' }}">
-                    <td style="{{ $isNewSession ? 'font-weight:600' : 'color:#c4c9d4;font-size:0.78rem' }}">
+                <tr id="{{ $isMyLast ? 'last-input' : '' }}"
+                    style="{{ $isNewSession && !$loop->first ? 'border-top:2px solid #d1d5db;' : '' }}{{ $isMyLast ? 'box-shadow:inset 3px 0 0 #0284c7;' : '' }}">
+                    <td class="sc sc-1" style="{{ $isNewSession ? 'font-weight:600' : 'color:#c4c9d4;font-size:0.78rem' }}">
                         {{ $r->tanggal->format('d/m/Y') }}
+                        @if($isMyLast)
+                        <div style="margin-top:2px;font-size:0.6rem;font-weight:700;color:#0284c7;letter-spacing:.04em;line-height:1;white-space:nowrap">
+                            <i class="bi bi-arrow-left-short"></i>Terakhirmu
+                        </div>
+                        @endif
                     </td>
-                    <td style="{{ !$isNewSession ? 'color:#c4c9d4;font-size:0.78rem' : '' }}">{{ $r->shift?->nama_shift ?? '—' }}</td>
-                    <td style="{{ !$isNewSession ? 'color:#c4c9d4;font-size:0.78rem' : '' }}">{{ $r->karyawan?->nama_karyawan ?? '—' }}</td>
-                    <td style="{{ !$isNewSession ? 'color:#c4c9d4' : 'font-weight:600' }}">{{ $r->mesin?->id_mesin ?? '—' }}</td>
-                    <td style="font-size:0.75rem;{{ !$isNewSession ? 'color:#c4c9d4' : '' }}">{{ $r->mesin?->nama_mesin ?? '—' }}</td>
-                    <td style="{{ !$isNewSession ? 'color:#c4c9d4;font-size:0.78rem' : '' }}">{{ $part?->part_no ?? '—' }}</td>
-                    <td style="font-size:0.75rem;{{ !$isNewSession ? 'color:#c4c9d4' : '' }}">{{ $part?->part_name ?? '—' }}</td>
+                    <td class="sc sc-2" style="white-space:nowrap;{{ !$isNewSession ? 'color:#c4c9d4;font-size:0.78rem' : '' }}">{{ $r->shift?->nama_shift ?? '—' }}</td>
+                    <td class="sc sc-3" style="white-space:nowrap;{{ !$isNewSession ? 'color:#c4c9d4;font-size:0.78rem' : '' }}">{{ $r->karyawan?->nama_karyawan ?? '—' }}</td>
+                    <td class="sc sc-4" style="{{ !$isNewSession ? 'color:#c4c9d4' : 'font-weight:600' }}">{{ $r->mesin?->id_mesin ?? '—' }}</td>
+                    <td class="sc sc-5 sc-sep" style="font-size:0.75rem;white-space:nowrap;{{ !$isNewSession ? 'color:#c4c9d4' : '' }}">{{ $r->mesin?->nama_mesin ?? '—' }}</td>
+                    <td style="white-space:nowrap;{{ !$isNewSession ? 'color:#c4c9d4;font-size:0.78rem' : '' }}">{{ $part?->part_no ?? '—' }}</td>
+                    <td style="font-size:0.75rem;white-space:nowrap;{{ !$isNewSession ? 'color:#c4c9d4' : '' }}">{{ $part?->part_name ?? '—' }}</td>
                     <td style="text-align:center;{{ !$isNewSession ? 'color:#c4c9d4' : 'font-weight:600' }}">{{ $pp?->id_proses ?? '—' }}</td>
                     <td style="font-size:0.75rem;{{ !$isNewSession ? 'color:#c4c9d4' : '' }}">{{ $pp?->nama_proses ?? '—' }}</td>
                     <td style="font-weight:600;letter-spacing:0.3px">{{ $r->losstime?->kode ?? '—' }}</td>
@@ -482,19 +561,47 @@ $oldMesinTxt = $oldMesinObj ? "{$oldMesinObj->id_mesin} - {$oldMesinObj->nama_me
                             <span style="color:#27ae60;font-weight:400">OK</span>
                         @endif
                     </td>
-                    @if(auth()->user()->role === 'admin')
+                    @php $note = $r->staff_note ?? null; @endphp
                     <td>
-                        <form method="POST" action="{{ route('input.dandori.destroy', $r) }}"
-                              onsubmit="return confirm('Hapus baris loss time ini?')">
-                            @csrf @method('DELETE')
-                            <button class="btn btn-danger btn-sm">Hapus</button>
-                        </form>
+                        @if(auth()->user()->role === 'admin')
+                        <div class="action-btns">
+                            <a href="{{ route('input.dandori.edit', $r) }}" class="btn btn-warning btn-sm">Edit</a>
+                            <form method="POST" action="{{ route('input.dandori.destroy', $r) }}"
+                                  onsubmit="return confirm('Hapus baris loss time ini?')">
+                                @csrf @method('DELETE')
+                                <button class="btn btn-danger btn-sm">Hapus</button>
+                            </form>
+                            @if($note)
+                            @php
+                                $resolved   = $r->staff_note_resolved_at;
+                                $resolvedBy = $r->noteResolvedBy?->name ?? '';
+                                $noteAt     = $r->staff_note_at?->toIso8601String() ?? '';
+                                $updatedAt  = $r->updated_at?->toIso8601String() ?? '';
+                                $resolvedAt = $resolved?->toIso8601String() ?? '';
+                            @endphp
+                            <button type="button"
+                                    onclick="openNoteDrawer('dandori',{{ $r->id }},'{{ addslashes($note) }}',true,'{{ $updatedAt }}','{{ $noteAt }}','{{ $resolvedAt }}','{{ addslashes($resolvedBy) }}')"
+                                    class="btn btn-sm"
+                                    style="background:{{ $resolved ? '#f0fdf4' : '#fef9c3' }};border:1px solid {{ $resolved ? '#86efac' : '#fde047' }};color:{{ $resolved ? '#166534' : '#713f12' }};white-space:nowrap">
+                                <i class="bi bi-{{ $resolved ? 'check2-circle' : 'chat-left-text-fill' }}"></i> Note
+                            </button>
+                            @endif
+                        </div>
+                        @else
+                        @php $staffResolvedAt = $r->staff_note_resolved_at?->toIso8601String() ?? ''; @endphp
+                        <button type="button"
+                                onclick="openNoteDrawer('dandori',{{ $r->id }},'{{ addslashes($note ?? '') }}',false,'','','{{ $staffResolvedAt }}','')"
+                                class="btn btn-sm {{ $staffResolvedAt ? 'btn-success' : ($note ? 'btn-warning' : 'btn-outline-secondary') }}"
+                                style="font-size:0.78rem;white-space:nowrap">
+                            <i class="bi bi-{{ $staffResolvedAt ? 'check2-circle' : ('chat-left-text' . ($note ? '-fill' : '')) }} me-1"></i>
+                            {{ $staffResolvedAt ? 'Selesai' : ($note ? 'Edit Note' : 'Note') }}
+                        </button>
+                        @endif
                     </td>
-                    @endif
                 </tr>
             @empty
                 <tr>
-                    <td colspan="{{ auth()->user()->role === 'admin' ? 15 : 14 }}"
+                    <td colspan="15"
                         style="text-align:center;color:#888;padding:20px">
                         Belum ada data Dandori pada rentang tanggal ini.
                     </td>
@@ -505,6 +612,184 @@ $oldMesinTxt = $oldMesinObj ? "{$oldMesinObj->id_mesin} - {$oldMesinObj->nama_me
     </div>
 </div>
 <div class="mt-3">{{ $rincian->links() }}</div>
+
+{{-- ── Note Drawer (Alpine, no blocking backdrop) ───────────────── --}}
+<div x-data="{
+        open:false, action:'', text:'', hasNote:false, recordId:0,
+        isAdmin:false, noteAt:'', updatedAt:'', resolvedAt:'', resolvedBy:'', resolveAction:'',
+        get dataChanged() {
+            if (!this.updatedAt || !this.noteAt) return null;
+            return new Date(this.updatedAt) > new Date(this.noteAt);
+        }
+     }"
+     x-on:open-note.window="
+        open=true; action=$event.detail.action; text=$event.detail.text;
+        hasNote=!!$event.detail.text; recordId=$event.detail.recordId;
+        isAdmin=$event.detail.isAdmin||false; noteAt=$event.detail.noteAt||'';
+        updatedAt=$event.detail.updatedAt||''; resolvedAt=$event.detail.resolvedAt||'';
+        resolvedBy=$event.detail.resolvedBy||''; resolveAction=$event.detail.resolveAction||'';
+     "
+     x-on:keydown.escape.window="open=false">
+
+    <div x-show="open" x-cloak @click="open=false"
+         style="position:fixed;inset:0;z-index:1049"></div>
+
+    <div x-show="open" x-cloak
+         x-transition:enter="transition ease-out duration-250"
+         x-transition:enter-start="transform translate-x-full"
+         x-transition:enter-end="transform translate-x-0"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="transform translate-x-0"
+         x-transition:leave-end="transform translate-x-full"
+         style="position:fixed;top:0;right:0;height:100dvh;width:420px;max-width:100vw;
+                z-index:1050;display:flex;flex-direction:column;
+                background:#fff;box-shadow:-6px 0 32px rgba(0,0,0,.15)">
+
+        <div style="display:flex;align-items:center;justify-content:space-between;
+                    padding:14px 20px;background:#111827;color:#fff;flex-shrink:0">
+            <div style="font-weight:700;font-size:0.95rem">
+                <i class="bi bi-chat-left-text-fill me-2"></i>
+                <span x-show="isAdmin">Note dari Staff</span>
+                <span x-show="!isAdmin">Note untuk Admin</span>
+            </div>
+            <button type="button" @click="open=false"
+                    style="background:none;border:none;color:#fff;font-size:1.2rem;cursor:pointer;line-height:1;padding:0">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+
+        <div style="flex:1;overflow-y:auto;padding:24px">
+            <div x-show="isAdmin">
+                <p style="font-size:0.82rem;color:#6b7280;margin-bottom:8px">Catatan dari staff:</p>
+                <div x-text="text"
+                     style="background:#fafafa;border:1px solid #e5e7eb;border-radius:4px;
+                            padding:12px;font-size:0.88rem;min-height:80px;white-space:pre-wrap;color:#111827"></div>
+                <div x-show="noteAt" style="font-size:0.75rem;color:#9ca3af;margin-top:6px">
+                    Dikirim: <span x-text="noteAt ? new Date(noteAt).toLocaleString('id-ID',{dateStyle:'medium',timeStyle:'short'}) : ''"></span>
+                </div>
+                <div style="margin-top:16px">
+                    <div x-show="dataChanged === true"
+                         style="padding:10px 14px;background:#f0fdf4;border:1px solid #86efac;border-radius:4px;font-size:0.82rem;color:#166534">
+                        <i class="bi bi-check-circle-fill me-1"></i>Data sudah diperbarui setelah note dikirim
+                    </div>
+                    <div x-show="dataChanged === false"
+                         style="padding:10px 14px;background:#fef9c3;border:1px solid #fde047;border-radius:4px;font-size:0.82rem;color:#713f12">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i>Data <strong>belum</strong> diperbarui sejak note dikirim
+                    </div>
+                </div>
+                <div x-show="resolvedAt"
+                     style="margin-top:12px;padding:10px 14px;background:#f0fdf4;border:1px solid #86efac;border-radius:4px;font-size:0.82rem;color:#166534">
+                    <i class="bi bi-check2-circle me-1"></i>
+                    Sudah ditandai selesai oleh <strong x-text="resolvedBy"></strong>
+                    pada <span x-text="resolvedAt ? new Date(resolvedAt).toLocaleString('id-ID',{dateStyle:'medium',timeStyle:'short'}) : ''"></span>
+                </div>
+            </div>
+            <div x-show="!isAdmin">
+                <template x-if="resolvedAt">
+                    <div>
+                        <div style="padding:10px 14px;background:#f0fdf4;border:1px solid #86efac;border-radius:4px;font-size:0.82rem;color:#166534;margin-bottom:12px">
+                            <i class="bi bi-lock-fill me-1"></i>
+                            Note sudah di-feedback admin. Tidak dapat diubah lagi.
+                        </div>
+                        <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:4px;padding:12px 14px;font-size:0.88rem;color:#374151;white-space:pre-wrap" x-text="text || '(kosong)'"></div>
+                    </div>
+                </template>
+                <template x-if="!resolvedAt">
+                    <div>
+                        <p style="font-size:0.82rem;color:#6b7280;margin-bottom:14px;line-height:1.6">
+                            Tulis catatan untuk admin mengenai kesalahan pada data ini.
+                            Admin akan melihat catatan ini dan dapat memperbaiki data.
+                        </p>
+                        <textarea x-model="text" rows="6"
+                                  class="form-control" style="font-size:0.88rem;resize:vertical"
+                                  placeholder="Contoh: Actual menit seharusnya 20, bukan 15. Mohon dikoreksi."
+                                  maxlength="1000"></textarea>
+                        <div style="font-size:0.75rem;color:#9ca3af;text-align:right;margin-top:4px">
+                            <span x-text="text.length">0</span>/1000
+                        </div>
+                        <div x-show="hasNote" style="margin-top:16px;padding:10px 14px;
+                             background:#fefce8;border:1px solid #fde047;border-radius:4px;font-size:0.8rem;color:#713f12">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Note sebelumnya sudah dikirim. Kamu bisa ubah atau hapus.
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <div style="flex-shrink:0;padding:16px 20px;border-top:1px solid #e5e7eb;display:flex;gap:8px;justify-content:flex-end">
+            <template x-if="isAdmin">
+                <div style="display:flex;gap:8px;width:100%;justify-content:flex-end">
+                    <button type="button" @click="open=false" class="btn btn-outline-secondary btn-sm">Tutup</button>
+                    <form :action="action" method="POST" style="display:inline">
+                        @csrf
+                        <input type="hidden" name="record_id" :value="recordId">
+                        <input type="hidden" name="staff_note" value="">
+                        <button type="submit" class="btn btn-outline-danger btn-sm"
+                                onclick="return confirm('Hapus note ini?')">
+                            <i class="bi bi-trash me-1"></i>Hapus Note
+                        </button>
+                    </form>
+                    <template x-if="!resolvedAt">
+                        <form :action="resolveAction" method="POST" style="display:inline">
+                            @csrf
+                            <input type="hidden" name="record_id" :value="recordId">
+                            <button type="submit" class="btn btn-success btn-sm">
+                                <i class="bi bi-check2-circle me-1"></i>Tandai Selesai
+                            </button>
+                        </form>
+                    </template>
+                    <template x-if="resolvedAt">
+                        <span class="btn btn-success btn-sm disabled" style="opacity:0.6">
+                            <i class="bi bi-check2-circle me-1"></i>Sudah Selesai
+                        </span>
+                    </template>
+                </div>
+            </template>
+            <template x-if="!isAdmin">
+                <div style="display:flex;gap:8px;width:100%;justify-content:flex-end">
+                    <button type="button" @click="open=false" class="btn btn-outline-secondary btn-sm">Batal</button>
+                    <template x-if="!resolvedAt">
+                        <div style="display:contents">
+                            <form x-show="hasNote" :action="action" method="POST" style="display:inline">
+                                @csrf
+                                <input type="hidden" name="record_id" :value="recordId">
+                                <input type="hidden" name="staff_note" value="">
+                                <button type="submit" class="btn btn-outline-danger btn-sm"
+                                        onclick="return confirm('Hapus note ini?')">
+                                    <i class="bi bi-trash me-1"></i>Hapus Note
+                                </button>
+                            </form>
+                            <form :action="action" method="POST" style="display:inline">
+                                @csrf
+                                <input type="hidden" name="record_id" :value="recordId">
+                                <input type="hidden" name="staff_note" :value="text">
+                                <button type="submit" class="btn btn-primary btn-sm" :disabled="!text.trim()">
+                                    <i class="bi bi-send me-1"></i>Kirim Note
+                                </button>
+                            </form>
+                        </div>
+                    </template>
+                </div>
+            </template>
+        </div>
+    </div>
+</div>
+
+<script>
+function openNoteDrawer(type, id, existingNote, isAdmin, updatedAt, noteAt, resolvedAt, resolvedBy) {
+    const noteRoutes    = { produksi: '/input/produksi-note',    qc: '/input/qc-note',    dandori: '/input/dandori-note' };
+    const resolveRoutes = { produksi: '/input/produksi-note-resolve', qc: '/input/qc-note-resolve', dandori: '/input/dandori-note-resolve' };
+    window.dispatchEvent(new CustomEvent('open-note', {
+        detail: {
+            action: noteRoutes[type], resolveAction: resolveRoutes[type],
+            recordId: id, text: existingNote || '',
+            isAdmin: !!isAdmin, noteAt: noteAt || '',
+            updatedAt: updatedAt || '', resolvedAt: resolvedAt || '', resolvedBy: resolvedBy || ''
+        }
+    }));
+}
+</script>
 
 </div>{{-- /alpine outer scope --}}
 @endsection

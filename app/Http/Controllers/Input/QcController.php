@@ -185,6 +185,9 @@ class QcController extends Controller
         $request->validate(['staff_note' => 'nullable|string|max:1000', 'record_id' => 'required|integer']);
         $qc = TransaksiQc::find($request->input('record_id'));
         if (!$qc) return back()->with('error', 'Data tidak ditemukan.');
+        if ($qc->staff_note_resolved_at) {
+            return back()->with('error', 'Note sudah di-feedback admin, tidak dapat diubah.');
+        }
         try {
             $qc->update([
                 'staff_note'    => $request->input('staff_note') ?: null,

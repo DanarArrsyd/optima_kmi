@@ -1,5 +1,6 @@
 @extends('layouts.app')
 @section('title', 'LHP Quality')
+@section('suppress_layout_flash', 'yes')
 
 @php
 $oldKaryawanId  = old('id_karyawan_qc');
@@ -14,7 +15,7 @@ $oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->n
 @section('content')
 
 {{-- ══ SATU ALPINE SCOPE — mengontrol drawer sekaligus konten halaman ══ --}}
-<div x-data="{ drawerOpen: {{ $errors->any() ? 'true' : 'false' }} }">
+<div x-data="{ drawerOpen: {{ $errors->any() ? 'true' : 'false' }}, filterOpen: {{ ($search ?? '') !== '' ? 'true' : 'false' }} }">
 
 {{-- ── DRAWER BACKDROP ──────────────────────────────────────────── --}}
 <div x-show="drawerOpen"
@@ -38,7 +39,8 @@ $oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->n
      x-transition:leave="transition ease-in duration-200"
      x-transition:leave-start="transform translate-x-0"
      x-transition:leave-end="transform translate-x-full"
-     style="position:fixed;top:0;right:0;height:100vh;width:500px;max-width:100vw;background:#fff;z-index:1050;display:flex;flex-direction:column;box-shadow:-4px 0 24px rgba(0,0,0,.18)">
+     style="position:fixed;top:0;right:0;height:100dvh;width:640px;max-width:100vw;z-index:1050;">
+    <div style="display:flex;flex-direction:column;height:100%;background:#fff;box-shadow:-4px 0 24px rgba(0,0,0,.18)">
 
     {{-- Header --}}
     <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:#111827;color:#fff;flex-shrink:0">
@@ -52,16 +54,16 @@ $oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->n
     </div>
 
     {{-- Body (scrollable) --}}
-    <div style="flex:1;overflow-y:auto;padding:20px">
+    <div style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:24px;overscroll-behavior:contain">
 
         @if($errors->any())
-        <div class="alert alert-danger mb-3" style="font-size:0.82rem">
+        <div class="alert alert-danger mb-3" style="font-size:0.92rem">
             <ul class="mb-0 ps-3">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
         </div>
         @endif
 
         @if($karyawan->isEmpty() || $parts->isEmpty())
-        <div class="alert alert-warning mb-3" style="font-size:0.82rem">
+        <div class="alert alert-warning mb-3" style="font-size:0.92rem">
             <strong>Master data belum lengkap:</strong>
             @if($karyawan->isEmpty()) <a href="{{ route('master.karyawan.index') }}">Tambah QC Inspector (departemen: QC)</a>. @endif
             @if($parts->isEmpty()) <a href="{{ route('master.part.index') }}">Tambah Part / Dies</a>. @endif
@@ -74,24 +76,24 @@ $oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->n
 
                 {{-- Tanggal Pengecekan + Tanggal Produksi Part --}}
                 <div class="col-6">
-                    <label class="form-label" style="font-size:0.8rem">Tanggal Pengecekan <span class="text-danger">*</span></label>
+                    <label class="form-label" style="font-size:0.92rem">Tanggal Pengecekan <span class="text-danger">*</span></label>
                     <input type="date" name="tgl_pengecekan"
-                           class="form-control form-control-sm @error('tgl_pengecekan') is-invalid @enderror"
+                           class="form-control @error('tgl_pengecekan') is-invalid @enderror"
                            value="{{ old('tgl_pengecekan', date('Y-m-d')) }}">
                     @error('tgl_pengecekan')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
                 <div class="col-6">
-                    <label class="form-label" style="font-size:0.8rem">Tanggal Produksi Part <span class="text-danger">*</span></label>
+                    <label class="form-label" style="font-size:0.92rem">Tanggal Produksi Part <span class="text-danger">*</span></label>
                     <input type="date" name="tgl_produksi_part"
-                           class="form-control form-control-sm @error('tgl_produksi_part') is-invalid @enderror"
+                           class="form-control @error('tgl_produksi_part') is-invalid @enderror"
                            value="{{ old('tgl_produksi_part', date('Y-m-d')) }}">
                     @error('tgl_produksi_part')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
 
                 {{-- Shift --}}
                 <div class="col-6">
-                    <label class="form-label" style="font-size:0.8rem">Shift <span class="text-danger">*</span></label>
-                    <select name="id_shift" class="form-select form-select-sm @error('id_shift') is-invalid @enderror">
+                    <label class="form-label" style="font-size:0.92rem">Shift <span class="text-danger">*</span></label>
+                    <select name="id_shift" class="form-select @error('id_shift') is-invalid @enderror">
                         <option value="">-- Pilih Shift --</option>
                         @foreach($shifts as $shift)
                             <option value="{{ $shift->id }}" {{ old('id_shift') == $shift->id ? 'selected' : '' }}>
@@ -105,10 +107,10 @@ $oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->n
                 {{-- QC Inspector — typeahead, full width --}}
                 <div class="col-12"
                      x-data="taField(taKaryawan, '{{ $oldKaryawanTxt }}', {{ $oldKaryawanId ?: 'null' }})">
-                    <label class="form-label" style="font-size:0.8rem">QC Inspector <span class="text-danger">*</span></label>
+                    <label class="form-label" style="font-size:0.92rem">QC Inspector <span class="text-danger">*</span></label>
                     <div class="ta-wrap">
                         <input type="text"
-                               class="form-control form-control-sm ta-input @error('id_karyawan_qc') is-invalid @enderror"
+                               class="form-control ta-input @error('id_karyawan_qc') is-invalid @enderror"
                                x-model="query"
                                @focus="openDd()"
                                @blur="closeDd()"
@@ -126,15 +128,15 @@ $oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->n
                             </template>
                         </div>
                     </div>
-                    @error('id_karyawan_qc')<div class="invalid-feedback d-block" style="font-size:0.78rem">{{ $message }}</div>@enderror
+                    @error('id_karyawan_qc')<div class="invalid-feedback d-block" style="font-size:0.88rem">{{ $message }}</div>@enderror
                 </div>
 
                 {{-- Part — typeahead, auto-select finish-good proses --}}
                 <div class="col-12" x-data="qcPartSelector()">
-                    <label class="form-label" style="font-size:0.8rem">Part (Finish Good) <span class="text-danger">*</span></label>
+                    <label class="form-label" style="font-size:0.92rem">Part (Finish Good) <span class="text-danger">*</span></label>
                     <div class="ta-wrap" style="margin-bottom:8px">
                         <input type="text"
-                               class="form-control form-control-sm ta-input"
+                               class="form-control ta-input"
                                x-model="query"
                                @focus="openDd()"
                                @blur="closeDd()"
@@ -154,7 +156,7 @@ $oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->n
 
                     {{-- Proses info (auto-selected finish good) --}}
                     <div x-show="proses !== null" x-cloak class="mb-2 p-2"
-                         style="background:#f0f4f8;border:1px solid #d4dbe3;border-radius:2px;font-size:0.78rem">
+                         style="background:#f0f4f8;border:1px solid #d4dbe3;border-radius:2px;font-size:0.88rem">
                         <i class="bi bi-check2-circle text-success me-1"></i>
                         <strong>Proses Finish Good:</strong>
                         <span x-text="proses ? `${proses.id_proses} – ${proses.nama_proses}` : ''"></span>
@@ -162,21 +164,21 @@ $oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->n
                               x-text="proses ? ` (SPH Std QC: ${proses.sph_standar_qc})` : ''"></span>
                     </div>
                     <input type="hidden" name="id_part_proses" :value="proses ? proses.id : ''">
-                    @error('id_part_proses')<div class="text-danger mt-1" style="font-size:0.78rem">{{ $message }}</div>@enderror
+                    @error('id_part_proses')<div class="text-danger mt-1" style="font-size:0.88rem">{{ $message }}</div>@enderror
                 </div>
 
                 {{-- Jam Start + Jam Finish --}}
                 <div class="col-6">
-                    <label class="form-label" style="font-size:0.8rem">Jam Start <span class="text-danger">*</span></label>
+                    <label class="form-label" style="font-size:0.92rem">Jam Start <span class="text-danger">*</span></label>
                     <input type="time" name="jam_start"
-                           class="form-control form-control-sm @error('jam_start') is-invalid @enderror"
+                           class="form-control @error('jam_start') is-invalid @enderror"
                            value="{{ old('jam_start') }}">
                     @error('jam_start')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
                 <div class="col-6">
-                    <label class="form-label" style="font-size:0.8rem">Jam Finish <span class="text-danger">*</span></label>
+                    <label class="form-label" style="font-size:0.92rem">Jam Finish <span class="text-danger">*</span></label>
                     <input type="time" name="jam_finish"
-                           class="form-control form-control-sm @error('jam_finish') is-invalid @enderror"
+                           class="form-control @error('jam_finish') is-invalid @enderror"
                            value="{{ old('jam_finish') }}">
                     @error('jam_finish')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
@@ -186,16 +188,16 @@ $oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->n
                      x-data="Object.assign(taField(taJenisNg, '{{ addslashes($oldJenisNgTxt) }}', {{ $oldJenisNgId ?: 'null' }}), { qtyNg: {{ (int) old('qty_ng', 0) }} })">
                     <div class="row g-2">
                         <div class="col-6">
-                            <label class="form-label" style="font-size:0.8rem">Qty OK <span class="text-danger">*</span></label>
+                            <label class="form-label" style="font-size:0.92rem">Qty OK <span class="text-danger">*</span></label>
                             <input type="number" name="qty_ok"
-                                   class="form-control form-control-sm @error('qty_ok') is-invalid @enderror"
+                                   class="form-control @error('qty_ok') is-invalid @enderror"
                                    value="{{ old('qty_ok', 0) }}" min="0">
                             @error('qty_ok')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                         <div class="col-6">
-                            <label class="form-label" style="font-size:0.8rem">Qty NG <span class="text-danger">*</span></label>
+                            <label class="form-label" style="font-size:0.92rem">Qty NG <span class="text-danger">*</span></label>
                             <input type="number" name="qty_ng"
-                                   class="form-control form-control-sm @error('qty_ng') is-invalid @enderror"
+                                   class="form-control @error('qty_ng') is-invalid @enderror"
                                    value="{{ old('qty_ng', 0) }}" min="0"
                                    x-model.number="qtyNg">
                             @error('qty_ng')<div class="invalid-feedback">{{ $message }}</div>@enderror
@@ -205,13 +207,13 @@ $oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->n
                     {{-- Jenis NG — muncul kalau qty_ng > 0 --}}
                     <div x-show="qtyNg > 0" x-cloak
                          class="mt-2 p-3" style="background:#fff8f0;border:1px solid #fde8c8;border-radius:4px">
-                        <label class="form-label mb-1" style="font-size:0.8rem">
+                        <label class="form-label mb-1" style="font-size:0.92rem">
                             <i class="bi bi-exclamation-triangle me-1 text-warning"></i>Jenis NG
                             <span style="color:#6b7280;font-weight:400">(opsional)</span>
                         </label>
                         <div class="ta-wrap">
                             <input type="text"
-                                   class="form-control form-control-sm ta-input @error('id_jenis_ng') is-invalid @enderror"
+                                   class="form-control ta-input @error('id_jenis_ng') is-invalid @enderror"
                                    x-model="query"
                                    @focus="openDd()"
                                    @blur="closeDd()"
@@ -229,22 +231,23 @@ $oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->n
                                 </template>
                             </div>
                         </div>
-                        @error('id_jenis_ng')<div class="text-danger mt-1" style="font-size:0.78rem">{{ $message }}</div>@enderror
+                        @error('id_jenis_ng')<div class="text-danger mt-1" style="font-size:0.88rem">{{ $message }}</div>@enderror
                     </div>
                 </div>
 
             </div>{{-- /row --}}
 
             <div style="margin-top:20px;padding-top:16px;border-top:1px solid #e5e7eb;display:flex;gap:8px">
-                <button type="submit" class="btn btn-primary btn-sm" style="flex:1">
+                <button type="submit" class="btn btn-primary" style="flex:1;font-size:0.95rem">
                     <i class="bi bi-save me-1"></i>Simpan LHP
                 </button>
-                <button type="button" @click="drawerOpen = false" class="btn btn-outline-secondary btn-sm">
+                <button type="button" @click="drawerOpen = false" class="btn btn-outline-secondary" style="font-size:0.95rem">
                     Batal
                 </button>
             </div>
         </form>
     </div>{{-- /drawer body --}}
+    </div>{{-- /inner flex container --}}
 </div>{{-- /drawer panel --}}
 
 {{-- ══ KONTEN HALAMAN ══════════════════════════════════════════ --}}
@@ -254,6 +257,14 @@ $oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->n
     <div class="action-btns">
         <button class="btn btn-primary btn-sm" @click="drawerOpen = true">
             <i class="bi bi-plus-lg me-1"></i>Input Baru
+        </button>
+        <button type="button" @click="filterOpen = !filterOpen"
+                :class="filterOpen ? 'btn-secondary' : 'btn-outline-secondary'"
+                class="btn btn-sm" style="position:relative">
+            <i class="bi bi-funnel me-1"></i>Filter
+            @if(($search ?? '') !== '')
+            <span style="position:absolute;top:-5px;right:-5px;width:8px;height:8px;background:#ef4444;border-radius:50%;border:1.5px solid #fff"></span>
+            @endif
         </button>
         <button class="btn btn-outline-success btn-sm"
                 onclick="document.getElementById('import-qc-panel').classList.toggle('d-none')">
@@ -288,8 +299,8 @@ $oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->n
             @csrf
             <div class="row g-2 align-items-end">
                 <div class="col-md-7">
-                    <label class="form-label mb-1" style="font-size:0.8rem">File Excel (.xlsx / .xls / .csv)</label>
-                    <input type="file" name="file" class="form-control form-control-sm" accept=".xlsx,.xls,.csv" required>
+                    <label class="form-label mb-1" style="font-size:0.92rem">File Excel (.xlsx / .xls / .csv)</label>
+                    <input type="file" name="file" class="form-control" accept=".xlsx,.xls,.csv" required>
                 </div>
                 <div class="col-auto">
                     <button type="submit" class="btn btn-success btn-sm">
@@ -327,7 +338,7 @@ $oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->n
             <div style="width:100%">
                 <strong>{{ count(session('import_errors')) }} baris gagal diimport:</strong>
                 <div style="max-height:180px;overflow-y:auto;margin-top:6px">
-                    <ul class="mb-0" style="font-size:0.82rem">
+                    <ul class="mb-0" style="font-size:0.92rem">
                         @foreach(session('import_errors') as $err)
                             <li>{{ $err }}</li>
                         @endforeach
@@ -340,15 +351,30 @@ $oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->n
 @endif
 
 {{-- Filter Bar --}}
+<div x-show="filterOpen" x-cloak
+     x-transition:enter="transition ease-out duration-150"
+     x-transition:enter-start="opacity-0 -translate-y-1"
+     x-transition:enter-end="opacity-100 translate-y-0"
+     x-transition:leave="transition ease-in duration-100"
+     x-transition:leave-start="opacity-100 translate-y-0"
+     x-transition:leave-end="opacity-0 -translate-y-1">
 <div class="filter-bar mb-3">
     <form method="GET" action="{{ route('input.qc.index') }}" style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;width:100%">
         <div class="filter-group">
             <label>Dari Tanggal</label>
-            <input type="date" name="date_from" class="form-control form-control-sm" value="{{ $dateFrom }}">
+            <input type="date" name="date_from" class="form-control" value="{{ $dateFrom }}">
         </div>
         <div class="filter-group">
             <label>Sampai Tanggal</label>
-            <input type="date" name="date_to" class="form-control form-control-sm" value="{{ $dateTo }}">
+            <input type="date" name="date_to" class="form-control" value="{{ $dateTo }}">
+        </div>
+        <div class="filter-group" style="min-width:220px;flex:1">
+            <label>Cari</label>
+            <div style="position:relative">
+                <i class="bi bi-search" style="position:absolute;left:8px;top:50%;transform:translateY(-50%);color:#9ca3af;font-size:0.8rem;pointer-events:none"></i>
+                <input type="text" name="q" value="{{ $search ?? '' }}" class="form-control"
+                       style="padding-left:28px" placeholder="Inspector, part, proses, customer…">
+            </div>
         </div>
         <div class="filter-group" style="flex-direction:row;gap:6px;align-items:flex-end">
             <button type="submit" class="btn btn-secondary btn-sm">
@@ -358,25 +384,66 @@ $oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->n
         </div>
         <div style="margin-left:auto;display:flex;align-items:flex-end">
             <span style="font-size:0.75rem;color:#5d7283;background:#f0f2f5;border:1px solid #d4dbe3;padding:4px 10px;">
-                {{ $transaksi->total() }} record
+                {{ $transaksi->total() }} record{{ ($search ?? '') ? ' (filter aktif)' : '' }}
             </span>
         </div>
     </form>
 </div>
+</div>{{-- /filterOpen wrapper --}}
+
+@if($myLastRecord)
+@php
+    $lastUrl = route('input.qc.index', [
+        'date_from' => $myLastRecord->tgl_pengecekan,
+        'date_to'   => $myLastRecord->tgl_pengecekan,
+    ]) . '#last-input';
+@endphp
+<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:2px;padding:9px 14px;margin-bottom:10px;display:flex;align-items:center;gap:10px">
+    <i class="bi bi-clock-history" style="color:#0284c7;font-size:1rem;flex-shrink:0"></i>
+    <div style="flex:1;font-size:0.83rem;min-width:0;color:#0c4a6e">
+        <strong style="color:#075985">{{ auth()->user()->name }}</strong>
+        <span style="color:#94a3b8;margin:0 3px">·</span>
+        <span style="color:#94a3b8;font-size:0.75rem">{{ auth()->user()->email }}</span>
+        <span style="color:#cbd5e1;margin:0 6px">|</span>
+        <span style="color:#64748b;font-size:0.78rem">{{ \Carbon\Carbon::parse($myLastRecord->tgl_pengecekan)->format('d/m/Y') }}</span>
+        <span style="color:#94a3b8;margin:0 4px">·</span>
+        <span style="color:#374151">{{ $myLastRecord->karyawanQc?->nama_karyawan ?? '—' }}</span>
+        <span style="color:#94a3b8"> — </span>
+        <span style="color:#374151">{{ $myLastRecord->partProses?->part?->part_name ?? '—' }}</span>
+        <span style="color:#94a3b8;margin:0 4px">·</span>
+        <span style="color:#374151;font-weight:600">{{ number_format($myLastRecord->qty_ok) }} ok</span>
+        <span style="color:#94a3b8;margin:0 5px">·</span>
+        <span style="color:#64748b;font-size:0.78rem">{{ $myLastRecord->created_at->diffForHumans() }}</span>
+    </div>
+    @if($myLastOnPage)
+    <a href="#last-input"
+       style="display:inline-flex;align-items:center;gap:4px;height:26px;padding:0 10px;border-radius:2px;background:#0284c7;color:#fff;font-size:0.78rem;font-weight:600;text-decoration:none;white-space:nowrap;flex-shrink:0;transition:background 100ms"
+       onmouseenter="this.style.background='#0369a1'" onmouseleave="this.style.background='#0284c7'">
+        <i class="bi bi-arrow-down" style="font-size:0.7rem"></i>Lihat
+    </a>
+    @else
+    <a href="{{ $lastUrl }}"
+       style="display:inline-flex;align-items:center;gap:4px;height:26px;padding:0 10px;border-radius:2px;border:1px solid #bae6fd;background:#fff;color:#0284c7;font-size:0.78rem;font-weight:600;text-decoration:none;white-space:nowrap;flex-shrink:0;transition:all 100ms"
+       onmouseenter="this.style.background='#e0f2fe'" onmouseleave="this.style.background='#fff'">
+        <i class="bi bi-box-arrow-up-right" style="font-size:0.7rem"></i>Buka
+    </a>
+    @endif
+</div>
+@endif
 
 <div class="erp-panel">
     <div class="erp-panel-header">Daftar LHP Quality</div>
-    <div style="overflow-x:auto">
-        <table class="erp-table" style="min-width:1350px">
-            <thead>
+    <div style="overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 340px);min-height:200px">
+        <table class="erp-table" style="min-width:1470px">
+            <thead style="position:sticky;top:0;z-index:10">
                 <tr>
                     <th style="width:85px">Tgl Cek</th>
                     <th style="width:85px">Tgl Prod</th>
                     <th style="width:70px">Shift</th>
                     <th style="width:130px">Operator</th>
                     <th style="width:75px">Customer</th>
-                    <th style="width:90px">Part No.</th>
-                    <th style="width:130px">Part Name</th>
+                    <th style="width:130px">Part No.</th>
+                    <th style="width:200px">Part Name</th>
                     <th style="width:110px">Jam</th>
                     <th style="width:65px;text-align:right">Qty OK</th>
                     <th style="width:65px;text-align:right">Qty NG</th>
@@ -398,15 +465,24 @@ $oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->n
                     $sphStd   = $pp?->sph_standar_qc ?? 0;
                     $sphAct   = $t->sph_aktual;
                     $pct      = $sphStd > 0 ? round($sphAct / $sphStd * 100, 1) : null;
+                    $isMyLast = $myLastRecord && $t->id === $myLastRecord->id;
                 @endphp
-                <tr>
-                    <td>{{ \Carbon\Carbon::parse($t->tgl_pengecekan)->format('d/m/Y') }}</td>
+                <tr id="{{ $isMyLast ? 'last-input' : '' }}"
+                    style="{{ $isMyLast ? 'box-shadow:inset 3px 0 0 #0284c7;' : '' }}">
+                    <td>
+                        {{ \Carbon\Carbon::parse($t->tgl_pengecekan)->format('d/m/Y') }}
+                        @if($isMyLast)
+                        <div style="margin-top:2px;font-size:0.6rem;font-weight:700;color:#0284c7;letter-spacing:.04em;line-height:1;white-space:nowrap">
+                            <i class="bi bi-arrow-left-short"></i>Terakhirmu
+                        </div>
+                        @endif
+                    </td>
                     <td style="color:#5d7283">{{ \Carbon\Carbon::parse($t->tgl_produksi_part)->format('d/m/Y') }}</td>
-                    <td>{{ $t->shift?->nama_shift ?? '—' }}</td>
-                    <td>{{ $t->karyawanQc?->nama_karyawan ?? '—' }}</td>
+                    <td style="white-space:nowrap">{{ $t->shift?->nama_shift ?? '—' }}</td>
+                    <td style="white-space:nowrap">{{ $t->karyawanQc?->nama_karyawan ?? '—' }}</td>
                     <td style="font-size:0.75rem;color:#5d7283">{{ $part?->customer ?? '—' }}</td>
-                    <td>{{ $part?->part_no ?? '—' }}</td>
-                    <td style="font-size:0.75rem">{{ $part?->part_name ?? '—' }}</td>
+                    <td style="white-space:nowrap">{{ $part?->part_no ?? '—' }}</td>
+                    <td style="font-size:0.75rem;white-space:nowrap">{{ $part?->part_name ?? '—' }}</td>
                     <td style="white-space:nowrap;font-size:0.75rem">{{ $t->jam_start }} – {{ $t->jam_finish }}</td>
                     <td style="text-align:right;font-weight:600;color:#27ae60">{{ number_format($t->qty_ok) }}</td>
                     <td style="text-align:right;font-weight:600;color:#c0392b">
@@ -430,6 +506,7 @@ $oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->n
                         {{ $pct !== null ? $pct . '%' : '—' }}
                     </td>
                     <td>
+                        @php $note = $t->staff_note ?? null; @endphp
                         @if(auth()->user()->role === 'admin')
                         <div class="action-btns">
                             <a href="{{ route('input.qc.edit', $t) }}"
@@ -439,9 +516,31 @@ $oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->n
                                 @csrf @method('DELETE')
                                 <button class="btn btn-danger btn-sm">Hapus</button>
                             </form>
+                            @if($note)
+                            @php
+                                $resolved   = $t->staff_note_resolved_at;
+                                $resolvedBy = $t->noteResolvedBy?->name ?? '';
+                                $noteAt     = $t->staff_note_at?->toIso8601String() ?? '';
+                                $updatedAt  = $t->updated_at?->toIso8601String() ?? '';
+                                $resolvedAt = $resolved?->toIso8601String() ?? '';
+                            @endphp
+                            <button type="button"
+                                    onclick="openNoteDrawer('qc',{{ $t->id }},'{{ addslashes($note) }}',true,'{{ $updatedAt }}','{{ $noteAt }}','{{ $resolvedAt }}','{{ addslashes($resolvedBy) }}')"
+                                    class="btn btn-sm"
+                                    style="background:{{ $resolved ? '#f0fdf4' : '#fef9c3' }};border:1px solid {{ $resolved ? '#86efac' : '#fde047' }};color:{{ $resolved ? '#166534' : '#713f12' }};white-space:nowrap">
+                                <i class="bi bi-{{ $resolved ? 'check2-circle' : 'chat-left-text-fill' }}"></i> Note
+                            </button>
+                            @endif
                         </div>
                         @else
-                        <span style="font-size:0.72rem;color:#9ca3af">—</span>
+                        @php $staffResolvedAt = $t->staff_note_resolved_at?->toIso8601String() ?? ''; @endphp
+                        <button type="button"
+                                onclick="openNoteDrawer('qc',{{ $t->id }},'{{ addslashes($note ?? '') }}',false,'','','{{ $staffResolvedAt }}','')"
+                                class="btn btn-sm {{ $staffResolvedAt ? 'btn-success' : ($note ? 'btn-warning' : 'btn-outline-secondary') }}"
+                                style="font-size:0.78rem;white-space:nowrap">
+                            <i class="bi bi-{{ $staffResolvedAt ? 'check2-circle' : ('chat-left-text' . ($note ? '-fill' : '')) }} me-1"></i>
+                            {{ $staffResolvedAt ? 'Selesai' : ($note ? 'Edit Note' : 'Note') }}
+                        </button>
                         @endif
                     </td>
                 </tr>
@@ -453,6 +552,184 @@ $oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->n
     </div>
 </div>
 <div class="mt-3">{{ $transaksi->links() }}</div>
+
+{{-- ── Note Drawer (Alpine, no blocking backdrop) ───────────────── --}}
+<div x-data="{
+        open:false, action:'', text:'', hasNote:false, recordId:0,
+        isAdmin:false, noteAt:'', updatedAt:'', resolvedAt:'', resolvedBy:'', resolveAction:'',
+        get dataChanged() {
+            if (!this.updatedAt || !this.noteAt) return null;
+            return new Date(this.updatedAt) > new Date(this.noteAt);
+        }
+     }"
+     x-on:open-note.window="
+        open=true; action=$event.detail.action; text=$event.detail.text;
+        hasNote=!!$event.detail.text; recordId=$event.detail.recordId;
+        isAdmin=$event.detail.isAdmin||false; noteAt=$event.detail.noteAt||'';
+        updatedAt=$event.detail.updatedAt||''; resolvedAt=$event.detail.resolvedAt||'';
+        resolvedBy=$event.detail.resolvedBy||''; resolveAction=$event.detail.resolveAction||'';
+     "
+     x-on:keydown.escape.window="open=false">
+
+    <div x-show="open" x-cloak @click="open=false"
+         style="position:fixed;inset:0;z-index:1049"></div>
+
+    <div x-show="open" x-cloak
+         x-transition:enter="transition ease-out duration-250"
+         x-transition:enter-start="transform translate-x-full"
+         x-transition:enter-end="transform translate-x-0"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="transform translate-x-0"
+         x-transition:leave-end="transform translate-x-full"
+         style="position:fixed;top:0;right:0;height:100dvh;width:420px;max-width:100vw;
+                z-index:1050;display:flex;flex-direction:column;
+                background:#fff;box-shadow:-6px 0 32px rgba(0,0,0,.15)">
+
+        <div style="display:flex;align-items:center;justify-content:space-between;
+                    padding:14px 20px;background:#111827;color:#fff;flex-shrink:0">
+            <div style="font-weight:700;font-size:0.95rem">
+                <i class="bi bi-chat-left-text-fill me-2"></i>
+                <span x-show="isAdmin">Note dari Staff</span>
+                <span x-show="!isAdmin">Note untuk Admin</span>
+            </div>
+            <button type="button" @click="open=false"
+                    style="background:none;border:none;color:#fff;font-size:1.2rem;cursor:pointer;line-height:1;padding:0">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+
+        <div style="flex:1;overflow-y:auto;padding:24px">
+            <div x-show="isAdmin">
+                <p style="font-size:0.82rem;color:#6b7280;margin-bottom:8px">Catatan dari staff:</p>
+                <div x-text="text"
+                     style="background:#fafafa;border:1px solid #e5e7eb;border-radius:4px;
+                            padding:12px;font-size:0.88rem;min-height:80px;white-space:pre-wrap;color:#111827"></div>
+                <div x-show="noteAt" style="font-size:0.75rem;color:#9ca3af;margin-top:6px">
+                    Dikirim: <span x-text="noteAt ? new Date(noteAt).toLocaleString('id-ID',{dateStyle:'medium',timeStyle:'short'}) : ''"></span>
+                </div>
+                <div style="margin-top:16px">
+                    <div x-show="dataChanged === true"
+                         style="padding:10px 14px;background:#f0fdf4;border:1px solid #86efac;border-radius:4px;font-size:0.82rem;color:#166534">
+                        <i class="bi bi-check-circle-fill me-1"></i>Data sudah diperbarui setelah note dikirim
+                    </div>
+                    <div x-show="dataChanged === false"
+                         style="padding:10px 14px;background:#fef9c3;border:1px solid #fde047;border-radius:4px;font-size:0.82rem;color:#713f12">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i>Data <strong>belum</strong> diperbarui sejak note dikirim
+                    </div>
+                </div>
+                <div x-show="resolvedAt"
+                     style="margin-top:12px;padding:10px 14px;background:#f0fdf4;border:1px solid #86efac;border-radius:4px;font-size:0.82rem;color:#166534">
+                    <i class="bi bi-check2-circle me-1"></i>
+                    Sudah ditandai selesai oleh <strong x-text="resolvedBy"></strong>
+                    pada <span x-text="resolvedAt ? new Date(resolvedAt).toLocaleString('id-ID',{dateStyle:'medium',timeStyle:'short'}) : ''"></span>
+                </div>
+            </div>
+            <div x-show="!isAdmin">
+                <template x-if="resolvedAt">
+                    <div>
+                        <div style="padding:10px 14px;background:#f0fdf4;border:1px solid #86efac;border-radius:4px;font-size:0.82rem;color:#166534;margin-bottom:12px">
+                            <i class="bi bi-lock-fill me-1"></i>
+                            Note sudah di-feedback admin. Tidak dapat diubah lagi.
+                        </div>
+                        <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:4px;padding:12px 14px;font-size:0.88rem;color:#374151;white-space:pre-wrap" x-text="text || '(kosong)'"></div>
+                    </div>
+                </template>
+                <template x-if="!resolvedAt">
+                    <div>
+                        <p style="font-size:0.82rem;color:#6b7280;margin-bottom:14px;line-height:1.6">
+                            Tulis catatan untuk admin mengenai kesalahan pada data ini.
+                            Admin akan melihat catatan ini dan dapat memperbaiki data.
+                        </p>
+                        <textarea x-model="text" rows="6"
+                                  class="form-control" style="font-size:0.88rem;resize:vertical"
+                                  placeholder="Contoh: Qty NG seharusnya 3, bukan 0. Mohon dikoreksi."
+                                  maxlength="1000"></textarea>
+                        <div style="font-size:0.75rem;color:#9ca3af;text-align:right;margin-top:4px">
+                            <span x-text="text.length">0</span>/1000
+                        </div>
+                        <div x-show="hasNote" style="margin-top:16px;padding:10px 14px;
+                             background:#fefce8;border:1px solid #fde047;border-radius:4px;font-size:0.8rem;color:#713f12">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Note sebelumnya sudah dikirim. Kamu bisa ubah atau hapus.
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <div style="flex-shrink:0;padding:16px 20px;border-top:1px solid #e5e7eb;display:flex;gap:8px;justify-content:flex-end">
+            <template x-if="isAdmin">
+                <div style="display:flex;gap:8px;width:100%;justify-content:flex-end">
+                    <button type="button" @click="open=false" class="btn btn-outline-secondary btn-sm">Tutup</button>
+                    <form :action="action" method="POST" style="display:inline">
+                        @csrf
+                        <input type="hidden" name="record_id" :value="recordId">
+                        <input type="hidden" name="staff_note" value="">
+                        <button type="submit" class="btn btn-outline-danger btn-sm"
+                                onclick="return confirm('Hapus note ini?')">
+                            <i class="bi bi-trash me-1"></i>Hapus Note
+                        </button>
+                    </form>
+                    <template x-if="!resolvedAt">
+                        <form :action="resolveAction" method="POST" style="display:inline">
+                            @csrf
+                            <input type="hidden" name="record_id" :value="recordId">
+                            <button type="submit" class="btn btn-success btn-sm">
+                                <i class="bi bi-check2-circle me-1"></i>Tandai Selesai
+                            </button>
+                        </form>
+                    </template>
+                    <template x-if="resolvedAt">
+                        <span class="btn btn-success btn-sm disabled" style="opacity:0.6">
+                            <i class="bi bi-check2-circle me-1"></i>Sudah Selesai
+                        </span>
+                    </template>
+                </div>
+            </template>
+            <template x-if="!isAdmin">
+                <div style="display:flex;gap:8px;width:100%;justify-content:flex-end">
+                    <button type="button" @click="open=false" class="btn btn-outline-secondary btn-sm">Batal</button>
+                    <template x-if="!resolvedAt">
+                        <div style="display:contents">
+                            <form x-show="hasNote" :action="action" method="POST" style="display:inline">
+                                @csrf
+                                <input type="hidden" name="record_id" :value="recordId">
+                                <input type="hidden" name="staff_note" value="">
+                                <button type="submit" class="btn btn-outline-danger btn-sm"
+                                        onclick="return confirm('Hapus note ini?')">
+                                    <i class="bi bi-trash me-1"></i>Hapus Note
+                                </button>
+                            </form>
+                            <form :action="action" method="POST" style="display:inline">
+                                @csrf
+                                <input type="hidden" name="record_id" :value="recordId">
+                                <input type="hidden" name="staff_note" :value="text">
+                                <button type="submit" class="btn btn-primary btn-sm" :disabled="!text.trim()">
+                                    <i class="bi bi-send me-1"></i>Kirim Note
+                                </button>
+                            </form>
+                        </div>
+                    </template>
+                </div>
+            </template>
+        </div>
+    </div>
+</div>
+
+<script>
+function openNoteDrawer(type, id, existingNote, isAdmin, updatedAt, noteAt, resolvedAt, resolvedBy) {
+    const noteRoutes    = { produksi: '/input/produksi-note',    qc: '/input/qc-note',    dandori: '/input/dandori-note' };
+    const resolveRoutes = { produksi: '/input/produksi-note-resolve', qc: '/input/qc-note-resolve', dandori: '/input/dandori-note-resolve' };
+    window.dispatchEvent(new CustomEvent('open-note', {
+        detail: {
+            action: noteRoutes[type], resolveAction: resolveRoutes[type],
+            recordId: id, text: existingNote || '',
+            isAdmin: !!isAdmin, noteAt: noteAt || '',
+            updatedAt: updatedAt || '', resolvedAt: resolvedAt || '', resolvedBy: resolvedBy || ''
+        }
+    }));
+}
+</script>
 
 </div>{{-- /alpine outer scope --}}
 @endsection
@@ -514,6 +791,11 @@ function qcPartSelector() {
     return {
         ...taField(taParts),
         proses: null,
+        get filtered() {
+            if (!this.query.trim()) return this.items.slice(0, 60);
+            const q = this.query.toLowerCase();
+            return this.items.filter(i => i.t.toLowerCase().includes(q)).slice(0, 60);
+        },
         pick(item) {
             this.query = item.t; this.val = item.v; this.open = false; this.idx = -1;
             const part = partsData.find(p => p.id == item.v);

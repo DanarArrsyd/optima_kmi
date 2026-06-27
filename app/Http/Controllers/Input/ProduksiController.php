@@ -203,6 +203,9 @@ class ProduksiController extends Controller
         $request->validate(['staff_note' => 'nullable|string|max:1000', 'record_id' => 'required|integer']);
         $produksi = TransaksiProduksi::find($request->input('record_id'));
         if (!$produksi) return back()->with('error', 'Data tidak ditemukan.');
+        if ($produksi->staff_note_resolved_at) {
+            return back()->with('error', 'Note sudah di-feedback admin, tidak dapat diubah.');
+        }
         try {
             $produksi->update([
                 'staff_note'    => $request->input('staff_note') ?: null,

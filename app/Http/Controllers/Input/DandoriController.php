@@ -166,6 +166,9 @@ class DandoriController extends Controller
         $request->validate(['staff_note' => 'nullable|string|max:1000', 'record_id' => 'required|integer']);
         $dandori = TransaksiDandoriRincian::find($request->input('record_id'));
         if (!$dandori) return back()->with('error', 'Data tidak ditemukan.');
+        if ($dandori->staff_note_resolved_at) {
+            return back()->with('error', 'Note sudah di-feedback admin, tidak dapat diubah.');
+        }
         try {
             $dandori->update([
                 'staff_note'    => $request->input('staff_note') ?: null,
