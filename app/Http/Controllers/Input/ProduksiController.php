@@ -70,6 +70,26 @@ class ProduksiController extends Controller
             });
         }
 
+        $highlightId = (int) $request->input('highlight_id', 0);
+        if ($highlightId && !$request->has('page')) {
+            $target = TransaksiProduksi::find($highlightId);
+            if ($target) {
+                $position = (clone $q)
+                    ->where(function ($sub) use ($target) {
+                        $sub->whereDate('tanggal_produksi', '>', $target->tanggal_produksi)
+                            ->orWhere(function ($s) use ($target) {
+                                $s->whereDate('tanggal_produksi', $target->tanggal_produksi->format('Y-m-d'))
+                                  ->where('created_at', '>', $target->created_at);
+                            });
+                    })
+                    ->count();
+                $page = (int) ceil(($position + 1) / 30);
+                if ($page > 1) {
+                    return redirect()->to($request->fullUrlWithQuery(['page' => $page]));
+                }
+            }
+        }
+
         $transaksi = $q->orderByDesc('tanggal_produksi')
             ->orderByDesc('created_at')
             ->paginate(30)

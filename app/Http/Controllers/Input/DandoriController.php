@@ -49,6 +49,39 @@ class DandoriController extends Controller
             });
         }
 
+        $highlightId = (int) $request->input('highlight_id', 0);
+        if ($highlightId && !$request->has('page')) {
+            $target = TransaksiDandoriRincian::find($highlightId);
+            if ($target) {
+                $tgl = $target->tanggal->format('Y-m-d');
+                $position = (clone $q)
+                    ->where(function ($sub) use ($target, $tgl) {
+                        $sub->whereDate('tanggal', '>', $tgl)
+                            ->orWhere(function ($s) use ($target, $tgl) {
+                                $s->whereDate('tanggal', $tgl)
+                                  ->where(function ($s2) use ($target) {
+                                      $s2->where('id_mesin', '<', $target->id_mesin)
+                                         ->orWhere(function ($s3) use ($target) {
+                                             $s3->where('id_mesin', $target->id_mesin)
+                                                ->where(function ($s4) use ($target) {
+                                                    $s4->where('id_part_proses', '<', $target->id_part_proses)
+                                                       ->orWhere(function ($s5) use ($target) {
+                                                           $s5->where('id_part_proses', $target->id_part_proses)
+                                                              ->where('id', '<', $target->id);
+                                                       });
+                                                });
+                                         });
+                                  });
+                            });
+                    })
+                    ->count();
+                $page = (int) ceil(($position + 1) / 50);
+                if ($page > 1) {
+                    return redirect()->to($request->fullUrlWithQuery(['page' => $page]));
+                }
+            }
+        }
+
         $rincian = $q->orderByDesc('tanggal')
             ->orderBy('id_mesin')
             ->orderBy('id_part_proses')

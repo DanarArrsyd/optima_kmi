@@ -46,6 +46,26 @@ class QcController extends Controller
             });
         }
 
+        $highlightId = (int) $request->input('highlight_id', 0);
+        if ($highlightId && !$request->has('page')) {
+            $target = TransaksiQc::find($highlightId);
+            if ($target) {
+                $position = (clone $q)
+                    ->where(function ($sub) use ($target) {
+                        $sub->whereDate('tgl_pengecekan', '>', $target->tgl_pengecekan)
+                            ->orWhere(function ($s) use ($target) {
+                                $s->whereDate('tgl_pengecekan', $target->tgl_pengecekan->format('Y-m-d'))
+                                  ->where('created_at', '>', $target->created_at);
+                            });
+                    })
+                    ->count();
+                $page = (int) ceil(($position + 1) / 30);
+                if ($page > 1) {
+                    return redirect()->to($request->fullUrlWithQuery(['page' => $page]));
+                }
+            }
+        }
+
         $transaksi = $q->orderByDesc('tgl_pengecekan')
             ->orderByDesc('created_at')
             ->paginate(30)
