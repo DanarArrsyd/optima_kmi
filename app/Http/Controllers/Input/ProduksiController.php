@@ -217,7 +217,7 @@ class ProduksiController extends Controller
                     $produksi, 'produksi',
                     $produksi->tanggal_produksi->format('Y-m-d')
                 );
-            } catch (\Throwable $e) { /* notification failure must not break main flow */ }
+            } catch (\Throwable) { /* notification failure must not break main flow */ }
         }
         $msg = $request->input('staff_note') ? 'Note berhasil dikirim ke admin.' : 'Note berhasil dihapus.';
         return redirect()->route('input.produksi.index')->with('success', $msg);
@@ -240,7 +240,7 @@ class ProduksiController extends Controller
                 $produksi, 'produksi',
                 $produksi->tanggal_produksi->format('Y-m-d')
             );
-        } catch (\Throwable $e) { /* notification failure must not break main flow */ }
+        } catch (\Throwable) { /* notification failure must not break main flow */ }
         return redirect()->route('input.produksi.index')->with('success', 'Note ditandai sudah ditangani.');
     }
 

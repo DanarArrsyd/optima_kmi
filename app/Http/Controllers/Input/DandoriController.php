@@ -180,7 +180,7 @@ class DandoriController extends Controller
                     $dandori, 'dandori',
                     $dandori->tanggal->format('Y-m-d')
                 );
-            } catch (\Throwable $e) { /* notification failure must not break main flow */ }
+            } catch (\Throwable) { /* notification failure must not break main flow */ }
         }
         $msg = $request->input('staff_note') ? 'Note berhasil dikirim ke admin.' : 'Note berhasil dihapus.';
         return redirect()->route('input.dandori.index')->with('success', $msg);
@@ -203,7 +203,7 @@ class DandoriController extends Controller
                 $dandori, 'dandori',
                 $dandori->tanggal->format('Y-m-d')
             );
-        } catch (\Throwable $e) { /* notification failure must not break main flow */ }
+        } catch (\Throwable) { /* notification failure must not break main flow */ }
         return redirect()->route('input.dandori.index')->with('success', 'Note ditandai sudah ditangani.');
     }
 
