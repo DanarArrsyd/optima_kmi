@@ -778,7 +778,7 @@ foreach ($transaksi as $_t) {
                                 $resolvedAt = $resolved?->toIso8601String() ?? '';
                             @endphp
                             <button type="button"
-                                    onclick="openNoteDrawer('produksi',{{ $t->id }},'{{ addslashes($note) }}',true,'{{ $updatedAt }}','{{ $noteAt }}','{{ $resolvedAt }}','{{ addslashes($resolvedBy) }}')"
+                                    onclick="openNoteDrawer('produksi',{{ $t->id }},{{ \Illuminate\Support\Js::from($note) }},true,'{{ $updatedAt }}','{{ $noteAt }}','{{ $resolvedAt }}',{{ \Illuminate\Support\Js::from($resolvedBy) }})"
                                     class="btn btn-sm"
                                     style="background:{{ $resolved ? '#f0fdf4' : '#fef9c3' }};border:1px solid {{ $resolved ? '#86efac' : '#fde047' }};color:{{ $resolved ? '#166534' : '#713f12' }};white-space:nowrap">
                                 <i class="bi bi-{{ $resolved ? 'check2-circle' : 'chat-left-text-fill' }}"></i> Note
@@ -788,7 +788,7 @@ foreach ($transaksi as $_t) {
                         @else
                         @php $staffResolvedAt = $t->staff_note_resolved_at?->toIso8601String() ?? ''; @endphp
                         <button type="button"
-                                onclick="openNoteDrawer('produksi',{{ $t->id }},'{{ addslashes($note ?? '') }}',false,'','','{{ $staffResolvedAt }}','')"
+                                onclick="openNoteDrawer('produksi',{{ $t->id }},{{ \Illuminate\Support\Js::from($note ?? '') }},false,'','','{{ $staffResolvedAt }}','')"
                                 class="btn btn-sm {{ $staffResolvedAt ? 'btn-success' : ($note ? 'btn-warning' : 'btn-outline-secondary') }}"
                                 style="font-size:0.78rem;white-space:nowrap">
                             <i class="bi bi-{{ $staffResolvedAt ? 'check2-circle' : ('chat-left-text' . ($note ? '-fill' : '')) }} me-1"></i>
