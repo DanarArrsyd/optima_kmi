@@ -68,7 +68,7 @@ $initProsesListPhp = $initPart
                     <label class="form-label">Tanggal Produksi <span class="text-danger">*</span></label>
                     <input type="date" name="tanggal_produksi"
                            class="form-control @error('tanggal_produksi', 'updateProduksi') is-invalid @enderror"
-                           value="{{ $useOld ? old('tanggal_produksi', $produksi->tanggal_produksi) : $produksi->tanggal_produksi }}">
+                           value="{{ $useOld ? old('tanggal_produksi', $produksi->tanggal_produksi->format('Y-m-d')) : $produksi->tanggal_produksi->format('Y-m-d') }}">
                     @error('tanggal_produksi', 'updateProduksi')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
 
@@ -327,6 +327,11 @@ function produksiPartSelectorEdit(initText, initVal, initProses) {
     return {
         ...taField(taParts, initText, initVal),
         prosesList: initProses || [],
+        get filtered() {
+            if (!this.query.trim()) return this.items.slice(0, 60);
+            const q = this.query.toLowerCase();
+            return this.items.filter(i => i.t.toLowerCase().includes(q)).slice(0, 60);
+        },
         pick(item) {
             this.query     = item.t;
             this.val       = item.v;

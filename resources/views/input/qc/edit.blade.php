@@ -56,14 +56,14 @@ $initQtyNg = $useOld ? (int) old('qty_ng', $qc->qty_ng ?? 0) : (int) ($qc->qty_n
                     <label class="form-label">Tanggal Pengecekan <span class="text-danger">*</span></label>
                     <input type="date" name="tgl_pengecekan"
                            class="form-control @error('tgl_pengecekan', 'updateQc') is-invalid @enderror"
-                           value="{{ $useOld ? old('tgl_pengecekan', $qc->tgl_pengecekan) : $qc->tgl_pengecekan }}">
+                           value="{{ $useOld ? old('tgl_pengecekan', $qc->tgl_pengecekan->format('Y-m-d')) : $qc->tgl_pengecekan->format('Y-m-d') }}">
                     @error('tgl_pengecekan', 'updateQc')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Tanggal Produksi Part <span class="text-danger">*</span></label>
                     <input type="date" name="tgl_produksi_part"
                            class="form-control @error('tgl_produksi_part', 'updateQc') is-invalid @enderror"
-                           value="{{ $useOld ? old('tgl_produksi_part', $qc->tgl_produksi_part) : $qc->tgl_produksi_part }}">
+                           value="{{ $useOld ? old('tgl_produksi_part', $qc->tgl_produksi_part->format('Y-m-d')) : $qc->tgl_produksi_part->format('Y-m-d') }}">
                     @error('tgl_produksi_part', 'updateQc')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
 
@@ -259,6 +259,11 @@ function qcPartSelectorEdit(initText, initProsesId) {
     return {
         ...taField(taParts, initText, initProsesId ? (partsData.find(p => p.proses && p.proses.id == initProsesId)?.id ?? null) : null),
         proses: initProsesQcEdit,
+        get filtered() {
+            if (!this.query.trim()) return this.items.slice(0, 60);
+            const q = this.query.toLowerCase();
+            return this.items.filter(i => i.t.toLowerCase().includes(q)).slice(0, 60);
+        },
         pick(item) {
             this.query  = item.t; this.val = item.v; this.open = false; this.idx = -1;
             const part  = partsData.find(p => p.id == item.v);
