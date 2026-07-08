@@ -11,6 +11,8 @@ class ChatMessage extends Model
 
     protected $fillable = ['conversation_id', 'role', 'content'];
 
+    protected $touches = ['conversation'];
+
     public function conversation(): BelongsTo
     {
         return $this->belongsTo(ChatConversation::class, 'conversation_id');

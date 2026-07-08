@@ -5,6 +5,7 @@ use App\Models\ChatConversation;
 use App\Services\GeminiChatbotService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Str;
 
 class ChatbotController extends Controller
 {
@@ -27,6 +28,20 @@ class ChatbotController extends Controller
         $conversation->messages()->create(['role' => 'assistant', 'content' => $reply]);
 
         return response()->json(['conversation_id' => $conversation->id, 'reply' => $reply]);
+    }
+
+    public function conversations(Request $request): JsonResponse
+    {
+        $conversations = ChatConversation::where('user_id', $request->user()->id)
+            ->with(['messages' => fn ($q) => $q->oldest()->limit(1)])
+            ->latest('updated_at')
+            ->get();
+
+        return response()->json($conversations->map(fn ($c) => [
+            'id'         => $c->id,
+            'title'      => Str::limit($c->messages->first()?->content ?? 'Percakapan baru', 40),
+            'updated_at' => $c->updated_at,
+        ]));
     }
 
     public function history(Request $request): JsonResponse

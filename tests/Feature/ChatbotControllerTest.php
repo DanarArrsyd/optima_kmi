@@ -96,4 +96,51 @@ class ChatbotControllerTest extends TestCase
             'The current user message must appear exactly once in the outbound Gemini contents, not duplicated.'
         );
     }
+
+    public function test_sending_message_touches_conversation_updated_at(): void
+    {
+        Http::fake(['generativelanguage.googleapis.com/*' => Http::response([
+            'candidates' => [['content' => ['role' => 'model', 'parts' => [['text' => 'Oke']]]]],
+        ], 200)]);
+
+        $admin = User::factory()->create(['role' => 'admin']);
+        $conversation = ChatConversation::create(['user_id' => $admin->id]);
+        $conversation->forceFill(['updated_at' => now()->subDay()])->save();
+        $originalUpdatedAt = $conversation->updated_at;
+
+        $this->actingAs($admin)->postJson(route('chatbot.send-message'), [
+            'message' => 'halo', 'conversation_id' => $conversation->id,
+        ])->assertOk();
+
+        $this->assertTrue($conversation->fresh()->updated_at->gt($originalUpdatedAt));
+    }
+
+    public function test_conversations_list_returns_only_own_conversations_newest_first(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $otherAdmin = User::factory()->create(['role' => 'admin']);
+
+        $older = ChatConversation::create(['user_id' => $admin->id]);
+        $older->messages()->create(['role' => 'user', 'content' => 'Pertanyaan pertama soal MTBF mesin M-01']);
+        $older->forceFill(['updated_at' => now()->subHour()])->save();
+
+        $newer = ChatConversation::create(['user_id' => $admin->id]);
+        $newer->messages()->create(['role' => 'user', 'content' => 'Rekap NG bulan ini']);
+
+        ChatConversation::create(['user_id' => $otherAdmin->id]);
+
+        $response = $this->actingAs($admin)->getJson(route('chatbot.conversations'));
+
+        $response->assertOk();
+        $ids = array_column($response->json(), 'id');
+        $this->assertSame([$newer->id, $older->id], $ids);
+        $this->assertSame('Rekap NG bulan ini', $response->json()[0]['title']);
+    }
+
+    public function test_staff_produksi_cannot_list_conversations(): void
+    {
+        $staff = User::factory()->create(['role' => 'staff_produksi']);
+
+        $this->actingAs($staff)->getJson(route('chatbot.conversations'))->assertForbidden();
+    }
 }
