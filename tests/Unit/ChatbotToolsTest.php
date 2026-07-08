@@ -2,12 +2,14 @@
 namespace Tests\Unit;
 
 use App\Models\MasterKaryawan;
+use App\Models\MasterLosstime;
 use App\Models\MasterMesin;
 use App\Models\MasterPart;
 use App\Models\MasterPartProses;
 use App\Models\MasterShift;
 use App\Models\TransaksiBreakdownDies;
 use App\Models\TransaksiBreakdownMesin;
+use App\Models\TransaksiDandoriRincian;
 use App\Models\TransaksiProduksi;
 use App\Models\TransaksiQc;
 use App\Models\User;
@@ -487,6 +489,104 @@ class ChatbotToolsTest extends TestCase
 
         $result = (new ChatbotTools())->getRankingBreakdownDies('2026-07', '2026-07');
 
+        $this->assertArrayHasKey('error', $result);
+    }
+
+    public function test_get_rekap_dandori_groups_by_jenis_losstime_sorted_by_over_menit(): void
+    {
+        $mesin = MasterMesin::create([
+            'id_mesin' => 'DD-01', 'nama_mesin' => 'Press D1', 'line' => '1',
+            'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100,
+        ]);
+        $part = MasterPart::create(['part_no' => 'DD-P1', 'part_name' => 'Dandori Part', 'customer' => 'Toyota']);
+        $proses = MasterPartProses::create([
+            'id_part' => $part->id, 'id_proses' => 1, 'nama_proses' => 'PROGRESSIVE',
+            'sph_standar_produksi' => 500, 'sph_standar_qc' => 250,
+        ]);
+        $shift = MasterShift::create(['nama_shift' => 'Shift 1', 'jam_start' => '08:00', 'jam_finish' => '16:00']);
+        $karyawan = MasterKaryawan::create([
+            'nik' => uniqid(), 'nama_karyawan' => 'Test', 'departemen' => 'Produksi', 'is_aktif' => true,
+        ]);
+        $lossSetting = MasterLosstime::create([
+            'kode' => 'LS-SET', 'jenis_losstime' => 'Setting Dies', 'std_menit_default' => 30, 'std_menit_progressive' => 30,
+        ]);
+        $lossTrial = MasterLosstime::create([
+            'kode' => 'LS-TRI', 'jenis_losstime' => 'Trial QC', 'std_menit_default' => 15, 'std_menit_progressive' => 15,
+        ]);
+        $user = User::factory()->create();
+
+        TransaksiDandoriRincian::create([
+            'tanggal' => '2026-07-05', 'id_shift' => $shift->id, 'id_karyawan' => $karyawan->id,
+            'id_mesin' => $mesin->id, 'id_part_proses' => $proses->id, 'id_losstime' => $lossSetting->id,
+            'actual_menit' => 50, 'std_menit' => 30, 'over_menit' => 20, 'created_by' => $user->id,
+        ]);
+        TransaksiDandoriRincian::create([
+            'tanggal' => '2026-07-06', 'id_shift' => $shift->id, 'id_karyawan' => $karyawan->id,
+            'id_mesin' => $mesin->id, 'id_part_proses' => $proses->id, 'id_losstime' => $lossTrial->id,
+            'actual_menit' => 20, 'std_menit' => 15, 'over_menit' => 5, 'created_by' => $user->id,
+        ]);
+
+        $result = (new ChatbotTools())->getRekapDandori('2026-07', '2026-07');
+
+        $this->assertArrayNotHasKey('error', $result);
+        $this->assertSame(2, $result['total_kejadian']);
+        $this->assertSame(25, $result['total_over_menit']);
+        $this->assertSame('Setting Dies', $result['top_jenis_losstime'][0]['jenis_losstime']);
+        $this->assertSame(20, $result['top_jenis_losstime'][0]['total_over_menit']);
+        $this->assertSame('Trial QC', $result['top_jenis_losstime'][1]['jenis_losstime']);
+    }
+
+    public function test_get_rekap_dandori_filters_by_mesin(): void
+    {
+        $mesin1 = MasterMesin::create([
+            'id_mesin' => 'DD-02', 'nama_mesin' => 'Press D2', 'line' => '1',
+            'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100,
+        ]);
+        $mesin2 = MasterMesin::create([
+            'id_mesin' => 'DD-03', 'nama_mesin' => 'Press D3', 'line' => '1',
+            'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100,
+        ]);
+        $part = MasterPart::create(['part_no' => 'DD-P2', 'part_name' => 'Dandori Part 2', 'customer' => 'Toyota']);
+        $proses = MasterPartProses::create([
+            'id_part' => $part->id, 'id_proses' => 1, 'nama_proses' => 'PROGRESSIVE',
+            'sph_standar_produksi' => 500, 'sph_standar_qc' => 250,
+        ]);
+        $shift = MasterShift::create(['nama_shift' => 'Shift 1', 'jam_start' => '08:00', 'jam_finish' => '16:00']);
+        $karyawan = MasterKaryawan::create([
+            'nik' => uniqid(), 'nama_karyawan' => 'Test', 'departemen' => 'Produksi', 'is_aktif' => true,
+        ]);
+        $loss = MasterLosstime::create([
+            'kode' => 'LS-SET2', 'jenis_losstime' => 'Setting Dies', 'std_menit_default' => 30, 'std_menit_progressive' => 30,
+        ]);
+        $user = User::factory()->create();
+
+        TransaksiDandoriRincian::create([
+            'tanggal' => '2026-07-05', 'id_shift' => $shift->id, 'id_karyawan' => $karyawan->id,
+            'id_mesin' => $mesin1->id, 'id_part_proses' => $proses->id, 'id_losstime' => $loss->id,
+            'actual_menit' => 50, 'std_menit' => 30, 'over_menit' => 20, 'created_by' => $user->id,
+        ]);
+        TransaksiDandoriRincian::create([
+            'tanggal' => '2026-07-06', 'id_shift' => $shift->id, 'id_karyawan' => $karyawan->id,
+            'id_mesin' => $mesin2->id, 'id_part_proses' => $proses->id, 'id_losstime' => $loss->id,
+            'actual_menit' => 60, 'std_menit' => 30, 'over_menit' => 30, 'created_by' => $user->id,
+        ]);
+
+        $result = (new ChatbotTools())->getRekapDandori('2026-07', '2026-07', 'DD-02');
+
+        $this->assertArrayNotHasKey('error', $result);
+        $this->assertSame(1, $result['total_kejadian']);
+        $this->assertSame(20, $result['total_over_menit']);
+    }
+
+    public function test_get_rekap_dandori_returns_error_for_unknown_mesin(): void
+    {
+        $result = (new ChatbotTools())->getRekapDandori('2026-07', '2026-07', 'NOT-EXIST');
+        $this->assertArrayHasKey('error', $result);
+    }
+
+    public function test_get_rekap_dandori_returns_error_when_no_records(): void
+    {
+        $result = (new ChatbotTools())->getRekapDandori('2020-01', '2020-01');
         $this->assertArrayHasKey('error', $result);
     }
 }
