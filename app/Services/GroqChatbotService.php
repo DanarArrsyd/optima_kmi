@@ -58,7 +58,7 @@ class GroqChatbotService implements ChatbotProviderInterface
                 try {
                     $result = $this->tools->{$name}(...$args);
                 } catch (\Throwable $e) {
-                    Log::warning('Chatbot tool dispatch failed', ['name' => $name, 'message' => $e->getMessage()]);
+                    Log::warning('Chatbot tool dispatch failed', ['provider' => 'groq', 'name' => $name, 'message' => $e->getMessage()]);
                     return null;
                 }
 
