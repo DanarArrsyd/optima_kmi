@@ -212,4 +212,48 @@ class ChatbotControllerTest extends TestCase
 
         $response->assertOk()->assertJson(['reply' => 'Maaf, sistem AI lagi ga bisa diakses, coba lagi nanti.']);
     }
+
+    public function test_admin_can_delete_own_conversation(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $conversation = ChatConversation::create(['user_id' => $admin->id]);
+
+        $response = $this->actingAs($admin)->deleteJson(route('chatbot.conversations.destroy', $conversation));
+
+        $response->assertOk()->assertJson(['deleted' => true]);
+        $this->assertSoftDeleted('chat_conversations', ['id' => $conversation->id]);
+    }
+
+    public function test_deleting_conversation_excludes_it_from_conversations_list(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $conversation = ChatConversation::create(['user_id' => $admin->id]);
+        $conversation->messages()->create(['role' => 'user', 'content' => 'halo']);
+
+        $this->actingAs($admin)->deleteJson(route('chatbot.conversations.destroy', $conversation))->assertOk();
+
+        $response = $this->actingAs($admin)->getJson(route('chatbot.conversations'));
+        $this->assertSame([], $response->json());
+    }
+
+    public function test_cannot_delete_another_users_conversation(): void
+    {
+        $admin1 = User::factory()->create(['role' => 'admin']);
+        $admin2 = User::factory()->create(['role' => 'admin']);
+        $conversation = ChatConversation::create(['user_id' => $admin1->id]);
+
+        $response = $this->actingAs($admin2)->deleteJson(route('chatbot.conversations.destroy', $conversation));
+
+        $response->assertNotFound();
+        $this->assertDatabaseHas('chat_conversations', ['id' => $conversation->id, 'deleted_at' => null]);
+    }
+
+    public function test_staff_produksi_cannot_delete_conversation(): void
+    {
+        $staff = User::factory()->create(['role' => 'staff_produksi']);
+        $admin = User::factory()->create(['role' => 'admin']);
+        $conversation = ChatConversation::create(['user_id' => $admin->id]);
+
+        $this->actingAs($staff)->deleteJson(route('chatbot.conversations.destroy', $conversation))->assertForbidden();
+    }
 }

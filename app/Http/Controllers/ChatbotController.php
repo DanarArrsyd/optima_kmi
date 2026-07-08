@@ -66,4 +66,13 @@ class ChatbotController extends Controller
             'role' => $m->role, 'content' => $m->content,
         ]));
     }
+
+    public function destroy(Request $request, ChatConversation $conversation): JsonResponse
+    {
+        abort_if($conversation->user_id !== $request->user()->id, 404);
+
+        $conversation->delete();
+
+        return response()->json(['deleted' => true]);
+    }
 }

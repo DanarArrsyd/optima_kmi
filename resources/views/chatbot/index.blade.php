@@ -16,9 +16,16 @@
                 <div style="padding:12px;color:#9ca3af;font-size:0.8rem">Memuat...</div>
             </template>
             <template x-for="c in conversations" :key="c.id">
-                <button type="button" @click="selectConversation(c.id)"
-                        :style="'width:100%;text-align:left;border:none;background:' + (c.id === activeId ? '#f3f4f6' : 'transparent') + ';padding:10px 12px;border-radius:6px;font-size:0.82rem;color:#111827;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis'"
-                        x-text="c.title"></button>
+                <div :style="'display:flex;align-items:center;gap:4px;border-radius:6px;margin-bottom:2px;background:' + (c.id === activeId ? '#f3f4f6' : 'transparent')">
+                    <button type="button" @click="selectConversation(c.id)"
+                            style="flex:1;min-width:0;text-align:left;border:none;background:transparent;padding:10px 4px 10px 12px;font-size:0.82rem;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"
+                            x-text="c.title"></button>
+                    <button type="button" @click.stop="deleteConversation(c.id)"
+                            title="Hapus percakapan"
+                            style="flex-shrink:0;border:none;background:transparent;color:#9ca3af;padding:6px 10px 6px 4px">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
             </template>
         </div>
     </div>
@@ -143,6 +150,28 @@ function chatbotPage() {
 
         scrollDown() {
             this.$refs.scrollArea.scrollTop = this.$refs.scrollArea.scrollHeight;
+        },
+
+        async deleteConversation(id) {
+            if (!confirm('Hapus percakapan ini?')) return;
+
+            try {
+                const res = await fetch(`/chatbot/conversations/${id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    },
+                });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+                this.conversations = this.conversations.filter(c => c.id !== id);
+
+                if (this.activeId === id) {
+                    this.newChat();
+                }
+            } catch (e) {
+                // Silently handle fetch failure; item stays in the list
+            }
         },
     };
 }

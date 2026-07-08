@@ -190,6 +190,7 @@ Route::middleware('auth')->group(function () {
             ->middleware('throttle:20,1')->name('send-message');
         Route::get('conversations', [\App\Http\Controllers\ChatbotController::class, 'conversations'])->name('conversations');
         Route::get('conversations/{conversation}', [\App\Http\Controllers\ChatbotController::class, 'show'])->name('conversations.show');
+        Route::delete('conversations/{conversation}', [\App\Http\Controllers\ChatbotController::class, 'destroy'])->name('conversations.destroy');
     });
 });
 
