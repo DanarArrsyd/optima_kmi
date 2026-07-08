@@ -50,4 +50,17 @@ class ChatbotControllerTest extends TestCase
 
         $this->assertSame(2, $conversation->fresh()->messages()->count());
     }
+
+    public function test_cannot_send_message_using_another_users_conversation_id(): void
+    {
+        $admin1 = User::factory()->create(['role' => 'admin']);
+        $admin2 = User::factory()->create(['role' => 'admin']);
+        $conversationOfAdmin1 = ChatConversation::create(['user_id' => $admin1->id]);
+
+        $response = $this->actingAs($admin2)->postJson(route('chatbot.send-message'), [
+            'message' => 'halo', 'conversation_id' => $conversationOfAdmin1->id,
+        ]);
+
+        $response->assertNotFound();
+    }
 }
