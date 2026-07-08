@@ -3,6 +3,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ChatConversation;
 use App\Services\GeminiChatbotService;
+use App\Services\GroqChatbotService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Str;
@@ -10,7 +11,12 @@ use Illuminate\View\View;
 
 class ChatbotController extends Controller
 {
-    public function __construct(private GeminiChatbotService $svc) {}
+    private const FALLBACK = 'Maaf, sistem AI lagi ga bisa diakses, coba lagi nanti.';
+
+    public function __construct(
+        private GeminiChatbotService $gemini,
+        private GroqChatbotService $groq,
+    ) {}
 
     public function index(): View
     {
@@ -28,7 +34,9 @@ class ChatbotController extends Controller
             ? ChatConversation::where('user_id', $request->user()->id)->findOrFail($data['conversation_id'])
             : ChatConversation::create(['user_id' => $request->user()->id]);
 
-        $reply = $this->svc->ask($conversation->fresh('messages'), $data['message']);
+        $reply = $this->gemini->ask($conversation->fresh('messages'), $data['message'])
+            ?? $this->groq->ask($conversation->fresh('messages'), $data['message'])
+            ?? self::FALLBACK;
 
         $conversation->messages()->create(['role' => 'user', 'content' => $data['message']]);
         $conversation->messages()->create(['role' => 'assistant', 'content' => $reply]);

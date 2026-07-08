@@ -181,4 +181,35 @@ class ChatbotControllerTest extends TestCase
 
         $this->actingAs($staff)->get(route('chatbot.index'))->assertForbidden();
     }
+
+    public function test_falls_back_to_groq_when_gemini_fails(): void
+    {
+        Http::fake([
+            'generativelanguage.googleapis.com/*' => Http::response([], 429),
+            'api.groq.com/*' => Http::response([
+                'choices' => [['message' => ['role' => 'assistant', 'content' => 'Jawaban dari Groq.']]],
+            ], 200),
+        ]);
+
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $response = $this->actingAs($admin)->postJson(route('chatbot.send-message'), ['message' => 'halo']);
+
+        $response->assertOk()->assertJson(['reply' => 'Jawaban dari Groq.']);
+        $this->assertDatabaseHas('chat_messages', ['role' => 'assistant', 'content' => 'Jawaban dari Groq.']);
+    }
+
+    public function test_returns_generic_fallback_when_both_providers_fail(): void
+    {
+        Http::fake([
+            'generativelanguage.googleapis.com/*' => Http::response([], 429),
+            'api.groq.com/*' => Http::response([], 500),
+        ]);
+
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $response = $this->actingAs($admin)->postJson(route('chatbot.send-message'), ['message' => 'halo']);
+
+        $response->assertOk()->assertJson(['reply' => 'Maaf, sistem AI lagi ga bisa diakses, coba lagi nanti.']);
+    }
 }
