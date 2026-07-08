@@ -435,4 +435,58 @@ class ChatbotToolsTest extends TestCase
 
         $this->assertArrayHasKey('error', $result);
     }
+
+    public function test_get_ranking_breakdown_dies_sorts_by_count_desc(): void
+    {
+        $partLow = MasterPart::create(['part_no' => 'RD-01', 'part_name' => 'Low Part', 'customer' => 'Toyota']);
+        $prosesLow = MasterPartProses::create([
+            'id_part' => $partLow->id, 'id_proses' => 1, 'nama_proses' => 'PROGRESSIVE',
+            'sph_standar_produksi' => 500, 'sph_standar_qc' => 250,
+        ]);
+        $partHigh = MasterPart::create(['part_no' => 'RD-02', 'part_name' => 'High Part', 'customer' => 'Honda']);
+        $prosesHigh = MasterPartProses::create([
+            'id_part' => $partHigh->id, 'id_proses' => 1, 'nama_proses' => 'BENDING',
+            'sph_standar_produksi' => 500, 'sph_standar_qc' => 250,
+        ]);
+
+        TransaksiBreakdownDies::create([
+            'no_lkd' => 'LKD-R1', 'id_part_proses' => $prosesLow->id,
+            'tanggal_breakdown' => '2026-07-05', 'jam_breakdown' => '08:00',
+            'tanggal_mulai_perbaikan' => '2026-07-05', 'jam_mulai_perbaikan' => '09:00',
+            'tanggal_selesai_perbaikan' => '2026-07-05', 'jam_selesai_perbaikan' => '10:00',
+            'problem_dies' => 'x', 'penyebab_breakdown' => 'x', 'tindakan_perbaikan' => 'x',
+            'status_breakdown' => 'Selesai', 'pic_maintenance' => 'Budi',
+            'repair_time' => 1.0, 'total_downtime' => 1.0,
+        ]);
+        foreach (['LKD-R2', 'LKD-R3'] as $i => $noLkd) {
+            TransaksiBreakdownDies::create([
+                'no_lkd' => $noLkd, 'id_part_proses' => $prosesHigh->id,
+                'tanggal_breakdown' => '2026-07-0'.($i + 6), 'jam_breakdown' => '08:00',
+                'tanggal_mulai_perbaikan' => '2026-07-0'.($i + 6), 'jam_mulai_perbaikan' => '09:00',
+                'tanggal_selesai_perbaikan' => '2026-07-0'.($i + 6), 'jam_selesai_perbaikan' => '10:00',
+                'problem_dies' => 'x', 'penyebab_breakdown' => 'x', 'tindakan_perbaikan' => 'x',
+                'status_breakdown' => 'Selesai', 'pic_maintenance' => 'Budi',
+                'repair_time' => 1.0, 'total_downtime' => 1.0,
+            ]);
+        }
+
+        $result = (new ChatbotTools())->getRankingBreakdownDies('2026-07', '2026-07');
+
+        $this->assertArrayNotHasKey('error', $result);
+        $this->assertSame(2, $result['ranking'][0]['jumlah_breakdown']);
+        $this->assertSame(1, $result['ranking'][1]['jumlah_breakdown']);
+    }
+
+    public function test_get_ranking_breakdown_dies_returns_error_when_no_breakdowns(): void
+    {
+        $part = MasterPart::create(['part_no' => 'RD-03', 'part_name' => 'Idle Part', 'customer' => 'Toyota']);
+        MasterPartProses::create([
+            'id_part' => $part->id, 'id_proses' => 1, 'nama_proses' => 'PROGRESSIVE',
+            'sph_standar_produksi' => 500, 'sph_standar_qc' => 250,
+        ]);
+
+        $result = (new ChatbotTools())->getRankingBreakdownDies('2026-07', '2026-07');
+
+        $this->assertArrayHasKey('error', $result);
+    }
 }

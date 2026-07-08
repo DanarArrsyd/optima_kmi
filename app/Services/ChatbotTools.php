@@ -285,6 +285,36 @@ class ChatbotTools
         ];
     }
 
+    /** Ranking dies/part berdasarkan jumlah kejadian breakdown terbanyak dalam rentang bulan. */
+    public function getRankingBreakdownDies(string $bulanMulai, string $bulanAkhir): array
+    {
+        [$from, $to, $error] = $this->monthSpan($bulanMulai, $bulanAkhir);
+        if ($error) {
+            return ['error' => $error];
+        }
+
+        $rows = collect($this->diesDashboard->compute($from, $to))
+            ->filter(fn ($r) => $r['count'] > 0)
+            ->sortByDesc('count')
+            ->values()
+            ->take(10);
+
+        if ($rows->isEmpty()) {
+            return ['error' => "Tidak ada kejadian breakdown dies di periode {$bulanMulai} s/d {$bulanAkhir}."];
+        }
+
+        return [
+            'bulan_mulai' => $bulanMulai,
+            'bulan_akhir' => $bulanAkhir,
+            'ranking'     => $rows->map(fn ($r) => [
+                'part'             => $r['nama_mesin'],
+                'part_no'          => $r['kode_mesin'],
+                'nama_proses'      => $r['nama_proses'],
+                'jumlah_breakdown' => $r['count'],
+            ])->toArray(),
+        ];
+    }
+
     private function produksiSummary(string $periode): array
     {
         [$from, $to] = $this->monthRange($periode);
@@ -431,6 +461,18 @@ class ChatbotTools
             [
                 'name' => 'getRankingBreakdownMesin',
                 'description' => 'Ranking mesin berdasarkan jumlah kejadian breakdown terbanyak dalam rentang bulan. Dipakai untuk pertanyaan seperti "mesin apa aja yang sering rusak".',
+                'parameters' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'bulanMulai' => ['type' => 'string', 'description' => 'Bulan mulai, format YYYY-MM'],
+                        'bulanAkhir' => ['type' => 'string', 'description' => 'Bulan akhir (inklusif), format YYYY-MM'],
+                    ],
+                    'required' => ['bulanMulai', 'bulanAkhir'],
+                ],
+            ],
+            [
+                'name' => 'getRankingBreakdownDies',
+                'description' => 'Ranking dies/part berdasarkan jumlah kejadian breakdown terbanyak dalam rentang bulan. Dipakai untuk pertanyaan seperti "dies apa aja yang sering rusak".',
                 'parameters' => [
                     'type' => 'object',
                     'properties' => [
