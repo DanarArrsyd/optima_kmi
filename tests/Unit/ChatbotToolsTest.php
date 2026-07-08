@@ -330,4 +330,56 @@ class ChatbotToolsTest extends TestCase
         $this->assertCount(150, $result['data']);
         $this->assertArrayHasKey('note', $result);
     }
+
+    public function test_get_problem_mesin_returns_raw_list_with_mesin_filter(): void
+    {
+        $mesin = MasterMesin::create([
+            'id_mesin' => 'PM-01', 'nama_mesin' => 'Press A', 'line' => '1',
+            'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100,
+        ]);
+        $otherMesin = MasterMesin::create([
+            'id_mesin' => 'PM-02', 'nama_mesin' => 'Press B', 'line' => '1',
+            'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100,
+        ]);
+
+        TransaksiBreakdownMesin::create([
+            'no_lkm' => 'LKM-P1', 'id_mesin' => $mesin->id,
+            'tanggal_breakdown' => '2026-07-05', 'jam_breakdown' => '08:00',
+            'tanggal_mulai_perbaikan' => '2026-07-05', 'jam_mulai_perbaikan' => '09:00',
+            'tanggal_selesai_perbaikan' => '2026-07-05', 'jam_selesai_perbaikan' => '10:00',
+            'problem_mesin' => 'Motor macet', 'penyebab_breakdown' => 'Oli habis', 'tindakan_perbaikan' => 'Isi oli',
+            'status_breakdown' => 'Selesai', 'pic_maintenance' => 'Budi',
+            'repair_time' => 1.0, 'total_downtime' => 1.0,
+        ]);
+        TransaksiBreakdownMesin::create([
+            'no_lkm' => 'LKM-P2', 'id_mesin' => $otherMesin->id,
+            'tanggal_breakdown' => '2026-07-06', 'jam_breakdown' => '08:00',
+            'tanggal_mulai_perbaikan' => '2026-07-06', 'jam_mulai_perbaikan' => '09:00',
+            'tanggal_selesai_perbaikan' => '2026-07-06', 'jam_selesai_perbaikan' => '10:00',
+            'problem_mesin' => 'Panel error', 'penyebab_breakdown' => 'Korsleting', 'tindakan_perbaikan' => 'Ganti panel',
+            'status_breakdown' => 'Selesai', 'pic_maintenance' => 'Budi',
+            'repair_time' => 1.0, 'total_downtime' => 1.0,
+        ]);
+
+        $result = (new ChatbotTools())->getProblemMesin('2026-07', '2026-07', 'PM-01');
+
+        $this->assertArrayNotHasKey('error', $result);
+        $this->assertSame(1, $result['total_record']);
+        $this->assertSame('Motor macet', $result['data'][0]['problem']);
+        $this->assertSame('Oli habis', $result['data'][0]['penyebab']);
+        $this->assertSame('Isi oli', $result['data'][0]['tindakan']);
+        $this->assertSame('Press A', $result['data'][0]['mesin']);
+    }
+
+    public function test_get_problem_mesin_returns_error_for_unknown_mesin(): void
+    {
+        $result = (new ChatbotTools())->getProblemMesin('2026-07', '2026-07', 'NOT-EXIST');
+        $this->assertArrayHasKey('error', $result);
+    }
+
+    public function test_get_problem_mesin_returns_error_when_no_records(): void
+    {
+        $result = (new ChatbotTools())->getProblemMesin('2020-01', '2020-01');
+        $this->assertArrayHasKey('error', $result);
+    }
 }

@@ -5,6 +5,7 @@ use App\Models\MasterMesin;
 use App\Models\MasterPart;
 use App\Models\MasterPartProses;
 use App\Models\TransaksiBreakdownDies;
+use App\Models\TransaksiBreakdownMesin;
 use App\Models\TransaksiProduksi;
 use App\Models\TransaksiQc;
 use Illuminate\Support\Carbon;
@@ -204,6 +205,56 @@ class ChatbotTools
         return $result;
     }
 
+    /** Daftar mentah problem/penyebab/tindakan breakdown mesin dalam rentang bulan (opsional filter per mesin). */
+    public function getProblemMesin(string $bulanMulai, string $bulanAkhir, ?string $idMesin = null): array
+    {
+        [$from, $to, $error] = $this->monthSpan($bulanMulai, $bulanAkhir);
+        if ($error) {
+            return ['error' => $error];
+        }
+
+        $mesinId = null;
+        if ($idMesin !== null) {
+            $mesin = MasterMesin::whereRaw('LOWER(TRIM(id_mesin)) = ?', [strtolower(trim($idMesin))])->first();
+            if (!$mesin) {
+                return ['error' => "Mesin dengan kode \"{$idMesin}\" tidak ditemukan di master data."];
+            }
+            $mesinId = $mesin->id;
+        }
+
+        $query = TransaksiBreakdownMesin::with('mesin')
+            ->whereBetween('tanggal_breakdown', [$from->toDateString(), $to->toDateString()])
+            ->when($mesinId !== null, fn ($q) => $q->where('id_mesin', $mesinId))
+            ->orderByDesc('tanggal_breakdown');
+
+        $total = $query->count();
+        if ($total === 0) {
+            $label = $idMesin ? " untuk mesin \"{$idMesin}\"" : '';
+            return ['error' => "Tidak ada data breakdown mesin{$label} di periode {$bulanMulai} s/d {$bulanAkhir}."];
+        }
+
+        $rows = $query->limit(150)->get()->map(fn ($r) => [
+            'tanggal'  => $r->tanggal_breakdown->format('Y-m-d'),
+            'mesin'    => $r->mesin?->nama_mesin ?? '—',
+            'problem'  => $r->problem_mesin,
+            'penyebab' => $r->penyebab_breakdown,
+            'tindakan' => $r->tindakan_perbaikan,
+        ])->toArray();
+
+        $result = [
+            'bulan_mulai'  => $bulanMulai,
+            'bulan_akhir'  => $bulanAkhir,
+            'total_record' => $total,
+            'data'         => $rows,
+        ];
+
+        if ($total > 150) {
+            $result['note'] = "Data dipotong ke 150 record terbaru dari total {$total}. Persempit rentang bulan untuk detail lengkap.";
+        }
+
+        return $result;
+    }
+
     private function produksiSummary(string $periode): array
     {
         [$from, $to] = $this->monthRange($periode);
@@ -330,6 +381,19 @@ class ChatbotTools
                         'bulanMulai' => ['type' => 'string', 'description' => 'Bulan mulai, format YYYY-MM'],
                         'bulanAkhir' => ['type' => 'string', 'description' => 'Bulan akhir (inklusif), format YYYY-MM'],
                         'partNo' => ['type' => 'string', 'description' => 'Opsional, nomor part/dies spesifik. Kosongkan untuk semua dies.'],
+                    ],
+                    'required' => ['bulanMulai', 'bulanAkhir'],
+                ],
+            ],
+            [
+                'name' => 'getProblemMesin',
+                'description' => 'Sama seperti getProblemDies tapi untuk mesin — problem/penyebab/tindakan breakdown mesin.',
+                'parameters' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'bulanMulai' => ['type' => 'string', 'description' => 'Bulan mulai, format YYYY-MM'],
+                        'bulanAkhir' => ['type' => 'string', 'description' => 'Bulan akhir (inklusif), format YYYY-MM'],
+                        'idMesin' => ['type' => 'string', 'description' => 'Opsional, kode mesin spesifik. Kosongkan untuk semua mesin.'],
                     ],
                     'required' => ['bulanMulai', 'bulanAkhir'],
                 ],
