@@ -3,6 +3,8 @@ namespace App\Services;
 
 use App\Models\MasterMesin;
 use App\Models\MasterPart;
+use App\Models\MasterPartProses;
+use App\Models\TransaksiBreakdownDies;
 use App\Models\TransaksiProduksi;
 use App\Models\TransaksiQc;
 use Illuminate\Support\Carbon;
@@ -152,6 +154,56 @@ class ChatbotTools
         ];
     }
 
+    /** Daftar mentah problem/penyebab/tindakan breakdown dies dalam rentang bulan (opsional filter per part). */
+    public function getProblemDies(string $bulanMulai, string $bulanAkhir, ?string $partNo = null): array
+    {
+        [$from, $to, $error] = $this->monthSpan($bulanMulai, $bulanAkhir);
+        if ($error) {
+            return ['error' => $error];
+        }
+
+        $prosesIds = null;
+        if ($partNo !== null) {
+            $part = MasterPart::whereRaw('LOWER(TRIM(part_no)) = ?', [strtolower(trim($partNo))])->first();
+            if (!$part) {
+                return ['error' => "Part/dies dengan nomor \"{$partNo}\" tidak ditemukan di master data."];
+            }
+            $prosesIds = MasterPartProses::where('id_part', $part->id)->pluck('id');
+        }
+
+        $query = TransaksiBreakdownDies::with('partProses.part')
+            ->whereBetween('tanggal_breakdown', [$from->toDateString(), $to->toDateString()])
+            ->when($prosesIds !== null, fn ($q) => $q->whereIn('id_part_proses', $prosesIds))
+            ->orderByDesc('tanggal_breakdown');
+
+        $total = $query->count();
+        if ($total === 0) {
+            $label = $partNo ? " untuk part \"{$partNo}\"" : '';
+            return ['error' => "Tidak ada data breakdown dies{$label} di periode {$bulanMulai} s/d {$bulanAkhir}."];
+        }
+
+        $rows = $query->limit(150)->get()->map(fn ($r) => [
+            'tanggal'  => $r->tanggal_breakdown->format('Y-m-d'),
+            'part'     => $r->partProses?->part?->part_name ?? '—',
+            'problem'  => $r->problem_dies,
+            'penyebab' => $r->penyebab_breakdown,
+            'tindakan' => $r->tindakan_perbaikan,
+        ])->toArray();
+
+        $result = [
+            'bulan_mulai'   => $bulanMulai,
+            'bulan_akhir'   => $bulanAkhir,
+            'total_record'  => $total,
+            'data'          => $rows,
+        ];
+
+        if ($total > 150) {
+            $result['note'] = "Data dipotong ke 150 record terbaru dari total {$total}. Persempit rentang bulan untuk detail lengkap.";
+        }
+
+        return $result;
+    }
+
     private function produksiSummary(string $periode): array
     {
         [$from, $to] = $this->monthRange($periode);
@@ -265,6 +317,19 @@ class ChatbotTools
                     'properties' => [
                         'bulanMulai' => ['type' => 'string', 'description' => 'Bulan mulai, format YYYY-MM'],
                         'bulanAkhir' => ['type' => 'string', 'description' => 'Bulan akhir (inklusif), format YYYY-MM'],
+                    ],
+                    'required' => ['bulanMulai', 'bulanAkhir'],
+                ],
+            ],
+            [
+                'name' => 'getProblemDies',
+                'description' => 'Ambil daftar mentah problem, penyebab, dan tindakan perbaikan breakdown dies dalam rentang bulan. Dipakai untuk pertanyaan root-cause seperti "problem apa yang sering muncul", "penyebabnya apa", "perbaikan yang cocok apa" — kamu HARUS merangkum sendiri dari data yang dikembalikan, jangan menambah pola yang tidak ada di teks.',
+                'parameters' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'bulanMulai' => ['type' => 'string', 'description' => 'Bulan mulai, format YYYY-MM'],
+                        'bulanAkhir' => ['type' => 'string', 'description' => 'Bulan akhir (inklusif), format YYYY-MM'],
+                        'partNo' => ['type' => 'string', 'description' => 'Opsional, nomor part/dies spesifik. Kosongkan untuk semua dies.'],
                     ],
                     'required' => ['bulanMulai', 'bulanAkhir'],
                 ],
