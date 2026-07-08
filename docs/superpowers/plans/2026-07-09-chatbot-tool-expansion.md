@@ -746,16 +746,17 @@ Add to `tests/Unit/ChatbotToolsTest.php` (add `use App\Models\MasterLosstime;` a
         $lossTrial = MasterLosstime::create([
             'kode' => 'LS-TRI', 'jenis_losstime' => 'Trial QC', 'std_menit_default' => 15, 'std_menit_progressive' => 15,
         ]);
+        $user = User::factory()->create();
 
         TransaksiDandoriRincian::create([
             'tanggal' => '2026-07-05', 'id_shift' => $shift->id, 'id_karyawan' => $karyawan->id,
             'id_mesin' => $mesin->id, 'id_part_proses' => $proses->id, 'id_losstime' => $lossSetting->id,
-            'actual_menit' => 50, 'std_menit' => 30, 'over_menit' => 20,
+            'actual_menit' => 50, 'std_menit' => 30, 'over_menit' => 20, 'created_by' => $user->id,
         ]);
         TransaksiDandoriRincian::create([
             'tanggal' => '2026-07-06', 'id_shift' => $shift->id, 'id_karyawan' => $karyawan->id,
             'id_mesin' => $mesin->id, 'id_part_proses' => $proses->id, 'id_losstime' => $lossTrial->id,
-            'actual_menit' => 20, 'std_menit' => 15, 'over_menit' => 5,
+            'actual_menit' => 20, 'std_menit' => 15, 'over_menit' => 5, 'created_by' => $user->id,
         ]);
 
         $result = (new ChatbotTools())->getRekapDandori('2026-07', '2026-07');
@@ -790,16 +791,17 @@ Add to `tests/Unit/ChatbotToolsTest.php` (add `use App\Models\MasterLosstime;` a
         $loss = MasterLosstime::create([
             'kode' => 'LS-SET2', 'jenis_losstime' => 'Setting Dies', 'std_menit_default' => 30, 'std_menit_progressive' => 30,
         ]);
+        $user = User::factory()->create();
 
         TransaksiDandoriRincian::create([
             'tanggal' => '2026-07-05', 'id_shift' => $shift->id, 'id_karyawan' => $karyawan->id,
             'id_mesin' => $mesin1->id, 'id_part_proses' => $proses->id, 'id_losstime' => $loss->id,
-            'actual_menit' => 50, 'std_menit' => 30, 'over_menit' => 20,
+            'actual_menit' => 50, 'std_menit' => 30, 'over_menit' => 20, 'created_by' => $user->id,
         ]);
         TransaksiDandoriRincian::create([
             'tanggal' => '2026-07-06', 'id_shift' => $shift->id, 'id_karyawan' => $karyawan->id,
             'id_mesin' => $mesin2->id, 'id_part_proses' => $proses->id, 'id_losstime' => $loss->id,
-            'actual_menit' => 60, 'std_menit' => 30, 'over_menit' => 30,
+            'actual_menit' => 60, 'std_menit' => 30, 'over_menit' => 30, 'created_by' => $user->id,
         ]);
 
         $result = (new ChatbotTools())->getRekapDandori('2026-07', '2026-07', 'DD-02');
