@@ -182,6 +182,12 @@ Route::middleware('auth')->group(function () {
         Route::put('breakdown-dies/{breakdownDy}',      [BreakdownDiesController::class, 'update'])->name('breakdown-dies.update');
         Route::delete('breakdown-dies/{breakdownDy}',   [BreakdownDiesController::class, 'destroy'])->name('breakdown-dies.destroy');
     });
+
+    // --- AI CHATBOT (admin & manager only) ---
+    Route::middleware('role:admin,manager')->prefix('chatbot')->name('chatbot.')->group(function () {
+        Route::post('message', [\App\Http\Controllers\ChatbotController::class, 'sendMessage'])->name('send-message');
+        Route::get('history',  [\App\Http\Controllers\ChatbotController::class, 'history'])->name('history');
+    });
 });
 
 require __DIR__.'/auth.php';
