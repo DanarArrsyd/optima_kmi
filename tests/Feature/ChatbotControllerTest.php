@@ -143,4 +143,28 @@ class ChatbotControllerTest extends TestCase
 
         $this->actingAs($staff)->getJson(route('chatbot.conversations'))->assertForbidden();
     }
+
+    public function test_show_returns_messages_for_own_conversation(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $conversation = ChatConversation::create(['user_id' => $admin->id]);
+        $conversation->messages()->create(['role' => 'user', 'content' => 'halo']);
+        $conversation->messages()->create(['role' => 'assistant', 'content' => 'Halo juga!']);
+
+        $response = $this->actingAs($admin)->getJson(route('chatbot.conversations.show', $conversation));
+
+        $response->assertOk()->assertExactJson([
+            ['role' => 'user', 'content' => 'halo'],
+            ['role' => 'assistant', 'content' => 'Halo juga!'],
+        ]);
+    }
+
+    public function test_show_returns_404_for_another_users_conversation(): void
+    {
+        $admin1 = User::factory()->create(['role' => 'admin']);
+        $admin2 = User::factory()->create(['role' => 'admin']);
+        $conversation = ChatConversation::create(['user_id' => $admin1->id]);
+
+        $this->actingAs($admin2)->getJson(route('chatbot.conversations.show', $conversation))->assertNotFound();
+    }
 }

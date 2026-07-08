@@ -188,6 +188,7 @@ Route::middleware('auth')->group(function () {
         Route::post('message', [\App\Http\Controllers\ChatbotController::class, 'sendMessage'])
             ->middleware('throttle:20,1')->name('send-message');
         Route::get('conversations', [\App\Http\Controllers\ChatbotController::class, 'conversations'])->name('conversations');
+        Route::get('conversations/{conversation}', [\App\Http\Controllers\ChatbotController::class, 'show'])->name('conversations.show');
         Route::get('history',  [\App\Http\Controllers\ChatbotController::class, 'history'])->name('history');
     });
 });

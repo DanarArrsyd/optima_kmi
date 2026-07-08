@@ -44,6 +44,15 @@ class ChatbotController extends Controller
         ]));
     }
 
+    public function show(Request $request, ChatConversation $conversation): JsonResponse
+    {
+        abort_if($conversation->user_id !== $request->user()->id, 404);
+
+        return response()->json($conversation->messages->map(fn ($m) => [
+            'role' => $m->role, 'content' => $m->content,
+        ]));
+    }
+
     public function history(Request $request): JsonResponse
     {
         $conversation = ChatConversation::where('user_id', $request->user()->id)
