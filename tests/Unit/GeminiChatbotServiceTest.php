@@ -84,4 +84,19 @@ class GeminiChatbotServiceTest extends TestCase
 
         $this->assertSame('Maaf, sistem AI lagi ga bisa diakses, coba lagi nanti.', $reply);
     }
+
+    public function test_returns_fallback_when_tool_call_has_missing_required_args(): void
+    {
+        Http::fake(['generativelanguage.googleapis.com/*' => Http::response([
+            'candidates' => [[
+                'content' => ['role' => 'model', 'parts' => [[
+                    'functionCall' => ['name' => 'getRekapNg', 'args' => ['namaProses' => 'BENDING']],
+                ]]],
+            ]],
+        ], 200)]);
+
+        $reply = (new GeminiChatbotService(new ChatbotTools()))->ask($this->conversation(), 'berapa NG?');
+
+        $this->assertSame('Maaf, sistem AI lagi ga bisa diakses, coba lagi nanti.', $reply);
+    }
 }

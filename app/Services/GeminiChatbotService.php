@@ -40,14 +40,23 @@ class GeminiChatbotService
             }
 
             if (isset($part['functionCall'])) {
-                $name = $part['functionCall']['name'];
+                $name = $part['functionCall']['name'] ?? null;
+                if ($name === null) {
+                    return self::FALLBACK;
+                }
+
                 $args = $part['functionCall']['args'] ?? [];
 
                 if (!method_exists($this->tools, $name)) {
                     return self::FALLBACK;
                 }
 
-                $result = $this->tools->{$name}(...$args);
+                try {
+                    $result = $this->tools->{$name}(...$args);
+                } catch (\Throwable $e) {
+                    Log::warning('Chatbot tool dispatch failed', ['name' => $name, 'message' => $e->getMessage()]);
+                    return self::FALLBACK;
+                }
 
                 $contents[] = ['role' => 'model', 'parts' => [['functionCall' => $part['functionCall']]]];
                 $contents[] = ['role' => 'function', 'parts' => [[
