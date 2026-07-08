@@ -137,4 +137,92 @@ class ChatbotToolsTest extends TestCase
         $this->assertSame(4000, $result['periode2']['total_qty_aktual']);
         $this->assertSame(1000, $result['delta_qty_aktual']);
     }
+
+    public function test_get_total_breakdown_dies_sums_across_month_range(): void
+    {
+        $part1 = MasterPart::create(['part_no' => 'PT-D1', 'part_name' => 'A', 'customer' => 'Toyota']);
+        $proses1 = MasterPartProses::create([
+            'id_part' => $part1->id, 'id_proses' => 1, 'nama_proses' => 'PROGRESSIVE',
+            'sph_standar_produksi' => 500, 'sph_standar_qc' => 250,
+        ]);
+        $part2 = MasterPart::create(['part_no' => 'PT-D2', 'part_name' => 'B', 'customer' => 'Honda']);
+        $proses2 = MasterPartProses::create([
+            'id_part' => $part2->id, 'id_proses' => 1, 'nama_proses' => 'BENDING',
+            'sph_standar_produksi' => 500, 'sph_standar_qc' => 250,
+        ]);
+
+        TransaksiBreakdownDies::create([
+            'no_lkd' => 'LKD-A', 'id_part_proses' => $proses1->id,
+            'tanggal_breakdown' => '2026-06-10', 'jam_breakdown' => '08:00',
+            'tanggal_mulai_perbaikan' => '2026-06-10', 'jam_mulai_perbaikan' => '09:00',
+            'tanggal_selesai_perbaikan' => '2026-06-10', 'jam_selesai_perbaikan' => '10:00',
+            'problem_dies' => 'x', 'penyebab_breakdown' => 'x', 'tindakan_perbaikan' => 'x',
+            'status_breakdown' => 'Sedang', 'pic_maintenance' => 'Budi',
+            'repair_time' => 1.0, 'total_downtime' => 1.0,
+        ]);
+        TransaksiBreakdownDies::create([
+            'no_lkd' => 'LKD-B', 'id_part_proses' => $proses2->id,
+            'tanggal_breakdown' => '2026-07-05', 'jam_breakdown' => '08:00',
+            'tanggal_mulai_perbaikan' => '2026-07-05', 'jam_mulai_perbaikan' => '09:00',
+            'tanggal_selesai_perbaikan' => '2026-07-05', 'jam_selesai_perbaikan' => '10:00',
+            'problem_dies' => 'x', 'penyebab_breakdown' => 'x', 'tindakan_perbaikan' => 'x',
+            'status_breakdown' => 'Ringan', 'pic_maintenance' => 'Budi',
+            'repair_time' => 1.0, 'total_downtime' => 1.0,
+        ]);
+
+        $result = (new ChatbotTools())->getTotalBreakdownDies('2026-06', '2026-07');
+
+        $this->assertArrayNotHasKey('error', $result);
+        $this->assertSame(2, $result['total_breakdown']);
+        $this->assertSame(2, $result['jumlah_dies_terdampak']);
+    }
+
+    public function test_get_total_breakdown_dies_returns_error_for_invalid_month_format(): void
+    {
+        $result = (new ChatbotTools())->getTotalBreakdownDies('bulan-salah', '2026-07');
+        $this->assertArrayHasKey('error', $result);
+    }
+
+    public function test_get_total_breakdown_dies_returns_error_when_start_after_end(): void
+    {
+        $result = (new ChatbotTools())->getTotalBreakdownDies('2026-07', '2026-06');
+        $this->assertArrayHasKey('error', $result);
+    }
+
+    public function test_get_total_breakdown_mesin_sums_across_month_range(): void
+    {
+        $mesin1 = MasterMesin::create([
+            'id_mesin' => 'M-X1', 'nama_mesin' => 'Press X1', 'line' => '1',
+            'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100,
+        ]);
+        $mesin2 = MasterMesin::create([
+            'id_mesin' => 'M-X2', 'nama_mesin' => 'Press X2', 'line' => '1',
+            'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100,
+        ]);
+
+        TransaksiBreakdownMesin::create([
+            'no_lkm' => 'LKM-A', 'id_mesin' => $mesin1->id,
+            'tanggal_breakdown' => '2026-06-10', 'jam_breakdown' => '08:00',
+            'tanggal_mulai_perbaikan' => '2026-06-10', 'jam_mulai_perbaikan' => '09:00',
+            'tanggal_selesai_perbaikan' => '2026-06-10', 'jam_selesai_perbaikan' => '10:00',
+            'problem_mesin' => 'x', 'penyebab_breakdown' => 'x', 'tindakan_perbaikan' => 'x',
+            'status_breakdown' => 'Ringan', 'pic_maintenance' => 'Budi',
+            'repair_time' => 1.0, 'total_downtime' => 1.0,
+        ]);
+        TransaksiBreakdownMesin::create([
+            'no_lkm' => 'LKM-B', 'id_mesin' => $mesin2->id,
+            'tanggal_breakdown' => '2026-07-05', 'jam_breakdown' => '08:00',
+            'tanggal_mulai_perbaikan' => '2026-07-05', 'jam_mulai_perbaikan' => '09:00',
+            'tanggal_selesai_perbaikan' => '2026-07-05', 'jam_selesai_perbaikan' => '10:00',
+            'problem_mesin' => 'x', 'penyebab_breakdown' => 'x', 'tindakan_perbaikan' => 'x',
+            'status_breakdown' => 'Sedang', 'pic_maintenance' => 'Budi',
+            'repair_time' => 1.0, 'total_downtime' => 1.0,
+        ]);
+
+        $result = (new ChatbotTools())->getTotalBreakdownMesin('2026-06', '2026-07');
+
+        $this->assertArrayNotHasKey('error', $result);
+        $this->assertSame(2, $result['total_breakdown']);
+        $this->assertSame(2, $result['jumlah_mesin_terdampak']);
+    }
 }

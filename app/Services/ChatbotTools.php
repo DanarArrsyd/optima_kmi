@@ -116,6 +116,42 @@ class ChatbotTools
         ];
     }
 
+    /** Total kejadian breakdown untuk SEMUA dies dalam rentang bulan. */
+    public function getTotalBreakdownDies(string $bulanMulai, string $bulanAkhir): array
+    {
+        [$from, $to, $error] = $this->monthSpan($bulanMulai, $bulanAkhir);
+        if ($error) {
+            return ['error' => $error];
+        }
+
+        $rows = $this->diesDashboard->compute($from, $to);
+
+        return [
+            'bulan_mulai'           => $bulanMulai,
+            'bulan_akhir'           => $bulanAkhir,
+            'total_breakdown'       => array_sum(array_column($rows, 'count')),
+            'jumlah_dies_terdampak' => count(array_filter($rows, fn ($r) => $r['count'] > 0)),
+        ];
+    }
+
+    /** Total kejadian breakdown untuk SEMUA mesin dalam rentang bulan. */
+    public function getTotalBreakdownMesin(string $bulanMulai, string $bulanAkhir): array
+    {
+        [$from, $to, $error] = $this->monthSpan($bulanMulai, $bulanAkhir);
+        if ($error) {
+            return ['error' => $error];
+        }
+
+        $rows = $this->mesinDashboard->compute($from, $to);
+
+        return [
+            'bulan_mulai'            => $bulanMulai,
+            'bulan_akhir'            => $bulanAkhir,
+            'total_breakdown'        => array_sum(array_column($rows, 'count')),
+            'jumlah_mesin_terdampak' => count(array_filter($rows, fn ($r) => $r['count'] > 0)),
+        ];
+    }
+
     private function produksiSummary(string $periode): array
     {
         [$from, $to] = $this->monthRange($periode);
@@ -140,6 +176,21 @@ class ChatbotTools
         } catch (\Throwable) {
             return [null, null];
         }
+    }
+
+    private function monthSpan(string $bulanMulai, string $bulanAkhir): array
+    {
+        [$from, ] = $this->monthRange($bulanMulai);
+        [, $to]   = $this->monthRange($bulanAkhir);
+
+        if (!$from || !$to) {
+            return [null, null, 'Format bulan tidak valid, gunakan format YYYY-MM.'];
+        }
+        if ($from->gt($to)) {
+            return [null, null, 'Bulan mulai tidak boleh setelah bulan akhir.'];
+        }
+
+        return [$from, $to, null];
     }
 
     /** Provider-neutral tool schema (name/description/JSON-Schema parameters), wrapped per-provider by each ChatbotProviderInterface implementation. */
@@ -192,6 +243,30 @@ class ChatbotTools
                         'periode2' => ['type' => 'string', 'description' => 'Format YYYY-MM, periode kedua'],
                     ],
                     'required' => ['periode1', 'periode2'],
+                ],
+            ],
+            [
+                'name' => 'getTotalBreakdownDies',
+                'description' => 'Total kejadian breakdown untuk SEMUA dies dalam rentang bulan tertentu (dipakai untuk pertanyaan luas/agregat, bukan per part spesifik).',
+                'parameters' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'bulanMulai' => ['type' => 'string', 'description' => 'Bulan mulai, format YYYY-MM'],
+                        'bulanAkhir' => ['type' => 'string', 'description' => 'Bulan akhir (inklusif), format YYYY-MM'],
+                    ],
+                    'required' => ['bulanMulai', 'bulanAkhir'],
+                ],
+            ],
+            [
+                'name' => 'getTotalBreakdownMesin',
+                'description' => 'Total kejadian breakdown untuk SEMUA mesin dalam rentang bulan tertentu (dipakai untuk pertanyaan luas/agregat, bukan per mesin spesifik).',
+                'parameters' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'bulanMulai' => ['type' => 'string', 'description' => 'Bulan mulai, format YYYY-MM'],
+                        'bulanAkhir' => ['type' => 'string', 'description' => 'Bulan akhir (inklusif), format YYYY-MM'],
+                    ],
+                    'required' => ['bulanMulai', 'bulanAkhir'],
                 ],
             ],
         ];
