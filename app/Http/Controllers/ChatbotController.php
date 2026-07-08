@@ -6,10 +6,16 @@ use App\Services\GeminiChatbotService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Str;
+use Illuminate\View\View;
 
 class ChatbotController extends Controller
 {
     public function __construct(private GeminiChatbotService $svc) {}
+
+    public function index(): View
+    {
+        return view('chatbot.index');
+    }
 
     public function sendMessage(Request $request): JsonResponse
     {
@@ -51,18 +57,5 @@ class ChatbotController extends Controller
         return response()->json($conversation->messages->map(fn ($m) => [
             'role' => $m->role, 'content' => $m->content,
         ]));
-    }
-
-    public function history(Request $request): JsonResponse
-    {
-        $conversation = ChatConversation::where('user_id', $request->user()->id)
-            ->latest()->first();
-
-        return response()->json([
-            'conversation_id' => $conversation?->id,
-            'messages'        => $conversation?->messages->map(fn ($m) => [
-                'role' => $m->role, 'content' => $m->content,
-            ]) ?? [],
-        ]);
     }
 }

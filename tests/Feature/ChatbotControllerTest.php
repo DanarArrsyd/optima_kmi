@@ -167,4 +167,18 @@ class ChatbotControllerTest extends TestCase
 
         $this->actingAs($admin2)->getJson(route('chatbot.conversations.show', $conversation))->assertNotFound();
     }
+
+    public function test_admin_can_view_chatbot_page(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $this->actingAs($admin)->get(route('chatbot.index'))->assertOk();
+    }
+
+    public function test_staff_produksi_cannot_view_chatbot_page(): void
+    {
+        $staff = User::factory()->create(['role' => 'staff_produksi']);
+
+        $this->actingAs($staff)->get(route('chatbot.index'))->assertForbidden();
+    }
 }
