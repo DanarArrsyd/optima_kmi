@@ -68,7 +68,10 @@ function chatbotPage() {
         async init() {
             try {
                 const res = await fetch('{{ route('chatbot.conversations') }}');
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 this.conversations = await res.json();
+            } catch (e) {
+                // Silently handle fetch failure; finally will reset loadingConversations
             } finally {
                 this.loadingConversations = false;
             }
@@ -87,10 +90,15 @@ function chatbotPage() {
         },
 
         async selectConversation(id) {
-            this.activeId = id;
-            const res = await fetch(`/chatbot/conversations/${id}`);
-            this.messages = await res.json();
-            this.$nextTick(() => this.scrollDown());
+            try {
+                this.activeId = id;
+                const res = await fetch(`/chatbot/conversations/${id}`);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                this.messages = await res.json();
+                this.$nextTick(() => this.scrollDown());
+            } catch (e) {
+                // Silently handle; leave messages unchanged
+            }
         },
 
         async send() {
@@ -113,6 +121,7 @@ function chatbotPage() {
                     },
                     body: JSON.stringify({ message: text, conversation_id: this.activeId }),
                 });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
                 this.activeId = data.conversation_id;
                 this.messages.push({ role: 'assistant', content: data.reply });
