@@ -1,13 +1,16 @@
 <?php
 namespace Tests\Unit;
 
+use App\Models\MasterKaryawan;
 use App\Models\MasterMesin;
 use App\Models\MasterPart;
 use App\Models\MasterPartProses;
+use App\Models\MasterShift;
 use App\Models\TransaksiBreakdownDies;
 use App\Models\TransaksiBreakdownMesin;
 use App\Models\TransaksiProduksi;
 use App\Models\TransaksiQc;
+use App\Models\User;
 use App\Services\ChatbotTools;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -80,10 +83,16 @@ class ChatbotToolsTest extends TestCase
             'id_part' => $part->id, 'id_proses' => 1, 'nama_proses' => 'BENDING',
             'sph_standar_produksi' => 600, 'sph_standar_qc' => 300,
         ]);
+        $shift = MasterShift::create(['nama_shift' => 'Shift 1', 'jam_start' => '08:00', 'jam_finish' => '16:00']);
+        $karyawan = MasterKaryawan::create([
+            'nik' => uniqid(), 'nama_karyawan' => 'Test', 'departemen' => 'QC', 'is_aktif' => true,
+        ]);
+        $user = User::factory()->create();
         TransaksiQc::create([
             'tgl_pengecekan' => '2026-07-10', 'tgl_produksi_part' => '2026-07-10',
-            'id_shift' => null, 'id_karyawan_qc' => null, 'id_part_proses' => $proses->id,
+            'id_shift' => $shift->id, 'id_karyawan_qc' => $karyawan->id, 'id_part_proses' => $proses->id,
             'jam_start' => '08:00', 'jam_finish' => '16:00', 'qty_ok' => 90, 'qty_ng' => 10,
+            'created_by' => $user->id,
         ]);
 
         $result = (new ChatbotTools())->getRekapNg('BENDING', '2026-07');
@@ -100,15 +109,26 @@ class ChatbotToolsTest extends TestCase
             'id_part' => $part->id, 'id_proses' => 1, 'nama_proses' => 'PROGRESSIVE',
             'sph_standar_produksi' => 500, 'sph_standar_qc' => 250,
         ]);
+        $shift = MasterShift::create(['nama_shift' => 'Shift 1', 'jam_start' => '08:00', 'jam_finish' => '16:00']);
+        $karyawan = MasterKaryawan::create([
+            'nik' => uniqid(), 'nama_karyawan' => 'Test', 'departemen' => 'Produksi', 'is_aktif' => true,
+        ]);
+        $mesin = MasterMesin::create([
+            'id_mesin' => 'M-'.uniqid(), 'nama_mesin' => 'Press Test', 'line' => '1',
+            'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100,
+        ]);
+        $user = User::factory()->create();
         TransaksiProduksi::create([
-            'tanggal_produksi' => '2026-06-15', 'id_shift' => null, 'id_karyawan' => null,
-            'id_mesin' => null, 'id_part_proses' => $proses->id,
+            'tanggal_produksi' => '2026-06-15', 'id_shift' => $shift->id, 'id_karyawan' => $karyawan->id,
+            'id_mesin' => $mesin->id, 'id_part_proses' => $proses->id,
             'jam_start' => '08:00', 'jam_finish' => '16:00', 'qty_aktual' => 3000, 'qty_ng' => 0,
+            'created_by' => $user->id,
         ]);
         TransaksiProduksi::create([
-            'tanggal_produksi' => '2026-07-15', 'id_shift' => null, 'id_karyawan' => null,
-            'id_mesin' => null, 'id_part_proses' => $proses->id,
+            'tanggal_produksi' => '2026-07-15', 'id_shift' => $shift->id, 'id_karyawan' => $karyawan->id,
+            'id_mesin' => $mesin->id, 'id_part_proses' => $proses->id,
             'jam_start' => '08:00', 'jam_finish' => '16:00', 'qty_aktual' => 4000, 'qty_ng' => 0,
+            'created_by' => $user->id,
         ]);
 
         $result = (new ChatbotTools())->bandingkanProduksi('2026-06', '2026-07');
