@@ -362,6 +362,28 @@ class ChatbotTools
         ];
     }
 
+    /** Total qty aktual & rata-rata SPH produksi untuk SEMUA proses dalam rentang bulan. */
+    public function getTotalProduksi(string $bulanMulai, string $bulanAkhir): array
+    {
+        [$from, $to, $error] = $this->monthSpan($bulanMulai, $bulanAkhir);
+        if ($error) {
+            return ['error' => $error];
+        }
+
+        $rows = TransaksiProduksi::whereBetween('tanggal_produksi', [$from->toDateString(), $to->toDateString()])->get();
+
+        if ($rows->isEmpty()) {
+            return ['error' => "Tidak ada data produksi di periode {$bulanMulai} s/d {$bulanAkhir}."];
+        }
+
+        return [
+            'bulan_mulai'      => $bulanMulai,
+            'bulan_akhir'      => $bulanAkhir,
+            'total_qty_aktual' => (int) $rows->sum('qty_aktual'),
+            'avg_sph_aktual'   => (int) round($rows->avg(fn ($r) => $r->sph_aktual)),
+        ];
+    }
+
     private function produksiSummary(string $periode): array
     {
         [$from, $to] = $this->monthRange($periode);
@@ -538,6 +560,18 @@ class ChatbotTools
                         'bulanMulai' => ['type' => 'string', 'description' => 'Bulan mulai, format YYYY-MM'],
                         'bulanAkhir' => ['type' => 'string', 'description' => 'Bulan akhir (inklusif), format YYYY-MM'],
                         'idMesin' => ['type' => 'string', 'description' => 'Opsional, kode mesin spesifik. Kosongkan untuk semua mesin.'],
+                    ],
+                    'required' => ['bulanMulai', 'bulanAkhir'],
+                ],
+            ],
+            [
+                'name' => 'getTotalProduksi',
+                'description' => 'Total qty aktual produksi (dalam Pcs) dan rata-rata SPH untuk SEMUA proses dalam rentang bulan (bisa multi-bulan). Beda dengan bandingkanProduksi yang membandingkan 2 periode terpisah — ini untuk total gabungan satu rentang.',
+                'parameters' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'bulanMulai' => ['type' => 'string', 'description' => 'Bulan mulai, format YYYY-MM'],
+                        'bulanAkhir' => ['type' => 'string', 'description' => 'Bulan akhir (inklusif), format YYYY-MM'],
                     ],
                     'required' => ['bulanMulai', 'bulanAkhir'],
                 ],

@@ -589,4 +589,52 @@ class ChatbotToolsTest extends TestCase
         $result = (new ChatbotTools())->getRekapDandori('2020-01', '2020-01');
         $this->assertArrayHasKey('error', $result);
     }
+
+    public function test_get_total_produksi_sums_across_month_range(): void
+    {
+        $part = MasterPart::create(['part_no' => 'TP-01', 'part_name' => 'Total Part', 'customer' => 'Toyota']);
+        $proses = MasterPartProses::create([
+            'id_part' => $part->id, 'id_proses' => 1, 'nama_proses' => 'PROGRESSIVE',
+            'sph_standar_produksi' => 500, 'sph_standar_qc' => 250,
+        ]);
+        $shift = MasterShift::create(['nama_shift' => 'Shift 1', 'jam_start' => '08:00', 'jam_finish' => '16:00']);
+        $karyawan = MasterKaryawan::create([
+            'nik' => uniqid(), 'nama_karyawan' => 'Test', 'departemen' => 'Produksi', 'is_aktif' => true,
+        ]);
+        $mesin = MasterMesin::create([
+            'id_mesin' => 'TP-M1', 'nama_mesin' => 'Press TP', 'line' => '1',
+            'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100,
+        ]);
+        $user = User::factory()->create();
+
+        TransaksiProduksi::create([
+            'tanggal_produksi' => '2026-05-15', 'id_shift' => $shift->id, 'id_karyawan' => $karyawan->id,
+            'id_mesin' => $mesin->id, 'id_part_proses' => $proses->id,
+            'jam_start' => '08:00', 'jam_finish' => '16:00', 'qty_aktual' => 3000, 'qty_ng' => 0,
+            'created_by' => $user->id,
+        ]);
+        TransaksiProduksi::create([
+            'tanggal_produksi' => '2026-06-15', 'id_shift' => $shift->id, 'id_karyawan' => $karyawan->id,
+            'id_mesin' => $mesin->id, 'id_part_proses' => $proses->id,
+            'jam_start' => '08:00', 'jam_finish' => '16:00', 'qty_aktual' => 4000, 'qty_ng' => 0,
+            'created_by' => $user->id,
+        ]);
+
+        $result = (new ChatbotTools())->getTotalProduksi('2026-05', '2026-06');
+
+        $this->assertArrayNotHasKey('error', $result);
+        $this->assertSame(7000, $result['total_qty_aktual']);
+    }
+
+    public function test_get_total_produksi_returns_error_when_no_records(): void
+    {
+        $result = (new ChatbotTools())->getTotalProduksi('2020-01', '2020-02');
+        $this->assertArrayHasKey('error', $result);
+    }
+
+    public function test_get_total_produksi_returns_error_for_invalid_month_format(): void
+    {
+        $result = (new ChatbotTools())->getTotalProduksi('bulan-salah', '2026-07');
+        $this->assertArrayHasKey('error', $result);
+    }
 }
