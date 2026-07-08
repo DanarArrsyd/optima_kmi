@@ -21,10 +21,9 @@ class ChatbotController extends Controller
             ? ChatConversation::where('user_id', $request->user()->id)->findOrFail($data['conversation_id'])
             : ChatConversation::create(['user_id' => $request->user()->id]);
 
-        $conversation->messages()->create(['role' => 'user', 'content' => $data['message']]);
-
         $reply = $this->svc->ask($conversation->fresh('messages'), $data['message']);
 
+        $conversation->messages()->create(['role' => 'user', 'content' => $data['message']]);
         $conversation->messages()->create(['role' => 'assistant', 'content' => $reply]);
 
         return response()->json(['conversation_id' => $conversation->id, 'reply' => $reply]);

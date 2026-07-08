@@ -63,4 +63,37 @@ class ChatbotControllerTest extends TestCase
 
         $response->assertNotFound();
     }
+
+    public function test_current_user_message_is_not_sent_twice_to_gemini(): void
+    {
+        $capturedContents = null;
+
+        // NOTE: assertions must NOT run inside this closure — GeminiChatbotService::callGemini()
+        // wraps the HTTP call in a try/catch(\Throwable), so a failed assertion thrown here would be
+        // silently swallowed and turned into the fallback reply instead of failing the test.
+        Http::fake(function ($request) use (&$capturedContents) {
+            $capturedContents = $request->data()['contents'];
+
+            return Http::response([
+                'candidates' => [['content' => ['role' => 'model', 'parts' => [['text' => 'Halo juga!']]]]],
+            ], 200);
+        });
+
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $this->actingAs($admin)->postJson(route('chatbot.send-message'), ['message' => 'halo dunia'])
+            ->assertOk()
+            ->assertJson(['reply' => 'Halo juga!']);
+
+        $this->assertNotNull($capturedContents, 'Expected the outbound Gemini request to be captured.');
+
+        $userTurns = array_values(array_filter($capturedContents, fn ($c) => $c['role'] === 'user'));
+        $matchingTurns = array_filter($userTurns, fn ($c) => $c['parts'][0]['text'] === 'halo dunia');
+
+        $this->assertCount(
+            1,
+            $matchingTurns,
+            'The current user message must appear exactly once in the outbound Gemini contents, not duplicated.'
+        );
+    }
 }
