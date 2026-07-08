@@ -1307,5 +1307,9 @@ document.querySelectorAll('form').forEach(form => {
 </script>
 
 @stack('scripts')
+
+    @if(auth()->check() && auth()->user()->hasRole(['admin', 'manager']))
+        @include('components.chatbot-widget')
+    @endif
 </body>
 </html>
