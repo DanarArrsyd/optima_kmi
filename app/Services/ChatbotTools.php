@@ -255,6 +255,36 @@ class ChatbotTools
         return $result;
     }
 
+    /** Ranking mesin berdasarkan jumlah kejadian breakdown terbanyak dalam rentang bulan. */
+    public function getRankingBreakdownMesin(string $bulanMulai, string $bulanAkhir): array
+    {
+        [$from, $to, $error] = $this->monthSpan($bulanMulai, $bulanAkhir);
+        if ($error) {
+            return ['error' => $error];
+        }
+
+        $rows = collect($this->mesinDashboard->compute($from, $to))
+            ->filter(fn ($r) => $r['count'] > 0)
+            ->sortByDesc('count')
+            ->values()
+            ->take(10);
+
+        if ($rows->isEmpty()) {
+            return ['error' => "Tidak ada kejadian breakdown mesin di periode {$bulanMulai} s/d {$bulanAkhir}."];
+        }
+
+        return [
+            'bulan_mulai' => $bulanMulai,
+            'bulan_akhir' => $bulanAkhir,
+            'ranking'     => $rows->map(fn ($r) => [
+                'mesin'            => $r['nama_mesin'],
+                'kode_mesin'       => $r['kode_mesin'],
+                'jumlah_breakdown' => $r['count'],
+                'availability_pct' => $r['availability_pct'],
+            ])->toArray(),
+        ];
+    }
+
     private function produksiSummary(string $periode): array
     {
         [$from, $to] = $this->monthRange($periode);
@@ -394,6 +424,18 @@ class ChatbotTools
                         'bulanMulai' => ['type' => 'string', 'description' => 'Bulan mulai, format YYYY-MM'],
                         'bulanAkhir' => ['type' => 'string', 'description' => 'Bulan akhir (inklusif), format YYYY-MM'],
                         'idMesin' => ['type' => 'string', 'description' => 'Opsional, kode mesin spesifik. Kosongkan untuk semua mesin.'],
+                    ],
+                    'required' => ['bulanMulai', 'bulanAkhir'],
+                ],
+            ],
+            [
+                'name' => 'getRankingBreakdownMesin',
+                'description' => 'Ranking mesin berdasarkan jumlah kejadian breakdown terbanyak dalam rentang bulan. Dipakai untuk pertanyaan seperti "mesin apa aja yang sering rusak".',
+                'parameters' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'bulanMulai' => ['type' => 'string', 'description' => 'Bulan mulai, format YYYY-MM'],
+                        'bulanAkhir' => ['type' => 'string', 'description' => 'Bulan akhir (inklusif), format YYYY-MM'],
                     ],
                     'required' => ['bulanMulai', 'bulanAkhir'],
                 ],

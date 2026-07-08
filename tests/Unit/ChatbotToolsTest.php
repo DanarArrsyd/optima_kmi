@@ -382,4 +382,57 @@ class ChatbotToolsTest extends TestCase
         $result = (new ChatbotTools())->getProblemMesin('2020-01', '2020-01');
         $this->assertArrayHasKey('error', $result);
     }
+
+    public function test_get_ranking_breakdown_mesin_sorts_by_count_desc(): void
+    {
+        $mesinLow = MasterMesin::create([
+            'id_mesin' => 'RM-01', 'nama_mesin' => 'Press Low', 'line' => '1',
+            'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100,
+        ]);
+        $mesinHigh = MasterMesin::create([
+            'id_mesin' => 'RM-02', 'nama_mesin' => 'Press High', 'line' => '1',
+            'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100,
+        ]);
+
+        TransaksiBreakdownMesin::create([
+            'no_lkm' => 'LKM-R1', 'id_mesin' => $mesinLow->id,
+            'tanggal_breakdown' => '2026-07-05', 'jam_breakdown' => '08:00',
+            'tanggal_mulai_perbaikan' => '2026-07-05', 'jam_mulai_perbaikan' => '09:00',
+            'tanggal_selesai_perbaikan' => '2026-07-05', 'jam_selesai_perbaikan' => '10:00',
+            'problem_mesin' => 'x', 'penyebab_breakdown' => 'x', 'tindakan_perbaikan' => 'x',
+            'status_breakdown' => 'Selesai', 'pic_maintenance' => 'Budi',
+            'repair_time' => 1.0, 'total_downtime' => 1.0,
+        ]);
+        foreach (['LKM-R2', 'LKM-R3'] as $i => $noLkm) {
+            TransaksiBreakdownMesin::create([
+                'no_lkm' => $noLkm, 'id_mesin' => $mesinHigh->id,
+                'tanggal_breakdown' => '2026-07-0'.($i + 6), 'jam_breakdown' => '08:00',
+                'tanggal_mulai_perbaikan' => '2026-07-0'.($i + 6), 'jam_mulai_perbaikan' => '09:00',
+                'tanggal_selesai_perbaikan' => '2026-07-0'.($i + 6), 'jam_selesai_perbaikan' => '10:00',
+                'problem_mesin' => 'x', 'penyebab_breakdown' => 'x', 'tindakan_perbaikan' => 'x',
+                'status_breakdown' => 'Selesai', 'pic_maintenance' => 'Budi',
+                'repair_time' => 1.0, 'total_downtime' => 1.0,
+            ]);
+        }
+
+        $result = (new ChatbotTools())->getRankingBreakdownMesin('2026-07', '2026-07');
+
+        $this->assertArrayNotHasKey('error', $result);
+        $this->assertSame('Press High', $result['ranking'][0]['mesin']);
+        $this->assertSame(2, $result['ranking'][0]['jumlah_breakdown']);
+        $this->assertSame('Press Low', $result['ranking'][1]['mesin']);
+        $this->assertSame(1, $result['ranking'][1]['jumlah_breakdown']);
+    }
+
+    public function test_get_ranking_breakdown_mesin_returns_error_when_no_breakdowns(): void
+    {
+        MasterMesin::create([
+            'id_mesin' => 'RM-03', 'nama_mesin' => 'Press Idle', 'line' => '1',
+            'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100,
+        ]);
+
+        $result = (new ChatbotTools())->getRankingBreakdownMesin('2026-07', '2026-07');
+
+        $this->assertArrayHasKey('error', $result);
+    }
 }
