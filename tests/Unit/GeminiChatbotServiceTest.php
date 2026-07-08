@@ -61,16 +61,16 @@ class GeminiChatbotServiceTest extends TestCase
         Http::assertSentCount(2);
     }
 
-    public function test_returns_fallback_message_when_gemini_api_fails(): void
+    public function test_returns_null_when_gemini_api_fails(): void
     {
         Http::fake(['generativelanguage.googleapis.com/*' => Http::response([], 500)]);
 
         $reply = (new GeminiChatbotService(new ChatbotTools()))->ask($this->conversation(), 'halo');
 
-        $this->assertSame('Maaf, sistem AI lagi ga bisa diakses, coba lagi nanti.', $reply);
+        $this->assertNull($reply);
     }
 
-    public function test_returns_fallback_message_when_loop_exceeds_max_iterations(): void
+    public function test_returns_null_when_loop_exceeds_max_iterations(): void
     {
         Http::fake(['generativelanguage.googleapis.com/*' => Http::response([
             'candidates' => [[
@@ -82,10 +82,10 @@ class GeminiChatbotServiceTest extends TestCase
 
         $reply = (new GeminiChatbotService(new ChatbotTools()))->ask($this->conversation(), 'halo');
 
-        $this->assertSame('Maaf, sistem AI lagi ga bisa diakses, coba lagi nanti.', $reply);
+        $this->assertNull($reply);
     }
 
-    public function test_returns_fallback_when_tool_call_has_missing_required_args(): void
+    public function test_returns_null_when_tool_call_has_missing_required_args(): void
     {
         Http::fake(['generativelanguage.googleapis.com/*' => Http::response([
             'candidates' => [[
@@ -97,6 +97,6 @@ class GeminiChatbotServiceTest extends TestCase
 
         $reply = (new GeminiChatbotService(new ChatbotTools()))->ask($this->conversation(), 'berapa NG?');
 
-        $this->assertSame('Maaf, sistem AI lagi ga bisa diakses, coba lagi nanti.', $reply);
+        $this->assertNull($reply);
     }
 }

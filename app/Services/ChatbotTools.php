@@ -141,4 +141,59 @@ class ChatbotTools
             return [null, null];
         }
     }
+
+    /** Provider-neutral tool schema (name/description/JSON-Schema parameters), wrapped per-provider by each ChatbotProviderInterface implementation. */
+    public function schemaDefinitions(): array
+    {
+        return [
+            [
+                'name' => 'getMtbfMttrDies',
+                'description' => 'Ambil MTBF/MTTR untuk sebuah part/dies pada bulan tertentu, per proses.',
+                'parameters' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'partNo' => ['type' => 'string', 'description' => 'Nomor part/dies, contoh: BT-091A-3'],
+                        'bulan'  => ['type' => 'string', 'description' => 'Format YYYY-MM, contoh: 2026-07'],
+                    ],
+                    'required' => ['partNo', 'bulan'],
+                ],
+            ],
+            [
+                'name' => 'getMtbfMttrMesin',
+                'description' => 'Ambil MTBF/MTTR untuk sebuah mesin pada bulan tertentu.',
+                'parameters' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'idMesin' => ['type' => 'string', 'description' => 'Kode mesin, contoh: M-01'],
+                        'bulan'   => ['type' => 'string', 'description' => 'Format YYYY-MM'],
+                    ],
+                    'required' => ['idMesin', 'bulan'],
+                ],
+            ],
+            [
+                'name' => 'getRekapNg',
+                'description' => 'Rekap total qty NG dan NG rate untuk sebuah nama proses pada bulan tertentu.',
+                'parameters' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'namaProses' => ['type' => 'string', 'description' => 'Nama proses, contoh: BENDING'],
+                        'periode'    => ['type' => 'string', 'description' => 'Format YYYY-MM'],
+                    ],
+                    'required' => ['namaProses', 'periode'],
+                ],
+            ],
+            [
+                'name' => 'bandingkanProduksi',
+                'description' => 'Bandingkan total qty aktual & SPH rata-rata produksi antara 2 bulan.',
+                'parameters' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'periode1' => ['type' => 'string', 'description' => 'Format YYYY-MM, periode pertama'],
+                        'periode2' => ['type' => 'string', 'description' => 'Format YYYY-MM, periode kedua'],
+                    ],
+                    'required' => ['periode1', 'periode2'],
+                ],
+            ],
+        ];
+    }
 }
