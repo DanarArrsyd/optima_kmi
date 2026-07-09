@@ -79,7 +79,7 @@ function chatbotPage() {
             'Problem dies apa yang paling sering muncul?',
             'Mesin apa yang sering rusak?',
             'Data produksi bulan ini berapa Pcs?',
-            'Rekap NG proses apa yang paling tinggi?',
+            'Dandori losstime apa yang paling banyak makan waktu?',
         ],
 
         greeting() {
