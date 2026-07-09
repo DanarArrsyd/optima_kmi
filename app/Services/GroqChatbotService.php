@@ -4,13 +4,13 @@ namespace App\Services;
 use App\Contracts\ChatbotProviderInterface;
 use App\Models\ChatConversation;
 use App\Services\Concerns\HasChatbotSystemPrompt;
+use App\Services\Concerns\HasRetryingHttpCall;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 class GroqChatbotService implements ChatbotProviderInterface
 {
-    use HasChatbotSystemPrompt;
+    use HasChatbotSystemPrompt, HasRetryingHttpCall;
 
     private const MAX_ITERATIONS = 5;
 
@@ -88,38 +88,10 @@ class GroqChatbotService implements ChatbotProviderInterface
             'tools'    => $this->toolSchema(),
         ];
 
-        // Retry 1x dengan backoff untuk status transient (server hiccup / rate-limit).
-        for ($attempt = 1; $attempt <= 2; $attempt++) {
-            try {
-                $response = Http::timeout(15)
-                    ->withToken($key)
-                    ->post('https://api.groq.com/openai/v1/chat/completions', $body);
-
-                if ($response->successful()) {
-                    return $response->json();
-                }
-
-                if ($attempt === 1 && in_array($response->status(), [429, 500, 502, 503], true)) {
-                    usleep(900_000);
-                    continue;
-                }
-
-                Log::warning('Groq API non-2xx response', [
-                    'status' => $response->status(),
-                    'body'   => Str::limit($response->body(), 500),
-                ]);
-                return null;
-            } catch (\Throwable $e) {
-                if ($attempt === 1) {
-                    usleep(900_000);
-                    continue;
-                }
-                Log::warning('Groq API call failed', ['message' => $e->getMessage()]);
-                return null;
-            }
-        }
-
-        return null;
+        return $this->withRetry(
+            fn () => Http::timeout(15)->withToken($key)->post('https://api.groq.com/openai/v1/chat/completions', $body),
+            'Groq'
+        );
     }
 
     private function toolSchema(): array
