@@ -21,9 +21,9 @@ class ChatbotTools
     /** MTBF/MTTR untuk sebuah part/dies (per proses), dalam 1 bulan. */
     public function getMtbfMttrDies(string $partNo, string $bulan): array
     {
-        $part = MasterPart::whereRaw('LOWER(TRIM(part_no)) = ?', [strtolower(trim($partNo))])->first();
-        if (!$part) {
-            return ['error' => "Part/dies dengan nomor \"{$partNo}\" tidak ditemukan di master data."];
+        $part = $this->findPartByNo($partNo);
+        if (is_array($part)) {
+            return $part;
         }
 
         [$from, $to] = $this->monthRange($bulan);
@@ -48,9 +48,9 @@ class ChatbotTools
     /** MTBF/MTTR untuk sebuah mesin, dalam 1 bulan. */
     public function getMtbfMttrMesin(string $idMesin, string $bulan): array
     {
-        $mesin = MasterMesin::whereRaw('LOWER(TRIM(id_mesin)) = ?', [strtolower(trim($idMesin))])->first();
-        if (!$mesin) {
-            return ['error' => "Mesin dengan kode \"{$idMesin}\" tidak ditemukan di master data."];
+        $mesin = $this->findMesinByKode($idMesin);
+        if (is_array($mesin)) {
+            return $mesin;
         }
 
         [$from, $to] = $this->monthRange($bulan);
@@ -170,9 +170,9 @@ class ChatbotTools
 
         $prosesIds = null;
         if ($partNo !== null) {
-            $part = MasterPart::whereRaw('LOWER(TRIM(part_no)) = ?', [strtolower(trim($partNo))])->first();
-            if (!$part) {
-                return ['error' => "Part/dies dengan nomor \"{$partNo}\" tidak ditemukan di master data."];
+            $part = $this->findPartByNo($partNo);
+            if (is_array($part)) {
+                return $part;
             }
             $prosesIds = MasterPartProses::where('id_part', $part->id)->pluck('id');
         }
@@ -210,9 +210,9 @@ class ChatbotTools
 
         $mesinId = null;
         if ($idMesin !== null) {
-            $mesin = MasterMesin::whereRaw('LOWER(TRIM(id_mesin)) = ?', [strtolower(trim($idMesin))])->first();
-            if (!$mesin) {
-                return ['error' => "Mesin dengan kode \"{$idMesin}\" tidak ditemukan di master data."];
+            $mesin = $this->findMesinByKode($idMesin);
+            if (is_array($mesin)) {
+                return $mesin;
             }
             $mesinId = $mesin->id;
         }
@@ -318,9 +318,9 @@ class ChatbotTools
 
         $mesinId = null;
         if ($idMesin !== null) {
-            $mesin = MasterMesin::whereRaw('LOWER(TRIM(id_mesin)) = ?', [strtolower(trim($idMesin))])->first();
-            if (!$mesin) {
-                return ['error' => "Mesin dengan kode \"{$idMesin}\" tidak ditemukan di master data."];
+            $mesin = $this->findMesinByKode($idMesin);
+            if (is_array($mesin)) {
+                return $mesin;
             }
             $mesinId = $mesin->id;
         }
@@ -393,9 +393,9 @@ class ChatbotTools
 
         $prosesIds = null;
         if ($partNo !== null) {
-            $part = MasterPart::whereRaw('LOWER(TRIM(part_no)) = ?', [strtolower(trim($partNo))])->first();
-            if (!$part) {
-                return ['error' => "Part/dies dengan nomor \"{$partNo}\" tidak ditemukan di master data."];
+            $part = $this->findPartByNo($partNo);
+            if (is_array($part)) {
+                return $part;
             }
             $prosesIds = MasterPartProses::where('id_part', $part->id)->pluck('id');
         }
@@ -432,9 +432,9 @@ class ChatbotTools
 
         $mesinId = null;
         if ($idMesin !== null) {
-            $mesin = MasterMesin::whereRaw('LOWER(TRIM(id_mesin)) = ?', [strtolower(trim($idMesin))])->first();
-            if (!$mesin) {
-                return ['error' => "Mesin dengan kode \"{$idMesin}\" tidak ditemukan di master data."];
+            $mesin = $this->findMesinByKode($idMesin);
+            if (is_array($mesin)) {
+                return $mesin;
             }
             $mesinId = $mesin->id;
         }
@@ -566,6 +566,18 @@ class ChatbotTools
             ->sortByDesc('jumlah_kejadian')
             ->values()
             ->take(10);
+    }
+
+    private function findPartByNo(string $partNo): MasterPart|array
+    {
+        $part = MasterPart::whereRaw('LOWER(TRIM(part_no)) = ?', [strtolower(trim($partNo))])->first();
+        return $part ?? ['error' => "Part/dies dengan nomor \"{$partNo}\" tidak ditemukan di master data."];
+    }
+
+    private function findMesinByKode(string $idMesin): MasterMesin|array
+    {
+        $mesin = MasterMesin::whereRaw('LOWER(TRIM(id_mesin)) = ?', [strtolower(trim($idMesin))])->first();
+        return $mesin ?? ['error' => "Mesin dengan kode \"{$idMesin}\" tidak ditemukan di master data."];
     }
 
     /** Provider-neutral tool schema (name/description/JSON-Schema parameters), wrapped per-provider by each ChatbotProviderInterface implementation. */
