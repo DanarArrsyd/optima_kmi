@@ -13,7 +13,7 @@
 - Every `ChatbotTools` public method keeps its exact current name, parameter list, and return array shape
 - `ChatbotProviderInterface::ask(ChatConversation $conversation, string $userMessage): ?string` unchanged on both providers
 - `SYSTEM_PROMPT` must be character-for-character identical between `GeminiChatbotService` and `GroqChatbotService` after the trait extraction
-- No behavior change anywhere — every existing test must pass unmodified (one pre-existing unrelated failure, `test_get_rekap_dandori_returns_error_when_no_records`, is out of scope for this plan)
+- No behavior change anywhere — every existing test must pass unmodified. Baseline is 93/93 passing (the prior stale assertion in `test_get_rekap_dandori_returns_error_when_no_records` was already fixed in a separate commit before this plan starts)
 - File deletions limited to exactly: `app/Services/DandoriService.php`, `resources/views/layouts/navigation.blade.php`, `resources/views/dashboard.blade.php`, `resources/views/welcome.blade.php`, `public/clear-cache.php`
 - `public/diag.php`, `public/fix-storage.php`, `ChatbotController::debugGroq()`, and the `chatbot/debug-groq` route are not touched by this plan
 
@@ -32,7 +32,7 @@
 - [ ] **Step 1: Run the existing regression tests to capture current passing baseline**
 
 Run: `php artisan test --filter=ChatbotToolsTest`
-Expected: PASS except the one pre-existing unrelated failure (`test_get_rekap_dandori_returns_error_when_no_records`) — record this baseline, it must be identical after this task's change
+Expected: PASS, 93/93 — record this baseline, it must be identical after this task's change
 
 - [ ] **Step 2: Add the `truncatedResult()` private helper**
 
@@ -145,7 +145,7 @@ with:
 - [ ] **Step 5: Run tests to verify no regression**
 
 Run: `php artisan test --filter=ChatbotToolsTest`
-Expected: Identical pass/fail count to Step 1's baseline (same one pre-existing failure, nothing new)
+Expected: 93/93 passing, identical to Step 1's baseline
 
 - [ ] **Step 6: Commit**
 
@@ -532,7 +532,7 @@ Expected: Same pass/fail count as Task 3's final state
 
 - [ ] **Step 2: Split `schemaDefinitions()`**
 
-Replace the entire current `schemaDefinitions(): array` method (the one big array literal, currently containing all 13 tool schema entries — note `getRekapNg` is one of the 13 despite the plan text elsewhere counting "14 tools": the 14th tool, `bandingkanProduksi`, has no `MasterPart`/`MasterMesin` lookup and lives in `productionSchemas()` alongside it) with:
+Replace the entire current `schemaDefinitions(): array` method (the one big array literal, currently containing all 14 tool schema entries: `getMtbfMttrDies`, `getMtbfMttrMesin`, `getRekapNg`, `bandingkanProduksi`, `getTotalBreakdownDies`, `getTotalBreakdownMesin`, `getProblemDies`, `getProblemMesin`, `getRankingBreakdownMesin`, `getRankingBreakdownDies`, `getRekapDandori`, `getTotalProduksi`, `getTopProblemDies`, `getTopProblemMesin`) with:
 
 ```php
     public function schemaDefinitions(): array
@@ -759,8 +759,8 @@ Add to `tests/Unit/ChatbotToolsTest.php`, at the end of the class:
     {
         $names = collect((new ChatbotTools())->schemaDefinitions())->pluck('name');
 
-        $this->assertCount(13, $names);
-        $this->assertCount(13, $names->unique(), 'Schema split must not introduce a duplicate tool name across the grouped methods.');
+        $this->assertCount(14, $names);
+        $this->assertCount(14, $names->unique(), 'Schema split must not introduce a duplicate tool name across the grouped methods.');
         $this->assertTrue($names->contains('getMtbfMttrDies'));
         $this->assertTrue($names->contains('getRekapDandori'));
         $this->assertTrue($names->contains('getTopProblemMesin'));
@@ -801,7 +801,7 @@ git commit -m "refactor(chatbot): split schemaDefinitions() into grouped private
 - [ ] **Step 1: Run baseline tests**
 
 Run: `php artisan test --filter=GeminiChatbotServiceTest && php artisan test --filter=GroqChatbotServiceTest`
-Expected: Both fully passing (these suites have no pre-existing failures)
+Expected: Both fully passing
 
 - [ ] **Step 2: Create the trait**
 
@@ -997,7 +997,7 @@ Expected: All fully passing, including the existing 429-then-fallback test cover
 - [ ] **Step 6: Run the full suite once**
 
 Run: `php artisan test`
-Expected: Identical pass/fail count to before this task (one pre-existing unrelated failure, nothing new)
+Expected: 93/93 passing, identical to the baseline before this task
 
 - [ ] **Step 7: Commit**
 
@@ -1103,7 +1103,7 @@ git rm public/clear-cache.php
 - [ ] **Step 3: Run the full test suite**
 
 Run: `php artisan test`
-Expected: Identical pass/fail count to before this task (the one pre-existing unrelated failure, nothing new) — confirms the deletions broke nothing
+Expected: 93/93 passing, identical to the baseline before this task — confirms the deletions broke nothing
 
 - [ ] **Step 4: Verify the app still boots and routes still resolve**
 
@@ -1123,7 +1123,7 @@ git commit -m "chore(cleanup): remove 5 dead files with zero references (audit-c
 - [ ] **Run the full test suite**
 
 Run: `php artisan test`
-Expected: Identical pass/fail count to the very start of this plan (one pre-existing unrelated failure in `ChatbotToolsTest::test_get_rekap_dandori_returns_error_when_no_records`, plus the 1 new structural test from Task 4) — no new failures introduced across all 8 tasks
+Expected: 93/93 passing plus the 1 new structural test from Task 4 (94/94 total) — no new failures introduced across all 8 tasks
 
 - [ ] **Manually smoke-test the chatbot end-to-end**
 
