@@ -46,6 +46,14 @@
             <div x-show="loading" style="align-self:flex-start;color:#9ca3af;font-size:0.85rem">Mikir...</div>
         </div>
 
+        <div x-show="messages.length === 1" style="display:flex;flex-wrap:wrap;gap:8px;padding:0 16px 12px">
+            <template x-for="q in suggestedQuestions" :key="q">
+                <button type="button" @click="askSuggested(q)"
+                        style="border:1px solid #d1d5db;background:#fff;color:#111827;border-radius:16px;padding:6px 14px;font-size:0.8rem;cursor:pointer"
+                        x-text="q"></button>
+            </template>
+        </div>
+
         <form @submit.prevent="send()" style="display:flex;gap:8px;padding:12px;border-top:1px solid #e5e7eb">
             <input type="text" x-model="input" placeholder="Tanya soal data OPTIMA..."
                    :disabled="loading"
@@ -67,6 +75,12 @@ function chatbotPage() {
         loading: false,
         input: '',
         messages: [],
+        suggestedQuestions: [
+            'Problem dies apa yang paling sering muncul?',
+            'Mesin apa yang sering rusak?',
+            'Data produksi bulan ini berapa Pcs?',
+            'Rekap NG proses apa yang paling tinggi?',
+        ],
 
         greeting() {
             return { role: 'assistant', content: 'Halo! Saya OPTIMA AI Assistant. Tanya soal MTBF/MTTR mesin & dies, rekap NG, atau perbandingan produksi antar periode.' };
@@ -94,6 +108,11 @@ function chatbotPage() {
             this.activeId = null;
             this.messages = [this.greeting()];
             this.input = '';
+        },
+
+        askSuggested(question) {
+            this.input = question;
+            this.send();
         },
 
         async selectConversation(id) {
