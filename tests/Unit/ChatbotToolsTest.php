@@ -740,10 +740,12 @@ class ChatbotToolsTest extends TestCase
         $this->assertArrayHasKey('error', $result);
     }
 
-    public function test_get_rekap_dandori_returns_error_when_no_records(): void
+    public function test_get_rekap_dandori_returns_empty_result_with_catatan_when_no_records(): void
     {
         $result = (new ChatbotTools())->getRekapDandori('2020-01', '2020-01');
-        $this->assertArrayHasKey('error', $result);
+        $this->assertArrayHasKey('catatan', $result);
+        $this->assertSame(0, $result['total_kejadian']);
+        $this->assertSame([], $result['top_jenis_losstime']);
     }
 
     public function test_get_rekap_dandori_with_no_period_returns_all_time_data(): void

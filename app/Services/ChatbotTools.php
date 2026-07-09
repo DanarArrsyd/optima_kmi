@@ -72,29 +72,33 @@ class ChatbotTools
     }
 
     /** Rekap qty NG untuk sebuah nama proses, dalam 1 bulan. */
-    public function getRekapNg(string $namaProses, string $periode): array
+    public function getRekapNg(string $namaProses, ?string $periode = null): array
     {
-        [$from, $to] = $this->monthRange($periode);
-        if (!$from) {
-            return ['error' => "Format periode \"{$periode}\" tidak valid, gunakan format YYYY-MM."];
+        $from = $to = null;
+        if ($periode !== null) {
+            [$from, $to] = $this->monthRange($periode);
+            if (!$from) {
+                return ['error' => "Format periode \"{$periode}\" tidak valid, gunakan format YYYY-MM."];
+            }
         }
 
         $q = TransaksiQc::whereHas('partProses', fn ($p) =>
                 $p->whereRaw('LOWER(TRIM(nama_proses)) = ?', [strtolower(trim($namaProses))])
             )
-            ->whereBetween('tgl_pengecekan', [$from->toDateString(), $to->toDateString()]);
+            ->when($from && $to, fn ($x) => $x->whereBetween('tgl_pengecekan', [$from->toDateString(), $to->toDateString()]));
 
         $totalOk = (int) $q->clone()->sum('qty_ok');
         $totalNg = (int) $q->clone()->sum('qty_ng');
         $total   = $totalOk + $totalNg;
 
         if ($total === 0) {
-            return ['error' => "Tidak ada data QC untuk proses \"{$namaProses}\" di periode {$periode}."];
+            $periodeLabel = $periode ? " di periode {$periode}" : '';
+            return ['error' => "Tidak ada data QC untuk proses \"{$namaProses}\"{$periodeLabel}."];
         }
 
         return [
             'nama_proses'     => $namaProses,
-            'periode'         => $periode,
+            'periode'         => $periode ?? 'semua data',
             'total_ok'        => $totalOk,
             'total_ng'        => $totalNg,
             'total_inspeksi'  => $total,
@@ -351,7 +355,11 @@ class ChatbotTools
         if ($records->isEmpty()) {
             $label = $idMesin ? " untuk mesin \"{$idMesin}\"" : '';
             $periodLabel = ($bulanMulai && $bulanAkhir) ? " di periode {$bulanMulai} s/d {$bulanAkhir}" : '';
-            return ['error' => "Tidak ada data dandori{$label}{$periodLabel}."];
+            return [
+                'total_kejadian'     => 0,
+                'top_jenis_losstime' => [],
+                'catatan'            => "Belum ada data dandori{$label}{$periodLabel} yang tercatat.",
+            ];
         }
 
         $groups = $records->groupBy(fn ($r) => $r->losstime?->jenis_losstime ?? 'Tidak diketahui')
@@ -525,8 +533,25 @@ class ChatbotTools
 
     private function monthRange(string $bulan): array
     {
+        $bulan = trim($bulan);
+        $year = $month = null;
+
+        // Toleran terhadap variasi format yang sering dikirim LLM:
+        // "2026-07", "2026-7", "2026/07", "2026-07-09", "07-2026", dll.
+        if (preg_match('/^(\d{4})[-\/.](\d{1,2})/', $bulan, $m)) {
+            [$year, $month] = [(int) $m[1], (int) $m[2]];
+        } elseif (preg_match('/^(\d{1,2})[-\/.](\d{4})$/', $bulan, $m)) {
+            [$year, $month] = [(int) $m[2], (int) $m[1]];
+        }
+
+        if ($year !== null && $month >= 1 && $month <= 12 && $year >= 2000 && $year <= 2100) {
+            $from = Carbon::create($year, $month, 1)->startOfMonth();
+            return [$from, $from->copy()->endOfMonth()];
+        }
+
+        // Fallback: parser umum Carbon (mis. nama bulan "Juli 2026").
         try {
-            $from = Carbon::createFromFormat('Y-m', $bulan)->startOfMonth();
+            $from = Carbon::parse($bulan)->startOfMonth();
             return [$from, $from->copy()->endOfMonth()];
         } catch (\Throwable) {
             return [null, null];
@@ -590,14 +615,14 @@ class ChatbotTools
             ],
             [
                 'name' => 'getRekapNg',
-                'description' => 'Rekap total qty NG dan NG rate untuk sebuah nama proses pada bulan tertentu.',
+                'description' => 'Rekap total qty NG dan NG rate untuk sebuah nama proses. Periode opsional — kalau tidak diisi, pakai semua data.',
                 'parameters' => [
                     'type' => 'object',
                     'properties' => [
                         'namaProses' => ['type' => 'string', 'description' => 'Nama proses, contoh: BENDING'],
-                        'periode'    => ['type' => 'string', 'description' => 'Format YYYY-MM'],
+                        'periode'    => ['type' => 'string', 'description' => 'Opsional. Format YYYY-MM. Kosongkan untuk semua data.'],
                     ],
-                    'required' => ['namaProses', 'periode'],
+                    'required' => ['namaProses'],
                 ],
             ],
             [

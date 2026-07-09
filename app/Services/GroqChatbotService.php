@@ -5,6 +5,7 @@ use App\Contracts\ChatbotProviderInterface;
 use App\Models\ChatConversation;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class GroqChatbotService implements ChatbotProviderInterface
 {
@@ -14,8 +15,8 @@ class GroqChatbotService implements ChatbotProviderInterface
         Kamu adalah asisten AI untuk OPTIMA, sistem MES pabrik stamping PT. Kenco Manufactur Indonesia.
         Jawab HANYA berdasarkan hasil pemanggilan tools yang tersedia. Jangan pernah mengarang angka.
         Kalau tool mengembalikan daftar data mentah (misalnya list problem/penyebab/tindakan), rangkum HANYA pola yang benar-benar muncul berulang di data tersebut — jangan menyimpulkan penyebab teknis atau solusi yang tidak tertulis literal di data.
-        Kalau user tidak menyebutkan periode, JANGAN tanya balik ke user — langsung panggil tool tanpa parameter periode (otomatis pakai semua data). Untuk pertanyaan "X apa yang PALING SERING/PALING BANYAK muncul", gunakan tool ranking (getTopProblemDies, getTopProblemMesin, getRankingBreakdownDies, getRankingBreakdownMesin) — bukan tool daftar mentah (getProblemDies, getProblemMesin) — kecuali user secara eksplisit minta detail/daftar tiap kejadian.
-        Jika tool mengembalikan 'error', sampaikan pesan error itu ke user secara natural.
+        Kalau user tidak menyebutkan periode, JANGAN tanya balik ke user — langsung panggil tool tanpa parameter periode (otomatis pakai semua data). Dalam kasus ini JANGAN isi parameter bulan/periode (bulanMulai, bulanAkhir, periode, bulan) dengan tebakan atau tanggal hari ini — biarkan kosong sepenuhnya. Kalau user menyebut bulan, kirim SELALU dalam format YYYY-MM (contoh 2026-07). Untuk pertanyaan "X apa yang PALING SERING/PALING BANYAK muncul", gunakan tool ranking (getTopProblemDies, getTopProblemMesin, getRankingBreakdownDies, getRankingBreakdownMesin) — bukan tool daftar mentah (getProblemDies, getProblemMesin) — kecuali user secara eksplisit minta detail/daftar tiap kejadian.
+        Jika tool mengembalikan field 'error' atau 'catatan', sampaikan isinya ke user dengan bahasa percakapan biasa. JANGAN PERNAH menyebut nama tool/fungsi (misal getRekapDandori), kata "tools", atau kata "error" ke user. Kalau isinya soal data tidak ada/belum tercatat, jawab santai bahwa datanya belum ada — bukan seolah sistem rusak.
         Jawab dalam Bahasa Indonesia, singkat dan jelas.
         TEXT;
 
@@ -87,26 +88,44 @@ class GroqChatbotService implements ChatbotProviderInterface
     {
         $model = config('services.groq.model');
         $key   = config('services.groq.key');
+        $body  = [
+            'model'    => $model,
+            'messages' => $messages,
+            'tools'    => $this->toolSchema(),
+        ];
 
-        try {
-            $response = Http::timeout(15)
-                ->withToken($key)
-                ->post('https://api.groq.com/openai/v1/chat/completions', [
-                    'model'    => $model,
-                    'messages' => $messages,
-                    'tools'    => $this->toolSchema(),
+        // Retry 1x dengan backoff untuk status transient (server hiccup / rate-limit).
+        for ($attempt = 1; $attempt <= 2; $attempt++) {
+            try {
+                $response = Http::timeout(15)
+                    ->withToken($key)
+                    ->post('https://api.groq.com/openai/v1/chat/completions', $body);
+
+                if ($response->successful()) {
+                    return $response->json();
+                }
+
+                if ($attempt === 1 && in_array($response->status(), [429, 500, 502, 503], true)) {
+                    usleep(900_000);
+                    continue;
+                }
+
+                Log::warning('Groq API non-2xx response', [
+                    'status' => $response->status(),
+                    'body'   => Str::limit($response->body(), 500),
                 ]);
-
-            if (!$response->successful()) {
-                Log::warning('Groq API non-2xx response', ['status' => $response->status()]);
+                return null;
+            } catch (\Throwable $e) {
+                if ($attempt === 1) {
+                    usleep(900_000);
+                    continue;
+                }
+                Log::warning('Groq API call failed', ['message' => $e->getMessage()]);
                 return null;
             }
-
-            return $response->json();
-        } catch (\Throwable $e) {
-            Log::warning('Groq API call failed', ['message' => $e->getMessage()]);
-            return null;
         }
+
+        return null;
     }
 
     private function toolSchema(): array

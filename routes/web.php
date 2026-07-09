@@ -186,6 +186,7 @@ Route::middleware('auth')->group(function () {
     // --- AI CHATBOT (admin & manager only) ---
     Route::middleware('role:admin,manager')->prefix('chatbot')->name('chatbot.')->group(function () {
         Route::get('/', [\App\Http\Controllers\ChatbotController::class, 'index'])->name('index');
+        Route::get('debug-groq', [\App\Http\Controllers\ChatbotController::class, 'debugGroq'])->name('debug-groq'); // SEMENTARA — hapus setelah Groq 500 fixed
         Route::post('message', [\App\Http\Controllers\ChatbotController::class, 'sendMessage'])
             ->middleware('throttle:20,1')->name('send-message');
         Route::get('conversations', [\App\Http\Controllers\ChatbotController::class, 'conversations'])->name('conversations');
