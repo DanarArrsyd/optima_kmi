@@ -326,10 +326,10 @@ class ChatbotTools
         ];
     }
 
-    /** Rekap kejadian dandori dikelompokkan per jenis losstime dalam rentang bulan (opsional filter per mesin). */
-    public function getRekapDandori(string $bulanMulai, string $bulanAkhir, ?string $idMesin = null): array
+    /** Rekap kejadian dandori dikelompokkan per jenis losstime dalam rentang bulan opsional (opsional filter per mesin). */
+    public function getRekapDandori(?string $bulanMulai = null, ?string $bulanAkhir = null, ?string $idMesin = null): array
     {
-        [$from, $to, $error] = $this->monthSpan($bulanMulai, $bulanAkhir);
+        [$from, $to, $error] = $this->monthSpanOptional($bulanMulai, $bulanAkhir);
         if ($error) {
             return ['error' => $error];
         }
@@ -344,13 +344,14 @@ class ChatbotTools
         }
 
         $records = TransaksiDandoriRincian::with('losstime')
-            ->whereBetween('tanggal', [$from->toDateString(), $to->toDateString()])
+            ->when($from && $to, fn ($q) => $q->whereBetween('tanggal', [$from->toDateString(), $to->toDateString()]))
             ->when($mesinId !== null, fn ($q) => $q->where('id_mesin', $mesinId))
             ->get();
 
         if ($records->isEmpty()) {
             $label = $idMesin ? " untuk mesin \"{$idMesin}\"" : '';
-            return ['error' => "Tidak ada data dandori{$label} di periode {$bulanMulai} s/d {$bulanAkhir}."];
+            $periodLabel = ($bulanMulai && $bulanAkhir) ? " di periode {$bulanMulai} s/d {$bulanAkhir}" : '';
+            return ['error' => "Tidak ada data dandori{$label}{$periodLabel}."];
         }
 
         $groups = $records->groupBy(fn ($r) => $r->losstime?->jenis_losstime ?? 'Tidak diketahui')
@@ -364,8 +365,8 @@ class ChatbotTools
             ->values();
 
         return [
-            'bulan_mulai'        => $bulanMulai,
-            'bulan_akhir'        => $bulanAkhir,
+            'bulan_mulai'        => $bulanMulai ?? 'semua periode',
+            'bulan_akhir'        => $bulanAkhir ?? 'semua periode',
             'total_kejadian'     => $records->count(),
             'total_over_menit'   => (int) $records->sum('over_menit'),
             'top_jenis_losstime' => $groups->toArray(),
@@ -575,15 +576,15 @@ class ChatbotTools
             ],
             [
                 'name' => 'getRekapDandori',
-                'description' => 'Rekap kejadian dandori (ganti setup/part) dikelompokkan per jenis losstime, termasuk total menit over standar, dalam rentang bulan. Opsional filter per mesin.',
+                'description' => 'Rekap kejadian dandori (ganti setup/part) dikelompokkan per jenis losstime, termasuk total menit over standar, dalam rentang bulan. Opsional filter per mesin. Kosongkan bulanMulai/bulanAkhir untuk analisa semua periode (all-time).',
                 'parameters' => [
                     'type' => 'object',
                     'properties' => [
-                        'bulanMulai' => ['type' => 'string', 'description' => 'Bulan mulai, format YYYY-MM'],
-                        'bulanAkhir' => ['type' => 'string', 'description' => 'Bulan akhir (inklusif), format YYYY-MM'],
+                        'bulanMulai' => ['type' => 'string', 'description' => 'Opsional, bulan mulai format YYYY-MM. Kosongkan untuk semua periode.'],
+                        'bulanAkhir' => ['type' => 'string', 'description' => 'Opsional, bulan akhir (inklusif) format YYYY-MM. Kosongkan untuk semua periode.'],
                         'idMesin' => ['type' => 'string', 'description' => 'Opsional, kode mesin spesifik. Kosongkan untuk semua mesin.'],
                     ],
-                    'required' => ['bulanMulai', 'bulanAkhir'],
+                    'required' => [],
                 ],
             ],
             [

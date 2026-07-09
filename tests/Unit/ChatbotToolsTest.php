@@ -746,6 +746,45 @@ class ChatbotToolsTest extends TestCase
         $this->assertArrayHasKey('error', $result);
     }
 
+    public function test_get_rekap_dandori_with_no_period_returns_all_time_data(): void
+    {
+        $mesin = MasterMesin::create([
+            'id_mesin' => 'DDN-01', 'nama_mesin' => 'Press DandoriNoPeriod', 'line' => '1',
+            'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100,
+        ]);
+        $part = MasterPart::create(['part_no' => 'DDN-P1', 'part_name' => 'Dandori NoPeriod Part', 'customer' => 'Toyota']);
+        $proses = MasterPartProses::create([
+            'id_part' => $part->id, 'id_proses' => 1, 'nama_proses' => 'PROGRESSIVE',
+            'sph_standar_produksi' => 500, 'sph_standar_qc' => 250,
+        ]);
+        $shift = MasterShift::create(['nama_shift' => 'Shift 1', 'jam_start' => '08:00', 'jam_finish' => '16:00']);
+        $karyawan = MasterKaryawan::create([
+            'nik' => uniqid(), 'nama_karyawan' => 'Test', 'departemen' => 'Produksi', 'is_aktif' => true,
+        ]);
+        $loss = MasterLosstime::create([
+            'kode' => 'LS-DDN', 'jenis_losstime' => 'Setting Dies', 'std_menit_default' => 30, 'std_menit_progressive' => 30,
+        ]);
+        $user = User::factory()->create();
+        TransaksiDandoriRincian::create([
+            'tanggal' => '2020-01-05', 'id_shift' => $shift->id, 'id_karyawan' => $karyawan->id,
+            'id_mesin' => $mesin->id, 'id_part_proses' => $proses->id, 'id_losstime' => $loss->id,
+            'actual_menit' => 50, 'std_menit' => 30, 'over_menit' => 20, 'created_by' => $user->id,
+        ]);
+
+        $result = (new ChatbotTools())->getRekapDandori();
+
+        $this->assertArrayNotHasKey('error', $result);
+        $this->assertSame('semua periode', $result['bulan_mulai']);
+        $this->assertSame(1, $result['total_kejadian']);
+    }
+
+    public function test_get_rekap_dandori_with_only_one_period_arg_returns_error(): void
+    {
+        $result = (new ChatbotTools())->getRekapDandori('2026-07', null);
+        $this->assertArrayHasKey('error', $result);
+        $this->assertSame('Kalau isi salah satu periode, isi juga yang satunya.', $result['error']);
+    }
+
     public function test_get_total_produksi_sums_across_month_range(): void
     {
         $part = MasterPart::create(['part_no' => 'TP-01', 'part_name' => 'Total Part', 'customer' => 'Toyota']);
