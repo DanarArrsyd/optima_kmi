@@ -207,10 +207,10 @@ class ChatbotTools
         return $result;
     }
 
-    /** Daftar mentah problem/penyebab/tindakan breakdown mesin dalam rentang bulan (opsional filter per mesin). */
-    public function getProblemMesin(string $bulanMulai, string $bulanAkhir, ?string $idMesin = null): array
+    /** Daftar mentah problem/penyebab/tindakan breakdown mesin dalam rentang bulan opsional (opsional filter per mesin). */
+    public function getProblemMesin(?string $bulanMulai = null, ?string $bulanAkhir = null, ?string $idMesin = null): array
     {
-        [$from, $to, $error] = $this->monthSpan($bulanMulai, $bulanAkhir);
+        [$from, $to, $error] = $this->monthSpanOptional($bulanMulai, $bulanAkhir);
         if ($error) {
             return ['error' => $error];
         }
@@ -225,14 +225,15 @@ class ChatbotTools
         }
 
         $query = TransaksiBreakdownMesin::with('mesin')
-            ->whereBetween('tanggal_breakdown', [$from->toDateString(), $to->toDateString()])
+            ->when($from && $to, fn ($q) => $q->whereBetween('tanggal_breakdown', [$from->toDateString(), $to->toDateString()]))
             ->when($mesinId !== null, fn ($q) => $q->where('id_mesin', $mesinId))
             ->orderByDesc('tanggal_breakdown');
 
         $total = $query->count();
         if ($total === 0) {
             $label = $idMesin ? " untuk mesin \"{$idMesin}\"" : '';
-            return ['error' => "Tidak ada data breakdown mesin{$label} di periode {$bulanMulai} s/d {$bulanAkhir}."];
+            $periodLabel = ($bulanMulai && $bulanAkhir) ? " di periode {$bulanMulai} s/d {$bulanAkhir}" : '';
+            return ['error' => "Tidak ada data breakdown mesin{$label}{$periodLabel}."];
         }
 
         $rows = $query->limit(150)->get()->map(fn ($r) => [
@@ -244,8 +245,8 @@ class ChatbotTools
         ])->toArray();
 
         $result = [
-            'bulan_mulai'  => $bulanMulai,
-            'bulan_akhir'  => $bulanAkhir,
+            'bulan_mulai'  => $bulanMulai ?? 'semua periode',
+            'bulan_akhir'  => $bulanAkhir ?? 'semua periode',
             'total_record' => $total,
             'data'         => $rows,
         ];
@@ -529,15 +530,15 @@ class ChatbotTools
             ],
             [
                 'name' => 'getProblemMesin',
-                'description' => 'Sama seperti getProblemDies tapi untuk mesin — problem/penyebab/tindakan breakdown mesin.',
+                'description' => 'Sama seperti getProblemDies tapi untuk mesin — problem/penyebab/tindakan breakdown mesin. Kosongkan bulanMulai/bulanAkhir untuk analisa semua periode (all-time).',
                 'parameters' => [
                     'type' => 'object',
                     'properties' => [
-                        'bulanMulai' => ['type' => 'string', 'description' => 'Bulan mulai, format YYYY-MM'],
-                        'bulanAkhir' => ['type' => 'string', 'description' => 'Bulan akhir (inklusif), format YYYY-MM'],
+                        'bulanMulai' => ['type' => 'string', 'description' => 'Opsional, bulan mulai format YYYY-MM. Kosongkan untuk semua periode.'],
+                        'bulanAkhir' => ['type' => 'string', 'description' => 'Opsional, bulan akhir (inklusif) format YYYY-MM. Kosongkan untuk semua periode.'],
                         'idMesin' => ['type' => 'string', 'description' => 'Opsional, kode mesin spesifik. Kosongkan untuk semua mesin.'],
                     ],
-                    'required' => ['bulanMulai', 'bulanAkhir'],
+                    'required' => [],
                 ],
             ],
             [
