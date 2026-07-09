@@ -258,27 +258,31 @@ class ChatbotTools
         return $result;
     }
 
-    /** Ranking mesin berdasarkan jumlah kejadian breakdown terbanyak dalam rentang bulan. */
-    public function getRankingBreakdownMesin(string $bulanMulai, string $bulanAkhir): array
+    /** Ranking mesin berdasarkan jumlah kejadian breakdown terbanyak dalam rentang bulan opsional. */
+    public function getRankingBreakdownMesin(?string $bulanMulai = null, ?string $bulanAkhir = null): array
     {
-        [$from, $to, $error] = $this->monthSpan($bulanMulai, $bulanAkhir);
+        [$from, $to, $error] = $this->monthSpanOptional($bulanMulai, $bulanAkhir);
         if ($error) {
             return ['error' => $error];
         }
 
-        $rows = collect($this->mesinDashboard->compute($from, $to))
+        $computeFrom = $from ?? Carbon::createFromDate(2000, 1, 1)->startOfDay();
+        $computeTo   = $to ?? Carbon::now()->endOfDay();
+
+        $rows = collect($this->mesinDashboard->compute($computeFrom, $computeTo))
             ->filter(fn ($r) => $r['count'] > 0)
             ->sortByDesc('count')
             ->values()
             ->take(10);
 
         if ($rows->isEmpty()) {
-            return ['error' => "Tidak ada kejadian breakdown mesin di periode {$bulanMulai} s/d {$bulanAkhir}."];
+            $periodLabel = ($bulanMulai && $bulanAkhir) ? " di periode {$bulanMulai} s/d {$bulanAkhir}" : '';
+            return ['error' => "Tidak ada kejadian breakdown mesin{$periodLabel}."];
         }
 
         return [
-            'bulan_mulai' => $bulanMulai,
-            'bulan_akhir' => $bulanAkhir,
+            'bulan_mulai' => $bulanMulai ?? 'semua periode',
+            'bulan_akhir' => $bulanAkhir ?? 'semua periode',
             'ranking'     => $rows->map(fn ($r) => [
                 'mesin'            => $r['nama_mesin'],
                 'kode_mesin'       => $r['kode_mesin'],
@@ -543,14 +547,14 @@ class ChatbotTools
             ],
             [
                 'name' => 'getRankingBreakdownMesin',
-                'description' => 'Ranking mesin berdasarkan jumlah kejadian breakdown terbanyak dalam rentang bulan. Dipakai untuk pertanyaan seperti "mesin apa aja yang sering rusak".',
+                'description' => 'Ranking mesin berdasarkan jumlah kejadian breakdown terbanyak dalam rentang bulan. Dipakai untuk pertanyaan seperti "mesin apa aja yang sering rusak". Kosongkan bulanMulai/bulanAkhir untuk analisa semua periode (all-time).',
                 'parameters' => [
                     'type' => 'object',
                     'properties' => [
-                        'bulanMulai' => ['type' => 'string', 'description' => 'Bulan mulai, format YYYY-MM'],
-                        'bulanAkhir' => ['type' => 'string', 'description' => 'Bulan akhir (inklusif), format YYYY-MM'],
+                        'bulanMulai' => ['type' => 'string', 'description' => 'Opsional, bulan mulai format YYYY-MM. Kosongkan untuk semua periode.'],
+                        'bulanAkhir' => ['type' => 'string', 'description' => 'Opsional, bulan akhir (inklusif) format YYYY-MM. Kosongkan untuk semua periode.'],
                     ],
-                    'required' => ['bulanMulai', 'bulanAkhir'],
+                    'required' => [],
                 ],
             ],
             [
