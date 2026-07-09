@@ -397,6 +397,61 @@ class ChatbotTools
         ];
     }
 
+    /** Ranking problem dies PALING SERING muncul (Pareto), dikelompokkan per teks problem, dalam rentang bulan opsional. */
+    public function getTopProblemDies(?string $bulanMulai = null, ?string $bulanAkhir = null, ?string $partNo = null): array
+    {
+        [$from, $to, $error] = $this->monthSpanOptional($bulanMulai, $bulanAkhir);
+        if ($error) {
+            return ['error' => $error];
+        }
+
+        $prosesIds = null;
+        if ($partNo !== null) {
+            $part = MasterPart::whereRaw('LOWER(TRIM(part_no)) = ?', [strtolower(trim($partNo))])->first();
+            if (!$part) {
+                return ['error' => "Part/dies dengan nomor \"{$partNo}\" tidak ditemukan di master data."];
+            }
+            $prosesIds = MasterPartProses::where('id_part', $part->id)->pluck('id');
+        }
+
+        $records = TransaksiBreakdownDies::query()
+            ->when($from && $to, fn ($q) => $q->whereBetween('tanggal_breakdown', [$from->toDateString(), $to->toDateString()]))
+            ->when($prosesIds !== null, fn ($q) => $q->whereIn('id_part_proses', $prosesIds))
+            ->orderByDesc('tanggal_breakdown')
+            ->get(['problem_dies', 'penyebab_breakdown', 'tindakan_perbaikan', 'tanggal_breakdown']);
+
+        if ($records->isEmpty()) {
+            $label = $partNo ? " untuk part \"{$partNo}\"" : '';
+            $periodLabel = ($bulanMulai && $bulanAkhir) ? " di periode {$bulanMulai} s/d {$bulanAkhir}" : '';
+            return ['error' => "Tidak ada data breakdown dies{$label}{$periodLabel}."];
+        }
+
+        $total = $records->count();
+
+        $groups = $records
+            ->groupBy(fn ($r) => strtolower(trim($r->problem_dies)))
+            ->map(function ($rows) use ($total) {
+                $latest = $rows->first();
+                return [
+                    'problem'         => trim($latest->problem_dies),
+                    'jumlah_kejadian' => $rows->count(),
+                    'pct_dari_total'  => round($rows->count() / $total * 100, 2),
+                    'contoh_penyebab' => $latest->penyebab_breakdown,
+                    'contoh_tindakan' => $latest->tindakan_perbaikan,
+                ];
+            })
+            ->sortByDesc('jumlah_kejadian')
+            ->values()
+            ->take(10);
+
+        return [
+            'bulan_mulai'    => $bulanMulai ?? 'semua periode',
+            'bulan_akhir'    => $bulanAkhir ?? 'semua periode',
+            'total_kejadian' => $total,
+            'top_problem'    => $groups->toArray(),
+        ];
+    }
+
     private function produksiSummary(string $periode): array
     {
         [$from, $to] = $this->monthRange($periode);
@@ -597,6 +652,19 @@ class ChatbotTools
                     'properties' => [
                         'bulanMulai' => ['type' => 'string', 'description' => 'Opsional, bulan mulai format YYYY-MM. Kosongkan untuk semua periode.'],
                         'bulanAkhir' => ['type' => 'string', 'description' => 'Opsional, bulan akhir (inklusif) format YYYY-MM. Kosongkan untuk semua periode.'],
+                    ],
+                    'required' => [],
+                ],
+            ],
+            [
+                'name' => 'getTopProblemDies',
+                'description' => 'Ranking problem dies PALING SERING muncul (Pareto), dikelompokkan per teks problem, dalam rentang bulan opsional. Dipakai untuk pertanyaan seperti "problem dies apa yang paling sering muncul" — beda dengan getProblemDies yang mengembalikan daftar mentah per kejadian, tool ini sudah meranking berdasarkan frekuensi. Kosongkan bulanMulai/bulanAkhir untuk analisa semua periode (all-time).',
+                'parameters' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'bulanMulai' => ['type' => 'string', 'description' => 'Opsional, bulan mulai format YYYY-MM. Kosongkan untuk semua periode.'],
+                        'bulanAkhir' => ['type' => 'string', 'description' => 'Opsional, bulan akhir (inklusif) format YYYY-MM. Kosongkan untuk semua periode.'],
+                        'partNo' => ['type' => 'string', 'description' => 'Opsional, nomor part/dies spesifik. Kosongkan untuk semua dies.'],
                     ],
                     'required' => [],
                 ],

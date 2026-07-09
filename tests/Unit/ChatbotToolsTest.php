@@ -869,4 +869,137 @@ class ChatbotToolsTest extends TestCase
         $this->assertArrayHasKey('error', $result);
         $this->assertSame('Kalau isi salah satu periode, isi juga yang satunya.', $result['error']);
     }
+
+    public function test_get_top_problem_dies_groups_by_normalized_problem_text(): void
+    {
+        $part = MasterPart::create(['part_no' => 'TOP-D1', 'part_name' => 'Top Problem Part', 'customer' => 'Toyota']);
+        $proses = MasterPartProses::create([
+            'id_part' => $part->id, 'id_proses' => 1, 'nama_proses' => 'PROGRESSIVE',
+            'sph_standar_produksi' => 500, 'sph_standar_qc' => 250,
+        ]);
+
+        TransaksiBreakdownDies::create([
+            'no_lkd' => 'LKD-TOP1', 'id_part_proses' => $proses->id,
+            'tanggal_breakdown' => '2026-07-01', 'jam_breakdown' => '08:00',
+            'tanggal_mulai_perbaikan' => '2026-07-01', 'jam_mulai_perbaikan' => '09:00',
+            'tanggal_selesai_perbaikan' => '2026-07-01', 'jam_selesai_perbaikan' => '10:00',
+            'problem_dies' => 'Motor overheat', 'penyebab_breakdown' => 'Bearing aus lama', 'tindakan_perbaikan' => 'Ganti bearing lama',
+            'status_breakdown' => 'Selesai', 'pic_maintenance' => 'Budi',
+            'repair_time' => 1.0, 'total_downtime' => 1.0,
+        ]);
+        TransaksiBreakdownDies::create([
+            'no_lkd' => 'LKD-TOP2', 'id_part_proses' => $proses->id,
+            'tanggal_breakdown' => '2026-07-10', 'jam_breakdown' => '08:00',
+            'tanggal_mulai_perbaikan' => '2026-07-10', 'jam_mulai_perbaikan' => '09:00',
+            'tanggal_selesai_perbaikan' => '2026-07-10', 'jam_selesai_perbaikan' => '10:00',
+            'problem_dies' => '  motor overheat  ', 'penyebab_breakdown' => 'Bearing aus baru', 'tindakan_perbaikan' => 'Ganti bearing baru',
+            'status_breakdown' => 'Selesai', 'pic_maintenance' => 'Budi',
+            'repair_time' => 1.0, 'total_downtime' => 1.0,
+        ]);
+        TransaksiBreakdownDies::create([
+            'no_lkd' => 'LKD-TOP3', 'id_part_proses' => $proses->id,
+            'tanggal_breakdown' => '2026-07-05', 'jam_breakdown' => '08:00',
+            'tanggal_mulai_perbaikan' => '2026-07-05', 'jam_mulai_perbaikan' => '09:00',
+            'tanggal_selesai_perbaikan' => '2026-07-05', 'jam_selesai_perbaikan' => '10:00',
+            'problem_dies' => 'Baut kendor', 'penyebab_breakdown' => 'Vibrasi tinggi', 'tindakan_perbaikan' => 'Kencangkan baut',
+            'status_breakdown' => 'Selesai', 'pic_maintenance' => 'Budi',
+            'repair_time' => 1.0, 'total_downtime' => 1.0,
+        ]);
+
+        $result = (new ChatbotTools())->getTopProblemDies();
+
+        $this->assertArrayNotHasKey('error', $result);
+        $this->assertSame(3, $result['total_kejadian']);
+        $this->assertSame('semua periode', $result['bulan_mulai']);
+        $this->assertCount(2, $result['top_problem']);
+        $this->assertSame(2, $result['top_problem'][0]['jumlah_kejadian']);
+        $this->assertSame('motor overheat', $result['top_problem'][0]['problem']);
+        $this->assertSame('Bearing aus baru', $result['top_problem'][0]['contoh_penyebab']);
+        $this->assertEqualsWithDelta(66.67, $result['top_problem'][0]['pct_dari_total'], 0.01);
+        $this->assertSame(1, $result['top_problem'][1]['jumlah_kejadian']);
+        $this->assertSame('Baut kendor', $result['top_problem'][1]['problem']);
+    }
+
+    public function test_get_top_problem_dies_filters_by_part(): void
+    {
+        $part1 = MasterPart::create(['part_no' => 'TOP-D2', 'part_name' => 'Filter Part A', 'customer' => 'Toyota']);
+        $proses1 = MasterPartProses::create([
+            'id_part' => $part1->id, 'id_proses' => 1, 'nama_proses' => 'PROGRESSIVE',
+            'sph_standar_produksi' => 500, 'sph_standar_qc' => 250,
+        ]);
+        $part2 = MasterPart::create(['part_no' => 'TOP-D3', 'part_name' => 'Filter Part B', 'customer' => 'Honda']);
+        $proses2 = MasterPartProses::create([
+            'id_part' => $part2->id, 'id_proses' => 1, 'nama_proses' => 'BENDING',
+            'sph_standar_produksi' => 500, 'sph_standar_qc' => 250,
+        ]);
+
+        TransaksiBreakdownDies::create([
+            'no_lkd' => 'LKD-TOPF1', 'id_part_proses' => $proses1->id,
+            'tanggal_breakdown' => '2026-07-01', 'jam_breakdown' => '08:00',
+            'tanggal_mulai_perbaikan' => '2026-07-01', 'jam_mulai_perbaikan' => '09:00',
+            'tanggal_selesai_perbaikan' => '2026-07-01', 'jam_selesai_perbaikan' => '10:00',
+            'problem_dies' => 'Problem A', 'penyebab_breakdown' => 'x', 'tindakan_perbaikan' => 'x',
+            'status_breakdown' => 'Selesai', 'pic_maintenance' => 'Budi',
+            'repair_time' => 1.0, 'total_downtime' => 1.0,
+        ]);
+        TransaksiBreakdownDies::create([
+            'no_lkd' => 'LKD-TOPF2', 'id_part_proses' => $proses2->id,
+            'tanggal_breakdown' => '2026-07-02', 'jam_breakdown' => '08:00',
+            'tanggal_mulai_perbaikan' => '2026-07-02', 'jam_mulai_perbaikan' => '09:00',
+            'tanggal_selesai_perbaikan' => '2026-07-02', 'jam_selesai_perbaikan' => '10:00',
+            'problem_dies' => 'Problem B', 'penyebab_breakdown' => 'x', 'tindakan_perbaikan' => 'x',
+            'status_breakdown' => 'Selesai', 'pic_maintenance' => 'Budi',
+            'repair_time' => 1.0, 'total_downtime' => 1.0,
+        ]);
+
+        $result = (new ChatbotTools())->getTopProblemDies(null, null, 'TOP-D2');
+
+        $this->assertArrayNotHasKey('error', $result);
+        $this->assertSame(1, $result['total_kejadian']);
+        $this->assertSame('Problem A', $result['top_problem'][0]['problem']);
+    }
+
+    public function test_get_top_problem_dies_returns_error_for_unknown_part(): void
+    {
+        $result = (new ChatbotTools())->getTopProblemDies(null, null, 'NOT-EXIST');
+        $this->assertArrayHasKey('error', $result);
+    }
+
+    public function test_get_top_problem_dies_returns_error_when_no_records(): void
+    {
+        $result = (new ChatbotTools())->getTopProblemDies();
+        $this->assertArrayHasKey('error', $result);
+    }
+
+    public function test_get_top_problem_dies_with_only_one_period_arg_returns_error(): void
+    {
+        $result = (new ChatbotTools())->getTopProblemDies('2026-07', null);
+        $this->assertArrayHasKey('error', $result);
+        $this->assertSame('Kalau isi salah satu periode, isi juga yang satunya.', $result['error']);
+    }
+
+    public function test_get_top_problem_dies_caps_at_ten_groups(): void
+    {
+        $part = MasterPart::create(['part_no' => 'TOP-D4', 'part_name' => 'Cap Part', 'customer' => 'Toyota']);
+        $proses = MasterPartProses::create([
+            'id_part' => $part->id, 'id_proses' => 1, 'nama_proses' => 'PROGRESSIVE',
+            'sph_standar_produksi' => 500, 'sph_standar_qc' => 250,
+        ]);
+        for ($i = 1; $i <= 12; $i++) {
+            TransaksiBreakdownDies::create([
+                'no_lkd' => "LKD-CAP{$i}", 'id_part_proses' => $proses->id,
+                'tanggal_breakdown' => '2026-07-01', 'jam_breakdown' => '08:00',
+                'tanggal_mulai_perbaikan' => '2026-07-01', 'jam_mulai_perbaikan' => '09:00',
+                'tanggal_selesai_perbaikan' => '2026-07-01', 'jam_selesai_perbaikan' => '10:00',
+                'problem_dies' => "Problem distinct {$i}", 'penyebab_breakdown' => 'x', 'tindakan_perbaikan' => 'x',
+                'status_breakdown' => 'Selesai', 'pic_maintenance' => 'Budi',
+                'repair_time' => 1.0, 'total_downtime' => 1.0,
+            ]);
+        }
+
+        $result = (new ChatbotTools())->getTopProblemDies();
+
+        $this->assertArrayNotHasKey('error', $result);
+        $this->assertCount(10, $result['top_problem']);
+    }
 }
