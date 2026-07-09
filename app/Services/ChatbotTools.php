@@ -373,23 +373,25 @@ class ChatbotTools
         ];
     }
 
-    /** Total qty aktual & rata-rata SPH produksi untuk SEMUA proses dalam rentang bulan. */
-    public function getTotalProduksi(string $bulanMulai, string $bulanAkhir): array
+    /** Total qty aktual & rata-rata SPH produksi untuk SEMUA proses dalam rentang bulan opsional. */
+    public function getTotalProduksi(?string $bulanMulai = null, ?string $bulanAkhir = null): array
     {
-        [$from, $to, $error] = $this->monthSpan($bulanMulai, $bulanAkhir);
+        [$from, $to, $error] = $this->monthSpanOptional($bulanMulai, $bulanAkhir);
         if ($error) {
             return ['error' => $error];
         }
 
-        $rows = TransaksiProduksi::whereBetween('tanggal_produksi', [$from->toDateString(), $to->toDateString()])->get();
+        $rows = TransaksiProduksi::when($from && $to, fn ($q) => $q->whereBetween('tanggal_produksi', [$from->toDateString(), $to->toDateString()]))
+            ->get();
 
         if ($rows->isEmpty()) {
-            return ['error' => "Tidak ada data produksi di periode {$bulanMulai} s/d {$bulanAkhir}."];
+            $periodLabel = ($bulanMulai && $bulanAkhir) ? " di periode {$bulanMulai} s/d {$bulanAkhir}" : '';
+            return ['error' => "Tidak ada data produksi{$periodLabel}."];
         }
 
         return [
-            'bulan_mulai'      => $bulanMulai,
-            'bulan_akhir'      => $bulanAkhir,
+            'bulan_mulai'      => $bulanMulai ?? 'semua periode',
+            'bulan_akhir'      => $bulanAkhir ?? 'semua periode',
             'total_qty_aktual' => (int) $rows->sum('qty_aktual'),
             'avg_sph_aktual'   => (int) round($rows->avg(fn ($r) => $r->sph_aktual)),
         ];
@@ -589,14 +591,14 @@ class ChatbotTools
             ],
             [
                 'name' => 'getTotalProduksi',
-                'description' => 'Total qty aktual produksi (dalam Pcs) dan rata-rata SPH untuk SEMUA proses dalam rentang bulan (bisa multi-bulan). Beda dengan bandingkanProduksi yang membandingkan 2 periode terpisah — ini untuk total gabungan satu rentang.',
+                'description' => 'Total qty aktual produksi (dalam Pcs) dan rata-rata SPH untuk SEMUA proses dalam rentang bulan (bisa multi-bulan). Beda dengan bandingkanProduksi yang membandingkan 2 periode terpisah — ini untuk total gabungan satu rentang. Kosongkan bulanMulai/bulanAkhir untuk analisa semua periode (all-time).',
                 'parameters' => [
                     'type' => 'object',
                     'properties' => [
-                        'bulanMulai' => ['type' => 'string', 'description' => 'Bulan mulai, format YYYY-MM'],
-                        'bulanAkhir' => ['type' => 'string', 'description' => 'Bulan akhir (inklusif), format YYYY-MM'],
+                        'bulanMulai' => ['type' => 'string', 'description' => 'Opsional, bulan mulai format YYYY-MM. Kosongkan untuk semua periode.'],
+                        'bulanAkhir' => ['type' => 'string', 'description' => 'Opsional, bulan akhir (inklusif) format YYYY-MM. Kosongkan untuk semua periode.'],
                     ],
-                    'required' => ['bulanMulai', 'bulanAkhir'],
+                    'required' => [],
                 ],
             ],
         ];

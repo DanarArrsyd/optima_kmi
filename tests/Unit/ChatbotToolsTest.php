@@ -832,4 +832,41 @@ class ChatbotToolsTest extends TestCase
         $result = (new ChatbotTools())->getTotalProduksi('bulan-salah', '2026-07');
         $this->assertArrayHasKey('error', $result);
     }
+
+    public function test_get_total_produksi_with_no_period_returns_all_time_data(): void
+    {
+        $part = MasterPart::create(['part_no' => 'TPN-01', 'part_name' => 'TotalNoPeriod Part', 'customer' => 'Toyota']);
+        $proses = MasterPartProses::create([
+            'id_part' => $part->id, 'id_proses' => 1, 'nama_proses' => 'PROGRESSIVE',
+            'sph_standar_produksi' => 500, 'sph_standar_qc' => 250,
+        ]);
+        $shift = MasterShift::create(['nama_shift' => 'Shift 1', 'jam_start' => '08:00', 'jam_finish' => '16:00']);
+        $karyawan = MasterKaryawan::create([
+            'nik' => uniqid(), 'nama_karyawan' => 'Test', 'departemen' => 'Produksi', 'is_aktif' => true,
+        ]);
+        $mesin = MasterMesin::create([
+            'id_mesin' => 'TPN-M1', 'nama_mesin' => 'Press TotalNoPeriod', 'line' => '1',
+            'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100,
+        ]);
+        $user = User::factory()->create();
+        TransaksiProduksi::create([
+            'tanggal_produksi' => '2020-05-15', 'id_shift' => $shift->id, 'id_karyawan' => $karyawan->id,
+            'id_mesin' => $mesin->id, 'id_part_proses' => $proses->id,
+            'jam_start' => '08:00', 'jam_finish' => '16:00', 'qty_aktual' => 2000, 'qty_ng' => 0,
+            'created_by' => $user->id,
+        ]);
+
+        $result = (new ChatbotTools())->getTotalProduksi();
+
+        $this->assertArrayNotHasKey('error', $result);
+        $this->assertSame('semua periode', $result['bulan_mulai']);
+        $this->assertSame(2000, $result['total_qty_aktual']);
+    }
+
+    public function test_get_total_produksi_with_only_one_period_arg_returns_error(): void
+    {
+        $result = (new ChatbotTools())->getTotalProduksi('2026-07', null);
+        $this->assertArrayHasKey('error', $result);
+        $this->assertSame('Kalau isi salah satu periode, isi juga yang satunya.', $result['error']);
+    }
 }
