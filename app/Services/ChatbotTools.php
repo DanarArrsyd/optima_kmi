@@ -156,10 +156,10 @@ class ChatbotTools
         ];
     }
 
-    /** Daftar mentah problem/penyebab/tindakan breakdown dies dalam rentang bulan (opsional filter per part). */
-    public function getProblemDies(string $bulanMulai, string $bulanAkhir, ?string $partNo = null): array
+    /** Daftar mentah problem/penyebab/tindakan breakdown dies dalam rentang bulan opsional (opsional filter per part). */
+    public function getProblemDies(?string $bulanMulai = null, ?string $bulanAkhir = null, ?string $partNo = null): array
     {
-        [$from, $to, $error] = $this->monthSpan($bulanMulai, $bulanAkhir);
+        [$from, $to, $error] = $this->monthSpanOptional($bulanMulai, $bulanAkhir);
         if ($error) {
             return ['error' => $error];
         }
@@ -174,14 +174,15 @@ class ChatbotTools
         }
 
         $query = TransaksiBreakdownDies::with('partProses.part')
-            ->whereBetween('tanggal_breakdown', [$from->toDateString(), $to->toDateString()])
+            ->when($from && $to, fn ($q) => $q->whereBetween('tanggal_breakdown', [$from->toDateString(), $to->toDateString()]))
             ->when($prosesIds !== null, fn ($q) => $q->whereIn('id_part_proses', $prosesIds))
             ->orderByDesc('tanggal_breakdown');
 
         $total = $query->count();
         if ($total === 0) {
             $label = $partNo ? " untuk part \"{$partNo}\"" : '';
-            return ['error' => "Tidak ada data breakdown dies{$label} di periode {$bulanMulai} s/d {$bulanAkhir}."];
+            $periodLabel = ($bulanMulai && $bulanAkhir) ? " di periode {$bulanMulai} s/d {$bulanAkhir}" : '';
+            return ['error' => "Tidak ada data breakdown dies{$label}{$periodLabel}."];
         }
 
         $rows = $query->limit(150)->get()->map(fn ($r) => [
@@ -193,10 +194,10 @@ class ChatbotTools
         ])->toArray();
 
         $result = [
-            'bulan_mulai'   => $bulanMulai,
-            'bulan_akhir'   => $bulanAkhir,
-            'total_record'  => $total,
-            'data'          => $rows,
+            'bulan_mulai'  => $bulanMulai ?? 'semua periode',
+            'bulan_akhir'  => $bulanAkhir ?? 'semua periode',
+            'total_record' => $total,
+            'data'         => $rows,
         ];
 
         if ($total > 150) {
@@ -425,6 +426,18 @@ class ChatbotTools
         return [$from, $to, null];
     }
 
+    private function monthSpanOptional(?string $bulanMulai, ?string $bulanAkhir): array
+    {
+        if ($bulanMulai === null && $bulanAkhir === null) {
+            return [null, null, null];
+        }
+        if ($bulanMulai === null || $bulanAkhir === null) {
+            return [null, null, 'Kalau isi salah satu periode, isi juga yang satunya.'];
+        }
+
+        return $this->monthSpan($bulanMulai, $bulanAkhir);
+    }
+
     /** Provider-neutral tool schema (name/description/JSON-Schema parameters), wrapped per-provider by each ChatbotProviderInterface implementation. */
     public function schemaDefinitions(): array
     {
@@ -503,15 +516,15 @@ class ChatbotTools
             ],
             [
                 'name' => 'getProblemDies',
-                'description' => 'Ambil daftar mentah problem, penyebab, dan tindakan perbaikan breakdown dies dalam rentang bulan. Dipakai untuk pertanyaan root-cause seperti "problem apa yang sering muncul", "penyebabnya apa", "perbaikan yang cocok apa" — kamu HARUS merangkum sendiri dari data yang dikembalikan, jangan menambah pola yang tidak ada di teks.',
+                'description' => 'Ambil daftar mentah problem, penyebab, dan tindakan perbaikan breakdown dies dalam rentang bulan. Dipakai untuk pertanyaan root-cause seperti "problem apa yang sering muncul", "penyebabnya apa", "perbaikan yang cocok apa" — kamu HARUS merangkum sendiri dari data yang dikembalikan, jangan menambah pola yang tidak ada di teks. Kosongkan bulanMulai/bulanAkhir untuk analisa semua periode (all-time).',
                 'parameters' => [
                     'type' => 'object',
                     'properties' => [
-                        'bulanMulai' => ['type' => 'string', 'description' => 'Bulan mulai, format YYYY-MM'],
-                        'bulanAkhir' => ['type' => 'string', 'description' => 'Bulan akhir (inklusif), format YYYY-MM'],
+                        'bulanMulai' => ['type' => 'string', 'description' => 'Opsional, bulan mulai format YYYY-MM. Kosongkan untuk semua periode.'],
+                        'bulanAkhir' => ['type' => 'string', 'description' => 'Opsional, bulan akhir (inklusif) format YYYY-MM. Kosongkan untuk semua periode.'],
                         'partNo' => ['type' => 'string', 'description' => 'Opsional, nomor part/dies spesifik. Kosongkan untuk semua dies.'],
                     ],
-                    'required' => ['bulanMulai', 'bulanAkhir'],
+                    'required' => [],
                 ],
             ],
             [
