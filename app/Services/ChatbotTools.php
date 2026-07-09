@@ -412,28 +412,12 @@ class ChatbotTools
             return ['error' => "Tidak ada data breakdown dies{$label}{$periodLabel}."];
         }
 
-        $total = $records->count();
-
-        $groups = $records
-            ->groupBy(fn ($r) => strtolower(trim($r->problem_dies)))
-            ->map(function ($rows) use ($total) {
-                $latest = $rows->first();
-                return [
-                    'problem'         => trim($latest->problem_dies),
-                    'jumlah_kejadian' => $rows->count(),
-                    'pct_dari_total'  => round($rows->count() / $total * 100, 2),
-                    'contoh_penyebab' => $latest->penyebab_breakdown,
-                    'contoh_tindakan' => $latest->tindakan_perbaikan,
-                ];
-            })
-            ->sortByDesc('jumlah_kejadian')
-            ->values()
-            ->take(10);
+        $groups = $this->groupByFrequency($records, 'problem_dies', 'penyebab_breakdown', 'tindakan_perbaikan');
 
         return [
             'bulan_mulai'    => $bulanMulai ?? 'semua periode',
             'bulan_akhir'    => $bulanAkhir ?? 'semua periode',
-            'total_kejadian' => $total,
+            'total_kejadian' => $records->count(),
             'top_problem'    => $groups->toArray(),
         ];
     }
@@ -467,28 +451,12 @@ class ChatbotTools
             return ['error' => "Tidak ada data breakdown mesin{$label}{$periodLabel}."];
         }
 
-        $total = $records->count();
-
-        $groups = $records
-            ->groupBy(fn ($r) => strtolower(trim($r->problem_mesin)))
-            ->map(function ($rows) use ($total) {
-                $latest = $rows->first();
-                return [
-                    'problem'         => trim($latest->problem_mesin),
-                    'jumlah_kejadian' => $rows->count(),
-                    'pct_dari_total'  => round($rows->count() / $total * 100, 2),
-                    'contoh_penyebab' => $latest->penyebab_breakdown,
-                    'contoh_tindakan' => $latest->tindakan_perbaikan,
-                ];
-            })
-            ->sortByDesc('jumlah_kejadian')
-            ->values()
-            ->take(10);
+        $groups = $this->groupByFrequency($records, 'problem_mesin', 'penyebab_breakdown', 'tindakan_perbaikan');
 
         return [
             'bulan_mulai'    => $bulanMulai ?? 'semua periode',
             'bulan_akhir'    => $bulanAkhir ?? 'semua periode',
-            'total_kejadian' => $total,
+            'total_kejadian' => $records->count(),
             'top_problem'    => $groups->toArray(),
         ];
     }
@@ -577,6 +545,27 @@ class ChatbotTools
         }
 
         return $result;
+    }
+
+    private function groupByFrequency(\Illuminate\Support\Collection $records, string $problemField, string $penyebabField, string $tindakanField): \Illuminate\Support\Collection
+    {
+        $total = $records->count();
+
+        return $records
+            ->groupBy(fn ($r) => strtolower(trim($r->{$problemField})))
+            ->map(function ($rows) use ($total, $problemField, $penyebabField, $tindakanField) {
+                $latest = $rows->first();
+                return [
+                    'problem'         => trim($latest->{$problemField}),
+                    'jumlah_kejadian' => $rows->count(),
+                    'pct_dari_total'  => round($rows->count() / $total * 100, 2),
+                    'contoh_penyebab' => $latest->{$penyebabField},
+                    'contoh_tindakan' => $latest->{$tindakanField},
+                ];
+            })
+            ->sortByDesc('jumlah_kejadian')
+            ->values()
+            ->take(10);
     }
 
     /** Provider-neutral tool schema (name/description/JSON-Schema parameters), wrapped per-provider by each ChatbotProviderInterface implementation. */
