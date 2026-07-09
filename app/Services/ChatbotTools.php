@@ -452,6 +452,61 @@ class ChatbotTools
         ];
     }
 
+    /** Ranking problem mesin PALING SERING muncul (Pareto), dikelompokkan per teks problem, dalam rentang bulan opsional. */
+    public function getTopProblemMesin(?string $bulanMulai = null, ?string $bulanAkhir = null, ?string $idMesin = null): array
+    {
+        [$from, $to, $error] = $this->monthSpanOptional($bulanMulai, $bulanAkhir);
+        if ($error) {
+            return ['error' => $error];
+        }
+
+        $mesinId = null;
+        if ($idMesin !== null) {
+            $mesin = MasterMesin::whereRaw('LOWER(TRIM(id_mesin)) = ?', [strtolower(trim($idMesin))])->first();
+            if (!$mesin) {
+                return ['error' => "Mesin dengan kode \"{$idMesin}\" tidak ditemukan di master data."];
+            }
+            $mesinId = $mesin->id;
+        }
+
+        $records = TransaksiBreakdownMesin::query()
+            ->when($from && $to, fn ($q) => $q->whereBetween('tanggal_breakdown', [$from->toDateString(), $to->toDateString()]))
+            ->when($mesinId !== null, fn ($q) => $q->where('id_mesin', $mesinId))
+            ->orderByDesc('tanggal_breakdown')
+            ->get(['problem_mesin', 'penyebab_breakdown', 'tindakan_perbaikan', 'tanggal_breakdown']);
+
+        if ($records->isEmpty()) {
+            $label = $idMesin ? " untuk mesin \"{$idMesin}\"" : '';
+            $periodLabel = ($bulanMulai && $bulanAkhir) ? " di periode {$bulanMulai} s/d {$bulanAkhir}" : '';
+            return ['error' => "Tidak ada data breakdown mesin{$label}{$periodLabel}."];
+        }
+
+        $total = $records->count();
+
+        $groups = $records
+            ->groupBy(fn ($r) => strtolower(trim($r->problem_mesin)))
+            ->map(function ($rows) use ($total) {
+                $latest = $rows->first();
+                return [
+                    'problem'         => trim($latest->problem_mesin),
+                    'jumlah_kejadian' => $rows->count(),
+                    'pct_dari_total'  => round($rows->count() / $total * 100, 2),
+                    'contoh_penyebab' => $latest->penyebab_breakdown,
+                    'contoh_tindakan' => $latest->tindakan_perbaikan,
+                ];
+            })
+            ->sortByDesc('jumlah_kejadian')
+            ->values()
+            ->take(10);
+
+        return [
+            'bulan_mulai'    => $bulanMulai ?? 'semua periode',
+            'bulan_akhir'    => $bulanAkhir ?? 'semua periode',
+            'total_kejadian' => $total,
+            'top_problem'    => $groups->toArray(),
+        ];
+    }
+
     private function produksiSummary(string $periode): array
     {
         [$from, $to] = $this->monthRange($periode);
@@ -665,6 +720,19 @@ class ChatbotTools
                         'bulanMulai' => ['type' => 'string', 'description' => 'Opsional, bulan mulai format YYYY-MM. Kosongkan untuk semua periode.'],
                         'bulanAkhir' => ['type' => 'string', 'description' => 'Opsional, bulan akhir (inklusif) format YYYY-MM. Kosongkan untuk semua periode.'],
                         'partNo' => ['type' => 'string', 'description' => 'Opsional, nomor part/dies spesifik. Kosongkan untuk semua dies.'],
+                    ],
+                    'required' => [],
+                ],
+            ],
+            [
+                'name' => 'getTopProblemMesin',
+                'description' => 'Sama seperti getTopProblemDies tapi untuk mesin — ranking problem mesin paling sering muncul (Pareto).',
+                'parameters' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'bulanMulai' => ['type' => 'string', 'description' => 'Opsional, bulan mulai format YYYY-MM. Kosongkan untuk semua periode.'],
+                        'bulanAkhir' => ['type' => 'string', 'description' => 'Opsional, bulan akhir (inklusif) format YYYY-MM. Kosongkan untuk semua periode.'],
+                        'idMesin' => ['type' => 'string', 'description' => 'Opsional, kode mesin spesifik. Kosongkan untuk semua mesin.'],
                     ],
                     'required' => [],
                 ],

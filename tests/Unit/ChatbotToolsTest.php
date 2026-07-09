@@ -1002,4 +1002,105 @@ class ChatbotToolsTest extends TestCase
         $this->assertArrayNotHasKey('error', $result);
         $this->assertCount(10, $result['top_problem']);
     }
+
+    public function test_get_top_problem_mesin_groups_by_normalized_problem_text(): void
+    {
+        $mesin = MasterMesin::create([
+            'id_mesin' => 'TOP-M1', 'nama_mesin' => 'Top Problem Mesin', 'line' => '1',
+            'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100,
+        ]);
+
+        TransaksiBreakdownMesin::create([
+            'no_lkm' => 'LKM-TOP1', 'id_mesin' => $mesin->id,
+            'tanggal_breakdown' => '2026-07-01', 'jam_breakdown' => '08:00',
+            'tanggal_mulai_perbaikan' => '2026-07-01', 'jam_mulai_perbaikan' => '09:00',
+            'tanggal_selesai_perbaikan' => '2026-07-01', 'jam_selesai_perbaikan' => '10:00',
+            'problem_mesin' => 'Panel error', 'penyebab_breakdown' => 'Korsleting lama', 'tindakan_perbaikan' => 'Ganti panel lama',
+            'status_breakdown' => 'Selesai', 'pic_maintenance' => 'Budi',
+            'repair_time' => 1.0, 'total_downtime' => 1.0,
+        ]);
+        TransaksiBreakdownMesin::create([
+            'no_lkm' => 'LKM-TOP2', 'id_mesin' => $mesin->id,
+            'tanggal_breakdown' => '2026-07-10', 'jam_breakdown' => '08:00',
+            'tanggal_mulai_perbaikan' => '2026-07-10', 'jam_mulai_perbaikan' => '09:00',
+            'tanggal_selesai_perbaikan' => '2026-07-10', 'jam_selesai_perbaikan' => '10:00',
+            'problem_mesin' => '  panel error  ', 'penyebab_breakdown' => 'Korsleting baru', 'tindakan_perbaikan' => 'Ganti panel baru',
+            'status_breakdown' => 'Selesai', 'pic_maintenance' => 'Budi',
+            'repair_time' => 1.0, 'total_downtime' => 1.0,
+        ]);
+        TransaksiBreakdownMesin::create([
+            'no_lkm' => 'LKM-TOP3', 'id_mesin' => $mesin->id,
+            'tanggal_breakdown' => '2026-07-05', 'jam_breakdown' => '08:00',
+            'tanggal_mulai_perbaikan' => '2026-07-05', 'jam_mulai_perbaikan' => '09:00',
+            'tanggal_selesai_perbaikan' => '2026-07-05', 'jam_selesai_perbaikan' => '10:00',
+            'problem_mesin' => 'Motor macet', 'penyebab_breakdown' => 'Oli habis', 'tindakan_perbaikan' => 'Isi oli',
+            'status_breakdown' => 'Selesai', 'pic_maintenance' => 'Budi',
+            'repair_time' => 1.0, 'total_downtime' => 1.0,
+        ]);
+
+        $result = (new ChatbotTools())->getTopProblemMesin();
+
+        $this->assertArrayNotHasKey('error', $result);
+        $this->assertSame(3, $result['total_kejadian']);
+        $this->assertCount(2, $result['top_problem']);
+        $this->assertSame(2, $result['top_problem'][0]['jumlah_kejadian']);
+        $this->assertSame('panel error', $result['top_problem'][0]['problem']);
+        $this->assertSame('Korsleting baru', $result['top_problem'][0]['contoh_penyebab']);
+    }
+
+    public function test_get_top_problem_mesin_filters_by_mesin(): void
+    {
+        $mesin1 = MasterMesin::create([
+            'id_mesin' => 'TOP-M2', 'nama_mesin' => 'Filter Mesin A', 'line' => '1',
+            'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100,
+        ]);
+        $mesin2 = MasterMesin::create([
+            'id_mesin' => 'TOP-M3', 'nama_mesin' => 'Filter Mesin B', 'line' => '1',
+            'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100,
+        ]);
+
+        TransaksiBreakdownMesin::create([
+            'no_lkm' => 'LKM-TOPF1', 'id_mesin' => $mesin1->id,
+            'tanggal_breakdown' => '2026-07-01', 'jam_breakdown' => '08:00',
+            'tanggal_mulai_perbaikan' => '2026-07-01', 'jam_mulai_perbaikan' => '09:00',
+            'tanggal_selesai_perbaikan' => '2026-07-01', 'jam_selesai_perbaikan' => '10:00',
+            'problem_mesin' => 'Problem A', 'penyebab_breakdown' => 'x', 'tindakan_perbaikan' => 'x',
+            'status_breakdown' => 'Selesai', 'pic_maintenance' => 'Budi',
+            'repair_time' => 1.0, 'total_downtime' => 1.0,
+        ]);
+        TransaksiBreakdownMesin::create([
+            'no_lkm' => 'LKM-TOPF2', 'id_mesin' => $mesin2->id,
+            'tanggal_breakdown' => '2026-07-02', 'jam_breakdown' => '08:00',
+            'tanggal_mulai_perbaikan' => '2026-07-02', 'jam_mulai_perbaikan' => '09:00',
+            'tanggal_selesai_perbaikan' => '2026-07-02', 'jam_selesai_perbaikan' => '10:00',
+            'problem_mesin' => 'Problem B', 'penyebab_breakdown' => 'x', 'tindakan_perbaikan' => 'x',
+            'status_breakdown' => 'Selesai', 'pic_maintenance' => 'Budi',
+            'repair_time' => 1.0, 'total_downtime' => 1.0,
+        ]);
+
+        $result = (new ChatbotTools())->getTopProblemMesin(null, null, 'TOP-M2');
+
+        $this->assertArrayNotHasKey('error', $result);
+        $this->assertSame(1, $result['total_kejadian']);
+        $this->assertSame('Problem A', $result['top_problem'][0]['problem']);
+    }
+
+    public function test_get_top_problem_mesin_returns_error_for_unknown_mesin(): void
+    {
+        $result = (new ChatbotTools())->getTopProblemMesin(null, null, 'NOT-EXIST');
+        $this->assertArrayHasKey('error', $result);
+    }
+
+    public function test_get_top_problem_mesin_returns_error_when_no_records(): void
+    {
+        $result = (new ChatbotTools())->getTopProblemMesin();
+        $this->assertArrayHasKey('error', $result);
+    }
+
+    public function test_get_top_problem_mesin_with_only_one_period_arg_returns_error(): void
+    {
+        $result = (new ChatbotTools())->getTopProblemMesin('2026-07', null);
+        $this->assertArrayHasKey('error', $result);
+        $this->assertSame('Kalau isi salah satu periode, isi juga yang satunya.', $result['error']);
+    }
 }
