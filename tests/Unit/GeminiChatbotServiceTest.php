@@ -90,13 +90,45 @@ class GeminiChatbotServiceTest extends TestCase
         Http::fake(['generativelanguage.googleapis.com/*' => Http::response([
             'candidates' => [[
                 'content' => ['role' => 'model', 'parts' => [[
-                    'functionCall' => ['name' => 'getRekapNg', 'args' => ['namaProses' => 'BENDING']],
+                    'functionCall' => ['name' => 'getMtbfMttrDies', 'args' => ['partNo' => 'BT-091A-3']],
                 ]]],
             ]],
         ], 200)]);
 
-        $reply = (new GeminiChatbotService(new ChatbotTools()))->ask($this->conversation(), 'berapa NG?');
+        $reply = (new GeminiChatbotService(new ChatbotTools()))->ask($this->conversation(), 'berapa MTBF dies itu?');
 
         $this->assertNull($reply);
+    }
+
+    public function test_zero_argument_tool_call_is_echoed_back_as_json_object_not_array(): void
+    {
+        $call = 0;
+        $capturedBody = null;
+        Http::fake(function ($request) use (&$call, &$capturedBody) {
+            $call++;
+            if ($call === 1) {
+                return Http::response([
+                    'candidates' => [[
+                        'content' => ['role' => 'model', 'parts' => [[
+                            'functionCall' => ['name' => 'getTopProblemDies', 'args' => new \stdClass()],
+                        ]]],
+                    ]],
+                ], 200);
+            }
+
+            $capturedBody = $request->body();
+
+            return Http::response([
+                'candidates' => [[
+                    'content' => ['role' => 'model', 'parts' => [['text' => 'Problem paling sering: motor overheat.']]],
+                ]],
+            ], 200);
+        });
+
+        $reply = (new GeminiChatbotService(new ChatbotTools()))->ask($this->conversation(), 'problem dies apa yang paling sering muncul?');
+
+        $this->assertSame('Problem paling sering: motor overheat.', $reply);
+        $this->assertNotNull($capturedBody);
+        $this->assertStringNotContainsString('"args":[]', $capturedBody, 'Empty functionCall.args must be encoded as a JSON object ({}), not an array ([]), or Gemini rejects the request with a 400 INVALID_ARGUMENT.');
     }
 }
