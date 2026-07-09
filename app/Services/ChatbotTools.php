@@ -197,18 +197,7 @@ class ChatbotTools
             'tindakan' => $r->tindakan_perbaikan,
         ])->toArray();
 
-        $result = [
-            'bulan_mulai'  => $bulanMulai ?? 'semua periode',
-            'bulan_akhir'  => $bulanAkhir ?? 'semua periode',
-            'total_record' => $total,
-            'data'         => $rows,
-        ];
-
-        if ($total > 150) {
-            $result['note'] = "Data dipotong ke 150 record terbaru dari total {$total}. Persempit rentang bulan untuk detail lengkap.";
-        }
-
-        return $result;
+        return $this->truncatedResult($total, $rows, $bulanMulai ?? 'semua periode', $bulanAkhir ?? 'semua periode');
     }
 
     /** Daftar mentah problem/penyebab/tindakan breakdown mesin dalam rentang bulan opsional (opsional filter per mesin). */
@@ -248,18 +237,7 @@ class ChatbotTools
             'tindakan' => $r->tindakan_perbaikan,
         ])->toArray();
 
-        $result = [
-            'bulan_mulai'  => $bulanMulai ?? 'semua periode',
-            'bulan_akhir'  => $bulanAkhir ?? 'semua periode',
-            'total_record' => $total,
-            'data'         => $rows,
-        ];
-
-        if ($total > 150) {
-            $result['note'] = "Data dipotong ke 150 record terbaru dari total {$total}. Persempit rentang bulan untuk detail lengkap.";
-        }
-
-        return $result;
+        return $this->truncatedResult($total, $rows, $bulanMulai ?? 'semua periode', $bulanAkhir ?? 'semua periode');
     }
 
     /** Ranking mesin berdasarkan jumlah kejadian breakdown terbanyak dalam rentang bulan opsional. */
@@ -583,6 +561,22 @@ class ChatbotTools
         }
 
         return $this->monthSpan($bulanMulai, $bulanAkhir);
+    }
+
+    private function truncatedResult(int $total, array $rows, string $bulanMulaiLabel, string $bulanAkhirLabel, array $extra = []): array
+    {
+        $result = array_merge([
+            'bulan_mulai'  => $bulanMulaiLabel,
+            'bulan_akhir'  => $bulanAkhirLabel,
+            'total_record' => $total,
+            'data'         => $rows,
+        ], $extra);
+
+        if ($total > 150) {
+            $result['note'] = "Data dipotong ke 150 record terbaru dari total {$total}. Persempit rentang bulan untuk detail lengkap.";
+        }
+
+        return $result;
     }
 
     /** Provider-neutral tool schema (name/description/JSON-Schema parameters), wrapped per-provider by each ChatbotProviderInterface implementation. */
