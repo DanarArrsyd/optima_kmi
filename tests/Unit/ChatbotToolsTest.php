@@ -617,6 +617,37 @@ class ChatbotToolsTest extends TestCase
         $this->assertArrayHasKey('error', $result);
     }
 
+    public function test_get_ranking_breakdown_dies_with_no_period_returns_all_time_data(): void
+    {
+        $part = MasterPart::create(['part_no' => 'RDN-01', 'part_name' => 'RankNoPeriod Part', 'customer' => 'Toyota']);
+        $proses = MasterPartProses::create([
+            'id_part' => $part->id, 'id_proses' => 1, 'nama_proses' => 'PROGRESSIVE',
+            'sph_standar_produksi' => 500, 'sph_standar_qc' => 250,
+        ]);
+        TransaksiBreakdownDies::create([
+            'no_lkd' => 'LKD-RNP1', 'id_part_proses' => $proses->id,
+            'tanggal_breakdown' => '2020-01-05', 'jam_breakdown' => '08:00',
+            'tanggal_mulai_perbaikan' => '2020-01-05', 'jam_mulai_perbaikan' => '09:00',
+            'tanggal_selesai_perbaikan' => '2020-01-05', 'jam_selesai_perbaikan' => '10:00',
+            'problem_dies' => 'x', 'penyebab_breakdown' => 'x', 'tindakan_perbaikan' => 'x',
+            'status_breakdown' => 'Selesai', 'pic_maintenance' => 'Budi',
+            'repair_time' => 1.0, 'total_downtime' => 1.0,
+        ]);
+
+        $result = (new ChatbotTools())->getRankingBreakdownDies();
+
+        $this->assertArrayNotHasKey('error', $result);
+        $this->assertSame('semua periode', $result['bulan_mulai']);
+        $this->assertSame(1, $result['ranking'][0]['jumlah_breakdown']);
+    }
+
+    public function test_get_ranking_breakdown_dies_with_only_one_period_arg_returns_error(): void
+    {
+        $result = (new ChatbotTools())->getRankingBreakdownDies(null, '2026-07');
+        $this->assertArrayHasKey('error', $result);
+        $this->assertSame('Kalau isi salah satu periode, isi juga yang satunya.', $result['error']);
+    }
+
     public function test_get_rekap_dandori_groups_by_jenis_losstime_sorted_by_over_menit(): void
     {
         $mesin = MasterMesin::create([
