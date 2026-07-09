@@ -1105,4 +1105,15 @@ class ChatbotToolsTest extends TestCase
         $this->assertArrayHasKey('error', $result);
         $this->assertSame('Kalau isi salah satu periode, isi juga yang satunya.', $result['error']);
     }
+
+    public function test_schema_definitions_still_returns_all_thirteen_tools_with_unique_names(): void
+    {
+        $names = collect((new ChatbotTools())->schemaDefinitions())->pluck('name');
+
+        $this->assertCount(14, $names);
+        $this->assertCount(14, $names->unique(), 'Schema split must not introduce a duplicate tool name across the grouped methods.');
+        $this->assertTrue($names->contains('getMtbfMttrDies'));
+        $this->assertTrue($names->contains('getRekapDandori'));
+        $this->assertTrue($names->contains('getTopProblemMesin'));
+    }
 }
