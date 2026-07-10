@@ -1,15 +1,21 @@
-name: Debug — Tail server log
+name: Debug — Tail server log / check schema
 
-# Manual-only, buat baca storage/logs/laravel.log tanpa perlu private
-# key lokal. Tidak jalan otomatis (tidak ada trigger `push`).
+# Manual-only, buat baca storage/logs/laravel.log & cek skema DB
+# tanpa perlu private key lokal. Tidak jalan otomatis.
 on:
   workflow_dispatch:
+    inputs:
+      mode:
+        description: 'log = tail laravel.log, schema = cek kolom/tabel breakdown'
+        required: false
+        default: 'log'
 
 env:
   REMOTE_PATH: /home/u518638233/domains/optima.kencomanufactur.co.id/public_html
+  REMOTE_PHP: /opt/alt/php84/usr/bin/php
 
 jobs:
-  tail-log:
+  run:
     runs-on: ubuntu-latest
     steps:
       - name: Setup SSH key
@@ -20,7 +26,27 @@ jobs:
           ssh-keyscan -p "${{ secrets.SSH_PORT }}" "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
 
       - name: Tail laravel.log (100 baris terakhir)
+        if: ${{ github.event.inputs.mode == 'log' || github.event.inputs.mode == '' }}
         run: |
           ssh -p "${{ secrets.SSH_PORT }}" -i ~/.ssh/deploy_key \
             "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" \
             "tail -n 100 ${{ env.REMOTE_PATH }}/storage/logs/laravel.log"
+
+      - name: Cek skema breakdown/tanggal_instalasi
+        if: ${{ github.event.inputs.mode == 'schema' }}
+        run: |
+          ssh -p "${{ secrets.SSH_PORT }}" -i ~/.ssh/deploy_key \
+            "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" \
+            'cd ${{ env.REMOTE_PATH }} && ${{ env.REMOTE_PHP }} artisan tinker --execute="
+              echo \"master_mesin.tanggal_instalasi: \" . (in_array(\"tanggal_instalasi\", Illuminate\\Support\\Facades\\Schema::getColumnListing(\"master_mesin\")) ? \"ADA\" : \"tidak ada\") . PHP_EOL;
+              echo \"master_part.tanggal_instalasi: \" . (in_array(\"tanggal_instalasi\", Illuminate\\Support\\Facades\\Schema::getColumnListing(\"master_part\")) ? \"ADA\" : \"tidak ada\") . PHP_EOL;
+              echo \"transaksi_breakdown_mesin table: \" . (Illuminate\\Support\\Facades\\Schema::hasTable(\"transaksi_breakdown_mesin\") ? \"ADA\" : \"tidak ada\") . PHP_EOL;
+              echo \"transaksi_breakdown_dies table: \" . (Illuminate\\Support\\Facades\\Schema::hasTable(\"transaksi_breakdown_dies\") ? \"ADA\" : \"tidak ada\") . PHP_EOL;
+              if (Illuminate\\Support\\Facades\\Schema::hasTable(\"transaksi_breakdown_dies\")) {
+                echo \"  kolom id_part_proses: \" . (in_array(\"id_part_proses\", Illuminate\\Support\\Facades\\Schema::getColumnListing(\"transaksi_breakdown_dies\")) ? \"ADA\" : \"tidak ada\") . PHP_EOL;
+                echo \"  jumlah baris: \" . Illuminate\\Support\\Facades\\DB::table(\"transaksi_breakdown_dies\")->count() . PHP_EOL;
+              }
+              if (Illuminate\\Support\\Facades\\Schema::hasTable(\"transaksi_breakdown_mesin\")) {
+                echo \"  jumlah baris: \" . Illuminate\\Support\\Facades\\DB::table(\"transaksi_breakdown_mesin\")->count() . PHP_EOL;
+              }
+            "'
