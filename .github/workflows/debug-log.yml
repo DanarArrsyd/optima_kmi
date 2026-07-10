@@ -1,0 +1,26 @@
+name: Debug — Tail server log
+
+# Manual-only, buat baca storage/logs/laravel.log tanpa perlu private
+# key lokal. Tidak jalan otomatis (tidak ada trigger `push`).
+on:
+  workflow_dispatch:
+
+env:
+  REMOTE_PATH: /home/u518638233/domains/optima.kencomanufactur.co.id/public_html
+
+jobs:
+  tail-log:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p "${{ secrets.SSH_PORT }}" "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Tail laravel.log (100 baris terakhir)
+        run: |
+          ssh -p "${{ secrets.SSH_PORT }}" -i ~/.ssh/deploy_key \
+            "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" \
+            "tail -n 100 ${{ env.REMOTE_PATH }}/storage/logs/laravel.log"
