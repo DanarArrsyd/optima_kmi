@@ -9,7 +9,13 @@ class MasterKaryawan extends Model
 {
     use SoftDeletes;
     protected $table = 'master_karyawan';
-    protected $fillable = ['nik', 'nama_karyawan', 'departemen'];
+    protected $fillable = ['nik', 'nama_karyawan', 'departemen', 'is_aktif'];
+    protected $casts    = ['is_aktif' => 'boolean'];
+
+    public function scopeAktif($query)
+    {
+        return $query->where('is_aktif', true);
+    }
     public function transaksiProduksi(): HasMany
     {
         return $this->hasMany(TransaksiProduksi::class, 'id_karyawan');
