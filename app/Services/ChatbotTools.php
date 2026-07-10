@@ -10,9 +10,16 @@ use App\Models\TransaksiDandoriRincian;
 use App\Models\TransaksiProduksi;
 use App\Models\TransaksiQc;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class ChatbotTools
 {
+    /** Batas baris detail mentah yang dikirim ke LLM sebelum dipotong. */
+    private const MAX_DETAIL_ROWS = 150;
+
+    /** Tanggal lantai untuk analisa "semua periode" (all-time) saat filter bulan kosong. */
+    private const ALL_TIME_FROM = '2000-01-01';
+
     public function __construct(
         private MaintenanceDiesDashboardService $diesDashboard = new MaintenanceDiesDashboardService(),
         private MaintenanceDashboardService $mesinDashboard = new MaintenanceDashboardService(),
@@ -184,12 +191,10 @@ class ChatbotTools
 
         $total = $query->count();
         if ($total === 0) {
-            $label = $partNo ? " untuk part \"{$partNo}\"" : '';
-            $periodLabel = ($bulanMulai && $bulanAkhir) ? " di periode {$bulanMulai} s/d {$bulanAkhir}" : '';
-            return ['error' => "Tidak ada data breakdown dies{$label}{$periodLabel}."];
+            return ['error' => "Tidak ada data breakdown dies" . $this->filterLabel($partNo, 'part') . $this->periodeLabel($bulanMulai, $bulanAkhir) . "."];
         }
 
-        $rows = $query->limit(150)->get()->map(fn ($r) => [
+        $rows = $query->limit(self::MAX_DETAIL_ROWS)->get()->map(fn ($r) => [
             'tanggal'  => $r->tanggal_breakdown->format('Y-m-d'),
             'part'     => $r->partProses?->part?->part_name ?? '—',
             'problem'  => $r->problem_dies,
@@ -224,12 +229,10 @@ class ChatbotTools
 
         $total = $query->count();
         if ($total === 0) {
-            $label = $idMesin ? " untuk mesin \"{$idMesin}\"" : '';
-            $periodLabel = ($bulanMulai && $bulanAkhir) ? " di periode {$bulanMulai} s/d {$bulanAkhir}" : '';
-            return ['error' => "Tidak ada data breakdown mesin{$label}{$periodLabel}."];
+            return ['error' => "Tidak ada data breakdown mesin" . $this->filterLabel($idMesin, 'mesin') . $this->periodeLabel($bulanMulai, $bulanAkhir) . "."];
         }
 
-        $rows = $query->limit(150)->get()->map(fn ($r) => [
+        $rows = $query->limit(self::MAX_DETAIL_ROWS)->get()->map(fn ($r) => [
             'tanggal'  => $r->tanggal_breakdown->format('Y-m-d'),
             'mesin'    => $r->mesin?->nama_mesin ?? '—',
             'problem'  => $r->problem_mesin,
@@ -248,8 +251,7 @@ class ChatbotTools
             return ['error' => $error];
         }
 
-        $computeFrom = $from ?? Carbon::createFromDate(2000, 1, 1)->startOfDay();
-        $computeTo   = $to ?? Carbon::now()->endOfDay();
+        [$computeFrom, $computeTo] = $this->allTimeWindow($from, $to);
 
         $rows = collect($this->mesinDashboard->compute($computeFrom, $computeTo))
             ->filter(fn ($r) => $r['count'] > 0)
@@ -258,8 +260,7 @@ class ChatbotTools
             ->take(10);
 
         if ($rows->isEmpty()) {
-            $periodLabel = ($bulanMulai && $bulanAkhir) ? " di periode {$bulanMulai} s/d {$bulanAkhir}" : '';
-            return ['error' => "Tidak ada kejadian breakdown mesin{$periodLabel}."];
+            return ['error' => "Tidak ada kejadian breakdown mesin" . $this->periodeLabel($bulanMulai, $bulanAkhir) . "."];
         }
 
         return [
@@ -282,8 +283,7 @@ class ChatbotTools
             return ['error' => $error];
         }
 
-        $computeFrom = $from ?? Carbon::createFromDate(2000, 1, 1)->startOfDay();
-        $computeTo   = $to ?? Carbon::now()->endOfDay();
+        [$computeFrom, $computeTo] = $this->allTimeWindow($from, $to);
 
         $rows = collect($this->diesDashboard->compute($computeFrom, $computeTo))
             ->filter(fn ($r) => $r['count'] > 0)
@@ -292,13 +292,16 @@ class ChatbotTools
             ->take(10);
 
         if ($rows->isEmpty()) {
-            $periodLabel = ($bulanMulai && $bulanAkhir) ? " di periode {$bulanMulai} s/d {$bulanAkhir}" : '';
-            return ['error' => "Tidak ada kejadian breakdown dies{$periodLabel}."];
+            return ['error' => "Tidak ada kejadian breakdown dies" . $this->periodeLabel($bulanMulai, $bulanAkhir) . "."];
         }
 
         return [
             'bulan_mulai' => $bulanMulai ?? 'semua periode',
             'bulan_akhir' => $bulanAkhir ?? 'semua periode',
+            // MaintenanceDiesDashboardService sengaja mirror key mesin agar view dashboard
+            // dies & mesin bisa dipakai bareng: 'nama_mesin' = part_name, 'kode_mesin' = part_no.
+            // Jangan tergoda "membetulkan" jadi $r['part_name'] — key itu tidak ada.
+            // Kontrak mapping ini dikunci test_get_ranking_breakdown_dies_maps_part_fields.
             'ranking'     => $rows->map(fn ($r) => [
                 'part'             => $r['nama_mesin'],
                 'part_no'          => $r['kode_mesin'],
@@ -325,37 +328,46 @@ class ChatbotTools
             $mesinId = $mesin->id;
         }
 
-        $records = TransaksiDandoriRincian::with('losstime')
-            ->when($from && $to, fn ($q) => $q->whereBetween('tanggal', [$from->toDateString(), $to->toDateString()]))
-            ->when($mesinId !== null, fn ($q) => $q->where('id_mesin', $mesinId))
-            ->get();
+        // Agregasi di DB (GROUP BY jenis_losstime) — hindari load semua rincian ke memori.
+        // leftJoin + deleted_at IS NULL meniru eager-load ->with('losstime'): losstime yang
+        // soft-deleted diperlakukan sebagai relasi kosong → jatuh ke "Tidak diketahui".
+        $groups = TransaksiDandoriRincian::query()
+            ->leftJoin('master_losstime', function ($join) {
+                $join->on('transaksi_dandori_rincian.id_losstime', '=', 'master_losstime.id')
+                     ->whereNull('master_losstime.deleted_at');
+            })
+            ->when($from && $to, fn ($q) => $q->whereBetween('transaksi_dandori_rincian.tanggal', [$from->toDateString(), $to->toDateString()]))
+            ->when($mesinId !== null, fn ($q) => $q->where('transaksi_dandori_rincian.id_mesin', $mesinId))
+            ->groupBy('jenis_losstime')
+            ->orderByRaw('SUM(transaksi_dandori_rincian.over_menit) DESC')
+            ->get([
+                DB::raw("COALESCE(master_losstime.jenis_losstime, 'Tidak diketahui') as jenis_losstime"),
+                DB::raw('COUNT(*) as jumlah_kejadian'),
+                DB::raw('SUM(transaksi_dandori_rincian.actual_menit) as total_actual_menit'),
+                DB::raw('SUM(transaksi_dandori_rincian.over_menit) as total_over_menit'),
+            ]);
 
-        if ($records->isEmpty()) {
-            $label = $idMesin ? " untuk mesin \"{$idMesin}\"" : '';
-            $periodLabel = ($bulanMulai && $bulanAkhir) ? " di periode {$bulanMulai} s/d {$bulanAkhir}" : '';
+        if ($groups->isEmpty()) {
             return [
                 'total_kejadian'     => 0,
                 'top_jenis_losstime' => [],
-                'catatan'            => "Belum ada data dandori{$label}{$periodLabel} yang tercatat.",
+                'catatan'            => "Belum ada data dandori" . $this->filterLabel($idMesin, 'mesin') . $this->periodeLabel($bulanMulai, $bulanAkhir) . " yang tercatat.",
             ];
         }
 
-        $groups = $records->groupBy(fn ($r) => $r->losstime?->jenis_losstime ?? 'Tidak diketahui')
-            ->map(fn ($rows, $jenis) => [
-                'jenis_losstime'    => $jenis,
-                'jumlah_kejadian'   => $rows->count(),
-                'total_actual_menit'=> (int) $rows->sum('actual_menit'),
-                'total_over_menit'  => (int) $rows->sum('over_menit'),
-            ])
-            ->sortByDesc('total_over_menit')
-            ->values();
+        $topJenis = $groups->map(fn ($r) => [
+            'jenis_losstime'     => $r->jenis_losstime,
+            'jumlah_kejadian'    => (int) $r->jumlah_kejadian,
+            'total_actual_menit' => (int) $r->total_actual_menit,
+            'total_over_menit'   => (int) $r->total_over_menit,
+        ])->values();
 
         return [
             'bulan_mulai'        => $bulanMulai ?? 'semua periode',
             'bulan_akhir'        => $bulanAkhir ?? 'semua periode',
-            'total_kejadian'     => $records->count(),
-            'total_over_menit'   => (int) $records->sum('over_menit'),
-            'top_jenis_losstime' => $groups->toArray(),
+            'total_kejadian'     => (int) $topJenis->sum('jumlah_kejadian'),
+            'total_over_menit'   => (int) $topJenis->sum('total_over_menit'),
+            'top_jenis_losstime' => $topJenis->toArray(),
         ];
     }
 
@@ -367,12 +379,14 @@ class ChatbotTools
             return ['error' => $error];
         }
 
+        // avg_sph_aktual bergantung pada accessor per-row (parse jam_start/jam_finish),
+        // jadi tidak bisa dijadikan AVG() SQL murni. Minimal: hydrate hanya kolom yang
+        // dipakai accessor + agregasi, bukan seluruh baris — kurangi jejak memori.
         $rows = TransaksiProduksi::when($from && $to, fn ($q) => $q->whereBetween('tanggal_produksi', [$from->toDateString(), $to->toDateString()]))
-            ->get();
+            ->get(['qty_aktual', 'jam_start', 'jam_finish']);
 
         if ($rows->isEmpty()) {
-            $periodLabel = ($bulanMulai && $bulanAkhir) ? " di periode {$bulanMulai} s/d {$bulanAkhir}" : '';
-            return ['error' => "Tidak ada data produksi{$periodLabel}."];
+            return ['error' => "Tidak ada data produksi" . $this->periodeLabel($bulanMulai, $bulanAkhir) . "."];
         }
 
         return [
@@ -407,9 +421,7 @@ class ChatbotTools
             ->get(['problem_dies', 'penyebab_breakdown', 'tindakan_perbaikan', 'tanggal_breakdown']);
 
         if ($records->isEmpty()) {
-            $label = $partNo ? " untuk part \"{$partNo}\"" : '';
-            $periodLabel = ($bulanMulai && $bulanAkhir) ? " di periode {$bulanMulai} s/d {$bulanAkhir}" : '';
-            return ['error' => "Tidak ada data breakdown dies{$label}{$periodLabel}."];
+            return ['error' => "Tidak ada data breakdown dies" . $this->filterLabel($partNo, 'part') . $this->periodeLabel($bulanMulai, $bulanAkhir) . "."];
         }
 
         $groups = $this->groupByFrequency($records, 'problem_dies', 'penyebab_breakdown', 'tindakan_perbaikan');
@@ -446,9 +458,7 @@ class ChatbotTools
             ->get(['problem_mesin', 'penyebab_breakdown', 'tindakan_perbaikan', 'tanggal_breakdown']);
 
         if ($records->isEmpty()) {
-            $label = $idMesin ? " untuk mesin \"{$idMesin}\"" : '';
-            $periodLabel = ($bulanMulai && $bulanAkhir) ? " di periode {$bulanMulai} s/d {$bulanAkhir}" : '';
-            return ['error' => "Tidak ada data breakdown mesin{$label}{$periodLabel}."];
+            return ['error' => "Tidak ada data breakdown mesin" . $this->filterLabel($idMesin, 'mesin') . $this->periodeLabel($bulanMulai, $bulanAkhir) . "."];
         }
 
         $groups = $this->groupByFrequency($records, 'problem_mesin', 'penyebab_breakdown', 'tindakan_perbaikan');
@@ -468,7 +478,9 @@ class ChatbotTools
             return ['error' => "Format periode \"{$periode}\" tidak valid, gunakan format YYYY-MM."];
         }
 
-        $rows = TransaksiProduksi::whereBetween('tanggal_produksi', [$from->toDateString(), $to->toDateString()])->get();
+        // Hydrate hanya kolom yang dipakai (lihat catatan di getTotalProduksi).
+        $rows = TransaksiProduksi::whereBetween('tanggal_produksi', [$from->toDateString(), $to->toDateString()])
+            ->get(['qty_aktual', 'jam_start', 'jam_finish']);
 
         return [
             'periode'         => $periode,
@@ -540,8 +552,8 @@ class ChatbotTools
             'data'         => $rows,
         ], $extra);
 
-        if ($total > 150) {
-            $result['note'] = "Data dipotong ke 150 record terbaru dari total {$total}. Persempit rentang bulan untuk detail lengkap.";
+        if ($total > self::MAX_DETAIL_ROWS) {
+            $result['note'] = "Data dipotong ke " . self::MAX_DETAIL_ROWS . " record terbaru dari total {$total}. Persempit rentang bulan untuk detail lengkap.";
         }
 
         return $result;
@@ -566,6 +578,27 @@ class ChatbotTools
             ->sortByDesc('jumlah_kejadian')
             ->values()
             ->take(10);
+    }
+
+    /** Rentang compute untuk ranking: pakai filter bulan, atau all-time kalau kosong. */
+    private function allTimeWindow(?Carbon $from, ?Carbon $to): array
+    {
+        return [
+            $from ?? Carbon::parse(self::ALL_TIME_FROM)->startOfDay(),
+            $to ?? Carbon::now()->endOfDay(),
+        ];
+    }
+
+    /** Potongan " di periode X s/d Y" untuk pesan error, kosong kalau bulan tidak diisi. */
+    private function periodeLabel(?string $bulanMulai, ?string $bulanAkhir): string
+    {
+        return ($bulanMulai && $bulanAkhir) ? " di periode {$bulanMulai} s/d {$bulanAkhir}" : '';
+    }
+
+    /** Potongan " untuk {noun} \"{value}\"" untuk pesan error, kosong kalau filter tidak diisi. */
+    private function filterLabel(?string $value, string $noun): string
+    {
+        return $value ? " untuk {$noun} \"{$value}\"" : '';
     }
 
     private function findPartByNo(string $partNo): MasterPart|array

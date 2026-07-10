@@ -604,6 +604,39 @@ class ChatbotToolsTest extends TestCase
         $this->assertSame(1, $result['ranking'][1]['jumlah_breakdown']);
     }
 
+    /**
+     * Kunci pemetaan field bocor: diesDashboard->compute mengembalikan key ala-mesin
+     * (nama_mesin/kode_mesin) yang di-remap ke part/part_no. Kalau service mengganti
+     * nama key-nya, ranking dies akan diam-diam salah — test ini bikin break berisik.
+     */
+    public function test_get_ranking_breakdown_dies_maps_part_fields(): void
+    {
+        $part = MasterPart::create(['part_no' => 'MAP-01', 'part_name' => 'Mapped Part', 'customer' => 'Toyota']);
+        $proses = MasterPartProses::create([
+            'id_part' => $part->id, 'id_proses' => 1, 'nama_proses' => 'BLANKING',
+            'sph_standar_produksi' => 500, 'sph_standar_qc' => 250,
+        ]);
+        TransaksiBreakdownDies::create([
+            'no_lkd' => 'LKD-MAP1', 'id_part_proses' => $proses->id,
+            'tanggal_breakdown' => '2026-07-05', 'jam_breakdown' => '08:00',
+            'tanggal_mulai_perbaikan' => '2026-07-05', 'jam_mulai_perbaikan' => '09:00',
+            'tanggal_selesai_perbaikan' => '2026-07-05', 'jam_selesai_perbaikan' => '10:00',
+            'problem_dies' => 'x', 'penyebab_breakdown' => 'x', 'tindakan_perbaikan' => 'x',
+            'status_breakdown' => 'Selesai', 'pic_maintenance' => 'Budi',
+            'repair_time' => 1.0, 'total_downtime' => 1.0,
+        ]);
+
+        $result = (new ChatbotTools())->getRankingBreakdownDies('2026-07', '2026-07');
+
+        $this->assertArrayNotHasKey('error', $result);
+        $top = $result['ranking'][0];
+        $this->assertSame('Mapped Part', $top['part'], 'part harus dari part_name, bukan bocor jadi nama_mesin.');
+        $this->assertSame('MAP-01', $top['part_no'], 'part_no harus dari part_no.');
+        $this->assertSame('BLANKING', $top['nama_proses']);
+        $this->assertArrayNotHasKey('nama_mesin', $top, 'Key mesin tidak boleh bocor ke output ranking dies.');
+        $this->assertArrayNotHasKey('kode_mesin', $top, 'Key mesin tidak boleh bocor ke output ranking dies.');
+    }
+
     public function test_get_ranking_breakdown_dies_returns_error_when_no_breakdowns(): void
     {
         $part = MasterPart::create(['part_no' => 'RD-03', 'part_name' => 'Idle Part', 'customer' => 'Toyota']);
@@ -821,6 +854,9 @@ class ChatbotToolsTest extends TestCase
 
         $this->assertArrayNotHasKey('error', $result);
         $this->assertSame(7000, $result['total_qty_aktual']);
+        // sph_aktual accessor: 3000/8h=375, 4000/8h=500 → avg 437.5 → round 438.
+        // Kunci behavior avg agar refactor kolom-narrowing tidak menggeser hasil.
+        $this->assertSame(438, $result['avg_sph_aktual']);
     }
 
     public function test_get_total_produksi_returns_error_when_no_records(): void
@@ -1115,5 +1151,82 @@ class ChatbotToolsTest extends TestCase
         $this->assertTrue($names->contains('getMtbfMttrDies'));
         $this->assertTrue($names->contains('getRekapDandori'));
         $this->assertTrue($names->contains('getTopProblemMesin'));
+    }
+
+    /**
+     * Kontrak dispatch: GroqChatbotService/GeminiChatbotService memanggil
+     * $this->tools->{$name}(...$args) di mana $name berasal dari schema.
+     * Kalau sebuah method di-rename tanpa update schema (atau sebaliknya),
+     * tool putus DIAM saat runtime. Test ini mengunci pemetaan schema↔method.
+     */
+    public function test_every_schema_name_maps_to_a_public_invokable_method(): void
+    {
+        $tools = new ChatbotTools();
+
+        foreach ($tools->schemaDefinitions() as $schema) {
+            $name = $schema['name'] ?? null;
+            $this->assertNotNull($name, 'Setiap schema wajib punya key "name".');
+
+            $this->assertTrue(
+                method_exists($tools, $name),
+                "Schema \"{$name}\" tidak punya method yang cocok di ChatbotTools — kemungkinan method di-rename tanpa update schema."
+            );
+
+            // Dispatch dilakukan dari class LAIN, jadi method WAJIB public.
+            // method_exists() true juga untuk method private, maka cek visibilitas eksplisit.
+            $reflection = new \ReflectionMethod($tools, $name);
+            $this->assertTrue(
+                $reflection->isPublic(),
+                "Method \"{$name}\" harus public agar bisa di-dispatch oleh provider chatbot."
+            );
+            $this->assertFalse(
+                $reflection->isStatic(),
+                "Method \"{$name}\" tidak boleh static — dispatch memakai instance (\$this->tools->{\$name})."
+            );
+        }
+    }
+
+    /**
+     * Setiap parameter WAJIB di schema harus benar-benar ada di daftar properties,
+     * dan cocok dengan parameter method (nama + wajib/opsional). Ini mencegah
+     * schema mendeklarasikan argumen yang tidak diterima method — yang bikin
+     * dispatch named-args (...$args) melempar Error dan ditelan try/catch.
+     */
+    public function test_every_schema_matches_its_method_signature(): void
+    {
+        $tools = new ChatbotTools();
+
+        foreach ($tools->schemaDefinitions() as $schema) {
+            $name       = $schema['name'];
+            $properties = $schema['parameters']['properties'] ?? [];
+            $required   = $schema['parameters']['required'] ?? [];
+
+            $reflection    = new \ReflectionMethod($tools, $name);
+            $methodParams  = collect($reflection->getParameters());
+            $paramNames    = $methodParams->map(fn ($p) => $p->getName())->all();
+            $requiredNames = $methodParams
+                ->reject(fn ($p) => $p->isOptional())
+                ->map(fn ($p) => $p->getName())
+                ->all();
+
+            // Semua property schema harus jadi parameter method yang sah.
+            foreach (array_keys($properties) as $prop) {
+                $this->assertContains(
+                    $prop,
+                    $paramNames,
+                    "Schema \"{$name}\" mendeklarasikan properti \"{$prop}\" yang bukan parameter method."
+                );
+            }
+
+            // Parameter wajib method harus ditandai required di schema, kalau tidak
+            // LLM boleh memanggil tanpa argumen wajib → dispatch Error → gagal diam.
+            foreach ($requiredNames as $req) {
+                $this->assertContains(
+                    $req,
+                    $required,
+                    "Parameter wajib \"{$req}\" pada method \"{$name}\" tidak ditandai required di schema."
+                );
+            }
+        }
     }
 }
