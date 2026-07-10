@@ -1,41 +1,82 @@
-name: Deploy to Hostinger
+name: Deploy to Hostinger (SSH)
 
+# Deploy via SSH, bukan FTP. Alasan: vendor/ Laravel + phpspreadsheet
+# ~14.000 file — FTP (1 file = 1 round-trip) butuh berjam-jam, nembus
+# limit sesi FTP Hostinger (3600s). Solusi: kirim source code via
+# rsync-over-SSH (~370 file, detik-an), lalu `composer install` JALAN
+# DI SERVER — vendor/ tidak pernah ditransfer lewat jaringan sama sekali.
 on:
   push:
-    branches:
-      - main
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  REMOTE_PATH: /home/u518638233/domains/optima.kencomanufactur.co.id/public_html
+  REMOTE_PHP: /opt/alt/php84/usr/bin/php   # default `php` server = 8.1, project butuh ^8.3
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
+      - name: Checkout kode
         uses: actions/checkout@v4
 
-      - name: Setup PHP
+      - name: Setup PHP (buat lint gate)
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
           coverage: none
 
-      - name: Install Composer dependencies
-        run: composer install --no-dev --optimize-autoloader --prefer-dist --no-interaction
+      # Gerbang mutu — kalau ada file rusak, deploy dibatalkan.
+      - name: Lint PHP (syntax gate)
+        run: |
+          err=0
+          while IFS= read -r -d '' f; do
+            if ! php -l "$f" >/dev/null 2>&1; then
+              echo "::error file=$f::PHP parse error"
+              php -l "$f" || true
+              err=1
+            fi
+          done < <(find app bootstrap config database routes -name '*.php' -print0)
+          exit $err
 
-      - name: Deploy via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./
-          exclude: |
-            **/.git*
-            **/.git*/**
-            **/node_modules/**
-            **/tests/**
-            **/docs/**
-            **/.github/**
-            **/storage/**
-            **/.env
-            **/.env.*
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p "${{ secrets.SSH_PORT }}" "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      # Sync source code saja (vendor/storage/.env dikecualikan — vendor
+      # dibangun di server, storage & .env persisten & tidak boleh ketimpa).
+      - name: Rsync source code ke server
+        run: |
+          rsync -az --delete \
+            -e "ssh -p ${{ secrets.SSH_PORT }} -i ~/.ssh/deploy_key" \
+            --exclude='.git/' \
+            --exclude='.git*' \
+            --exclude='node_modules/' \
+            --exclude='vendor/' \
+            --exclude='tests/' \
+            --exclude='docs/' \
+            --exclude='.github/' \
+            --exclude='storage/' \
+            --exclude='.env' \
+            --exclude='.env.*' \
+            --exclude='.claude/' \
+            --exclude='.superpowers/' \
+            --exclude='memory/' \
+            --exclude='.phpunit.result.cache' \
+            --exclude='auth.json' \
+            ./ "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ env.REMOTE_PATH }}/"
+
+      # vendor/ dibangun LANGSUNG di server (14rb file tak pernah lewat jaringan).
+      - name: Composer install di server
+        run: |
+          ssh -p "${{ secrets.SSH_PORT }}" -i ~/.ssh/deploy_key \
+            "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" \
+            "cd ${{ env.REMOTE_PATH }} && ${{ env.REMOTE_PHP }} /usr/local/bin/composer install --no-dev --optimize-autoloader --no-interaction"
