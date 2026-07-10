@@ -2,7 +2,6 @@
 namespace App\Services;
 
 use App\Contracts\ChatbotProviderInterface;
-use App\Models\ChatConversation;
 use App\Services\Concerns\HasChatbotSystemPrompt;
 use App\Services\Concerns\HasRetryingHttpCall;
 use Illuminate\Support\Facades\Http;
@@ -16,9 +15,9 @@ class GeminiChatbotService implements ChatbotProviderInterface
 
     public function __construct(private ChatbotTools $tools) {}
 
-    public function ask(ChatConversation $conversation, string $userMessage): ?string
+    public function ask(array $history, string $userMessage): ?string
     {
-        $contents = $this->buildHistory($conversation);
+        $contents = $this->buildHistory($history);
         $contents[] = ['role' => 'user', 'parts' => [['text' => $userMessage]]];
 
         for ($i = 0; $i < self::MAX_ITERATIONS; $i++) {
@@ -74,12 +73,12 @@ class GeminiChatbotService implements ChatbotProviderInterface
         return null;
     }
 
-    private function buildHistory(ChatConversation $conversation): array
+    private function buildHistory(array $history): array
     {
-        return $conversation->messages->map(fn ($m) => [
-            'role'  => $m->role === 'assistant' ? 'model' : 'user',
-            'parts' => [['text' => $m->content]],
-        ])->values()->toArray();
+        return array_map(fn ($m) => [
+            'role'  => ($m['role'] ?? 'user') === 'assistant' ? 'model' : 'user',
+            'parts' => [['text' => $m['content'] ?? '']],
+        ], $history);
     }
 
     private function callGemini(array $contents): ?array

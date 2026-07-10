@@ -1,8 +1,6 @@
 <?php
 namespace Tests\Unit;
 
-use App\Models\ChatConversation;
-use App\Models\User;
 use App\Services\ChatbotTools;
 use App\Services\GeminiChatbotService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -12,12 +10,6 @@ use Tests\TestCase;
 class GeminiChatbotServiceTest extends TestCase
 {
     use RefreshDatabase;
-
-    private function conversation(): ChatConversation
-    {
-        $user = User::factory()->create(['role' => 'admin']);
-        return ChatConversation::create(['user_id' => $user->id]);
-    }
 
     public function test_returns_gemini_text_reply_directly_when_no_tool_call_needed(): void
     {
@@ -29,7 +21,7 @@ class GeminiChatbotServiceTest extends TestCase
             ], 200),
         ]);
 
-        $reply = (new GeminiChatbotService(new ChatbotTools()))->ask($this->conversation(), 'halo');
+        $reply = (new GeminiChatbotService(new ChatbotTools()))->ask([], 'halo');
 
         $this->assertSame('Halo, ada yang bisa gw bantu?', $reply);
     }
@@ -55,7 +47,7 @@ class GeminiChatbotServiceTest extends TestCase
             ], 200);
         });
 
-        $reply = (new GeminiChatbotService(new ChatbotTools()))->ask($this->conversation(), 'berapa NG bending bulan lalu?');
+        $reply = (new GeminiChatbotService(new ChatbotTools()))->ask([], 'berapa NG bending bulan lalu?');
 
         $this->assertSame('NG di proses BENDING bulan itu 0.', $reply);
         Http::assertSentCount(2);
@@ -65,7 +57,7 @@ class GeminiChatbotServiceTest extends TestCase
     {
         Http::fake(['generativelanguage.googleapis.com/*' => Http::response([], 500)]);
 
-        $reply = (new GeminiChatbotService(new ChatbotTools()))->ask($this->conversation(), 'halo');
+        $reply = (new GeminiChatbotService(new ChatbotTools()))->ask([], 'halo');
 
         $this->assertNull($reply);
     }
@@ -80,7 +72,7 @@ class GeminiChatbotServiceTest extends TestCase
             ]],
         ], 200)]);
 
-        $reply = (new GeminiChatbotService(new ChatbotTools()))->ask($this->conversation(), 'halo');
+        $reply = (new GeminiChatbotService(new ChatbotTools()))->ask([], 'halo');
 
         $this->assertNull($reply);
     }
@@ -95,7 +87,7 @@ class GeminiChatbotServiceTest extends TestCase
             ]],
         ], 200)]);
 
-        $reply = (new GeminiChatbotService(new ChatbotTools()))->ask($this->conversation(), 'berapa MTBF dies itu?');
+        $reply = (new GeminiChatbotService(new ChatbotTools()))->ask([], 'berapa MTBF dies itu?');
 
         $this->assertNull($reply);
     }
@@ -125,10 +117,33 @@ class GeminiChatbotServiceTest extends TestCase
             ], 200);
         });
 
-        $reply = (new GeminiChatbotService(new ChatbotTools()))->ask($this->conversation(), 'problem dies apa yang paling sering muncul?');
+        $reply = (new GeminiChatbotService(new ChatbotTools()))->ask([], 'problem dies apa yang paling sering muncul?');
 
         $this->assertSame('Problem paling sering: motor overheat.', $reply);
         $this->assertNotNull($capturedBody);
         $this->assertStringNotContainsString('"args":[]', $capturedBody, 'Empty functionCall.args must be encoded as a JSON object ({}), not an array ([]), or Gemini rejects the request with a 400 INVALID_ARGUMENT.');
+    }
+
+    public function test_prepends_history_mapping_assistant_to_model_role(): void
+    {
+        $captured = null;
+        Http::fake(function ($request) use (&$captured) {
+            $captured = $request->data()['contents'];
+            return Http::response([
+                'candidates' => [['content' => ['role' => 'model', 'parts' => [['text' => 'oke']]]]],
+            ], 200);
+        });
+
+        $history = [
+            ['role' => 'user', 'content' => 'pertama'],
+            ['role' => 'assistant', 'content' => 'jawaban pertama'],
+        ];
+
+        (new GeminiChatbotService(new ChatbotTools()))->ask($history, 'kedua');
+
+        $this->assertSame('user', $captured[0]['role']);
+        $this->assertSame('pertama', $captured[0]['parts'][0]['text']);
+        $this->assertSame('model', $captured[1]['role']);
+        $this->assertSame('kedua', $captured[2]['parts'][0]['text']);
     }
 }

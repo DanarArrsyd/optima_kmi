@@ -1,8 +1,6 @@
 <?php
 namespace Tests\Unit;
 
-use App\Models\ChatConversation;
-use App\Models\User;
 use App\Services\ChatbotTools;
 use App\Services\GroqChatbotService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -12,12 +10,6 @@ use Tests\TestCase;
 class GroqChatbotServiceTest extends TestCase
 {
     use RefreshDatabase;
-
-    private function conversation(): ChatConversation
-    {
-        $user = User::factory()->create(['role' => 'admin']);
-        return ChatConversation::create(['user_id' => $user->id]);
-    }
 
     public function test_returns_groq_text_reply_directly_when_no_tool_call_needed(): void
     {
@@ -29,7 +21,7 @@ class GroqChatbotServiceTest extends TestCase
             ], 200),
         ]);
 
-        $reply = (new GroqChatbotService(new ChatbotTools()))->ask($this->conversation(), 'halo');
+        $reply = (new GroqChatbotService(new ChatbotTools()))->ask([], 'halo');
 
         $this->assertSame('Halo, ada yang bisa gw bantu?', $reply);
     }
@@ -64,7 +56,7 @@ class GroqChatbotServiceTest extends TestCase
             ], 200);
         });
 
-        $reply = (new GroqChatbotService(new ChatbotTools()))->ask($this->conversation(), 'berapa NG bending bulan lalu?');
+        $reply = (new GroqChatbotService(new ChatbotTools()))->ask([], 'berapa NG bending bulan lalu?');
 
         $this->assertSame('NG di proses BENDING bulan itu 0.', $reply);
         Http::assertSentCount(2);
@@ -74,7 +66,7 @@ class GroqChatbotServiceTest extends TestCase
     {
         Http::fake(['api.groq.com/*' => Http::response([], 500)]);
 
-        $reply = (new GroqChatbotService(new ChatbotTools()))->ask($this->conversation(), 'halo');
+        $reply = (new GroqChatbotService(new ChatbotTools()))->ask([], 'halo');
 
         $this->assertNull($reply);
     }
@@ -98,7 +90,7 @@ class GroqChatbotServiceTest extends TestCase
             ]],
         ], 200)]);
 
-        $reply = (new GroqChatbotService(new ChatbotTools()))->ask($this->conversation(), 'halo');
+        $reply = (new GroqChatbotService(new ChatbotTools()))->ask([], 'halo');
 
         $this->assertNull($reply);
     }
@@ -122,8 +114,32 @@ class GroqChatbotServiceTest extends TestCase
             ]],
         ], 200)]);
 
-        $reply = (new GroqChatbotService(new ChatbotTools()))->ask($this->conversation(), 'berapa NG?');
+        $reply = (new GroqChatbotService(new ChatbotTools()))->ask([], 'berapa NG?');
 
         $this->assertNull($reply);
+    }
+
+    public function test_prepends_history_before_current_message(): void
+    {
+        $captured = null;
+        Http::fake(function ($request) use (&$captured) {
+            $captured = $request->data()['messages'];
+            return Http::response([
+                'choices' => [['message' => ['role' => 'assistant', 'content' => 'oke']]],
+            ], 200);
+        });
+
+        $history = [
+            ['role' => 'user', 'content' => 'pertama'],
+            ['role' => 'assistant', 'content' => 'jawaban pertama'],
+        ];
+
+        (new GroqChatbotService(new ChatbotTools()))->ask($history, 'kedua');
+
+        // system + 2 history + current user = 4
+        $this->assertSame('system', $captured[0]['role']);
+        $this->assertSame(['role' => 'user', 'content' => 'pertama'], $captured[1]);
+        $this->assertSame(['role' => 'assistant', 'content' => 'jawaban pertama'], $captured[2]);
+        $this->assertSame(['role' => 'user', 'content' => 'kedua'], $captured[3]);
     }
 }
