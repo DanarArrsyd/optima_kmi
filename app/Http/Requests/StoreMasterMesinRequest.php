@@ -18,6 +18,7 @@ class StoreMasterMesinRequest extends FormRequest
             'line'                 => 'required|string|max:10',
             'tipe_mesin'           => 'required|in:PROGRESSIVE,STAMPING',
             'kapasitas_max_stroke' => 'nullable|integer|min:0',
+            'tanggal_instalasi'    => 'nullable|date',
         ];
     }
 }

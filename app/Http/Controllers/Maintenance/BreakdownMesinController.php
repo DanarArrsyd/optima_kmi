@@ -4,14 +4,62 @@ namespace App\Http\Controllers\Maintenance;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreBreakdownMesinRequest;
 use App\Http\Requests\UpdateBreakdownMesinRequest;
+use App\Exports\BreakdownMesinExport;
+use App\Imports\BreakdownMesinImport;
 use App\Models\MasterMesin;
 use App\Models\TransaksiBreakdownMesin;
 use App\Services\BreakdownMesinService;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
+use Maatwebsite\Excel\Concerns\FromArray;
+use Maatwebsite\Excel\Concerns\WithHeadings;
 
 class BreakdownMesinController extends Controller
 {
     public function __construct(private BreakdownMesinService $svc) {}
+
+    public function export(Request $request)
+    {
+        return Excel::download(new BreakdownMesinExport(
+            $request->input('date_from'),
+            $request->input('date_to'),
+            (int) $request->input('mesin_id', 0) ?: null,
+        ), 'breakdown_mesin.xlsx');
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate(['file' => 'required|file|mimes:xlsx,xls,csv|max:5120']);
+        $import = new BreakdownMesinImport($this->svc);
+        Excel::import($import, $request->file('file'));
+
+        $msg = "{$import->imported} breakdown berhasil diimport"
+             . ($import->skipped ? ", {$import->skipped} baris dilewati." : ".");
+        return back()->with('import_success', $msg)->with('import_errors', $import->errors);
+    }
+
+    public function importTemplate()
+    {
+        $export = new class implements FromArray, WithHeadings {
+            public function headings(): array
+            {
+                return [
+                    'Nomor Urut', 'ID Mesin',
+                    'Tanggal Breakdown', 'Jam Breakdown',
+                    'Tanggal Mulai Perbaikan', 'Jam Mulai Perbaikan',
+                    'Tanggal Selesai Perbaikan', 'Jam Selesai Perbaikan',
+                    'Problem', 'Penyebab', 'Tindakan', 'PIC',
+                ];
+            }
+            public function array(): array
+            {
+                return [
+                    [1, 'M001', '2026-06-10', '08:00', '2026-06-10', '09:00', '2026-06-10', '11:00', 'Motor overheat', 'Bearing aus', 'Ganti bearing', 'Budi'],
+                ];
+            }
+        };
+        return Excel::download($export, 'template_breakdown_mesin.xlsx');
+    }
 
     public function index(Request $request)
     {
@@ -31,6 +79,7 @@ class BreakdownMesinController extends Controller
             'dateFrom'   => $dateFrom,
             'dateTo'     => $dateTo,
             'mesinId'    => $mesinId,
+            'nextNomor'  => $this->svc->nextNomorUrut(),
         ]);
     }
 

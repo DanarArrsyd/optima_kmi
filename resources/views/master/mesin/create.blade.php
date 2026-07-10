@@ -52,6 +52,12 @@
                        value="{{ old('kapasitas_max_stroke') }}" min="0">
                 @error('kapasitas_max_stroke')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
+            <div class="mb-4">
+                <label class="form-label">Tanggal Instalasi <span class="text-muted">(opsional — basis MTBF & Availability)</span></label>
+                <input type="date" name="tanggal_instalasi" class="form-control @error('tanggal_instalasi') is-invalid @enderror"
+                       value="{{ old('tanggal_instalasi') }}">
+                @error('tanggal_instalasi')<div class="invalid-feedback">{{ $message }}</div>@enderror
+            </div>
             <div class="d-flex gap-2">
                 <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-save me-1"></i>Simpan</button>
                 <a href="{{ route('master.mesin.index') }}" class="btn btn-outline-secondary btn-sm">Batal</a>

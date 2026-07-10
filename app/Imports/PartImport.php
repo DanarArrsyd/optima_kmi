@@ -4,36 +4,84 @@ namespace App\Imports;
 use App\Models\MasterPart;
 use App\Models\MasterPartProses;
 use Maatwebsite\Excel\Concerns\ToCollection;
-use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
 use Illuminate\Support\Collection;
 
-class PartImport implements ToCollection, WithHeadingRow, SkipsEmptyRows
+class PartImport implements ToCollection, SkipsEmptyRows
 {
     public int $imported = 0;
     public int $skipped  = 0;
 
+    /** Normalize header string → snake_case key */
+    private function normalizeKey(string $raw): string
+    {
+        return strtolower(trim(preg_replace('/[\s\/\-]+/', '_', $raw)));
+    }
+
+    /** Cari nilai dari row berdasarkan beberapa kemungkinan key */
+    private function get(Collection $row, array $keys): string
+    {
+        foreach ($keys as $key) {
+            $val = trim((string) ($row[$key] ?? ''));
+            if ($val !== '') return $val;
+        }
+        return '';
+    }
+
+    /** Parse Excel date cell (serial number atau string) → Y-m-d, atau null. */
+    private function parseDate(string $raw): ?string
+    {
+        if (trim($raw) === '') {
+            return null;
+        }
+        try {
+            if (is_numeric($raw)) {
+                return \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject((float) $raw)->format('Y-m-d');
+            }
+            return \Illuminate\Support\Carbon::parse(trim($raw))->toDateString();
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
     public function collection(Collection $rows): void
     {
-        foreach ($rows as $row) {
-            $partNo   = trim((string) ($row['part_no']   ?? ''));
-            $partName = trim((string) ($row['part_name'] ?? ''));
+        if ($rows->isEmpty()) return;
+
+        // Baris pertama = header, normalize semua key-nya
+        $rawHeaders = $rows->first()->toArray();
+        $headers    = array_map(fn($h) => $this->normalizeKey((string) $h), $rawHeaders);
+        $dataRows   = $rows->skip(1);
+
+        foreach ($dataRows as $rawRow) {
+            // Map kolom by normalized header
+            $row = collect(array_combine($headers, $rawRow->toArray()));
+
+            $partNo   = $this->get($row, ['part_no', 'part_number', 'no_part', 'partno']);
+            $partName = $this->get($row, ['part_name', 'nama_part', 'name', 'partname']);
 
             if ($partNo === '' || $partName === '') {
                 $this->skipped++;
                 continue;
             }
 
-            /* Find-or-create Part header (restore soft-deleted if exists) */
-            $part = MasterPart::withTrashed()->firstOrNew(['part_no' => $partNo]);
-            $part->customer   = trim((string) ($row['customer'] ?? ''));
-            $part->part_name  = $partName;
+            /* Cari by part_no + part_name (unique bersama setelah constraint part_no saja dihapus).
+             * Update customer jika sudah ada, restore jika soft-deleted. */
+            $part = MasterPart::withTrashed()
+                        ->where('part_no', $partNo)
+                        ->where('part_name', $partName)
+                        ->first()
+                    ?? new MasterPart(['part_no' => $partNo, 'part_name' => $partName]);
+            $part->customer   = $this->get($row, ['customer', 'pelanggan', 'cust']);
+            $part->tanggal_instalasi = $this->parseDate(
+                $this->get($row, ['tanggal_instalasi', 'tgl_instalasi', 'instalasi', 'tanggal_instalasi_dies'])
+            );
             $part->deleted_at = null;
             $part->save();
 
             /* Import the Proses row if id_proses + nama_proses present */
-            $idProses   = trim((string) ($row['id_proses']   ?? ''));
-            $namaProses = trim((string) ($row['nama_proses'] ?? ''));
+            $idProses   = $this->get($row, ['id_proses', 'proses_id', 'id_process', 'no_proses']);
+            $namaProses = $this->get($row, ['nama_proses', 'process_name', 'nama_process', 'proses']);
 
             if ($idProses === '' || $namaProses === '') {
                 $this->imported++;
@@ -45,15 +93,16 @@ class PartImport implements ToCollection, WithHeadingRow, SkipsEmptyRows
                 'id_proses' => (int) $idProses,
             ]);
 
+            $sphProd = $this->get($row, ['sph_produksi', 'sph_prod', 'sph_production', 'sph']);
+            $sphQc   = $this->get($row, ['sph_qc', 'sph_quality', 'sph_q']);
+            $trial   = $this->get($row, ['std_trial_qc_menit', 'trial_qc', 'trial_menit', 'std_trial']);
+            $setting = $this->get($row, ['std_setting_dies_menit', 'setting_dies', 'setting_menit', 'std_setting']);
+
             $proses->nama_proses            = $namaProses;
-            $proses->sph_standar_produksi   = is_numeric($row['sph_produksi'] ?? null)
-                                                ? (float) $row['sph_produksi'] : 0;
-            $proses->sph_standar_qc         = is_numeric($row['sph_qc'] ?? null)
-                                                ? (float) $row['sph_qc'] : 0;
-            $proses->std_trial_qc_menit     = is_numeric($row['std_trial_qc_menit'] ?? null)
-                                                ? (int) $row['std_trial_qc_menit'] : 0;
-            $proses->std_setting_dies_menit = is_numeric($row['std_setting_dies_menit'] ?? null)
-                                                ? (int) $row['std_setting_dies_menit'] : 0;
+            $proses->sph_standar_produksi   = is_numeric($sphProd) ? (float) $sphProd : 0;
+            $proses->sph_standar_qc         = is_numeric($sphQc)   ? (float) $sphQc   : 0;
+            $proses->std_trial_qc_menit     = is_numeric($trial)   ? (int)   $trial   : 0;
+            $proses->std_setting_dies_menit = is_numeric($setting) ? (int)   $setting : 0;
             $proses->deleted_at             = null;
             $proses->save();
 

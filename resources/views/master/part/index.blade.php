@@ -1,5 +1,6 @@
 @extends('layouts.app')
 @section('title', 'Master Part / Dies')
+@section('suppress_layout_flash', 'yes')
 @section('content')
 
 {{-- ══ ALPINE SCOPE ══ --}}
@@ -27,7 +28,8 @@
      x-transition:leave="transition ease-in duration-200"
      x-transition:leave-start="transform translate-x-0"
      x-transition:leave-end="transform translate-x-full"
-     style="position:fixed;top:0;right:0;height:100vh;width:440px;max-width:100vw;background:#fff;z-index:1050;display:flex;flex-direction:column;box-shadow:-4px 0 24px rgba(0,0,0,.18)">
+     style="position:fixed;top:0;right:0;height:100dvh;width:440px;max-width:100vw;z-index:1050;">
+    <div style="display:flex;flex-direction:column;height:100%;background:#fff;box-shadow:-4px 0 24px rgba(0,0,0,.18)">
 
     {{-- Header --}}
     <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:#111827;color:#fff;flex-shrink:0">
@@ -41,7 +43,7 @@
     </div>
 
     {{-- Body (scrollable) --}}
-    <div style="flex:1;overflow-y:auto;padding:20px">
+    <div style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:24px;overscroll-behavior:contain">
 
         @if($errors->any())
         <div class="alert alert-danger mb-3" style="font-size:0.82rem">
@@ -88,6 +90,15 @@
                     @error('part_name')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
 
+                {{-- Tanggal Instalasi Dies --}}
+                <div class="col-12">
+                    <label class="form-label" style="font-size:0.8rem">Tanggal Instalasi Dies <span class="text-muted" style="font-weight:400">(opsional — basis MTBF &amp; Availability Dies)</span></label>
+                    <input type="date" name="tanggal_instalasi"
+                           class="form-control form-control-sm @error('tanggal_instalasi') is-invalid @enderror"
+                           value="{{ old('tanggal_instalasi') }}">
+                    @error('tanggal_instalasi')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+
             </div>
 
             <div style="margin-top:20px;padding-top:16px;border-top:1px solid #e5e7eb;display:flex;gap:8px">
@@ -100,6 +111,7 @@
             </div>
         </form>
     </div>{{-- /drawer body --}}
+    </div>{{-- /inner flex container --}}
 </div>{{-- /drawer panel --}}
 
 {{-- ══ KONTEN HALAMAN ══════════════════════════════════════════ --}}
@@ -113,8 +125,67 @@
         <button class="btn btn-outline-success btn-sm" onclick="document.getElementById('import-panel').classList.toggle('d-none')">
             <i class="bi bi-file-earmark-arrow-up me-1"></i>Import Excel
         </button>
+        <button class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('export-panel').classList.toggle('d-none')">
+            <i class="bi bi-file-earmark-excel me-1"></i>Export Excel
+        </button>
     </div>
 </div>
+
+{{-- ── EXPORT PANEL ────────────────────────────────────────────── --}}
+<div id="export-panel" class="erp-panel mb-3 d-none">
+    <div class="erp-panel-header">
+        <i class="bi bi-file-earmark-excel me-1"></i>Export Master Part / Dies
+    </div>
+    <div class="erp-panel-body">
+        <form method="GET" action="{{ route('master.part.export') }}">
+            <div class="row g-2 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label mb-1" style="font-size:0.92rem">Customer</label>
+                    <select name="customer" class="form-select form-select-sm">
+                        <option value="">-- Semua Customer --</option>
+                        @foreach($customerList as $c)
+                        <option value="{{ $c }}">{{ $c }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-success btn-sm">
+                        <i class="bi bi-download me-1"></i>Download Excel
+                    </button>
+                </div>
+            </div>
+            <div class="mt-2" style="font-size:0.88rem;color:#6c757d">
+                Kosongkan Customer untuk ekspor semua part / dies.
+            </div>
+        </form>
+    </div>
+</div>
+
+{{-- ── SEARCH BAR ──────────────────────────────────────────────── --}}
+<form method="GET" action="{{ route('master.part.index') }}" class="mb-3">
+    <div style="display:flex;gap:8px;align-items:center;max-width:560px">
+        <div style="position:relative;flex:1">
+            <i class="bi bi-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#9ca3af;font-size:0.85rem;pointer-events:none"></i>
+            <input type="text" name="q" value="{{ $search }}"
+                   class="form-control form-control-sm"
+                   style="padding-left:32px"
+                   placeholder="Cari Part No, Part Name, Customer, atau Nama Proses…"
+                   autofocus>
+        </div>
+        <button type="submit" class="btn btn-secondary btn-sm">Cari</button>
+        @if($search !== '')
+        <a href="{{ route('master.part.index') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-x-lg"></i> Reset
+        </a>
+        @endif
+    </div>
+    @if($search !== '')
+    <div style="margin-top:6px;font-size:0.78rem;color:#6b7280">
+        Menampilkan {{ $rows->total() }} hasil untuk
+        <strong style="color:#374151">"{{ $search }}"</strong>
+    </div>
+    @endif
+</form>
 
 @if(session('success'))
     <div class="alert alert-success alert-dismissible fade show mb-3" role="alert">
@@ -156,22 +227,22 @@
             <table class="erp-table" style="margin:0">
                 <thead>
                     <tr style="background:#fff8e1">
-                        <th>Part No</th>
-                        <th>Part Name</th>
-                        <th>Proses</th>
+                        <th style="white-space:nowrap">Part No</th>
+                        <th style="white-space:nowrap">Part Name</th>
+                        <th style="white-space:nowrap">Proses</th>
                         <th style="text-align:right;width:110px">SPH Std</th>
-                        <th style="text-align:right;width:110px">SPH Terbaik</th>
-                        <th style="text-align:center;width:130px">Dilampaui</th>
+                        <th style="text-align:right;width:110px">SPH Rata-rata</th>
+                        <th style="text-align:center;white-space:nowrap">Dilampaui</th>
                         <th style="text-align:right;width:130px">Rekomendasi</th>
-                        <th style="width:130px">Aksi</th>
+                        <th style="width:150px">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
                 @foreach($recommendations as $rec)
                     <tr style="background:#fffdf5">
-                        <td style="font-weight:600">{{ $rec->part_no }}</td>
-                        <td>{{ $rec->part_name }}</td>
-                        <td>
+                        <td style="font-weight:600;white-space:nowrap">{{ $rec->part_no }}</td>
+                        <td style="white-space:nowrap">{{ $rec->part_name }}</td>
+                        <td style="white-space:nowrap">
                             <span style="font-size:0.78rem;color:#6b7280">{{ $rec->id_proses }}</span>
                             {{ $rec->nama_proses }}
                         </td>
@@ -179,9 +250,9 @@
                             {{ number_format($rec->sph_standar_produksi) }}
                         </td>
                         <td style="text-align:right;color:#1a6b7c;font-weight:600">
-                            {{ number_format($rec->max_sph) }}
+                            {{ number_format($rec->avg_all_sph) }}
                         </td>
-                        <td style="text-align:center">
+                        <td style="text-align:center;white-space:nowrap">
                             <span title="{{ $rec->exceed_count }} sesi dari {{ $rec->total_sessions }} sesi total">
                                 {{ $rec->exceed_count }}x / {{ $rec->total_sessions }}x
                                 <span style="color:#9a7a20">({{ $rec->exceed_pct }}%)</span>
@@ -196,16 +267,41 @@
                             </span>
                         </td>
                         <td>
-                            <a href="{{ route('master.part.edit', $rec->id_part) }}#proses-rec-{{ $rec->id_part_proses }}"
-                               class="btn btn-sm"
-                               style="background:#d4a017;color:#fff;border:none;font-size:0.8rem">
-                                <i class="bi bi-arrow-up-circle me-1"></i>Lihat &amp; Terapkan
-                            </a>
+                            <div style="display:flex;gap:4px;align-items:center">
+                                <a href="{{ route('master.part.edit', $rec->id_part) }}#proses-rec-{{ $rec->id_part_proses }}"
+                                   class="btn btn-sm"
+                                   style="background:#d4a017;color:#fff;border:none;font-size:0.8rem;white-space:nowrap">
+                                    <i class="bi bi-arrow-up-circle me-1"></i>Lihat &amp; Terapkan
+                                </a>
+                                <form method="POST" action="{{ route('master.part.sph-dismiss') }}">
+                                    @csrf
+                                    <input type="hidden" name="id_part_proses" value="{{ $rec->id_part_proses }}">
+                                    <input type="hidden" name="type" value="produksi">
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary"
+                                            style="font-size:0.8rem;white-space:nowrap"
+                                            title="Abaikan rekomendasi ini">
+                                        <i class="bi bi-x me-1"></i>Batal
+                                    </button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                 @endforeach
                 </tbody>
             </table>
+            @if($dismissedProdCount > 0)
+            <div style="padding:8px 14px;border-top:1px solid #fde68a;background:#fffdf5;display:flex;align-items:center;gap:8px;font-size:0.82rem;color:#92400e">
+                <i class="bi bi-eye-slash"></i>
+                {{ $dismissedProdCount }} rekomendasi disembunyikan.
+                <form method="POST" action="{{ route('master.part.sph-dismiss-reset') }}" style="display:inline">
+                    @csrf
+                    <input type="hidden" name="type" value="produksi">
+                    <button type="submit" style="background:none;border:none;color:#d97706;font-size:0.82rem;cursor:pointer;text-decoration:underline;padding:0">
+                        Tampilkan semua
+                    </button>
+                </form>
+            </div>
+            @endif
         </div>
     </div>
 </div>
@@ -238,22 +334,22 @@
             <table class="erp-table" style="margin:0">
                 <thead>
                     <tr style="background:#e8f4f7">
-                        <th>Part No</th>
-                        <th>Part Name</th>
-                        <th>Proses</th>
+                        <th style="white-space:nowrap">Part No</th>
+                        <th style="white-space:nowrap">Part Name</th>
+                        <th style="white-space:nowrap">Proses</th>
                         <th style="text-align:right;width:110px">SPH QC Std</th>
-                        <th style="text-align:right;width:110px">SPH Terbaik</th>
-                        <th style="text-align:center;width:130px">Dilampaui</th>
+                        <th style="text-align:right;width:110px">SPH Rata-rata</th>
+                        <th style="text-align:center;white-space:nowrap">Dilampaui</th>
                         <th style="text-align:right;width:130px">Rekomendasi</th>
-                        <th style="width:130px">Aksi</th>
+                        <th style="width:150px">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
                 @foreach($recommendationsQc as $rec)
                     <tr style="background:#f5fbfd">
-                        <td style="font-weight:600">{{ $rec->part_no }}</td>
-                        <td>{{ $rec->part_name }}</td>
-                        <td>
+                        <td style="font-weight:600;white-space:nowrap">{{ $rec->part_no }}</td>
+                        <td style="white-space:nowrap">{{ $rec->part_name }}</td>
+                        <td style="white-space:nowrap">
                             <span style="font-size:0.78rem;color:#6b7280">{{ $rec->id_proses }}</span>
                             {{ $rec->nama_proses }}
                         </td>
@@ -261,7 +357,7 @@
                             {{ number_format($rec->sph_standar) }}
                         </td>
                         <td style="text-align:right;color:#1a6b7c;font-weight:600">
-                            {{ number_format($rec->max_sph) }}
+                            {{ number_format($rec->avg_all_sph) }}
                         </td>
                         <td style="text-align:center">
                             <span title="{{ $rec->exceed_count }} sesi dari {{ $rec->total_sessions }} sesi total">
@@ -278,16 +374,41 @@
                             </span>
                         </td>
                         <td>
-                            <a href="{{ route('master.part.edit', $rec->id_part) }}#proses-rec-{{ $rec->id_part_proses }}"
-                               class="btn btn-sm"
-                               style="background:#1a6b7c;color:#fff;border:none;font-size:0.8rem">
-                                <i class="bi bi-arrow-up-circle me-1"></i>Lihat &amp; Terapkan
-                            </a>
+                            <div style="display:flex;gap:4px;align-items:center">
+                                <a href="{{ route('master.part.edit', $rec->id_part) }}#proses-rec-{{ $rec->id_part_proses }}"
+                                   class="btn btn-sm"
+                                   style="background:#1a6b7c;color:#fff;border:none;font-size:0.8rem;white-space:nowrap">
+                                    <i class="bi bi-arrow-up-circle me-1"></i>Lihat &amp; Terapkan
+                                </a>
+                                <form method="POST" action="{{ route('master.part.sph-dismiss') }}">
+                                    @csrf
+                                    <input type="hidden" name="id_part_proses" value="{{ $rec->id_part_proses }}">
+                                    <input type="hidden" name="type" value="qc">
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary"
+                                            style="font-size:0.8rem;white-space:nowrap"
+                                            title="Abaikan rekomendasi ini">
+                                        <i class="bi bi-x me-1"></i>Batal
+                                    </button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                 @endforeach
                 </tbody>
             </table>
+            @if($dismissedQcCount > 0)
+            <div style="padding:8px 14px;border-top:1px solid #a5d8e0;background:#f0f9fb;display:flex;align-items:center;gap:8px;font-size:0.82rem;color:#0d3d4a">
+                <i class="bi bi-eye-slash"></i>
+                {{ $dismissedQcCount }} rekomendasi disembunyikan.
+                <form method="POST" action="{{ route('master.part.sph-dismiss-reset') }}" style="display:inline">
+                    @csrf
+                    <input type="hidden" name="type" value="qc">
+                    <button type="submit" style="background:none;border:none;color:#1a6b7c;font-size:0.82rem;cursor:pointer;text-decoration:underline;padding:0">
+                        Tampilkan semua
+                    </button>
+                </form>
+            </div>
+            @endif
         </div>
     </div>
 </div>
@@ -327,17 +448,25 @@
 
 <div class="erp-panel">
     <div class="erp-panel-header" style="display:flex;justify-content:space-between;align-items:center">
-        <span>Daftar Part &amp; Proses</span>
-        <span style="font-size:0.7rem;font-weight:400;color:#5d7283">{{ $rows->total() }} baris &mdash; klik <strong>Edit</strong> untuk kelola proses</span>
+        <span>
+            Daftar Part &amp; Proses
+            @if($search !== '')
+            <span class="badge ms-2" style="background:#374151;color:#fff;font-size:0.7rem">Filter aktif</span>
+            @endif
+        </span>
+        <span style="font-size:0.7rem;font-weight:400;color:#5d7283">
+            {{ $rows->total() }} baris &mdash; klik <strong>Edit</strong> untuk kelola proses
+        </span>
     </div>
-    <table class="erp-table">
-        <thead>
+    <div style="overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 320px);min-height:200px">
+    <table class="erp-table" style="min-width:900px">
+        <thead style="position:sticky;top:0;z-index:10">
             <tr>
                 <th>Customer</th>
-                <th>Part No</th>
-                <th>Part Name</th>
+                <th style="white-space:nowrap">Part No</th>
+                <th style="white-space:nowrap">Part Name</th>
                 <th>ID Proses</th>
-                <th>Nama Proses</th>
+                <th style="white-space:nowrap">Nama Proses</th>
                 <th>SPH Produksi<br><span style="font-weight:400;font-size:0.72rem">+ tgl upgrade</span></th>
                 <th>SPH Quality<br><span style="font-weight:400;font-size:0.72rem">+ tgl upgrade</span></th>
                 <th style="width:160px">Aksi</th>
@@ -348,10 +477,10 @@
             @php $part = $proses->part; @endphp
             <tr>
                 <td>{{ $part->customer ?? '—' }}</td>
-                <td>{{ $part->part_no }}</td>
-                <td>{{ $part->part_name }}</td>
+                <td style="white-space:nowrap">{{ $part->part_no }}</td>
+                <td style="white-space:nowrap">{{ $part->part_name }}</td>
                 <td style="font-weight:600">{{ $proses->id_proses }}</td>
-                <td>{{ $proses->nama_proses }}</td>
+                <td style="white-space:nowrap">{{ $proses->nama_proses }}</td>
                 <td>
                     {{ number_format($proses->sph_standar_produksi, 0) }}
                     @if($proses->sph_last_upgraded_at)
@@ -388,13 +517,19 @@
         @empty
             <tr>
                 <td colspan="8" style="text-align:center;color:#888;padding:24px">
-                    Belum ada data part &amp; proses.
-                    <a href="{{ route('master.part.create') }}">Tambah Part Baru</a>
+                    @if($search !== '')
+                        Tidak ada part yang cocok dengan "<strong>{{ $search }}</strong>".
+                        <a href="{{ route('master.part.index') }}" class="ms-1">Reset pencarian</a>
+                    @else
+                        Belum ada data part &amp; proses.
+                        <a href="{{ route('master.part.create') }}">Tambah Part Baru</a>
+                    @endif
                 </td>
             </tr>
         @endforelse
         </tbody>
     </table>
+    </div>{{-- /overflow-x:auto --}}
 </div>
 <div class="mt-3">{{ $rows->links() }}</div>
 
@@ -412,8 +547,8 @@
         <thead>
             <tr>
                 <th>Customer</th>
-                <th>Part No</th>
-                <th>Part Name</th>
+                <th style="white-space:nowrap">Part No</th>
+                <th style="white-space:nowrap">Part Name</th>
                 <th style="width:200px">Aksi</th>
             </tr>
         </thead>
@@ -421,8 +556,8 @@
         @foreach($partsTanpaProses as $p)
             <tr style="background:#fffbf0">
                 <td>{{ $p->customer ?? '—' }}</td>
-                <td>{{ $p->part_no }}</td>
-                <td>{{ $p->part_name }}</td>
+                <td style="white-space:nowrap">{{ $p->part_no }}</td>
+                <td style="white-space:nowrap">{{ $p->part_name }}</td>
                 <td>
                     <div class="action-btns">
                         <a href="{{ route('master.part.edit', $p) }}" class="btn btn-warning btn-sm">Tambah Proses</a>

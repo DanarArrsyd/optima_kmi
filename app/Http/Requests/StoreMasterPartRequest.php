@@ -12,10 +12,18 @@ class StoreMasterPartRequest extends FormRequest
         return [
             'part_no'   => [
                 'required', 'string', 'max:50',
-                Rule::unique('master_part', 'part_no')->ignore($id),
+                // Duplikat hanya jika part_no DAN part_name sama-sama identik.
+                // Satu part_no boleh punya beberapa varian part_name (LH/RH dll).
+                // Abaikan baris soft-deleted agar bisa dibuat ulang.
+                Rule::unique('master_part', 'part_no')
+                    ->where(fn ($q) => $q
+                        ->where('part_name', $this->input('part_name'))
+                        ->whereNull('deleted_at'))
+                    ->ignore($id),
             ],
             'customer'  => 'nullable|string|max:100',
             'part_name' => 'required|string|max:200',
+            'tanggal_instalasi' => 'nullable|date',
         ];
     }
 }

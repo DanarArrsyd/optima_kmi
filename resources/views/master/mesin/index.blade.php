@@ -1,5 +1,6 @@
 @extends('layouts.app')
 @section('title', 'Master Mesin')
+@section('suppress_layout_flash', 'yes')
 @section('content')
 
 <div x-data="{ drawerOpen: {{ $errors->any() ? 'true' : 'false' }} }">
@@ -26,7 +27,8 @@
      x-transition:leave="transition ease-in duration-200"
      x-transition:leave-start="transform translate-x-0"
      x-transition:leave-end="transform translate-x-full"
-     style="position:fixed;top:0;right:0;height:100vh;width:440px;max-width:100vw;background:#fff;z-index:1050;display:flex;flex-direction:column;box-shadow:-4px 0 24px rgba(0,0,0,.18)">
+     style="position:fixed;top:0;right:0;height:100dvh;width:440px;max-width:100vw;z-index:1050;">
+    <div style="display:flex;flex-direction:column;height:100%;background:#fff;box-shadow:-4px 0 24px rgba(0,0,0,.18)">
 
     {{-- Header --}}
     <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:#111827;color:#fff;flex-shrink:0">
@@ -40,7 +42,7 @@
     </div>
 
     {{-- Body (scrollable) --}}
-    <div style="flex:1;overflow-y:auto;padding:20px">
+    <div style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:24px;overscroll-behavior:contain">
 
         @if($errors->any())
         <div class="alert alert-danger mb-3" style="font-size:0.82rem">
@@ -94,6 +96,14 @@
                     @error('kapasitas_max_stroke')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
 
+                <div class="col-12">
+                    <label class="form-label" style="font-size:0.8rem">Tanggal Instalasi <span class="text-muted" style="font-weight:400">(opsional — basis MTBF & Availability)</span></label>
+                    <input type="date" name="tanggal_instalasi"
+                           class="form-control form-control-sm @error('tanggal_instalasi') is-invalid @enderror"
+                           value="{{ old('tanggal_instalasi') }}">
+                    @error('tanggal_instalasi')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+
             </div>
 
             <div style="margin-top:20px;padding-top:16px;border-top:1px solid #e5e7eb;display:flex;gap:8px">
@@ -106,6 +116,7 @@
             </div>
         </form>
     </div>{{-- /drawer body --}}
+    </div>{{-- /inner flex container --}}
 </div>{{-- /drawer panel --}}
 
 {{-- ══ KONTEN HALAMAN ══════════════════════════════════════════ --}}
@@ -168,27 +179,28 @@
 
 <div class="erp-panel">
     <div class="erp-panel-header">Daftar Mesin</div>
-    <table class="erp-table">
-        <thead>
+    <div style="overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 300px);min-height:200px">
+    <table class="erp-table" style="min-width:680px;width:100%">
+        <thead style="position:sticky;top:0;z-index:10">
             <tr>
-                <th>ID Mesin</th>
+                <th style="width:100px;white-space:nowrap">ID Mesin</th>
                 <th>Nama Mesin</th>
-                <th>Line</th>
-                <th>Tipe</th>
-                <th>Kapasitas Max (stroke/jam)</th>
-                <th style="width:130px">Aksi</th>
+                <th style="width:80px;white-space:nowrap">Line</th>
+                <th style="width:140px;white-space:nowrap">Tipe</th>
+                <th style="width:190px;white-space:nowrap">Kapasitas Max (stroke/jam)</th>
+                <th style="width:140px;white-space:nowrap">Aksi</th>
             </tr>
         </thead>
         <tbody>
         @forelse($mesin as $m)
             <tr>
-                <td>{{ $m->id_mesin }}</td>
+                <td style="white-space:nowrap;font-family:monospace;font-weight:600">{{ $m->id_mesin }}</td>
                 <td>{{ $m->nama_mesin }}</td>
-                <td>{{ $m->line }}</td>
-                <td>{{ $m->tipe_mesin }}</td>
-                <td>{{ $m->kapasitas_max_stroke ?? '-' }}</td>
-                <td>
-                    <div class="action-btns">
+                <td style="white-space:nowrap">{{ $m->line }}</td>
+                <td style="white-space:nowrap">{{ $m->tipe_mesin }}</td>
+                <td style="white-space:nowrap;text-align:right">{{ $m->kapasitas_max_stroke ? number_format($m->kapasitas_max_stroke) : '—' }}</td>
+                <td style="white-space:nowrap">
+                    <div class="action-btns" style="flex-wrap:nowrap">
                         <a href="{{ route('master.mesin.edit', $m) }}" class="btn btn-warning btn-sm">Edit</a>
                         <form method="POST" action="{{ route('master.mesin.destroy', $m) }}"
                               onsubmit="return confirm('Hapus mesin ini?')">
@@ -203,6 +215,7 @@
         @endforelse
         </tbody>
     </table>
+    </div>{{-- /overflow wrapper --}}
 </div>
 <div class="mt-3">{{ $mesin->links() }}</div>
 

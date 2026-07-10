@@ -37,6 +37,12 @@
                        value="{{ old('part_name') }}" placeholder="Nama part">
                 @error('part_name')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
+            <div class="mb-4">
+                <label class="form-label">Tanggal Instalasi Dies <span class="text-muted">(opsional — basis MTBF &amp; Availability Dies)</span></label>
+                <input type="date" name="tanggal_instalasi" class="form-control @error('tanggal_instalasi') is-invalid @enderror"
+                       value="{{ old('tanggal_instalasi') }}">
+                @error('tanggal_instalasi')<div class="invalid-feedback">{{ $message }}</div>@enderror
+            </div>
             <div class="d-flex gap-2">
                 <button type="submit" class="btn btn-primary btn-sm">
                     <i class="bi bi-save me-1"></i>Simpan & Lanjut ke Proses

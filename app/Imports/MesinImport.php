@@ -27,9 +27,26 @@ class MesinImport implements ToCollection, WithHeadingRow, SkipsEmptyRows
             $record->tipe_mesin          = trim((string) ($row['tipe_mesin'] ?? ''));
             $record->kapasitas_max_stroke = is_numeric($row['kapasitas_max_stroke'] ?? null)
                                                 ? (int) $row['kapasitas_max_stroke'] : null;
+            $record->tanggal_instalasi   = $this->parseDate($row['tanggal_instalasi'] ?? null);
             $record->deleted_at          = null;
             $record->save();
             $this->imported++;
+        }
+    }
+
+    /** Parse Excel date cell (serial number or string) → Y-m-d, atau null. */
+    private function parseDate($raw): ?string
+    {
+        if ($raw === null || trim((string) $raw) === '') {
+            return null;
+        }
+        try {
+            if (is_numeric($raw)) {
+                return \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject((float) $raw)->format('Y-m-d');
+            }
+            return \Illuminate\Support\Carbon::parse(trim((string) $raw))->toDateString();
+        } catch (\Throwable $e) {
+            return null;
         }
     }
 }

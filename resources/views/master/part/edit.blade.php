@@ -1,5 +1,6 @@
 @extends('layouts.app')
 @section('title', 'Edit Part — ' . $part->part_no)
+@section('suppress_layout_flash', 'yes')
 @section('content')
 
 {{-- ══ ALPINE SCOPE (drawer tambah proses) ══ --}}
@@ -19,7 +20,8 @@
      x-transition:enter-start="transform translate-x-full" x-transition:enter-end="transform translate-x-0"
      x-transition:leave="transition ease-in duration-200"
      x-transition:leave-start="transform translate-x-0" x-transition:leave-end="transform translate-x-full"
-     style="position:fixed;top:0;right:0;height:100vh;width:520px;max-width:100vw;background:#fff;z-index:1050;display:flex;flex-direction:column;box-shadow:-4px 0 24px rgba(0,0,0,.18)">
+     style="position:fixed;top:0;right:0;height:100dvh;width:520px;max-width:100vw;z-index:1050;">
+    <div style="display:flex;flex-direction:column;height:100%;background:#fff;box-shadow:-4px 0 24px rgba(0,0,0,.18)">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:#111827;color:#fff;flex-shrink:0">
         <div style="font-weight:700;font-size:0.95rem">
             <i class="bi bi-plus-circle me-2"></i>Tambah Proses — {{ $part->part_no }}
@@ -28,7 +30,7 @@
             <i class="bi bi-x-lg"></i>
         </button>
     </div>
-    <div style="flex:1;overflow-y:auto;padding:24px">
+    <div style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:24px;overscroll-behavior:contain">
         @if($errors->has('id_proses') || $errors->has('nama_proses') || $errors->has('sph_standar_produksi'))
         <div class="alert alert-danger mb-4" style="font-size:0.82rem">
             <ul class="mb-0 ps-3">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
@@ -116,7 +118,8 @@
             </div>
         </form>
     </div>
-</div>
+    </div>{{-- /drawer inner wrapper --}}
+</div>{{-- /drawer panel --}}
 
 {{-- ══ PAGE CONTENT ════════════════════════════════════════════════ --}}
 
@@ -178,6 +181,13 @@
                                class="form-control form-control-sm @error('part_name') is-invalid @enderror"
                                value="{{ old('part_name', $part->part_name) }}">
                         @error('part_name')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label" style="font-size:0.8rem">Tanggal Instalasi Dies <span class="text-muted" style="font-weight:400">(opsional)</span></label>
+                        <input type="date" name="tanggal_instalasi"
+                               class="form-control form-control-sm @error('tanggal_instalasi') is-invalid @enderror"
+                               value="{{ old('tanggal_instalasi', optional($part->tanggal_instalasi)->format('Y-m-d')) }}">
+                        @error('tanggal_instalasi')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                     <button type="submit" class="btn btn-primary btn-sm w-100">
                         <i class="bi bi-save me-1"></i>Update Part
@@ -391,8 +401,8 @@
                                             <span style="font-size:0.8rem;color:#6b7280">pcs/jam &nbsp;<strong style="color:#2d7a2d">+{{ $rec->increase_pct }}%</strong></span>
                                         </div>
                                         <div style="font-size:0.75rem;color:#6b7280;flex:1">
-                                            <i class="bi bi-trophy me-1" style="color:#d4a017"></i>Terbaik: <strong>{{ number_format($rec->max_sph) }}</strong>
-                                            &nbsp;·&nbsp; Rata-rata: <strong>{{ number_format($rec->avg_exceed_sph) }}</strong>
+                                            <i class="bi bi-bar-chart-line me-1" style="color:#d4a017"></i>Rata-rata semua sesi: <strong>{{ number_format($rec->avg_all_sph) }}</strong>
+                                            &nbsp;·&nbsp; Tertinggi: <strong>{{ number_format($rec->max_sph) }}</strong>
                                         </div>
                                         <form method="POST" action="{{ route('master.part.proses.upgrade-sph', [$part, $p]) }}"
                                               onsubmit="return confirm('Terapkan upgrade SPH Produksi {{ addslashes($p->nama_proses) }}?\n{{ $rec->sph_standar_produksi }} → {{ $rec->recommended_sph }} pcs/jam')">
@@ -429,8 +439,8 @@
                                             <span style="font-size:0.8rem;color:#6b7280">pcs/jam &nbsp;<strong style="color:#1a6b7c">+{{ $recQc->increase_pct }}%</strong></span>
                                         </div>
                                         <div style="font-size:0.75rem;color:#6b7280;flex:1">
-                                            <i class="bi bi-trophy me-1" style="color:#1a6b7c"></i>Terbaik: <strong>{{ number_format($recQc->max_sph) }}</strong>
-                                            &nbsp;·&nbsp; Rata-rata: <strong>{{ number_format($recQc->avg_exceed_sph) }}</strong>
+                                            <i class="bi bi-bar-chart-line me-1" style="color:#1a6b7c"></i>Rata-rata semua sesi: <strong>{{ number_format($recQc->avg_all_sph) }}</strong>
+                                            &nbsp;·&nbsp; Tertinggi: <strong>{{ number_format($recQc->max_sph) }}</strong>
                                         </div>
                                         <form method="POST" action="{{ route('master.part.proses.upgrade-qc-sph', [$part, $p]) }}"
                                               onsubmit="return confirm('Terapkan upgrade SPH QC {{ addslashes($p->nama_proses) }}?\n{{ $recQc->sph_standar_qc }} → {{ $recQc->recommended_sph }} pcs/jam')">
