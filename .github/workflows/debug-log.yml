@@ -32,6 +32,13 @@ jobs:
             "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" \
             "tail -n 100 ${{ env.REMOTE_PATH }}/storage/logs/laravel.log"
 
+      - name: Ambil pesan ERROR terakhir (header, bukan stack trace)
+        if: ${{ github.event.inputs.mode == 'lasterror' }}
+        run: |
+          ssh -p "${{ secrets.SSH_PORT }}" -i ~/.ssh/deploy_key \
+            "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" \
+            "grep -a 'ERROR:' ${{ env.REMOTE_PATH }}/storage/logs/laravel.log | tail -5 | cut -c1-500"
+
       - name: Cek skema breakdown/tanggal_instalasi
         if: ${{ github.event.inputs.mode == 'schema' }}
         run: |
