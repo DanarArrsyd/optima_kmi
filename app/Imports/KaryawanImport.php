@@ -21,9 +21,11 @@ class KaryawanImport implements ToCollection, WithHeadingRow, SkipsEmptyRows
                 $this->skipped++;
                 continue;
             }
-            $record = MasterKaryawan::withTrashed()->firstOrNew(['nik' => $nik]);
+            $record = MasterKaryawan::withTrashed()->firstOrNew(['nama_karyawan' => $nama]);
+            $record->nik           = $nik;
             $record->nama_karyawan = $nama;
             $record->departemen    = trim((string) ($row['departemen'] ?? 'Produksi'));
+            $record->is_aktif      = true;
             $record->deleted_at    = null;
             $record->save();
             $this->imported++;

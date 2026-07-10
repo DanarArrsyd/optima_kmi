@@ -163,19 +163,22 @@
 
 @section('content')
 
-{{-- ── PAGE HEADER (same pattern as VCB Produksi / Quality) ──── --}}
+@php $defaultFrom = date('Y-m-01'); $defaultTo = date('Y-m-d'); @endphp
+
+{{-- Satu scope Alpine mencakup page-header + seluruh vcbd-wrap --}}
+<div x-data="vcbDandori()">
+
+{{-- ── PAGE HEADER ──────────────────────────────────────────── --}}
 <div class="page-header">
     <h1 class="page-title">
         <i class="bi bi-clock-history"></i>VCB Dandori — Loss Time Analysis
     </h1>
-    <a :href="exportUrl" class="btn btn-success btn-sm" style="text-decoration:none" x-data>
+    <a :href="exportUrl" class="btn btn-success btn-sm" style="text-decoration:none">
         <i class="bi bi-file-earmark-excel me-1"></i>Export Excel
     </a>
 </div>
 
-@php $defaultFrom = date('Y-m-01'); $defaultTo = date('Y-m-d'); @endphp
-
-<div class="vcbd-wrap" x-data="vcbDandori()">
+<div class="vcbd-wrap">
 
     {{-- ── LEFT SIDEBAR — Mesin filter ──────────────────────── --}}
     <aside class="vcbd-sidebar">
@@ -213,6 +216,11 @@
                     <label>Sampai Tanggal</label>
                     <input type="date" class="form-control form-control-sm"
                            x-model="dateTo" :min="dateFrom">
+                </div>
+                <div class="filter-group">
+                    <label>Bulan</label>
+                    <input type="month" class="form-control form-control-sm"
+                           @change="setBulan($event.target.value)">
                 </div>
                 <div class="filter-group" style="flex-direction:row;gap:6px;align-items:flex-end">
                     <button type="submit" class="btn btn-secondary btn-sm">
@@ -367,6 +375,8 @@
     </aside>
 
 </div>{{-- /vcbd-wrap --}}
+
+</div>{{-- /vcbDandori scope --}}
 @endsection
 
 @push('scripts')
@@ -465,9 +475,9 @@ function vcbDandori() {
                 : 0;
         },
         get exportUrl() {
-            const p = new URLSearchParams({ date_from: this.dateFrom, date_to: this.dateTo, format: 'excel' });
+            const p = new URLSearchParams({ date_from: this.dateFrom, date_to: this.dateTo });
             this.selectedMesin.forEach(id => p.append('mesin_ids[]', id));
-            return `/export/dandori?${p}`;
+            return `{{ url('vcb/dandori/export') }}?${p}`;
         },
 
         fmt(v) {
@@ -485,13 +495,24 @@ function vcbDandori() {
         },
         resetMesin() { this.selectedMesin = []; },
 
+        setBulan(v) {
+            if (!v) return;
+            const [y, m] = v.split('-').map(Number);
+            const lastDay = new Date(y, m, 0).getDate();
+            const today = new Date().toISOString().slice(0, 10);
+            const to = `${v}-${String(lastDay).padStart(2, '0')}`;
+            this.dateFrom = `${v}-01`;
+            this.dateTo   = to > today ? today : to;
+            this.loadData();
+        },
+
         async loadData() {
             this.loading = true;
             const p = new URLSearchParams({ date_from: this.dateFrom, date_to: this.dateTo });
             this.selectedMesin.forEach(id => p.append('mesin_ids[]', id));
 
             try {
-                const res  = await fetch(`/vcb/dandori/data?${p}`);
+                const res  = await fetch(`{{ route('vcb.dandori.data') }}?${p}`);
                 const data = await res.json();
 
                 /* Map total_over → total_loss_time for display label */

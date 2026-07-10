@@ -8,6 +8,7 @@ use App\Models\MasterPartProses;
 use App\Imports\PartImport;
 use App\Models\MasterPartProsesSphLog;
 use App\Services\SphRecommendationService;
+use App\Exports\PartExport;
 use Maatwebsite\Excel\Facades\Excel;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -17,23 +18,79 @@ class PartController extends Controller
 {
     public function __construct(private SphRecommendationService $sphSvc) {}
 
-    public function index()
+    public function index(Request $request)
     {
-        $rows = MasterPartProses::with('part')
+        $search = trim((string) $request->input('q', ''));
+
+        $q = MasterPartProses::with('part')
             ->join('master_part', 'master_part_proses.id_part', '=', 'master_part.id')
             ->whereNull('master_part.deleted_at')
             ->whereNull('master_part_proses.deleted_at')
             ->orderBy('master_part.part_name')
             ->orderBy('master_part_proses.id_proses')
-            ->select('master_part_proses.*')
-            ->paginate(30);
+            ->select('master_part_proses.*');
+
+        if ($search !== '') {
+            $like = '%' . $search . '%';
+            $q->where(function ($sub) use ($like) {
+                $sub->where('master_part.part_no',   'like', $like)
+                    ->orWhere('master_part.part_name', 'like', $like)
+                    ->orWhere('master_part.customer',  'like', $like)
+                    ->orWhere('master_part_proses.nama_proses', 'like', $like);
+            });
+        }
+
+        $rows = $q->paginate(30)->withQueryString();
 
         $isAdmin = auth()->user()?->role === 'admin';
 
-        $recommendations   = $isAdmin ? $this->sphSvc->getAll()    : collect();
-        $recommendationsQc = $isAdmin ? $this->sphSvc->getAllQc()   : collect();
+        $dismissedProd = session('sph_dismissed_produksi', []);
+        $dismissedQc   = session('sph_dismissed_qc', []);
 
-        return view('master.part.index', compact('rows', 'recommendations', 'recommendationsQc'));
+        $recommendations = $isAdmin
+            ? $this->sphSvc->getAll()->filter(fn($r) => !in_array($r->id_part_proses, $dismissedProd))->values()
+            : collect();
+        $recommendationsQc = $isAdmin
+            ? $this->sphSvc->getAllQc()->filter(fn($r) => !in_array($r->id_part_proses, $dismissedQc))->values()
+            : collect();
+
+        $dismissedProdCount = count($dismissedProd);
+        $dismissedQcCount   = count($dismissedQc);
+
+        $customerList = MasterPart::whereNotNull('customer')->where('customer', '!=', '')
+            ->distinct()->orderBy('customer')->pluck('customer');
+
+        return view('master.part.index', compact('rows', 'recommendations', 'recommendationsQc', 'search', 'dismissedProdCount', 'dismissedQcCount', 'customerList'));
+    }
+
+    public function export(Request $request)
+    {
+        return Excel::download(
+            new PartExport($request->input('customer') ?: null),
+            'master_part.xlsx'
+        );
+    }
+
+    public function dismissSphRecommendation(\Illuminate\Http\Request $request): \Illuminate\Http\RedirectResponse
+    {
+        $id   = (int) $request->input('id_part_proses');
+        $type = $request->input('type', 'produksi');
+        $key  = "sph_dismissed_{$type}";
+
+        $dismissed = session($key, []);
+        if ($id && !in_array($id, $dismissed)) {
+            $dismissed[] = $id;
+            session([$key => $dismissed]);
+        }
+
+        return back();
+    }
+
+    public function resetSphDismissed(\Illuminate\Http\Request $request): \Illuminate\Http\RedirectResponse
+    {
+        $type = $request->input('type', 'produksi');
+        session()->forget("sph_dismissed_{$type}");
+        return back();
     }
 
     public function create()
@@ -49,12 +106,29 @@ class PartController extends Controller
 
     public function edit(MasterPart $part)
     {
-        $part->load(['proses.sphProduksiLog.upgradedBy', 'proses.sphQcLog.upgradedBy']);
+        // View edit memakai relasi $p->sphLog & $p->sphQcLog — keduanya HARUS
+        // ter-load di sini. Jika tidak, Blade akan lazy-load saat render dan
+        // (bila tabel sph_log belum ada di DB) melempar QueryException di tengah
+        // section sehingga konten halaman kosong.
+        try {
+            $part->load(['proses.sphLog.upgradedBy', 'proses.sphQcLog.upgradedBy']);
+        } catch (\Illuminate\Database\QueryException) {
+            $part->load(['proses']);
+            $part->proses->each(function ($p) {
+                $p->setRelation('sphLog', collect());
+                $p->setRelation('sphQcLog', collect());
+            });
+        }
 
         $isAdmin = auth()->user()?->role === 'admin';
 
-        $recommendations   = $isAdmin ? $this->sphSvc->forPart($part->id)->keyBy('id_part_proses')   : collect();
-        $recommendationsQc = $isAdmin ? $this->sphSvc->forPartQc($part->id)->keyBy('id_part_proses') : collect();
+        try {
+            $recommendations   = $isAdmin ? $this->sphSvc->forPart($part->id)->keyBy('id_part_proses')   : collect();
+            $recommendationsQc = $isAdmin ? $this->sphSvc->forPartQc($part->id)->keyBy('id_part_proses') : collect();
+        } catch (\Illuminate\Database\QueryException) {
+            $recommendations   = collect();
+            $recommendationsQc = collect();
+        }
 
         return view('master.part.edit', compact('part', 'recommendations', 'recommendationsQc'));
     }
@@ -109,15 +183,19 @@ class PartController extends Controller
         ]);
 
         // 2. Simpan ke log audit
-        MasterPartProsesSphLog::create([
-            'id_part_proses'   => $proses->id,
-            'type'             => 'produksi',
-            'sph_standar_lama' => $oldSph,
-            'sph_standar_baru' => $newSph,
-            'upgraded_by'      => auth()->id(),
-            'catatan'          => $request->input('catatan'),
-            'upgraded_at'      => $now,
-        ]);
+        try {
+            MasterPartProsesSphLog::create([
+                'id_part_proses'   => $proses->id,
+                'type'             => 'produksi',
+                'sph_standar_lama' => $oldSph,
+                'sph_standar_baru' => $newSph,
+                'upgraded_by'      => auth()->id(),
+                'catatan'          => $request->input('catatan'),
+                'upgraded_at'      => $now,
+            ]);
+        } catch (\Illuminate\Database\QueryException) {
+            // tabel log belum ada — upgrade tetap tersimpan, log dilewati
+        }
 
         return redirect()->route('master.part.edit', $part)
             ->with('success', "SPH Standard Produksi proses {$proses->nama_proses} diupgrade: {$oldSph} → {$newSph} pcs/jam. Data LHP sebelum {$now->format('d M Y')} tidak akan mempengaruhi rekomendasi berikutnya.");
@@ -145,15 +223,19 @@ class PartController extends Controller
             'sph_qc_last_upgraded_at' => $now,
         ]);
 
-        MasterPartProsesSphLog::create([
-            'id_part_proses'   => $proses->id,
-            'type'             => 'qc',
-            'sph_standar_lama' => $oldSph,
-            'sph_standar_baru' => $newSph,
-            'upgraded_by'      => auth()->id(),
-            'catatan'          => $request->input('catatan'),
-            'upgraded_at'      => $now,
-        ]);
+        try {
+            MasterPartProsesSphLog::create([
+                'id_part_proses'   => $proses->id,
+                'type'             => 'qc',
+                'sph_standar_lama' => $oldSph,
+                'sph_standar_baru' => $newSph,
+                'upgraded_by'      => auth()->id(),
+                'catatan'          => $request->input('catatan'),
+                'upgraded_at'      => $now,
+            ]);
+        } catch (\Illuminate\Database\QueryException) {
+            // tabel log belum ada — upgrade tetap tersimpan, log dilewati
+        }
 
         return redirect()->route('master.part.edit', $part)
             ->with('success', "SPH Standard QC proses {$proses->nama_proses} diupgrade: {$oldSph} → {$newSph} pcs/jam. Data LHP Quality sebelum {$now->format('d M Y')} tidak akan mempengaruhi rekomendasi berikutnya.");
@@ -174,7 +256,7 @@ class PartController extends Controller
             public function headings(): array
             {
                 return [
-                    'Customer', 'Part No', 'Part Name',
+                    'Customer', 'Part No', 'Part Name', 'Tanggal Instalasi',
                     'ID Proses', 'Nama Proses',
                     'SPH Produksi',
                     'SPH QC', 'Std Trial QC Menit',
@@ -184,9 +266,9 @@ class PartController extends Controller
             public function array(): array
             {
                 return [
-                    ['Toyota', 'BT-091A-3', 'Bracket RH', 1, 'PROGRESSIVE', 800, 400, 5, 15],
-                    ['Toyota', 'BT-091A-3', 'Bracket RH', 2, 'BENDING',     600, 300, 5, 15],
-                    ['Honda',  'HC-202B',   'Cover LH',   1, 'PROGRESSIVE', 750, 375, 5, 20],
+                    ['Toyota', 'BT-091A-3', 'Bracket RH', '2024-03-10', 1, 'PROGRESSIVE', 800, 400, 5, 15],
+                    ['Toyota', 'BT-091A-3', 'Bracket RH', '2024-03-10', 2, 'BENDING',     600, 300, 5, 15],
+                    ['Honda',  'HC-202B',   'Cover LH',   '2023-11-20', 1, 'PROGRESSIVE', 750, 375, 5, 20],
                 ];
             }
         };

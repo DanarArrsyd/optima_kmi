@@ -27,6 +27,7 @@ class AvailabilityController extends Controller
             'rows'    => $rows,
             'summary' => [
                 'avg_availability' => round((float) collect($rows)->whereNotNull('availability_pct')->avg('availability_pct'), 2),
+                'total_bd' => (int) collect($rows)->sum('count'),
             ],
         ]);
     }

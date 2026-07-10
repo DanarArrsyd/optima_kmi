@@ -19,7 +19,7 @@ class LhpProduksiExport implements FromCollection, WithHeadings, WithStyles, Wit
         private ?string $namaProses = null,
     ) {}
 
-    public function collection()
+    public function collection(): \Illuminate\Support\Enumerable
     {
         $q = TransaksiProduksi::with([
                 'karyawan', 'mesin', 'partProses.part', 'shift', 'jenisNg',

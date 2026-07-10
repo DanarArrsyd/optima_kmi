@@ -19,7 +19,7 @@ class LhpQcExport implements FromCollection, WithHeadings, WithStyles, WithColum
         private ?string $namaProses = null,
     ) {}
 
-    public function collection()
+    public function collection(): \Illuminate\Support\Enumerable
     {
         $q = TransaksiQc::with([
                 'karyawanQc', 'partProses.part', 'shift', 'jenisNg',

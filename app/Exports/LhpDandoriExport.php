@@ -19,7 +19,7 @@ class LhpDandoriExport implements FromCollection, WithHeadings, WithStyles, With
         private ?string $namaProses = null,
     ) {}
 
-    public function collection()
+    public function collection(): \Illuminate\Support\Enumerable
     {
         $q = TransaksiDandoriRincian::with([
                 'shift', 'karyawan', 'mesin', 'partProses.part', 'losstime',

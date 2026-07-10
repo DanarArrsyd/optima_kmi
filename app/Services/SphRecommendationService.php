@@ -148,6 +148,7 @@ class SphRecommendationService
                 DB::raw('COUNT(lhp.id)                                                               as total_sessions'),
                 DB::raw("SUM(CASE WHEN {$sph} > pp.sph_standar_produksi THEN 1 ELSE 0 END)          as exceed_count"),
                 DB::raw("MAX({$sph})                                                                  as max_sph"),
+                DB::raw("AVG({$sph})                                                                  as avg_all_sph"),
                 DB::raw("AVG(CASE WHEN {$sph} > pp.sph_standar_produksi THEN {$sph} ELSE NULL END)  as avg_exceed_sph"),
             )
             ->groupBy(
@@ -190,6 +191,7 @@ class SphRecommendationService
                 DB::raw('COUNT(qc.id)                                                          as total_sessions'),
                 DB::raw("SUM(CASE WHEN {$sph} > pp.sph_standar_qc THEN 1 ELSE 0 END)          as exceed_count"),
                 DB::raw("MAX({$sph})                                                            as max_sph"),
+                DB::raw("AVG({$sph})                                                            as avg_all_sph"),
                 DB::raw("AVG(CASE WHEN {$sph} > pp.sph_standar_qc THEN {$sph} ELSE NULL END)  as avg_exceed_sph"),
             )
             ->groupBy(
@@ -219,17 +221,18 @@ class SphRecommendationService
      */
     private function enrich(object $row, string $stdKey): ?object
     {
-        if (!$row->avg_exceed_sph) return null;
+        if (!$row->avg_all_sph) return null;
 
-        // Rekomendasi = rata-rata sesi yang melampaui, bulatkan ke 10 terdekat
-        $recommended = (int) (round((float) $row->avg_exceed_sph / 10) * 10);
+        // Rekomendasi = rata-rata SEMUA sesi SPH aktual, bulatkan ke 10 terdekat
+        $recommended = (int) (round((float) $row->avg_all_sph / 10) * 10);
         $current     = (int) $row->sph_standar;
 
         if ($recommended <= $current) return null;
 
         $row->recommended_sph = $recommended;
         $row->max_sph         = (int) round((float) $row->max_sph);
-        $row->avg_exceed_sph  = (int) round((float) $row->avg_exceed_sph);
+        $row->avg_all_sph     = (int) round((float) $row->avg_all_sph);
+        $row->avg_exceed_sph  = $row->avg_exceed_sph ? (int) round((float) $row->avg_exceed_sph) : 0;
         $row->exceed_count    = (int) $row->exceed_count;
         $row->total_sessions  = (int) $row->total_sessions;
         $row->sph_standar     = $current;

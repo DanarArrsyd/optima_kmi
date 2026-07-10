@@ -36,6 +36,10 @@
                 <input type="date" id="all_date_to" class="form-control form-control-sm" value="{{ date('Y-m-d') }}">
             </div>
             <div class="filter-group">
+                <label>Bulan</label>
+                <input type="month" id="all_bulan_filter" class="form-control form-control-sm">
+            </div>
+            <div class="filter-group">
                 <label>Shift</label>
                 <select id="all_shift_id" class="form-select form-select-sm" style="min-width:120px">
                     <option value="">Semua Shift</option>
@@ -123,6 +127,10 @@
             <div class="filter-group">
                 <label>Sampai Tanggal</label>
                 <input type="date" id="one_date_to" class="form-control form-control-sm" value="{{ date('Y-m-d') }}">
+            </div>
+            <div class="filter-group">
+                <label>Bulan</label>
+                <input type="month" id="one_bulan_filter" class="form-control form-control-sm">
             </div>
             <div class="filter-group">
                 <label>Operator <span class="text-danger">*</span></label>
@@ -219,10 +227,10 @@ function n(v, dec = 0) {
     return Number(v).toLocaleString('id-ID', { maximumFractionDigits: dec });
 }
 function pctColor(pct) {
-    return pct >= 100 ? '#15803d' : pct >= 85 ? '#a16207' : '#b91c1c';
+    return pct > 100 ? '#1d4ed8' : pct >= 100 ? '#15803d' : '#b91c1c';
 }
 function statusLabel(tl) {
-    const map = { success: ['ACHIEVED','#15803d'], warning: ['NEAR','#a16207'], danger: ['BELOW','#b91c1c'] };
+    const map = { info: ['EXCEED','#1d4ed8'], success: ['ACHIEVED','#15803d'], danger: ['UNDER','#b91c1c'] };
     const [label, color] = map[tl] ?? ['—','#9ca3af'];
     return `<span style="font-size:10px;font-weight:700;color:${color};letter-spacing:0.4px">${label}</span>`;
 }
@@ -260,11 +268,11 @@ function switchMode(mode, karyawanId = null) {
 /* ═══════════════════════════════════════════════════════════
    MODE 1 — SEMUA OPERATOR
 ═══════════════════════════════════════════════════════════ */
-function buildAllChart(labels, achievements, trafficLights) {
+function buildAllChart(labels, achievements, trafficLights, karyawanIds) {
     if (allChart) allChart.destroy();
 
     const colors = trafficLights.map(tl =>
-        tl === 'success' ? '#15803d' : tl === 'warning' ? '#a16207' : '#b91c1c'
+        tl === 'info' ? '#1d4ed8' : tl === 'success' ? '#15803d' : '#b91c1c'
     );
     const maxY = Math.max(110, ...achievements.map(v => Math.ceil(v / 10) * 10 + 10));
 
@@ -283,10 +291,22 @@ function buildAllChart(labels, achievements, trafficLights) {
         },
         options: {
             responsive: true,
+            onClick(event, elements) {
+                if (elements.length > 0) {
+                    const idx = elements[0].index;
+                    const kid = karyawanIds[idx];
+                    if (kid) switchMode('one', kid);
+                }
+            },
+            onHover(event, elements) {
+                event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+            },
             plugins: {
                 legend: { display: false },
                 tooltip: {
-                    callbacks: { label: ctx => ` ${ctx.parsed.y}%` },
+                    callbacks: {
+                        label: ctx => ` ${ctx.parsed.y}% — klik untuk detail`,
+                    },
                     bodyFont: { family:'Arial', size:12, weight:'700' },
                     titleFont: { family:'Arial', size:11 },
                 }
@@ -381,9 +401,8 @@ function renderAllTable(table) {
 
     tbody.innerHTML = table.map((row, i) => {
         const sessions    = row.detail ? row.detail.length : '—';
-        const sphStdAvg   = row.total_duration_hours > 0 ? n(Math.round(row.total_target_qty / row.total_duration_hours)) : '—';
-        const sphActColor = row.avg_actual_sph >= (row.total_duration_hours > 0 ? row.total_target_qty / row.total_duration_hours : 0)
-            ? '#15803d' : '#b91c1c';
+        const sphStdAvg   = row.avg_sph_std ?? '—';
+        const sphActColor = pctColor(row.achievement_pct);
         const rowBg = i % 2 === 1 ? 'background:#f9fafb' : '';
 
         return `<tr style="${rowBg};cursor:pointer" onclick="switchMode('one', ${row.id_karyawan ?? ''})"
@@ -397,8 +416,8 @@ function renderAllTable(table) {
             <td style="text-align:right;color:#6b7280">${row.total_duration_hours}j</td>
             <td style="text-align:right;color:#6b7280">${n(Math.round(row.total_target_qty))}</td>
             <td style="text-align:right;font-weight:600">${n(row.total_qty_aktual)}</td>
-            <td style="text-align:right;color:#6b7280">${sphStdAvg}</td>
-            <td style="text-align:right;font-weight:600;color:${sphActColor}">${n(Math.round(row.avg_actual_sph))}</td>
+            <td style="text-align:right;color:#6b7280">${n(sphStdAvg)}</td>
+            <td style="text-align:right;font-weight:600;color:${sphActColor}">${n(row.avg_actual_sph)}</td>
             <td>${progressBar(row.achievement_pct)}</td>
             <td style="text-align:center">${statusLabel(row.traffic_light)}</td>
         </tr>`;
@@ -408,7 +427,10 @@ function renderAllTable(table) {
     const totalDur = table.reduce((s,r) => s + r.total_duration_hours, 0);
     const totalTgt = table.reduce((s,r) => s + r.total_target_qty, 0);
     const totalAct = table.reduce((s,r) => s + r.total_qty_aktual, 0);
-    const oPct     = totalTgt > 0 ? Math.round(totalAct / totalTgt * 1000) / 10 : 0;
+    // Achievement footer = rata-rata achievement per operator (Opsi A)
+    const oPct = table.length > 0
+        ? Math.round(table.reduce((s,r) => s + r.achievement_pct, 0) / table.length * 10) / 10
+        : 0;
 
     document.getElementById('ftAllDur').textContent = totalDur.toFixed(1) + 'j';
     document.getElementById('ftAllTgt').textContent = n(Math.round(totalTgt));
@@ -427,10 +449,11 @@ async function loadAllOperators() {
         document.getElementById('all_date_from').value + ' — ' + document.getElementById('all_date_to').value;
 
     try {
-        const res  = await fetch(`/vcb/produksi/data?${params}`);
+        const res  = await fetch(`{{ route('vcb.produksi.data') }}?${params}`);
+        if (!res.ok) throw new Error(`Server error ${res.status}`);
         const data = await res.json();
 
-        const sorted = [...data.table].sort((a,b) => b.achievement_pct - a.achievement_pct);
+        const sorted = [...data.table].sort((a,b) => b.avg_actual_sph - a.avg_actual_sph);
 
         if (sorted.length) {
             renderAllKpi(sorted);
@@ -438,7 +461,8 @@ async function loadAllOperators() {
             buildAllChart(
                 sorted.map(r => r.karyawan),
                 sorted.map(r => r.achievement_pct),
-                sorted.map(r => r.traffic_light)
+                sorted.map(r => r.traffic_light),
+                sorted.map(r => r.id_karyawan)
             );
         } else {
             document.getElementById('allKpi').innerHTML = '';
@@ -450,6 +474,20 @@ async function loadAllOperators() {
 }
 
 document.getElementById('formAll').addEventListener('submit', e => { e.preventDefault(); loadAllOperators(); });
+
+function applyBulanFilter(bulanId, fromId, toId, reloadFn) {
+    const v = document.getElementById(bulanId).value;
+    if (!v) return;
+    const [y, m] = v.split('-').map(Number);
+    const lastDay = new Date(y, m, 0).getDate();
+    const today = new Date().toISOString().slice(0, 10);
+    const to = `${v}-${String(lastDay).padStart(2, '0')}`;
+    document.getElementById(fromId).value = `${v}-01`;
+    document.getElementById(toId).value   = to > today ? today : to;
+    reloadFn();
+}
+document.getElementById('all_bulan_filter').addEventListener('change', () =>
+    applyBulanFilter('all_bulan_filter', 'all_date_from', 'all_date_to', loadAllOperators));
 
 /* ═══════════════════════════════════════════════════════════
    MODE 2 — PER OPERATOR (DRILL-DOWN)
@@ -559,8 +597,8 @@ function buildOneRows(table) {
                 <td style="padding:6px 10px">${s.mesin}</td>
                 <td style="padding:6px 10px;font-size:11.5px;color:#374151">${s.nama_mesin}</td>
                 <td style="padding:6px 10px;font-size:11px;color:#6b7280">${s.customer}</td>
-                <td style="padding:6px 10px;font-size:11.5px">${s.part_no}</td>
-                <td style="padding:6px 10px;font-size:11.5px">${s.part_name}</td>
+                <td style="padding:6px 10px;font-size:11.5px;white-space:nowrap">${s.part_no}</td>
+                <td style="padding:6px 10px;font-size:11.5px;white-space:nowrap">${s.part_name}</td>
                 <td style="padding:6px 10px;text-align:center;font-weight:600">${s.id_proses}</td>
                 <td style="padding:6px 10px;font-size:11.5px">${s.nama_proses}</td>
                 <td style="padding:6px 10px;text-align:right;color:#6b7280">${s.waktu_kerja}j</td>
@@ -609,7 +647,7 @@ async function loadOneOperator() {
     document.getElementById('oneExportBtn').href = `/export/produksi?${params}&format=excel`;
 
     try {
-        const res  = await fetch(`/vcb/produksi/operator-data?${params}`);
+        const res  = await fetch(`{{ route('vcb.produksi.operator-data') }}?${params}`);
         const data = await res.json();
         if (data.error) { alert(data.error); return; }
 
@@ -627,6 +665,8 @@ async function loadOneOperator() {
 }
 
 document.getElementById('formOne').addEventListener('submit', e => { e.preventDefault(); loadOneOperator(); });
+document.getElementById('one_bulan_filter').addEventListener('change', () =>
+    applyBulanFilter('one_bulan_filter', 'one_date_from', 'one_date_to', loadOneOperator));
 
 /* ── Init ──────────────────────────────────────────────── */
 loadAllOperators();

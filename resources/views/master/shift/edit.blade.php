@@ -1,5 +1,6 @@
 @extends('layouts.app')
 @section('title', 'Edit Shift')
+@section('suppress_layout_flash', 'yes')
 @section('content')
 <div class="page-header">
     <h1 class="page-title"><i class="bi bi-calendar-week"></i>Edit Shift — {{ $shift->nama_shift }}</h1>

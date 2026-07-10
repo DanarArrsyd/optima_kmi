@@ -1,5 +1,6 @@
 @extends('layouts.app')
 @section('title', 'Master Shift')
+@section('suppress_layout_flash', 'yes')
 @section('content')
 
 {{-- ══ ALPINE SCOPE ══ --}}
@@ -27,7 +28,8 @@
      x-transition:leave="transition ease-in duration-200"
      x-transition:leave-start="transform translate-x-0"
      x-transition:leave-end="transform translate-x-full"
-     style="position:fixed;top:0;right:0;height:100vh;width:700px;max-width:100vw;background:#fff;z-index:1050;display:flex;flex-direction:column;box-shadow:-4px 0 24px rgba(0,0,0,.18)">
+     style="position:fixed;top:0;right:0;height:100dvh;width:700px;max-width:100vw;z-index:1050;">
+    <div style="display:flex;flex-direction:column;height:100%;background:#fff;box-shadow:-4px 0 24px rgba(0,0,0,.18)">
 
     {{-- Header --}}
     <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:#111827;color:#fff;flex-shrink:0">
@@ -41,7 +43,7 @@
     </div>
 
     {{-- Body (scrollable) --}}
-    <div style="flex:1;overflow-y:auto;padding:20px">
+    <div style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:24px;overscroll-behavior:contain">
 
         @if($errors->any())
         <div class="alert alert-danger mb-3" style="font-size:0.82rem">
@@ -241,6 +243,7 @@
             </div>
         </form>
     </div>{{-- /drawer body --}}
+    </div>{{-- /inner flex container --}}
 </div>{{-- /drawer panel --}}
 
 {{-- ══ KONTEN HALAMAN ══════════════════════════════════════════ --}}
@@ -299,9 +302,9 @@
 
 <div class="erp-panel">
     <div class="erp-panel-header">Daftar Shift</div>
-    <div style="overflow-x:auto">
+    <div style="overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 320px);min-height:200px">
         <table class="erp-table" style="min-width:820px">
-            <thead>
+            <thead style="position:sticky;top:0;z-index:10">
                 <tr>
                     <th style="width:140px">Nama Shift</th>
                     <th style="min-width:200px">

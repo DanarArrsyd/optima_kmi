@@ -11,12 +11,9 @@ class StoreMasterKaryawanRequest extends FormRequest
     {
         $id = $this->route('karyawan')?->id;
         return [
-            'nik'           => [
-                'required', 'string', 'max:50',
-                Rule::unique('master_karyawan', 'nik')->ignore($id)->whereNull('deleted_at'),
-            ],
+            'nik'           => 'required|string|max:50',
             'nama_karyawan' => 'required|string|max:100',
-            'departemen'    => 'required|in:Produksi,QC',
+            'departemen'    => 'required|in:Produksi,QC,Maintenance',
         ];
     }
 }

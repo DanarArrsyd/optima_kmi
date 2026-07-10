@@ -17,6 +17,10 @@
                 <input type="date" id="date_to" name="date_to" class="form-control form-control-sm" value="{{ date('Y-m-d') }}">
             </div>
             <div class="col-md-2">
+                <label class="form-label small mb-1">Bulan</label>
+                <input type="month" id="bulan_filter" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-2">
                 <label class="form-label small mb-1">Shift</label>
                 <select id="shift_id" name="shift_id" class="form-select form-select-sm">
                     <option value="">Semua Shift</option>
@@ -70,7 +74,7 @@ async function loadData() {
     });
     document.getElementById('exportExcel').href = `/export/produksi?${params}&group=mesin&format=excel`;
 
-    const res  = await fetch(`/vcb/mesin/data?${params}`);
+    const res  = await fetch(`{{ route('vcb.mesin.data') }}?${params}`);
     const data = await res.json();
 
     if (vcbChart) vcbChart.destroy();
@@ -99,6 +103,16 @@ async function loadData() {
 }
 
 document.getElementById('filterForm').addEventListener('submit', e => { e.preventDefault(); loadData(); });
+document.getElementById('bulan_filter').addEventListener('change', function () {
+    if (!this.value) return;
+    const [y, m] = this.value.split('-').map(Number);
+    const lastDay = new Date(y, m, 0).getDate();
+    const today = new Date().toISOString().slice(0, 10);
+    const to = `${this.value}-${String(lastDay).padStart(2, '0')}`;
+    document.getElementById('date_from').value = `${this.value}-01`;
+    document.getElementById('date_to').value   = to > today ? today : to;
+    loadData();
+});
 loadData();
 </script>
 @endpush

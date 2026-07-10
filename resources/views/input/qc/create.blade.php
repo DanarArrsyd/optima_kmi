@@ -379,6 +379,11 @@ function qcPartSelector() {
     return {
         ...taField(taParts),
         proses: null,
+        get filtered() {
+            if (!this.query.trim()) return this.items.slice(0, 60);
+            const q = this.query.toLowerCase();
+            return this.items.filter(i => i.t.toLowerCase().includes(q)).slice(0, 60);
+        },
         pick(item) {
             this.query  = item.t;
             this.val    = item.v;

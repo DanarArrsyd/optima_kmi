@@ -34,6 +34,10 @@
                 <input type="date" id="all_date_to" class="form-control form-control-sm" value="{{ date('Y-m-d') }}">
             </div>
             <div class="filter-group">
+                <label>Bulan</label>
+                <input type="month" id="all_bulan_filter" class="form-control form-control-sm">
+            </div>
+            <div class="filter-group">
                 <label>Shift</label>
                 <select id="all_shift_id" class="form-select form-select-sm" style="min-width:120px">
                     <option value="">Semua Shift</option>
@@ -121,6 +125,10 @@
             <div class="filter-group">
                 <label>Sampai Tanggal</label>
                 <input type="date" id="one_date_to" class="form-control form-control-sm" value="{{ date('Y-m-d') }}">
+            </div>
+            <div class="filter-group">
+                <label>Bulan</label>
+                <input type="month" id="one_bulan_filter" class="form-control form-control-sm">
             </div>
             <div class="filter-group">
                 <label>Inspector <span class="text-danger">*</span></label>
@@ -425,7 +433,7 @@ async function loadAllInspectors() {
         document.getElementById('all_date_from').value + ' — ' + document.getElementById('all_date_to').value;
 
     try {
-        const res  = await fetch(`/vcb/quality/data?${params}`);
+        const res  = await fetch(`{{ route('vcb.quality.data') }}?${params}`);
         const data = await res.json();
         const sorted = [...data.table].sort((a,b) => b.achievement_pct - a.achievement_pct);
 
@@ -442,6 +450,20 @@ async function loadAllInspectors() {
 }
 
 document.getElementById('formAll').addEventListener('submit', e => { e.preventDefault(); loadAllInspectors(); });
+
+function applyBulanFilter(bulanId, fromId, toId, reloadFn) {
+    const v = document.getElementById(bulanId).value;
+    if (!v) return;
+    const [y, m] = v.split('-').map(Number);
+    const lastDay = new Date(y, m, 0).getDate();
+    const today = new Date().toISOString().slice(0, 10);
+    const to = `${v}-${String(lastDay).padStart(2, '0')}`;
+    document.getElementById(fromId).value = `${v}-01`;
+    document.getElementById(toId).value   = to > today ? today : to;
+    reloadFn();
+}
+document.getElementById('all_bulan_filter').addEventListener('change', () =>
+    applyBulanFilter('all_bulan_filter', 'all_date_from', 'all_date_to', loadAllInspectors));
 
 /* ═══ MODE 2 ════════════════════════════════════════════ */
 function buildOneChart(labels, achievements, colors) {
@@ -588,7 +610,7 @@ async function loadOneInspector() {
     document.getElementById('oneExportBtn').href = `/export/qc?${params}&format=excel`;
 
     try {
-        const res  = await fetch(`/vcb/quality/operator-data?${params}`);
+        const res  = await fetch(`{{ route('vcb.quality.operator-data') }}?${params}`);
         const data = await res.json();
         if (data.error) { alert(data.error); return; }
 
@@ -605,6 +627,8 @@ async function loadOneInspector() {
 }
 
 document.getElementById('formOne').addEventListener('submit', e => { e.preventDefault(); loadOneInspector(); });
+document.getElementById('one_bulan_filter').addEventListener('change', () =>
+    applyBulanFilter('one_bulan_filter', 'one_date_from', 'one_date_to', loadOneInspector));
 
 /* ── Init ──────────────────────────────────────────────── */
 loadAllInspectors();

@@ -27,6 +27,7 @@ class MtbfController extends Controller
             'rows'    => $rows,
             'summary' => [
                 'avg_mtbf' => round((float) collect($rows)->whereNotNull('mtbf_jam')->avg('mtbf_jam'), 2),
+                'total_bd' => (int) collect($rows)->sum('count'),
             ],
         ]);
     }

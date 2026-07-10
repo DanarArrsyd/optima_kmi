@@ -11,16 +11,20 @@ use App\Models\TransaksiDandoriRincian;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
+use Maatwebsite\Excel\Concerns\WithStartRow;
 
-class DandoriImport implements ToCollection, WithHeadingRow
+class DandoriImport implements ToCollection, WithHeadingRow, WithStartRow
 {
     public int   $importedCount = 0;
     public array $errors        = [];
 
+    /** Mulai baca data dari row 3 — skip row 2 (petunjuk) */
+    public function startRow(): int { return 3; }
+
     public function collection(Collection $rows): void
     {
         foreach ($rows as $i => $row) {
-            $rowNum = $i + 2; // row 2 = first data row (row 1 = header)
+            $rowNum = $i + 3; // row 3 = first data row
 
             /* Skip completely empty rows */
             $tanggalRaw = trim((string) ($row['tanggal'] ?? ''));
@@ -82,18 +86,19 @@ class DandoriImport implements ToCollection, WithHeadingRow
 
                 $isProgressive = strtoupper(trim($partProses->nama_proses)) === 'PROGRESSIVE';
 
-                /* ── Loss Time ─────────────────────────── */
+                /* ── Loss Time — cari by kode dulu, fallback by nama jenis ── */
                 $kodeLt   = trim((string) ($row['kode_loss_time'] ?? ''));
-                $losstime = MasterLosstime::whereRaw('LOWER(TRIM(kode)) = ?', [strtolower($kodeLt)])->first();
+                $losstime = MasterLosstime::whereRaw('LOWER(TRIM(kode)) = ?', [strtolower($kodeLt)])->first()
+                         ?? MasterLosstime::whereRaw('LOWER(TRIM(jenis_losstime)) = ?', [strtolower($kodeLt)])->first();
                 if (!$losstime) {
-                    $this->errors[] = "Baris {$rowNum}: Kode loss time \"{$kodeLt}\" tidak ditemukan di master Loss Time.";
+                    $this->errors[] = "Baris {$rowNum}: Kode loss time \"{$kodeLt}\" tidak ditemukan di master Loss Time (coba pakai kode singkat, contoh: SD).";
                     continue;
                 }
 
                 /* ── Actual Menit ──────────────────────── */
                 $actualMenit = (float) ($row['actual_menit'] ?? 0);
-                if ($actualMenit <= 0) {
-                    $this->errors[] = "Baris {$rowNum}: Actual Menit harus lebih dari 0.";
+                if ($actualMenit < 0) {
+                    $this->errors[] = "Baris {$rowNum}: Actual Menit tidak boleh negatif.";
                     continue;
                 }
 
@@ -104,19 +109,23 @@ class DandoriImport implements ToCollection, WithHeadingRow
 
                 $overMenit = max(0, $actualMenit - $stdMenit);
 
-                /* ── Simpan ────────────────────────────── */
-                TransaksiDandoriRincian::create([
+                /* ── Simpan (upsert by natural key — aman re-import) ── */
+                $record = TransaksiDandoriRincian::withTrashed()->firstOrNew([
                     'tanggal'        => $tanggal,
                     'id_shift'       => $shift->id,
                     'id_karyawan'    => $karyawan->id,
                     'id_mesin'       => $mesin->id,
                     'id_part_proses' => $partProses->id,
                     'id_losstime'    => $losstime->id,
-                    'actual_menit'   => $actualMenit,
-                    'std_menit'      => $stdMenit,
-                    'over_menit'     => $overMenit,
-                    'created_by'     => auth()->id(),
                 ]);
+                $record->actual_menit = $actualMenit;
+                $record->std_menit    = $stdMenit;
+                $record->over_menit   = $overMenit;
+                $record->deleted_at   = null;
+                if (!$record->exists) {
+                    $record->created_by = auth()->id();
+                }
+                $record->save();
 
                 $this->importedCount++;
 

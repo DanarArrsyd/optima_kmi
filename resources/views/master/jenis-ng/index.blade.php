@@ -1,5 +1,6 @@
 @extends('layouts.app')
 @section('title', 'Master Jenis NG')
+@section('suppress_layout_flash', 'yes')
 @section('content')
 
 <div class="page-header">

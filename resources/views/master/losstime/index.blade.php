@@ -1,5 +1,6 @@
 @extends('layouts.app')
 @section('title', 'Master Loss Time')
+@section('suppress_layout_flash', 'yes')
 @section('content')
 
 <div x-data="{ drawerOpen: {{ $errors->any() ? 'true' : 'false' }} }">
@@ -26,7 +27,8 @@
      x-transition:leave="transition ease-in duration-200"
      x-transition:leave-start="transform translate-x-0"
      x-transition:leave-end="transform translate-x-full"
-     style="position:fixed;top:0;right:0;height:100vh;width:440px;max-width:100vw;background:#fff;z-index:1050;display:flex;flex-direction:column;box-shadow:-4px 0 24px rgba(0,0,0,.18)">
+     style="position:fixed;top:0;right:0;height:100dvh;width:440px;max-width:100vw;z-index:1050;">
+    <div style="display:flex;flex-direction:column;height:100%;background:#fff;box-shadow:-4px 0 24px rgba(0,0,0,.18)">
 
     {{-- Header --}}
     <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:#111827;color:#fff;flex-shrink:0">
@@ -40,7 +42,7 @@
     </div>
 
     {{-- Body (scrollable) --}}
-    <div style="flex:1;overflow-y:auto;padding:20px">
+    <div style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:24px;overscroll-behavior:contain">
 
         @if($errors->any())
         <div class="alert alert-danger mb-3" style="font-size:0.82rem">
@@ -101,6 +103,7 @@
             </div>
         </form>
     </div>{{-- /drawer body --}}
+    </div>{{-- /inner flex container --}}
 </div>{{-- /drawer panel --}}
 
 {{-- ══ KONTEN HALAMAN ══════════════════════════════════════════ --}}
@@ -163,25 +166,38 @@
 
 <div class="erp-panel">
     <div class="erp-panel-header">Daftar Loss Time</div>
-    <table class="erp-table">
-        <thead>
+    <div style="overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 300px);min-height:200px">
+    <table class="erp-table" style="min-width:620px;width:100%">
+        <thead style="position:sticky;top:0;z-index:10">
             <tr>
-                <th>Kode</th>
+                <th style="width:100px;white-space:nowrap">Kode</th>
                 <th>Jenis Loss Time</th>
-                <th>Std Menit Default</th>
-                <th>Std Menit Progressive</th>
-                <th style="width:130px">Aksi</th>
+                <th style="width:160px;white-space:nowrap;text-align:center">Std Menit Default</th>
+                <th style="width:180px;white-space:nowrap;text-align:center">Std Menit Progressive</th>
+                <th style="width:140px;white-space:nowrap">Aksi</th>
             </tr>
         </thead>
         <tbody>
         @forelse($losstimes as $lt)
             <tr>
-                <td>{{ $lt->kode }}</td>
+                <td style="white-space:nowrap;font-family:monospace;font-weight:600">{{ $lt->kode }}</td>
                 <td>{{ $lt->jenis_losstime }}</td>
-                <td>{{ $lt->std_menit_default ?? '—' }}</td>
-                <td>{{ $lt->std_menit_progressive ?? '—' }}</td>
-                <td>
-                    <div class="action-btns">
+                <td style="white-space:nowrap;text-align:center">
+                    @if($lt->std_menit_default)
+                        <span style="font-variant-numeric:tabular-nums">{{ $lt->std_menit_default }} mnt</span>
+                    @else
+                        <span style="color:#9ca3af">Full loss</span>
+                    @endif
+                </td>
+                <td style="white-space:nowrap;text-align:center">
+                    @if($lt->std_menit_progressive)
+                        <span style="font-variant-numeric:tabular-nums">{{ $lt->std_menit_progressive }} mnt</span>
+                    @else
+                        <span style="color:#9ca3af">—</span>
+                    @endif
+                </td>
+                <td style="white-space:nowrap">
+                    <div class="action-btns" style="flex-wrap:nowrap">
                         <a href="{{ route('master.losstime.edit', $lt) }}" class="btn btn-warning btn-sm">Edit</a>
                         <form method="POST" action="{{ route('master.losstime.destroy', $lt) }}"
                               onsubmit="return confirm('Hapus loss time ini?')">
@@ -196,6 +212,7 @@
         @endforelse
         </tbody>
     </table>
+    </div>{{-- /overflow wrapper --}}
 </div>
 <div class="mt-3">{{ $losstimes->links() }}</div>
 

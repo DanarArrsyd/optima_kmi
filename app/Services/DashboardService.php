@@ -21,34 +21,44 @@ class DashboardService
             $totalQtyAktual     = $rows->sum('qty_aktual');
             $totalDurationHours = $rows->sum(fn($r) => $this->durationHours($r->jam_start, $r->jam_finish));
             $totalTargetQty     = $rows->sum(fn($r) =>
-                $this->durationHours($r->jam_start, $r->jam_finish) * $r->partProses->sph_standar_produksi
+                $this->durationHours($r->jam_start, $r->jam_finish) * ($r->partProses?->sph_standar_produksi ?? 0)
             );
 
-            $achievementPct = $totalTargetQty > 0
-                ? round(($totalQtyAktual / $totalTargetQty) * 100, 2)
+            // Opsi A: rata-rata per sesi (bobot sama) — SPH ACT vs SPH STD per sesi
+            $sessionsWithStd = $rows->filter(fn($r) => ($r->partProses?->sph_standar_produksi ?? 0) > 0);
+            $sessionCount    = $sessionsWithStd->count();
+
+            $avgSphStd      = $sessionCount > 0
+                ? round($sessionsWithStd->avg(fn($r) => $r->partProses->sph_standar_produksi), 0)
                 : 0;
-            $avgActualSph = $totalDurationHours > 0
-                ? round($totalQtyAktual / $totalDurationHours, 2)
+            $avgActualSph   = $sessionCount > 0
+                ? round($sessionsWithStd->avg(fn($r) => $r->sph_aktual), 0)
+                : 0;
+            $achievementPct = $sessionCount > 0
+                ? round($sessionsWithStd->avg(fn($r) =>
+                    $r->sph_aktual / $r->partProses->sph_standar_produksi * 100
+                  ), 2)
                 : 0;
 
             return [
                 'id_karyawan'          => $rows->first()->id_karyawan,
-                'karyawan'             => $rows->first()->karyawan->nama_karyawan,
+                'karyawan'             => $rows->first()->karyawan?->nama_karyawan ?? '—',
                 'total_qty_aktual'     => $totalQtyAktual,
                 'total_target_qty'     => round($totalTargetQty, 2),
                 'total_duration_hours' => round($totalDurationHours, 2),
                 'achievement_pct'      => $achievementPct,
                 'avg_actual_sph'       => $avgActualSph,
+                'avg_sph_std'          => $avgSphStd,
                 'traffic_light'        => $this->getTrafficLight($achievementPct),
                 'detail'               => $rows->map(fn($r) => [
                     'tanggal'    => $r->tanggal_produksi instanceof \Carbon\Carbon
                         ? $r->tanggal_produksi->format('d/m/Y')
                         : \Carbon\Carbon::parse($r->tanggal_produksi)->format('d/m/Y'),
-                    'mesin'      => $r->mesin->nama_mesin,
-                    'part'       => $r->partProses->part->part_name ?? '-',
-                    'proses'     => $r->partProses->nama_proses,
+                    'mesin'      => $r->mesin?->nama_mesin ?? '—',
+                    'part'       => $r->partProses?->part?->part_name ?? '-',
+                    'proses'     => $r->partProses?->nama_proses ?? '—',
                     'qty_aktual' => $r->qty_aktual,
-                    'target_qty' => round($this->durationHours($r->jam_start, $r->jam_finish) * $r->partProses->sph_standar_produksi, 0),
+                    'target_qty' => round($this->durationHours($r->jam_start, $r->jam_finish) * ($r->partProses?->sph_standar_produksi ?? 0), 0),
                     'actual_ct'  => $r->actual_cycle_time,
                 ])->values()->toArray(),
             ];
@@ -76,14 +86,20 @@ class DashboardService
                 $this->durationHours($r->jam_start, $r->jam_finish) * ($r->partProses?->sph_standar_produksi ?? 0)
             );
 
-            $achievementPct = $totalTargetQty > 0
-                ? round($totalQtyAktual / $totalTargetQty * 100, 1)
+            // Opsi A: rata-rata per sesi (bobot sama)
+            $sessionsWithStd = $dayRows->filter(fn($r) => ($r->partProses?->sph_standar_produksi ?? 0) > 0);
+            $sessionCount    = $sessionsWithStd->count();
+
+            $avgSphStd = $sessionCount > 0
+                ? (int) round($sessionsWithStd->avg(fn($r) => $r->partProses->sph_standar_produksi))
                 : 0;
-            $avgSphStd = $totalDurationHours > 0
-                ? (int) round($totalTargetQty / $totalDurationHours)
+            $avgSphAct = $sessionCount > 0
+                ? (int) round($sessionsWithStd->avg(fn($r) => $r->sph_aktual))
                 : 0;
-            $avgSphAct = $totalDurationHours > 0
-                ? (int) round($totalQtyAktual / $totalDurationHours)
+            $achievementPct = $sessionCount > 0
+                ? round($sessionsWithStd->avg(fn($r) =>
+                    $r->sph_aktual / $r->partProses->sph_standar_produksi * 100
+                  ), 1)
                 : 0;
 
             return [
@@ -126,7 +142,7 @@ class DashboardService
             $totalQtyAktual     = $rows->sum('qty_aktual');
             $totalDurationHours = $rows->sum(fn($r) => $this->durationHours($r->jam_start, $r->jam_finish));
             $totalTargetQty     = $rows->sum(fn($r) =>
-                $this->durationHours($r->jam_start, $r->jam_finish) * $r->partProses->sph_standar_produksi
+                $this->durationHours($r->jam_start, $r->jam_finish) * ($r->partProses?->sph_standar_produksi ?? 0)
             );
 
             $achievementPct = $totalTargetQty > 0
@@ -138,10 +154,10 @@ class DashboardService
 
             $mesin = $rows->first()->mesin;
             return [
-                'mesin'                => $mesin->nama_mesin,
-                'id_mesin'             => $mesin->id_mesin,
-                'line'                 => $mesin->line,
-                'tipe_mesin'           => $mesin->tipe_mesin,
+                'mesin'                => $mesin?->nama_mesin ?? '—',
+                'id_mesin'             => $mesin?->id_mesin ?? '—',
+                'line'                 => $mesin?->line ?? '—',
+                'tipe_mesin'           => $mesin?->tipe_mesin ?? '—',
                 'total_qty_aktual'     => $totalQtyAktual,
                 'total_target_qty'     => round($totalTargetQty, 2),
                 'total_duration_hours' => round($totalDurationHours, 2),
@@ -353,8 +369,8 @@ class DashboardService
      */
     public function getTrafficLight(float $achievementPct): string
     {
+        if ($achievementPct > 100)  return 'info';
         if ($achievementPct >= 100) return 'success';
-        if ($achievementPct >= 85)  return 'warning';
         return 'danger';
     }
 

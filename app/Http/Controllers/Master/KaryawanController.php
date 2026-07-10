@@ -11,10 +11,38 @@ use Illuminate\Http\Request;
 
 class KaryawanController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $karyawan = MasterKaryawan::orderBy('nama_karyawan')->paginate(20);
-        return view('master.karyawan.index', compact('karyawan'));
+        $filter = $request->input('filter', 'semua');
+
+        $q = MasterKaryawan::orderBy('nama_karyawan');
+
+        if ($filter === 'aktif') {
+            $q->where('is_aktif', true);
+        } elseif ($filter === 'nonaktif') {
+            $q->where('is_aktif', false);
+        }
+
+        try {
+            $karyawan = $q->paginate(20)->withQueryString();
+        } catch (\Illuminate\Database\QueryException) {
+            // Kolom is_aktif belum ada — fallback tanpa filter
+            $filter   = 'semua';
+            $karyawan = MasterKaryawan::orderBy('nama_karyawan')->paginate(20)->withQueryString();
+        }
+
+        return view('master.karyawan.index', compact('karyawan', 'filter'));
+    }
+
+    public function toggleAktif(MasterKaryawan $karyawan)
+    {
+        try {
+            $karyawan->update(['is_aktif' => !$karyawan->is_aktif]);
+            $status = $karyawan->is_aktif ? 'diaktifkan kembali' : 'dinonaktifkan';
+            return redirect()->back()->with('success', "Karyawan {$karyawan->nama_karyawan} berhasil {$status}.");
+        } catch (\Illuminate\Database\QueryException) {
+            return redirect()->back()->with('error', 'Fitur ini memerlukan update database. Jalankan SQL ALTER TABLE di phpMyAdmin terlebih dahulu.');
+        }
     }
 
     public function create()
