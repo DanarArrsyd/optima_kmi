@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'log = tail laravel.log, schema = cek kolom/tabel breakdown'
+        description: 'log = tail laravel.log, schema = cek kolom/tabel, migstatus = migrate:status'
         required: false
         default: 'log'
 
@@ -50,3 +50,10 @@ jobs:
                 echo \"  jumlah baris: \" . Illuminate\\Support\\Facades\\DB::table(\"transaksi_breakdown_mesin\")->count() . PHP_EOL;
               }
             "'
+
+      - name: Migrate status (breakdown & tanggal_instalasi)
+        if: ${{ github.event.inputs.mode == 'migstatus' }}
+        run: |
+          ssh -p "${{ secrets.SSH_PORT }}" -i ~/.ssh/deploy_key \
+            "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" \
+            "cd ${{ env.REMOTE_PATH }} && ${{ env.REMOTE_PHP }} artisan migrate:status | grep -E 'tanggal_instalasi|breakdown'"
