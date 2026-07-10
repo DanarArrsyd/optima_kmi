@@ -64,3 +64,19 @@ jobs:
           ssh -p "${{ secrets.SSH_PORT }}" -i ~/.ssh/deploy_key \
             "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" \
             "cd ${{ env.REMOTE_PATH }} && ${{ env.REMOTE_PHP }} artisan tinker --execute=\"echo 'max batch: ' . Illuminate\\\\Support\\\\Facades\\\\DB::table('migrations')->max('batch') . PHP_EOL;\""
+
+      - name: Insert migration bookkeeping (batch 11 — breakdown/tanggal_instalasi)
+        if: ${{ github.event.inputs.mode == 'markran' }}
+        run: |
+          ssh -p "${{ secrets.SSH_PORT }}" -i ~/.ssh/deploy_key \
+            "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" \
+            "cd ${{ env.REMOTE_PATH }} && ${{ env.REMOTE_PHP }} artisan tinker --execute=\"
+              Illuminate\\\\Support\\\\Facades\\\\DB::table('migrations')->insert([
+                ['migration' => '2026_06_26_100000_add_tanggal_instalasi_to_master_mesin', 'batch' => 11],
+                ['migration' => '2026_06_26_100100_create_transaksi_breakdown_mesin_table', 'batch' => 11],
+                ['migration' => '2026_06_26_110000_add_tanggal_instalasi_to_master_part', 'batch' => 11],
+                ['migration' => '2026_06_26_110100_create_transaksi_breakdown_dies_table', 'batch' => 11],
+                ['migration' => '2026_07_02_104959_add_id_part_proses_to_transaksi_breakdown_dies_table', 'batch' => 11],
+              ]);
+              echo 'inserted' . PHP_EOL;
+            \""
