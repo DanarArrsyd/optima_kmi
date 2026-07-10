@@ -12,8 +12,16 @@ class TransaksiProduksi extends Model
         'tanggal_produksi', 'id_shift', 'id_karyawan', 'id_mesin', 'id_part_proses',
         'jam_start', 'jam_finish', 'qty_aktual', 'qty_ng', 'id_jenis_ng',
         'actual_cycle_time', 'created_by', 'updated_by',
+        'anomaly_reviewed_at', 'anomaly_reviewed_by',
+        'staff_note', 'staff_note_at', 'staff_note_by',
+        'staff_note_resolved_at', 'staff_note_resolved_by',
     ];
-    protected $casts = ['tanggal_produksi' => 'date:Y-m-d'];
+    protected $casts = [
+        'tanggal_produksi'        => 'date:Y-m-d',
+        'anomaly_reviewed_at'     => 'datetime',
+        'staff_note_at'           => 'datetime',
+        'staff_note_resolved_at'  => 'datetime',
+    ];
     public function shift(): BelongsTo { return $this->belongsTo(MasterShift::class, 'id_shift'); }
     public function karyawan(): BelongsTo { return $this->belongsTo(MasterKaryawan::class, 'id_karyawan'); }
     public function mesin(): BelongsTo { return $this->belongsTo(MasterMesin::class, 'id_mesin'); }
@@ -21,6 +29,7 @@ class TransaksiProduksi extends Model
     public function jenisNg(): BelongsTo { return $this->belongsTo(MasterJenisNg::class, 'id_jenis_ng'); }
     public function createdBy(): BelongsTo { return $this->belongsTo(User::class, 'created_by'); }
     public function updatedBy(): BelongsTo { return $this->belongsTo(User::class, 'updated_by'); }
+    public function noteResolvedBy(): BelongsTo { return $this->belongsTo(User::class, 'staff_note_resolved_by'); }
 
     /** Waktu kerja dalam desimal jam — handle overnight shift */
     public function getWaktuKerjaJamAttribute(): float

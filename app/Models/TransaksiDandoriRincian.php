@@ -22,9 +22,13 @@ class TransaksiDandoriRincian extends Model
         'std_menit',
         'over_menit',
         'created_by',
+        'staff_note', 'staff_note_at', 'staff_note_by',
+        'staff_note_resolved_at', 'staff_note_resolved_by',
     ];
 
     protected $casts = [
+        'staff_note_at'          => 'datetime',
+        'staff_note_resolved_at' => 'datetime',
         'tanggal'      => 'date',
         'actual_menit' => 'decimal:2',
         'std_menit'    => 'decimal:2',
@@ -59,5 +63,10 @@ class TransaksiDandoriRincian extends Model
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function noteResolvedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'staff_note_resolved_by');
     }
 }
