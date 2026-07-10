@@ -57,3 +57,10 @@ jobs:
           ssh -p "${{ secrets.SSH_PORT }}" -i ~/.ssh/deploy_key \
             "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" \
             "cd ${{ env.REMOTE_PATH }} && ${{ env.REMOTE_PHP }} artisan migrate:status | grep -E 'tanggal_instalasi|breakdown'"
+
+      - name: Max batch number
+        if: ${{ github.event.inputs.mode == 'maxbatch' }}
+        run: |
+          ssh -p "${{ secrets.SSH_PORT }}" -i ~/.ssh/deploy_key \
+            "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" \
+            "cd ${{ env.REMOTE_PATH }} && ${{ env.REMOTE_PHP }} artisan tinker --execute=\"echo 'max batch: ' . Illuminate\\\\Support\\\\Facades\\\\DB::table('migrations')->max('batch') . PHP_EOL;\""
