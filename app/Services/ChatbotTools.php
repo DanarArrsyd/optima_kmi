@@ -11,6 +11,7 @@ use App\Models\TransaksiProduksi;
 use App\Models\TransaksiQc;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class ChatbotTools
 {
@@ -19,6 +20,25 @@ class ChatbotTools
 
     /** Tanggal lantai untuk analisa "semua periode" (all-time) saat filter bulan kosong. */
     private const ALL_TIME_FROM = '2000-01-01';
+
+    /** Tabel bisnis yang boleh ditelusuri describeSchema/queryDatabase (whitelist). */
+    private const BUSINESS_TABLES = [
+        'master_karyawan'            => 'Data karyawan/operator/inspector (nik, nama_karyawan, departemen, is_aktif).',
+        'master_mesin'               => 'Master mesin press (id_mesin, nama_mesin, line, tipe_mesin, kapasitas_max_stroke).',
+        'master_part'                => 'Master part/dies (part_no, part_name, customer, tanggal_instalasi).',
+        'master_part_proses'         => 'Proses per part + standar SPH (nama_proses, sph_standar_produksi, sph_standar_qc).',
+        'master_part_proses_sph_log' => 'Riwayat perubahan standar SPH per proses.',
+        'master_shift'               => 'Master shift (nama_shift, jam_start, jam_finish).',
+        'master_shift_istirahat'     => 'Jadwal istirahat per shift.',
+        'master_jenis_ng'            => 'Master jenis defect/NG.',
+        'master_losstime'            => 'Master jenis losstime dandori + standar menit.',
+        'transaksi_produksi'         => 'LHP produksi (tanggal_produksi, id_karyawan, id_mesin, id_part_proses, id_shift, qty_aktual, qty_ng).',
+        'transaksi_qc'               => 'LHP quality (tgl_pengecekan, id_karyawan_qc, id_part_proses, qty_ok, qty_ng).',
+        'transaksi_dandori'          => 'Header dandori (ganti setup/part).',
+        'transaksi_dandori_rincian'  => 'Rincian dandori per losstime (tanggal, id_mesin, id_losstime, actual_menit, std_menit, over_menit).',
+        'transaksi_breakdown_mesin'  => 'Breakdown mesin (tanggal_breakdown, id_mesin, problem_mesin, penyebab_breakdown, tindakan_perbaikan, repair_time, total_downtime).',
+        'transaksi_breakdown_dies'   => 'Breakdown dies (tanggal_breakdown, id_part_proses, problem_dies, penyebab_breakdown, tindakan_perbaikan, repair_time, total_downtime).',
+    ];
 
     public function __construct(
         private MaintenanceDiesDashboardService $diesDashboard = new MaintenanceDiesDashboardService(),
@@ -471,6 +491,34 @@ class ChatbotTools
         ];
     }
 
+    /** Introspeksi struktur DB untuk LLM: daftar tabel atau kolom real satu tabel. */
+    public function describeSchema(?string $table = null): array
+    {
+        if ($table === null || trim($table) === '') {
+            return [
+                'tables' => collect(self::BUSINESS_TABLES)
+                    ->map(fn ($desc, $name) => ['table' => $name, 'deskripsi' => $desc])
+                    ->values()->toArray(),
+            ];
+        }
+
+        $table = trim($table);
+        if (!array_key_exists($table, self::BUSINESS_TABLES)) {
+            return ['error' => "Tabel \"{$table}\" tidak tersedia untuk ditelusuri."];
+        }
+
+        $columns = array_map(
+            fn ($col) => ['nama' => $col, 'tipe' => Schema::getColumnType($table, $col)],
+            Schema::getColumnListing($table)
+        );
+
+        return [
+            'table'     => $table,
+            'deskripsi' => self::BUSINESS_TABLES[$table],
+            'columns'   => $columns,
+        ];
+    }
+
     private function produksiSummary(string $periode): array
     {
         [$from, $to] = $this->monthRange($periode);
@@ -622,6 +670,7 @@ class ChatbotTools
             ...$this->breakdownAggregateSchemas(),
             ...$this->breakdownDetailSchemas(),
             ...$this->dandoriSchemas(),
+            ...$this->dataExplorerSchemas(),
         ];
     }
 
@@ -821,6 +870,23 @@ class ChatbotTools
                         'bulanMulai' => ['type' => 'string', 'description' => 'Opsional, bulan mulai format YYYY-MM. Kosongkan untuk semua periode.'],
                         'bulanAkhir' => ['type' => 'string', 'description' => 'Opsional, bulan akhir (inklusif) format YYYY-MM. Kosongkan untuk semua periode.'],
                         'idMesin' => ['type' => 'string', 'description' => 'Opsional, kode mesin spesifik. Kosongkan untuk semua mesin.'],
+                    ],
+                    'required' => [],
+                ],
+            ],
+        ];
+    }
+
+    private function dataExplorerSchemas(): array
+    {
+        return [
+            [
+                'name' => 'describeSchema',
+                'description' => 'Lihat struktur database OPTIMA. Tanpa argumen: daftar semua tabel bisnis + deskripsi. Dengan argumen table: daftar kolom real + tipe untuk tabel itu. WAJIB dipanggil sebelum queryDatabase agar tahu nama kolom yang benar.',
+                'parameters' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'table' => ['type' => 'string', 'description' => 'Opsional. Nama tabel untuk lihat kolomnya. Kosongkan untuk daftar semua tabel.'],
                     ],
                     'required' => [],
                 ],

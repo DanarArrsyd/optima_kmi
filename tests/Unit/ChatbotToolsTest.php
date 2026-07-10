@@ -1146,11 +1146,11 @@ class ChatbotToolsTest extends TestCase
     {
         $names = collect((new ChatbotTools())->schemaDefinitions())->pluck('name');
 
-        $this->assertCount(14, $names);
-        $this->assertCount(14, $names->unique(), 'Schema split must not introduce a duplicate tool name across the grouped methods.');
+        $this->assertCount(15, $names);
+        $this->assertCount(15, $names->unique(), 'Schema split must not introduce a duplicate tool name across the grouped methods.');
         $this->assertTrue($names->contains('getMtbfMttrDies'));
         $this->assertTrue($names->contains('getRekapDandori'));
-        $this->assertTrue($names->contains('getTopProblemMesin'));
+        $this->assertTrue($names->contains('describeSchema'));
     }
 
     /**
@@ -1228,5 +1228,34 @@ class ChatbotToolsTest extends TestCase
                 );
             }
         }
+    }
+
+    public function test_describe_schema_without_table_lists_business_tables(): void
+    {
+        $result = (new ChatbotTools())->describeSchema();
+
+        $this->assertArrayHasKey('tables', $result);
+        $names = array_column($result['tables'], 'table');
+        $this->assertContains('master_karyawan', $names);
+        $this->assertContains('transaksi_produksi', $names);
+        $this->assertNotContains('users', $names);
+        $this->assertNotContains('chat_messages', $names);
+    }
+
+    public function test_describe_schema_with_table_returns_real_columns(): void
+    {
+        $result = (new ChatbotTools())->describeSchema('master_mesin');
+
+        $this->assertArrayNotHasKey('error', $result);
+        $this->assertSame('master_mesin', $result['table']);
+        $cols = array_column($result['columns'], 'nama');
+        $this->assertContains('id_mesin', $cols);
+        $this->assertContains('nama_mesin', $cols);
+    }
+
+    public function test_describe_schema_rejects_non_whitelisted_table(): void
+    {
+        $result = (new ChatbotTools())->describeSchema('users');
+        $this->assertArrayHasKey('error', $result);
     }
 }
