@@ -15,6 +15,7 @@ use App\Models\TransaksiQc;
 use App\Models\User;
 use App\Services\ChatbotTools;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class ChatbotToolsTest extends TestCase
@@ -1146,11 +1147,12 @@ class ChatbotToolsTest extends TestCase
     {
         $names = collect((new ChatbotTools())->schemaDefinitions())->pluck('name');
 
-        $this->assertCount(14, $names);
-        $this->assertCount(14, $names->unique(), 'Schema split must not introduce a duplicate tool name across the grouped methods.');
+        $this->assertCount(16, $names);
+        $this->assertCount(16, $names->unique(), 'Schema split must not introduce a duplicate tool name across the grouped methods.');
         $this->assertTrue($names->contains('getMtbfMttrDies'));
         $this->assertTrue($names->contains('getRekapDandori'));
-        $this->assertTrue($names->contains('getTopProblemMesin'));
+        $this->assertTrue($names->contains('describeSchema'));
+        $this->assertTrue($names->contains('queryDatabase'));
     }
 
     /**
@@ -1227,6 +1229,180 @@ class ChatbotToolsTest extends TestCase
                     "Parameter wajib \"{$req}\" pada method \"{$name}\" tidak ditandai required di schema."
                 );
             }
+        }
+    }
+
+    public function test_describe_schema_without_table_lists_business_tables(): void
+    {
+        $result = (new ChatbotTools())->describeSchema();
+
+        $this->assertArrayHasKey('tables', $result);
+        $names = array_column($result['tables'], 'table');
+        $this->assertContains('master_karyawan', $names);
+        $this->assertContains('transaksi_produksi', $names);
+        $this->assertNotContains('users', $names);
+        $this->assertNotContains('chat_messages', $names);
+    }
+
+    public function test_describe_schema_with_table_returns_real_columns(): void
+    {
+        $result = (new ChatbotTools())->describeSchema('master_mesin');
+
+        $this->assertArrayNotHasKey('error', $result);
+        $this->assertSame('master_mesin', $result['table']);
+        $cols = array_column($result['columns'], 'nama');
+        $this->assertContains('id_mesin', $cols);
+        $this->assertContains('nama_mesin', $cols);
+    }
+
+    public function test_describe_schema_rejects_non_whitelisted_table(): void
+    {
+        $result = (new ChatbotTools())->describeSchema('users');
+        $this->assertArrayHasKey('error', $result);
+    }
+
+    public function test_describe_schema_returns_error_when_introspection_fails(): void
+    {
+        Schema::shouldReceive('getColumnListing')->andThrow(new \RuntimeException('boom'));
+
+        $result = (new ChatbotTools())->describeSchema('master_mesin');
+
+        $this->assertArrayHasKey('error', $result);
+    }
+
+    public function test_query_database_runs_valid_select(): void
+    {
+        MasterMesin::create([
+            'id_mesin' => 'Q-01', 'nama_mesin' => 'Press Q', 'line' => '1',
+            'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100,
+        ]);
+
+        $result = (new ChatbotTools())->queryDatabase('SELECT id_mesin, nama_mesin FROM master_mesin');
+
+        $this->assertArrayNotHasKey('error', $result);
+        $this->assertSame(1, $result['row_count']);
+        $this->assertSame('Q-01', $result['rows'][0]['id_mesin']);
+        $this->assertFalse($result['truncated']);
+    }
+
+    public function test_query_database_rejects_non_select(): void
+    {
+        $result = (new ChatbotTools())->queryDatabase('UPDATE master_mesin SET nama_mesin = "x"');
+        $this->assertArrayHasKey('error', $result);
+    }
+
+    public function test_query_database_rejects_write_keyword_in_select(): void
+    {
+        $result = (new ChatbotTools())->queryDatabase('SELECT * FROM master_mesin; DROP TABLE master_mesin');
+        $this->assertArrayHasKey('error', $result);
+    }
+
+    public function test_query_database_rejects_system_table(): void
+    {
+        $result = (new ChatbotTools())->queryDatabase('SELECT * FROM users');
+        $this->assertArrayHasKey('error', $result);
+    }
+
+    public function test_query_database_rejects_unknown_table(): void
+    {
+        $result = (new ChatbotTools())->queryDatabase('SELECT * FROM nonexistent_table');
+        $this->assertArrayHasKey('error', $result);
+    }
+
+    public function test_query_database_rejects_query_without_table(): void
+    {
+        $result = (new ChatbotTools())->queryDatabase('SELECT 1');
+        $this->assertArrayHasKey('error', $result);
+    }
+
+    public function test_query_database_caps_rows_and_flags_truncated(): void
+    {
+        for ($i = 1; $i <= 205; $i++) {
+            MasterMesin::create([
+                'id_mesin' => "QC-{$i}", 'nama_mesin' => "Press {$i}", 'line' => '1',
+                'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100,
+            ]);
+        }
+
+        $result = (new ChatbotTools())->queryDatabase('SELECT id_mesin FROM master_mesin');
+
+        $this->assertSame(200, $result['row_count']);
+        $this->assertTrue($result['truncated']);
+    }
+
+    public function test_query_database_clamps_explicit_limit_over_cap(): void
+    {
+        for ($i = 1; $i <= 205; $i++) {
+            MasterMesin::create([
+                'id_mesin' => "QL-{$i}", 'nama_mesin' => "Press {$i}", 'line' => '1',
+                'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100,
+            ]);
+        }
+
+        $result = (new ChatbotTools())->queryDatabase('SELECT id_mesin FROM master_mesin LIMIT 500');
+
+        $this->assertLessThanOrEqual(200, $result['row_count']);
+    }
+
+    public function test_query_database_blocks_comma_joined_system_table(): void
+    {
+        $result = (new ChatbotTools())->queryDatabase('SELECT * FROM master_mesin, users');
+        $this->assertArrayHasKey('error', $result);
+    }
+
+    public function test_query_database_blocks_comment_separated_system_table(): void
+    {
+        $result = (new ChatbotTools())->queryDatabase('SELECT * FROM master_mesin UNION SELECT * FROM/**/users');
+        $this->assertArrayHasKey('error', $result);
+    }
+
+    public function test_query_database_blocks_subquery_system_table(): void
+    {
+        $result = (new ChatbotTools())->queryDatabase('SELECT (SELECT id FROM users LIMIT 1) AS x FROM master_mesin');
+        $this->assertArrayHasKey('error', $result);
+    }
+
+    public function test_query_database_blocks_information_schema(): void
+    {
+        $result = (new ChatbotTools())->queryDatabase('SELECT * FROM information_schema.tables');
+        $this->assertArrayHasKey('error', $result);
+    }
+
+    public function test_query_database_clamps_offset_count_limit(): void
+    {
+        for ($i = 1; $i <= 205; $i++) {
+            MasterMesin::create([
+                'id_mesin' => "OC-{$i}", 'nama_mesin' => "Press {$i}", 'line' => '1',
+                'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100,
+            ]);
+        }
+        $result = (new ChatbotTools())->queryDatabase('SELECT id_mesin FROM master_mesin LIMIT 0, 1000');
+        $this->assertLessThanOrEqual(200, $result['row_count']);
+    }
+
+    public function test_query_database_caps_rows_even_with_subquery_only_limit(): void
+    {
+        for ($i = 1; $i <= 205; $i++) {
+            MasterMesin::create([
+                'id_mesin' => "SL-{$i}", 'nama_mesin' => "Press {$i}", 'line' => '1',
+                'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100,
+            ]);
+        }
+        $result = (new ChatbotTools())->queryDatabase('SELECT id_mesin FROM master_mesin WHERE id_mesin IN (SELECT id_mesin FROM master_mesin LIMIT 300)');
+        $this->assertLessThanOrEqual(200, $result['row_count']);
+    }
+
+    public function test_query_database_blocks_metadata_and_file_functions(): void
+    {
+        foreach ([
+            'SELECT LOAD_FILE("/etc/passwd") AS x FROM master_mesin',
+            'SELECT USER() AS u FROM master_mesin',
+            'SELECT DATABASE() AS d FROM master_mesin',
+            'SELECT VERSION() AS v FROM master_mesin',
+            'SELECT @@version AS v FROM master_mesin',
+        ] as $sql) {
+            $result = (new ChatbotTools())->queryDatabase($sql);
+            $this->assertArrayHasKey('error', $result, "Should block: {$sql}");
         }
     }
 }

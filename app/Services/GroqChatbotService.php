@@ -2,7 +2,6 @@
 namespace App\Services;
 
 use App\Contracts\ChatbotProviderInterface;
-use App\Models\ChatConversation;
 use App\Services\Concerns\HasChatbotSystemPrompt;
 use App\Services\Concerns\HasRetryingHttpCall;
 use Illuminate\Support\Facades\Http;
@@ -16,10 +15,10 @@ class GroqChatbotService implements ChatbotProviderInterface
 
     public function __construct(private ChatbotTools $tools) {}
 
-    public function ask(ChatConversation $conversation, string $userMessage): ?string
+    public function ask(array $history, string $userMessage): ?string
     {
         $messages = [['role' => 'system', 'content' => self::SYSTEM_PROMPT]];
-        $messages = array_merge($messages, $this->buildHistory($conversation));
+        $messages = array_merge($messages, $this->buildHistory($history));
         $messages[] = ['role' => 'user', 'content' => $userMessage];
 
         for ($i = 0; $i < self::MAX_ITERATIONS; $i++) {
@@ -70,12 +69,12 @@ class GroqChatbotService implements ChatbotProviderInterface
         return null;
     }
 
-    private function buildHistory(ChatConversation $conversation): array
+    private function buildHistory(array $history): array
     {
-        return $conversation->messages->map(fn ($m) => [
-            'role'    => $m->role === 'assistant' ? 'assistant' : 'user',
-            'content' => $m->content,
-        ])->values()->toArray();
+        return array_map(fn ($m) => [
+            'role'    => ($m['role'] ?? 'user') === 'assistant' ? 'assistant' : 'user',
+            'content' => $m['content'] ?? '',
+        ], $history);
     }
 
     private function callGroq(array $messages): ?array

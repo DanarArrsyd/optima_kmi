@@ -11,6 +11,7 @@ use App\Models\TransaksiProduksi;
 use App\Models\TransaksiQc;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class ChatbotTools
 {
@@ -19,6 +20,28 @@ class ChatbotTools
 
     /** Tanggal lantai untuk analisa "semua periode" (all-time) saat filter bulan kosong. */
     private const ALL_TIME_FROM = '2000-01-01';
+
+    /** Tabel bisnis yang boleh ditelusuri describeSchema/queryDatabase (whitelist). */
+    private const BUSINESS_TABLES = [
+        'master_karyawan'            => 'Data karyawan/operator/inspector (nik, nama_karyawan, departemen, is_aktif).',
+        'master_mesin'               => 'Master mesin press (id_mesin, nama_mesin, line, tipe_mesin, kapasitas_max_stroke).',
+        'master_part'                => 'Master part/dies (part_no, part_name, customer, tanggal_instalasi).',
+        'master_part_proses'         => 'Proses per part + standar SPH (nama_proses, sph_standar_produksi, sph_standar_qc).',
+        'master_part_proses_sph_log' => 'Riwayat perubahan standar SPH per proses.',
+        'master_shift'               => 'Master shift (nama_shift, jam_start, jam_finish).',
+        'master_shift_istirahat'     => 'Jadwal istirahat per shift.',
+        'master_jenis_ng'            => 'Master jenis defect/NG.',
+        'master_losstime'            => 'Master jenis losstime dandori + standar menit.',
+        'transaksi_produksi'         => 'LHP produksi (tanggal_produksi, id_karyawan, id_mesin, id_part_proses, id_shift, qty_aktual, qty_ng).',
+        'transaksi_qc'               => 'LHP quality (tgl_pengecekan, id_karyawan_qc, id_part_proses, qty_ok, qty_ng).',
+        'transaksi_dandori'          => 'Header dandori (ganti setup/part).',
+        'transaksi_dandori_rincian'  => 'Rincian dandori per losstime (tanggal, id_mesin, id_losstime, actual_menit, std_menit, over_menit).',
+        'transaksi_breakdown_mesin'  => 'Breakdown mesin (tanggal_breakdown, id_mesin, problem_mesin, penyebab_breakdown, tindakan_perbaikan, repair_time, total_downtime).',
+        'transaksi_breakdown_dies'   => 'Breakdown dies (tanggal_breakdown, id_part_proses, problem_dies, penyebab_breakdown, tindakan_perbaikan, repair_time, total_downtime).',
+    ];
+
+    /** Batas baris hasil queryDatabase sebelum ditandai truncated. */
+    private const QUERY_ROW_CAP = 200;
 
     public function __construct(
         private MaintenanceDiesDashboardService $diesDashboard = new MaintenanceDiesDashboardService(),
@@ -471,6 +494,131 @@ class ChatbotTools
         ];
     }
 
+    /** Introspeksi struktur DB untuk LLM: daftar tabel atau kolom real satu tabel. */
+    public function describeSchema(?string $table = null): array
+    {
+        $table = trim($table ?? '');
+
+        if ($table === '') {
+            return [
+                'tables' => collect(self::BUSINESS_TABLES)
+                    ->map(fn ($desc, $name) => ['table' => $name, 'deskripsi' => $desc])
+                    ->values()->toArray(),
+            ];
+        }
+
+        if (!array_key_exists($table, self::BUSINESS_TABLES)) {
+            return ['error' => "Tabel \"{$table}\" tidak tersedia untuk ditelusuri."];
+        }
+
+        try {
+            $columns = array_map(
+                fn ($col) => ['nama' => $col, 'tipe' => Schema::getColumnType($table, $col)],
+                Schema::getColumnListing($table)
+            );
+        } catch (\Throwable $e) {
+            return ['error' => "Struktur tabel \"{$table}\" tidak bisa dibaca saat ini."];
+        }
+
+        return [
+            'table'     => $table,
+            'deskripsi' => self::BUSINESS_TABLES[$table],
+            'columns'   => $columns,
+        ];
+    }
+
+    /** Guarded read-only SELECT untuk pertanyaan lintas-tabel di luar tool analitik. */
+    public function queryDatabase(string $sql): array
+    {
+        // 0. Buang komentar DULU supaya tak bisa dipakai memisah token atau menyembunyikan tabel.
+        $stripped = preg_replace('/\/\*.*?\*\//s', ' ', trim($sql));
+        $stripped = preg_replace('/--[^\n]*/', ' ', $stripped);
+        $stripped = trim(preg_replace('/#[^\n]*/', ' ', $stripped));
+
+        // 1. Harus SELECT/WITH.
+        if (!preg_match('/^(select|with)\b/i', $stripped)) {
+            return ['error' => 'Hanya query baca (SELECT) yang diizinkan.'];
+        }
+
+        // 2. Tolak multi-statement (titik-koma selain trailing tunggal).
+        if (str_contains(rtrim($stripped, "; \n\t"), ';')) {
+            return ['error' => 'Hanya satu perintah query yang diizinkan.'];
+        }
+
+        // 3. Tolak keyword tulis/DDL sebagai kata utuh.
+        if (preg_match('/\b(insert|update|delete|replace|drop|alter|truncate|create|grant|revoke|attach|pragma|into|lock|call|exec|merge)\b/i', $stripped)) {
+            return ['error' => 'Query mengandung operasi yang tidak diizinkan.'];
+        }
+
+        // 3b. Tolak fungsi baca-file / bocor-metadata dan akses system-variable — allowlist
+        //     tabel bukan sandbox penuh. Bentuk fungsi `fn(` + `@@` untuk system var.
+        if (preg_match('/\b(load_file|user|current_user|system_user|session_user|database|schema|version)\s*\(|@@/i', $stripped)) {
+            return ['error' => 'Query mengandung fungsi yang tidak diizinkan.'];
+        }
+
+        // 4. Blacklist keras: nama tabel sistem / skema metadata tak boleh muncul sama sekali,
+        //    apa pun cara referensinya (identifier bersifat atomik — tak bisa dipecah komentar).
+        if (preg_match('/\b(users|sessions|jobs|job_batches|failed_jobs|password_reset_tokens|cache|cache_locks|activity_log|app_notifications|chat_conversations|chat_messages|migrations|information_schema|performance_schema|mysql|sys|sqlite_master|sqlite_sequence|sqlite_schema)\b/i', $stripped)) {
+            return ['error' => 'Query menyentuh tabel yang tidak tersedia untuk ditelusuri.'];
+        }
+
+        // 5. Whitelist positif: tiap tabel setelah FROM/JOIN (termasuk daftar dipisah koma) wajib bisnis.
+        preg_match_all('/\b(?:from|join)\s+([a-zA-Z_][a-zA-Z0-9_]*(?:\s*,\s*[a-zA-Z_][a-zA-Z0-9_]*)*)/i', $stripped, $mm);
+        $referenced = [];
+        foreach ($mm[1] as $clause) {
+            foreach (preg_split('/\s*,\s*/', $clause) as $tbl) {
+                $referenced[] = strtolower(trim($tbl));
+            }
+        }
+        if (empty($referenced)) {
+            return ['error' => 'Query harus menyebut tabel bisnis yang valid.'];
+        }
+        foreach ($referenced as $tbl) {
+            if (!array_key_exists($tbl, self::BUSINESS_TABLES)) {
+                return ['error' => "Tabel \"{$tbl}\" tidak tersedia untuk ditelusuri."];
+            }
+        }
+
+        // 6. Clamp SEMUA angka LIMIT ke cap (bentuk `n` dan `offset, count`), lalu pastikan
+        //    ada LIMIT top-level (append kalau query tak diakhiri LIMIT — mis. LIMIT cuma di subquery).
+        $capped = preg_replace_callback(
+            '/\blimit\s+(\d+)\s*,\s*(\d+)/i',
+            fn ($x) => 'LIMIT ' . $x[1] . ', ' . min((int) $x[2], self::QUERY_ROW_CAP),
+            $stripped
+        );
+        $capped = preg_replace_callback(
+            '/\blimit\s+(\d+)(?!\s*,)/i',
+            fn ($x) => 'LIMIT ' . min((int) $x[1], self::QUERY_ROW_CAP),
+            $capped
+        );
+        if (!preg_match('/\blimit\s+\d+(\s*,\s*\d+)?\s*;?\s*$/i', $capped)) {
+            $capped = rtrim($capped, "; \n\t") . ' LIMIT ' . self::QUERY_ROW_CAP;
+        }
+
+        // 7. Eksekusi read-only + SELALU rollback (safety net). Cap keras hasil di PHP sebagai
+        //    jaminan terakhir (≤ cap) walau ada LIMIT yang lolos di level DB.
+        try {
+            DB::beginTransaction();
+            $rows = DB::select($capped);
+        } catch (\Throwable $e) {
+            return ['error' => 'Query gagal dijalankan.'];
+        } finally {
+            try { DB::rollBack(); } catch (\Throwable) {}
+        }
+
+        $rows = array_map(fn ($r) => (array) $r, $rows);
+        $overCap = count($rows) > self::QUERY_ROW_CAP;
+        if ($overCap) {
+            $rows = array_slice($rows, 0, self::QUERY_ROW_CAP);
+        }
+
+        return [
+            'row_count' => count($rows),
+            'truncated' => $overCap || count($rows) >= self::QUERY_ROW_CAP,
+            'rows'      => $rows,
+        ];
+    }
+
     private function produksiSummary(string $periode): array
     {
         [$from, $to] = $this->monthRange($periode);
@@ -622,6 +770,7 @@ class ChatbotTools
             ...$this->breakdownAggregateSchemas(),
             ...$this->breakdownDetailSchemas(),
             ...$this->dandoriSchemas(),
+            ...$this->dataExplorerSchemas(),
         ];
     }
 
@@ -823,6 +972,34 @@ class ChatbotTools
                         'idMesin' => ['type' => 'string', 'description' => 'Opsional, kode mesin spesifik. Kosongkan untuk semua mesin.'],
                     ],
                     'required' => [],
+                ],
+            ],
+        ];
+    }
+
+    private function dataExplorerSchemas(): array
+    {
+        return [
+            [
+                'name' => 'describeSchema',
+                'description' => 'Lihat struktur database OPTIMA. Tanpa argumen: daftar semua tabel bisnis + deskripsi. Dengan argumen table: daftar kolom real + tipe untuk tabel itu. WAJIB dipanggil sebelum queryDatabase agar tahu nama kolom yang benar.',
+                'parameters' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'table' => ['type' => 'string', 'description' => 'Opsional. Nama tabel untuk lihat kolomnya. Kosongkan untuk daftar semua tabel.'],
+                    ],
+                    'required' => [],
+                ],
+            ],
+            [
+                'name' => 'queryDatabase',
+                'description' => 'Jalankan SQL SELECT read-only ke database OPTIMA untuk pertanyaan yang tidak tercakup tool analitik lain (mis. list master data, performa per-operator/inspector, per-shift, rekap jenis NG, gabungan lintas-tabel). Hanya SELECT, hanya tabel bisnis. Panggil describeSchema dulu untuk tahu nama kolom yang benar. Hasil dibatasi 200 baris.',
+                'parameters' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'sql' => ['type' => 'string', 'description' => 'Satu perintah SQL SELECT valid untuk MySQL. Contoh: SELECT nama_karyawan, departemen FROM master_karyawan WHERE is_aktif = 1'],
+                    ],
+                    'required' => ['sql'],
                 ],
             ],
         ];
