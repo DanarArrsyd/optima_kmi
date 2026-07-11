@@ -1391,4 +1391,18 @@ class ChatbotToolsTest extends TestCase
         $result = (new ChatbotTools())->queryDatabase('SELECT id_mesin FROM master_mesin WHERE id_mesin IN (SELECT id_mesin FROM master_mesin LIMIT 300)');
         $this->assertLessThanOrEqual(200, $result['row_count']);
     }
+
+    public function test_query_database_blocks_metadata_and_file_functions(): void
+    {
+        foreach ([
+            'SELECT LOAD_FILE("/etc/passwd") AS x FROM master_mesin',
+            'SELECT USER() AS u FROM master_mesin',
+            'SELECT DATABASE() AS d FROM master_mesin',
+            'SELECT VERSION() AS v FROM master_mesin',
+            'SELECT @@version AS v FROM master_mesin',
+        ] as $sql) {
+            $result = (new ChatbotTools())->queryDatabase($sql);
+            $this->assertArrayHasKey('error', $result, "Should block: {$sql}");
+        }
+    }
 }

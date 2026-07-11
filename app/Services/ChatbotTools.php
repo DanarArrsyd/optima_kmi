@@ -550,6 +550,12 @@ class ChatbotTools
             return ['error' => 'Query mengandung operasi yang tidak diizinkan.'];
         }
 
+        // 3b. Tolak fungsi baca-file / bocor-metadata dan akses system-variable — allowlist
+        //     tabel bukan sandbox penuh. Bentuk fungsi `fn(` + `@@` untuk system var.
+        if (preg_match('/\b(load_file|user|current_user|system_user|session_user|database|schema|version)\s*\(|@@/i', $stripped)) {
+            return ['error' => 'Query mengandung fungsi yang tidak diizinkan.'];
+        }
+
         // 4. Blacklist keras: nama tabel sistem / skema metadata tak boleh muncul sama sekali,
         //    apa pun cara referensinya (identifier bersifat atomik — tak bisa dipecah komentar).
         if (preg_match('/\b(users|sessions|jobs|job_batches|failed_jobs|password_reset_tokens|cache|cache_locks|activity_log|app_notifications|chat_conversations|chat_messages|migrations|information_schema|performance_schema|mysql|sys|sqlite_master|sqlite_sequence|sqlite_schema)\b/i', $stripped)) {
