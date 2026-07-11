@@ -47,7 +47,7 @@ return [
 
     'cerebras' => [
         'key'   => env('CEREBRAS_API_KEY'),
-        'model' => env('CEREBRAS_MODEL', 'gpt-oss-120b'),
+        'model' => env('CEREBRAS_MODEL', 'zai-glm-4.7'),
     ],
 
 ];
