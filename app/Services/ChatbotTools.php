@@ -456,6 +456,7 @@ class ChatbotTools
             'bulan_mulai'    => $bulanMulai ?? 'semua periode',
             'bulan_akhir'    => $bulanAkhir ?? 'semua periode',
             'total_kejadian' => $records->count(),
+            'top_keyword'    => $this->keywordFrequency($records, 'problem_dies'),
             'top_problem'    => $groups->toArray(),
         ];
     }
@@ -493,6 +494,7 @@ class ChatbotTools
             'bulan_mulai'    => $bulanMulai ?? 'semua periode',
             'bulan_akhir'    => $bulanAkhir ?? 'semua periode',
             'total_kejadian' => $records->count(),
+            'top_keyword'    => $this->keywordFrequency($records, 'problem_mesin'),
             'top_problem'    => $groups->toArray(),
         ];
     }
@@ -729,6 +731,42 @@ class ChatbotTools
             ->sortByDesc('jumlah_kejadian')
             ->values()
             ->take(10);
+    }
+
+    /**
+     * Grouping DETERMINISTIK per kata kunci cacat, dihitung dari data (bukan tebakan LLM).
+     * Untuk tiap event, ambil kata (huruf ≥3, buang filler), lalu hitung berapa event
+     * yang problem-nya memuat kata itu. Contoh: semua varian "BURRY" → total event-nya.
+     */
+    private function keywordFrequency(\Illuminate\Support\Collection $records, string $problemField): array
+    {
+        $stop = [
+            'HASIL','PART','PROSES','MENGALAMI','PADA','YANG','DAN','ATAU','DARI','UNTUK',
+            'DENGAN','TIDAK','ADA','ADALAH','KARENA','SAAT','AKAN','DIES','DIE','PCS','MESIN',
+        ];
+        $total = $records->count();
+        $counts = [];
+        foreach ($records as $r) {
+            preg_match_all('/[A-Za-z]{3,}/', (string) $r->{$problemField}, $m);
+            $words = array_unique(array_map('strtoupper', $m[0]));
+            foreach ($words as $w) {
+                if (in_array($w, $stop, true)) {
+                    continue;
+                }
+                $counts[$w] = ($counts[$w] ?? 0) + 1;
+            }
+        }
+        arsort($counts);
+
+        $out = [];
+        foreach (array_slice($counts, 0, 10, true) as $kw => $c) {
+            $out[] = [
+                'keyword'         => $kw,
+                'jumlah_kejadian' => $c,
+                'pct_dari_total'  => $total > 0 ? round($c / $total * 100, 2) : 0,
+            ];
+        }
+        return $out;
     }
 
     /** Rentang compute untuk ranking: pakai filter bulan, atau all-time kalau kosong. */

@@ -651,6 +651,41 @@ class ChatbotToolsTest extends TestCase
         $this->assertArrayHasKey('error', $result);
     }
 
+    public function test_get_top_problem_dies_groups_by_keyword_deterministically(): void
+    {
+        $part = MasterPart::create(['part_no' => 'KW-01', 'part_name' => 'KW Part', 'customer' => 'Toyota']);
+        $proses = MasterPartProses::create([
+            'id_part' => $part->id, 'id_proses' => 1, 'nama_proses' => 'PROGRESSIVE',
+            'sph_standar_produksi' => 500, 'sph_standar_qc' => 250,
+        ]);
+        // 3 problem memuat "BURRY", 1 tidak.
+        foreach (['BLANK BURRY', 'HOLE BURRY', 'HASIL PART MENGALAMI BURRY HOLE', 'SCRAP CLOGGING'] as $i => $problem) {
+            TransaksiBreakdownDies::create([
+                'no_lkd' => "LKD-KW{$i}", 'id_part_proses' => $proses->id,
+                'tanggal_breakdown' => '2026-07-05', 'jam_breakdown' => '08:00',
+                'tanggal_mulai_perbaikan' => '2026-07-05', 'jam_mulai_perbaikan' => '09:00',
+                'tanggal_selesai_perbaikan' => '2026-07-05', 'jam_selesai_perbaikan' => '10:00',
+                'problem_dies' => $problem, 'penyebab_breakdown' => 'x', 'tindakan_perbaikan' => 'x',
+                'status_breakdown' => 'Selesai', 'pic_maintenance' => 'Budi',
+                'repair_time' => 1.0, 'total_downtime' => 1.0,
+            ]);
+        }
+
+        $result = (new ChatbotTools())->getTopProblemDies();
+
+        $this->assertArrayHasKey('top_keyword', $result);
+        $kw = collect($result['top_keyword'])->keyBy('keyword');
+        // BURRY muncul di 3 event → tepat 3, bukan hasil karangan.
+        $this->assertSame(3, $kw['BURRY']['jumlah_kejadian']);
+        // Filler tidak jadi keyword.
+        $this->assertFalse($kw->has('HASIL'));
+        $this->assertFalse($kw->has('PART'));
+        // Tidak ada keyword yang lebih besar dari total event (4).
+        foreach ($result['top_keyword'] as $row) {
+            $this->assertLessThanOrEqual(4, $row['jumlah_kejadian']);
+        }
+    }
+
     public function test_get_ranking_breakdown_dies_with_no_period_returns_all_time_data(): void
     {
         $part = MasterPart::create(['part_no' => 'RDN-01', 'part_name' => 'RankNoPeriod Part', 'customer' => 'Toyota']);
