@@ -20,6 +20,8 @@ abstract class TestCase extends BaseTestCase
             'services.gemini.model'   => 'test-model',
             'services.cerebras.key'   => 'test-key',
             'services.cerebras.model' => 'test-model',
+            'services.deepseek.key'   => 'test-key',
+            'services.deepseek.model' => 'test-model',
         ]);
     }
 }

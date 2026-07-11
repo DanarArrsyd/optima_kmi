@@ -86,14 +86,24 @@ jobs:
       - name: Sync runtime secrets ke .env server
         env:
           CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           SSH_PORT: ${{ secrets.SSH_PORT }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
         run: |
-          if [ -z "$CEREBRAS_API_KEY" ]; then
-            echo "CEREBRAS_API_KEY secret belum diisi — dilewati."
-            exit 0
+          upsert() {
+            # upsert KEY VALUE ke .env server (hapus baris lama, tambah baru).
+            ssh -p "$SSH_PORT" -i ~/.ssh/deploy_key "$SSH_USERNAME@$SSH_HOST" \
+              "cd '${{ env.REMOTE_PATH }}' && grep -v '^$1=' .env > .env.new 2>/dev/null; mv .env.new .env; printf '%s=%s\n' '$1' '$2' >> .env"
+            echo "$1 di-set di server."
+          }
+          changed=0
+          if [ -n "$CEREBRAS_API_KEY" ]; then upsert CEREBRAS_API_KEY "$CEREBRAS_API_KEY"; changed=1; fi
+          if [ -n "$DEEPSEEK_API_KEY" ]; then upsert DEEPSEEK_API_KEY "$DEEPSEEK_API_KEY"; changed=1; fi
+          if [ "$changed" = "1" ]; then
+            ssh -p "$SSH_PORT" -i ~/.ssh/deploy_key "$SSH_USERNAME@$SSH_HOST" \
+              "cd '${{ env.REMOTE_PATH }}' && ${{ env.REMOTE_PHP }} artisan config:clear; ${{ env.REMOTE_PHP }} artisan route:clear"
+            echo "config/route cache dibersihkan."
+          else
+            echo "Tidak ada runtime secret yang diisi — dilewati."
           fi
-          ssh -p "$SSH_PORT" -i ~/.ssh/deploy_key "$SSH_USERNAME@$SSH_HOST" \
-            "cd '${{ env.REMOTE_PATH }}' && grep -v '^CEREBRAS_API_KEY=' .env > .env.new 2>/dev/null; mv .env.new .env; printf 'CEREBRAS_API_KEY=%s\n' '$CEREBRAS_API_KEY' >> .env; ${{ env.REMOTE_PHP }} artisan config:clear; ${{ env.REMOTE_PHP }} artisan route:clear"
-          echo "CEREBRAS_API_KEY di-set di server + config cache dibersihkan."

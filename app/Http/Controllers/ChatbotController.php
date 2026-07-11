@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\View\View;
 use App\Services\ChatbotTools;
 use App\Services\CerebrasChatbotService;
+use App\Services\DeepseekChatbotService;
 use App\Services\GeminiChatbotService;
 use App\Services\GroqChatbotService;
 
@@ -16,6 +17,7 @@ class ChatbotController extends Controller
     private const FALLBACK = 'Maaf, sistem AI lagi ga bisa diakses, coba lagi nanti.';
 
     public function __construct(
+        private DeepseekChatbotService $deepseek,
         private CerebrasChatbotService $cerebras,
         private GeminiChatbotService $gemini,
         private GroqChatbotService $groq,
@@ -40,6 +42,8 @@ class ChatbotController extends Controller
         $qModel = config('services.groq.model');
         $cKey   = config('services.cerebras.key');
         $cModel = config('services.cerebras.model');
+        $dKey   = config('services.deepseek.key');
+        $dModel = config('services.deepseek.model');
         $schema = $tools->schemaDefinitions();
 
         $probe = function (callable $call): array {
@@ -54,8 +58,21 @@ class ChatbotController extends Controller
         $geminiUrl   = "https://generativelanguage.googleapis.com/v1beta/models/{$gModel}:generateContent?key={$gKey}";
         $groqUrl     = 'https://api.groq.com/openai/v1/chat/completions';
         $cerebrasUrl = 'https://api.cerebras.ai/v1/chat/completions';
+        $deepseekUrl = 'https://api.deepseek.com/chat/completions';
 
         return response()->json([
+            'deepseek' => [
+                'key_set'    => (bool) $dKey,
+                'model'      => $dModel,
+                'no_tools'   => $probe(fn () => Http::timeout(20)->withToken($dKey)->post($deepseekUrl, [
+                    'model' => $dModel, 'messages' => [['role' => 'user', 'content' => 'balas: ok']],
+                ])),
+                'with_tools' => $probe(fn () => Http::timeout(20)->withToken($dKey)->post($deepseekUrl, [
+                    'model'    => $dModel,
+                    'messages' => [['role' => 'user', 'content' => 'balas: ok']],
+                    'tools'    => array_map(fn ($t) => ['type' => 'function', 'function' => $t], $schema),
+                ])),
+            ],
             'cerebras' => [
                 'key_set'    => (bool) $cKey,
                 'model'      => $cModel,
@@ -115,10 +132,10 @@ class ChatbotController extends Controller
 
         $history = $data['history'] ?? [];
 
-        // Urutan fallback: Cerebras (free tier lebih lega) → Groq → Gemini.
-        // Provider tanpa key otomatis di-skip (ask() balikin null), jadi aman
-        // walau CEREBRAS_API_KEY belum diisi.
-        $reply = $this->cerebras->ask($history, $data['message'])
+        // Urutan fallback: DeepSeek (paid, andal) → Cerebras → Groq → Gemini.
+        // Provider tanpa key otomatis di-skip (ask() balikin null).
+        $reply = $this->deepseek->ask($history, $data['message'])
+            ?? $this->cerebras->ask($history, $data['message'])
             ?? $this->groq->ask($history, $data['message'])
             ?? $this->gemini->ask($history, $data['message'])
             ?? self::FALLBACK;

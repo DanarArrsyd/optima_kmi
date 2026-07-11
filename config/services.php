@@ -50,4 +50,9 @@ return [
         'model' => env('CEREBRAS_MODEL', 'zai-glm-4.7'),
     ],
 
+    'deepseek' => [
+        'key'   => env('DEEPSEEK_API_KEY'),
+        'model' => env('DEEPSEEK_MODEL', 'deepseek-chat'),
+    ],
+
 ];
