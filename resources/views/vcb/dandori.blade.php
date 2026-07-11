@@ -380,14 +380,41 @@
 @endsection
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <script>
 let chartMain = null, chartWeek = null, chartMonth = null;
+
+/* Plugin inline: gambar nilai di atas tiap bar. Sebelumnya pakai plugin CDN
+   (chartjs-plugin-datalabels) yang rawan keblok CSP/gagal load di produksi,
+   jadi labelnya tak pernah muncul. Versi inline ini nol dependency. */
+const barValueLabels = {
+    id: 'barValueLabels',
+    afterDatasetsDraw(chart) {
+        const ctx = chart.ctx;
+        chart.data.datasets.forEach((ds, di) => {
+            const meta = chart.getDatasetMeta(di);
+            if (meta.hidden) return;
+            meta.data.forEach((bar, i) => {
+                const v = Number(ds.data[i]);
+                if (!v || v <= 0) return;
+                ctx.save();
+                ctx.font = '700 10px Arial, sans-serif';
+                ctx.fillStyle = '#1a3a4a';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+                ctx.fillText(
+                    v.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+                    bar.x, bar.y - 3
+                );
+                ctx.restore();
+            });
+        });
+    },
+};
 
 function buildBar(ctx, labels, values) {
     return new Chart(ctx, {
         type: 'bar',
-        plugins: [ChartDataLabels],   /* per-chart — won't affect other pages */
+        plugins: [barValueLabels],   /* per-chart — won't affect other pages */
         data: {
             labels,
             datasets: [{
@@ -410,18 +437,6 @@ function buildBar(ctx, labels, values) {
                         label: c => ' ' + c.parsed.y
                                         .toLocaleString('id-ID', { minimumFractionDigits: 1 }) + ' mnt',
                     },
-                },
-                datalabels: {
-                    anchor: 'end',
-                    align: 'end',
-                    offset: 2,
-                    font: { size: 10, weight: '700' },
-                    color: '#1a3a4a',
-                    /* sembunyikan label jika nilai 0 */
-                    formatter: v => v > 0
-                        ? v.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-                        : '',
-                    clip: false,
                 },
             },
             scales: {
