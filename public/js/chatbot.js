@@ -116,20 +116,12 @@ function chatbotPage() {
             }
         },
 
-        // Efek ketik client-side: reveal per kata, render markdown di akhir.
-        async pushTyped(fullText) {
-            const msg = { role: 'assistant', content: fullText, display: '', typing: true };
-            this.messages.push(msg);
-            const words = fullText.split(/(\s+)/);
-            for (let i = 0; i < words.length; i++) {
-                msg.display += words[i];
-                if (i % 2 === 0) {
-                    this.$nextTick(() => this.scrollDown());
-                    await new Promise(r => setTimeout(r, 18));
-                }
-            }
-            msg.display = fullText;
-            msg.typing = false;
+        // Tampilkan balasan lengkap sekaligus. (Dulu ada efek ketik yang memutасi
+        // objek mentah setelah push — Alpine tidak melacak mutasi lewat ref mentah,
+        // sehingga hanya kata pertama yang ter-render = balasan tampak "kepotong".)
+        pushTyped(fullText) {
+            this.messages.push({ role: 'assistant', content: fullText, display: fullText, typing: false });
+            this.$nextTick(() => this.scrollDown());
         },
 
         async copyMessage(m) {
