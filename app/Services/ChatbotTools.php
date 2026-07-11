@@ -418,6 +418,7 @@ class ChatbotTools
         return [
             'bulan_mulai'      => $bulanMulai ?? 'semua periode',
             'bulan_akhir'      => $bulanAkhir ?? 'semua periode',
+            'jumlah_lhp'       => $rows->count(),
             'total_qty_aktual' => (int) $rows->sum('qty_aktual'),
             'avg_sph_aktual'   => (int) round($rows->avg(fn ($r) => $r->sph_aktual)),
         ];
