@@ -41,7 +41,10 @@ class ChatbotTools
     ];
 
     /** Batas baris hasil queryDatabase sebelum ditandai truncated. */
-    private const QUERY_ROW_CAP = 200;
+    /** Baris queryDatabase yang dikirim balik ke LLM. Kecil sengaja — 200 baris mentah
+     *  membengkakkan token per request sampai kena rate limit provider. LLM cukup butuh
+     *  sampel untuk merangkum; kalau kepotong, flag 'truncated' memberi tahu ada sisanya. */
+    private const QUERY_ROW_CAP = 50;
 
     public function __construct(
         private MaintenanceDiesDashboardService $diesDashboard = new MaintenanceDiesDashboardService(),
