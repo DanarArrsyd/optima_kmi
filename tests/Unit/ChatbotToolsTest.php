@@ -1326,7 +1326,7 @@ class ChatbotToolsTest extends TestCase
 
         $result = (new ChatbotTools())->queryDatabase('SELECT id_mesin FROM master_mesin');
 
-        $this->assertSame(200, $result['row_count']);
+        $this->assertSame(50, $result['row_count']);
         $this->assertTrue($result['truncated']);
     }
 

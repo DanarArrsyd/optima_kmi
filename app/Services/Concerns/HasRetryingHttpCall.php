@@ -16,7 +16,9 @@ trait HasRetryingHttpCall
                     return $response->json();
                 }
 
-                if ($attempt === 1 && in_array($response->status(), [429, 500, 502, 503], true)) {
+                // Retry hanya untuk error transien server. JANGAN retry 429 (rate limit) —
+                // mengulang malah menambah request dan mempercepat kena limit lagi.
+                if ($attempt === 1 && in_array($response->status(), [500, 502, 503], true)) {
                     usleep(900_000);
                     continue;
                 }

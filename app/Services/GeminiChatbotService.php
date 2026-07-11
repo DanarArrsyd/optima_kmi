@@ -11,7 +11,7 @@ class GeminiChatbotService implements ChatbotProviderInterface
 {
     use HasChatbotSystemPrompt, HasRetryingHttpCall;
 
-    private const MAX_ITERATIONS = 5;
+    private const MAX_ITERATIONS = 3;
 
     public function __construct(private ChatbotTools $tools) {}
 

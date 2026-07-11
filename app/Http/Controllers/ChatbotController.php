@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Http;
 use Illuminate\View\View;
+use App\Services\ChatbotTools;
 use App\Services\GeminiChatbotService;
 use App\Services\GroqChatbotService;
 
@@ -20,6 +22,59 @@ class ChatbotController extends Controller
     public function index(): View
     {
         return view('chatbot.index');
+    }
+
+    /**
+     * DIAGNOSTIK SEMENTARA — hapus setelah AI provider produksi terpecahkan.
+     * Probe kedua provider (dengan & tanpa tools) untuk mengisolasi penyebab
+     * fallback "Maaf,": key hilang, model stale, tools ditolak, atau egress blok.
+     * Tidak membocorkan API key (hanya boolean key_set + model + status/body error).
+     */
+    public function health(ChatbotTools $tools): JsonResponse
+    {
+        $gKey   = config('services.gemini.key');
+        $gModel = config('services.gemini.model');
+        $qKey   = config('services.groq.key');
+        $qModel = config('services.groq.model');
+        $schema = $tools->schemaDefinitions();
+
+        $probe = function (callable $call): array {
+            try {
+                $r = $call();
+                return ['status' => $r->status(), 'ok' => $r->successful(), 'body' => $r->successful() ? '(ok)' : Str::limit($r->body(), 600)];
+            } catch (\Throwable $e) {
+                return ['status' => 'EXCEPTION', 'ok' => false, 'body' => $e->getMessage()];
+            }
+        };
+
+        $geminiUrl = "https://generativelanguage.googleapis.com/v1beta/models/{$gModel}:generateContent?key={$gKey}";
+        $groqUrl   = 'https://api.groq.com/openai/v1/chat/completions';
+
+        return response()->json([
+            'gemini' => [
+                'key_set'    => (bool) $gKey,
+                'model'      => $gModel,
+                'no_tools'   => $probe(fn () => Http::timeout(20)->post($geminiUrl, [
+                    'contents' => [['role' => 'user', 'parts' => [['text' => 'balas: ok']]]],
+                ])),
+                'with_tools' => $probe(fn () => Http::timeout(20)->post($geminiUrl, [
+                    'contents' => [['role' => 'user', 'parts' => [['text' => 'balas: ok']]]],
+                    'tools'    => [['functionDeclarations' => $schema]],
+                ])),
+            ],
+            'groq' => [
+                'key_set'    => (bool) $qKey,
+                'model'      => $qModel,
+                'no_tools'   => $probe(fn () => Http::timeout(20)->withToken($qKey)->post($groqUrl, [
+                    'model' => $qModel, 'messages' => [['role' => 'user', 'content' => 'balas: ok']],
+                ])),
+                'with_tools' => $probe(fn () => Http::timeout(20)->withToken($qKey)->post($groqUrl, [
+                    'model'    => $qModel,
+                    'messages' => [['role' => 'user', 'content' => 'balas: ok']],
+                    'tools'    => array_map(fn ($t) => ['type' => 'function', 'function' => $t], $schema),
+                ])),
+            ],
+        ], 200, [], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
     }
 
     public function sendMessage(Request $request): JsonResponse
