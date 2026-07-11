@@ -765,9 +765,24 @@ class ChatbotTools
     }
 
     /** Provider-neutral tool schema (name/description/JSON-Schema parameters), wrapped per-provider by each ChatbotProviderInterface implementation. */
+    /**
+     * Tool yang DIPAPAR ke LLM. Sengaja subset esensial: schema dikirim tiap
+     * request × loop, jadi makin sedikit tool makin banyak jatah token tersisa
+     * untuk jawaban (free tier ~12K/menit). Tool yang butuh komputasi PHP tetap
+     * dipapar (MTBF/MTTR, SPH, ranking-availability); agregat sederhana
+     * (COUNT/SUM/GROUP BY, Pareto, rekap) dilayani lewat queryDatabase.
+     * Method non-papar tetap ada & tetap berfungsi bila dipanggil.
+     */
+    private const EXPOSED_TOOLS = [
+        'getMtbfMttrDies', 'getMtbfMttrMesin',
+        'getTotalProduksi', 'bandingkanProduksi',
+        'getRankingBreakdownMesin', 'getRankingBreakdownDies',
+        'describeSchema', 'queryDatabase',
+    ];
+
     public function schemaDefinitions(): array
     {
-        return [
+        $all = [
             ...$this->mtbfMttrSchemas(),
             ...$this->productionSchemas(),
             ...$this->breakdownAggregateSchemas(),
@@ -775,6 +790,8 @@ class ChatbotTools
             ...$this->dandoriSchemas(),
             ...$this->dataExplorerSchemas(),
         ];
+
+        return array_values(array_filter($all, fn ($t) => in_array($t['name'], self::EXPOSED_TOOLS, true)));
     }
 
     // Deskripsi schema sengaja padat: dikirim TIAP request × loop, jadi tiap kata

@@ -1143,16 +1143,20 @@ class ChatbotToolsTest extends TestCase
         $this->assertSame('Kalau isi salah satu periode, isi juga yang satunya.', $result['error']);
     }
 
-    public function test_schema_definitions_still_returns_all_thirteen_tools_with_unique_names(): void
+    public function test_schema_definitions_exposes_only_essential_tools_uniquely(): void
     {
         $names = collect((new ChatbotTools())->schemaDefinitions())->pluck('name');
 
-        $this->assertCount(16, $names);
-        $this->assertCount(16, $names->unique(), 'Schema split must not introduce a duplicate tool name across the grouped methods.');
+        // Free-tier: hanya subset esensial dipapar ke LLM (hemat token/request).
+        $this->assertCount(8, $names);
+        $this->assertCount(8, $names->unique(), 'Nama tool yang dipapar harus unik.');
         $this->assertTrue($names->contains('getMtbfMttrDies'));
-        $this->assertTrue($names->contains('getRekapDandori'));
+        $this->assertTrue($names->contains('getTotalProduksi'));
         $this->assertTrue($names->contains('describeSchema'));
         $this->assertTrue($names->contains('queryDatabase'));
+        // Tool agregat sederhana tidak dipapar (dilayani queryDatabase).
+        $this->assertFalse($names->contains('getRekapDandori'));
+        $this->assertFalse($names->contains('getRekapNg'));
     }
 
     /**
