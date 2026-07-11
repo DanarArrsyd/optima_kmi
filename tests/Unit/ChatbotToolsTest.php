@@ -883,6 +883,41 @@ class ChatbotToolsTest extends TestCase
         $this->assertSame('Kalau isi salah satu periode, isi juga yang satunya.', $result['error']);
     }
 
+    public function test_get_operator_produksi_ranks_by_total_qty(): void
+    {
+        $shift = MasterShift::create(['nama_shift' => 'Shift 1', 'jam_start' => '08:00', 'jam_finish' => '16:00']);
+        $part = MasterPart::create(['part_no' => 'OP-01', 'part_name' => 'Op Part', 'customer' => 'Toyota']);
+        $proses = MasterPartProses::create([
+            'id_part' => $part->id, 'id_proses' => 1, 'nama_proses' => 'PROGRESSIVE',
+            'sph_standar_produksi' => 500, 'sph_standar_qc' => 250,
+        ]);
+        $mesin = MasterMesin::create([
+            'id_mesin' => 'OP-M1', 'nama_mesin' => 'Press Op', 'line' => '1',
+            'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100,
+        ]);
+        $user = User::factory()->create();
+        $andi = MasterKaryawan::create(['nik' => uniqid(), 'nama_karyawan' => 'Andi', 'departemen' => 'Produksi', 'is_aktif' => true]);
+        $budi = MasterKaryawan::create(['nik' => uniqid(), 'nama_karyawan' => 'Budi', 'departemen' => 'Produksi', 'is_aktif' => true]);
+
+        // Andi total 5000, Budi total 3000.
+        foreach ([[$andi, 3000], [$andi, 2000], [$budi, 3000]] as [$k, $qty]) {
+            TransaksiProduksi::create([
+                'tanggal_produksi' => '2026-07-10', 'id_shift' => $shift->id, 'id_karyawan' => $k->id,
+                'id_mesin' => $mesin->id, 'id_part_proses' => $proses->id,
+                'jam_start' => '08:00', 'jam_finish' => '16:00', 'qty_aktual' => $qty, 'qty_ng' => 0,
+                'created_by' => $user->id,
+            ]);
+        }
+
+        $result = (new ChatbotTools())->getOperatorProduksi();
+
+        $this->assertArrayNotHasKey('error', $result);
+        $this->assertSame('Andi', $result['ranking'][0]['operator']);
+        $this->assertSame(5000, $result['ranking'][0]['total_qty_aktual']);
+        $this->assertSame('Budi', $result['ranking'][1]['operator']);
+        $this->assertSame(3000, $result['ranking'][1]['total_qty_aktual']);
+    }
+
     public function test_get_total_produksi_sums_across_month_range(): void
     {
         $part = MasterPart::create(['part_no' => 'TP-01', 'part_name' => 'Total Part', 'customer' => 'Toyota']);
@@ -1210,8 +1245,9 @@ class ChatbotToolsTest extends TestCase
         $names = collect((new ChatbotTools())->schemaDefinitions())->pluck('name');
 
         // Free-tier: subset yang cover pertanyaan umum (chip) dipapar 1x panggil.
-        $this->assertCount(14, $names);
-        $this->assertCount(14, $names->unique(), 'Nama tool yang dipapar harus unik.');
+        $this->assertCount(15, $names);
+        $this->assertCount(15, $names->unique(), 'Nama tool yang dipapar harus unik.');
+        $this->assertTrue($names->contains('getOperatorProduksi'));
         $this->assertTrue($names->contains('getMtbfMttrDies'));
         $this->assertTrue($names->contains('getRekapDandori'));
         $this->assertTrue($names->contains('getTopProblemDies'));

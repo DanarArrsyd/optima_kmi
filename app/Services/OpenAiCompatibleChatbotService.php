@@ -31,7 +31,7 @@ abstract class OpenAiCompatibleChatbotService implements ChatbotProviderInterfac
             return null;
         }
 
-        $messages = [['role' => 'system', 'content' => self::SYSTEM_PROMPT]];
+        $messages = [['role' => 'system', 'content' => $this->systemPrompt()]];
         $messages = array_merge($messages, $this->buildHistory($history));
         $messages[] = ['role' => 'user', 'content' => $userMessage];
 

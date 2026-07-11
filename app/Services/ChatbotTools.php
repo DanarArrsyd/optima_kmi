@@ -426,6 +426,44 @@ class ChatbotTools
         ];
     }
 
+    /** Ranking operator berdasarkan total qty produksi (join di DB, deterministik). Bulan opsional = all-time. */
+    public function getOperatorProduksi(?string $bulanMulai = null, ?string $bulanAkhir = null): array
+    {
+        [$from, $to, $error] = $this->monthSpanOptional($bulanMulai, $bulanAkhir);
+        if ($error) {
+            return ['error' => $error];
+        }
+
+        $rows = TransaksiProduksi::query()
+            ->leftJoin('master_karyawan', function ($join) {
+                $join->on('transaksi_produksi.id_karyawan', '=', 'master_karyawan.id')
+                     ->whereNull('master_karyawan.deleted_at');
+            })
+            ->when($from && $to, fn ($q) => $q->whereBetween('transaksi_produksi.tanggal_produksi', [$from->toDateString(), $to->toDateString()]))
+            ->groupBy('operator')
+            ->orderByRaw('SUM(transaksi_produksi.qty_aktual) DESC')
+            ->limit(15)
+            ->get([
+                DB::raw("COALESCE(master_karyawan.nama_karyawan, 'Tidak diketahui') as operator"),
+                DB::raw('SUM(transaksi_produksi.qty_aktual) as total_qty'),
+                DB::raw('COUNT(*) as jumlah_lhp'),
+            ]);
+
+        if ($rows->isEmpty()) {
+            return ['error' => "Tidak ada data produksi" . $this->periodeLabel($bulanMulai, $bulanAkhir) . "."];
+        }
+
+        return [
+            'bulan_mulai' => $bulanMulai ?? 'semua periode',
+            'bulan_akhir' => $bulanAkhir ?? 'semua periode',
+            'ranking'     => $rows->map(fn ($r) => [
+                'operator'         => $r->operator,
+                'total_qty_aktual' => (int) $r->total_qty,
+                'jumlah_lhp'       => (int) $r->jumlah_lhp,
+            ])->toArray(),
+        ];
+    }
+
     /** Ranking problem dies PALING SERING muncul (Pareto), dikelompokkan per teks problem, dalam rentang bulan opsional. */
     public function getTopProblemDies(?string $bulanMulai = null, ?string $bulanAkhir = null, ?string $partNo = null): array
     {
@@ -816,7 +854,7 @@ class ChatbotTools
      */
     private const EXPOSED_TOOLS = [
         'getMtbfMttrDies', 'getMtbfMttrMesin',
-        'getRekapNg', 'getTotalProduksi', 'bandingkanProduksi',
+        'getRekapNg', 'getTotalProduksi', 'bandingkanProduksi', 'getOperatorProduksi',
         'getRankingBreakdownMesin', 'getRankingBreakdownDies',
         'getTopProblemDies', 'getTopProblemMesin',
         'getTotalBreakdownDies', 'getTotalBreakdownMesin',
@@ -900,6 +938,18 @@ class ChatbotTools
             [
                 'name' => 'getTotalProduksi',
                 'description' => 'Total qty (Pcs) & rata-rata SPH semua proses dalam rentang bulan. Kosong=all-time.',
+                'parameters' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'bulanMulai' => ['type' => 'string', 'description' => 'Opsional YYYY-MM, kosong=all-time'],
+                        'bulanAkhir' => ['type' => 'string', 'description' => 'Opsional YYYY-MM inklusif, kosong=all-time'],
+                    ],
+                    'required' => [],
+                ],
+            ],
+            [
+                'name' => 'getOperatorProduksi',
+                'description' => 'Ranking operator berdasarkan total qty produksi (siapa produksi terbanyak). Kosong=all-time.',
                 'parameters' => [
                     'type' => 'object',
                     'properties' => [

@@ -3,6 +3,21 @@ namespace App\Services\Concerns;
 
 trait HasChatbotSystemPrompt
 {
+    /**
+     * System prompt + konteks waktu runtime, supaya model bisa resolve kata relatif
+     * ("bulan ini", "bulan lalu", "hari ini"). Baris tanggal ditaruh di AKHIR agar
+     * prefix (yang di-cache provider) tetap stabil dalam satu hari.
+     */
+    protected function systemPrompt(): string
+    {
+        $now = now();
+        return self::SYSTEM_PROMPT
+            . "\n\nKonteks waktu (untuk kata relatif): hari ini " . $now->format('Y-m-d')
+            . '. "bulan ini" = ' . $now->format('Y-m')
+            . ', "bulan lalu" = ' . $now->copy()->subMonthNoOverflow()->format('Y-m')
+            . '. Untuk kata relatif begitu, isi sendiri periodenya (JANGAN tanya balik ke user).';
+    }
+
     protected const SYSTEM_PROMPT = <<<TEXT
         Kamu asisten AI OPTIMA, MES pabrik stamping PT Kenco Manufactur Indonesia.
 

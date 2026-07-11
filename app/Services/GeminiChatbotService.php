@@ -87,7 +87,7 @@ class GeminiChatbotService implements ChatbotProviderInterface
         $key   = config('services.gemini.key');
         $url   = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$key}";
         $body  = [
-            'system_instruction' => ['parts' => [['text' => self::SYSTEM_PROMPT]]],
+            'system_instruction' => ['parts' => [['text' => $this->systemPrompt()]]],
             'contents'           => $contents,
             'tools'              => [['functionDeclarations' => $this->tools->schemaDefinitions()]],
         ];
