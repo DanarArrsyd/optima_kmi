@@ -1182,7 +1182,13 @@ function chatbotPage() {
         // Micro-parser markdown → HTML aman. Escape dulu, lalu bangun tag whitelist.
         renderMarkdown(src) {
             if (src == null) return '';
-            const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            // Escape SEMUA karakter HTML-sensitif termasuk kutip — cegah breakout href="..." (XSS).
+            const esc = s => s
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
             let text = esc(String(src));
 
             const lines = text.split('\n');
@@ -1190,7 +1196,7 @@ function chatbotPage() {
             let i = 0;
 
             // Inline formatting: link (callback agar teks & href benar), code, bold, italic.
-            const linkFix = s => s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+            const linkFix = s => s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s"'<>)]+)\)/g,
                 (_, t, u) => `<a href="${u}" rel="noopener noreferrer" target="_blank">${t}</a>`);
 
             const fmt = s => linkFix(s
