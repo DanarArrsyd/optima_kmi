@@ -530,60 +530,85 @@ class ChatbotTools
     /** Guarded read-only SELECT untuk pertanyaan lintas-tabel di luar tool analitik. */
     public function queryDatabase(string $sql): array
     {
-        $sql = trim($sql);
+        // 0. Buang komentar DULU supaya tak bisa dipakai memisah token atau menyembunyikan tabel.
+        $stripped = preg_replace('/\/\*.*?\*\//s', ' ', trim($sql));
+        $stripped = preg_replace('/--[^\n]*/', ' ', $stripped);
+        $stripped = trim(preg_replace('/#[^\n]*/', ' ', $stripped));
 
-        if (!preg_match('/^(select|with)\b/i', $sql)) {
+        // 1. Harus SELECT/WITH.
+        if (!preg_match('/^(select|with)\b/i', $stripped)) {
             return ['error' => 'Hanya query baca (SELECT) yang diizinkan.'];
         }
 
-        // Tolak multi-statement (titik-koma selain trailing tunggal).
-        if (str_contains(rtrim($sql, "; \n\t"), ';')) {
+        // 2. Tolak multi-statement (titik-koma selain trailing tunggal).
+        if (str_contains(rtrim($stripped, "; \n\t"), ';')) {
             return ['error' => 'Hanya satu perintah query yang diizinkan.'];
         }
 
-        // Tolak keyword tulis/DDL sebagai kata utuh.
-        if (preg_match('/\b(insert|update|delete|replace|drop|alter|truncate|create|grant|revoke|attach|pragma|into|lock|call|exec|merge)\b/i', $sql)) {
+        // 3. Tolak keyword tulis/DDL sebagai kata utuh.
+        if (preg_match('/\b(insert|update|delete|replace|drop|alter|truncate|create|grant|revoke|attach|pragma|into|lock|call|exec|merge)\b/i', $stripped)) {
             return ['error' => 'Query mengandung operasi yang tidak diizinkan.'];
         }
 
-        // Whitelist-only: setiap tabel setelah FROM/JOIN wajib ada di BUSINESS_TABLES.
-        preg_match_all('/\b(?:from|join)\s+`?([a-zA-Z_][a-zA-Z0-9_]*)`?/i', $sql, $m);
-        if (empty($m[1])) {
+        // 4. Blacklist keras: nama tabel sistem / skema metadata tak boleh muncul sama sekali,
+        //    apa pun cara referensinya (identifier bersifat atomik — tak bisa dipecah komentar).
+        if (preg_match('/\b(users|sessions|jobs|job_batches|failed_jobs|password_reset_tokens|cache|cache_locks|activity_log|app_notifications|chat_conversations|chat_messages|migrations|information_schema|performance_schema|mysql|sys|sqlite_master|sqlite_sequence|sqlite_schema)\b/i', $stripped)) {
+            return ['error' => 'Query menyentuh tabel yang tidak tersedia untuk ditelusuri.'];
+        }
+
+        // 5. Whitelist positif: tiap tabel setelah FROM/JOIN (termasuk daftar dipisah koma) wajib bisnis.
+        preg_match_all('/\b(?:from|join)\s+([a-zA-Z_][a-zA-Z0-9_]*(?:\s*,\s*[a-zA-Z_][a-zA-Z0-9_]*)*)/i', $stripped, $mm);
+        $referenced = [];
+        foreach ($mm[1] as $clause) {
+            foreach (preg_split('/\s*,\s*/', $clause) as $tbl) {
+                $referenced[] = strtolower(trim($tbl));
+            }
+        }
+        if (empty($referenced)) {
             return ['error' => 'Query harus menyebut tabel bisnis yang valid.'];
         }
-        foreach ($m[1] as $referenced) {
-            if (!array_key_exists(strtolower($referenced), self::BUSINESS_TABLES)) {
-                return ['error' => "Tabel \"{$referenced}\" tidak tersedia untuk ditelusuri."];
+        foreach ($referenced as $tbl) {
+            if (!array_key_exists($tbl, self::BUSINESS_TABLES)) {
+                return ['error' => "Tabel \"{$tbl}\" tidak tersedia untuk ditelusuri."];
             }
         }
 
-        // Paksa LIMIT: clamp yang eksplisit > cap, atau append kalau tak ada.
+        // 6. Clamp SEMUA angka LIMIT ke cap (bentuk `n` dan `offset, count`), lalu pastikan
+        //    ada LIMIT top-level (append kalau query tak diakhiri LIMIT — mis. LIMIT cuma di subquery).
         $capped = preg_replace_callback(
-            '/\blimit\s+(\d+)/i',
-            fn ($mm) => 'LIMIT ' . min((int) $mm[1], self::QUERY_ROW_CAP),
-            $sql,
-            1,
-            $count
+            '/\blimit\s+(\d+)\s*,\s*(\d+)/i',
+            fn ($x) => 'LIMIT ' . $x[1] . ', ' . min((int) $x[2], self::QUERY_ROW_CAP),
+            $stripped
         );
-        if ($count === 0) {
-            $capped = rtrim($sql, "; \n\t") . ' LIMIT ' . self::QUERY_ROW_CAP;
+        $capped = preg_replace_callback(
+            '/\blimit\s+(\d+)(?!\s*,)/i',
+            fn ($x) => 'LIMIT ' . min((int) $x[1], self::QUERY_ROW_CAP),
+            $capped
+        );
+        if (!preg_match('/\blimit\s+\d+(\s*,\s*\d+)?\s*;?\s*$/i', $capped)) {
+            $capped = rtrim($capped, "; \n\t") . ' LIMIT ' . self::QUERY_ROW_CAP;
         }
 
-        // Read-only: bungkus transaksi yang selalu rollback (safety net).
+        // 7. Eksekusi read-only + SELALU rollback (safety net). Cap keras hasil di PHP sebagai
+        //    jaminan terakhir (≤ cap) walau ada LIMIT yang lolos di level DB.
         try {
             DB::beginTransaction();
             $rows = DB::select($capped);
         } catch (\Throwable $e) {
-            return ['error' => 'Query gagal dijalankan: ' . $e->getMessage()];
+            return ['error' => 'Query gagal dijalankan.'];
         } finally {
             try { DB::rollBack(); } catch (\Throwable) {}
         }
 
         $rows = array_map(fn ($r) => (array) $r, $rows);
+        $overCap = count($rows) > self::QUERY_ROW_CAP;
+        if ($overCap) {
+            $rows = array_slice($rows, 0, self::QUERY_ROW_CAP);
+        }
 
         return [
             'row_count' => count($rows),
-            'truncated' => count($rows) >= self::QUERY_ROW_CAP,
+            'truncated' => $overCap || count($rows) >= self::QUERY_ROW_CAP,
             'rows'      => $rows,
         ];
     }

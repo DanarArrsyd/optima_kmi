@@ -1343,4 +1343,52 @@ class ChatbotToolsTest extends TestCase
 
         $this->assertLessThanOrEqual(200, $result['row_count']);
     }
+
+    public function test_query_database_blocks_comma_joined_system_table(): void
+    {
+        $result = (new ChatbotTools())->queryDatabase('SELECT * FROM master_mesin, users');
+        $this->assertArrayHasKey('error', $result);
+    }
+
+    public function test_query_database_blocks_comment_separated_system_table(): void
+    {
+        $result = (new ChatbotTools())->queryDatabase('SELECT * FROM master_mesin UNION SELECT * FROM/**/users');
+        $this->assertArrayHasKey('error', $result);
+    }
+
+    public function test_query_database_blocks_subquery_system_table(): void
+    {
+        $result = (new ChatbotTools())->queryDatabase('SELECT (SELECT id FROM users LIMIT 1) AS x FROM master_mesin');
+        $this->assertArrayHasKey('error', $result);
+    }
+
+    public function test_query_database_blocks_information_schema(): void
+    {
+        $result = (new ChatbotTools())->queryDatabase('SELECT * FROM information_schema.tables');
+        $this->assertArrayHasKey('error', $result);
+    }
+
+    public function test_query_database_clamps_offset_count_limit(): void
+    {
+        for ($i = 1; $i <= 205; $i++) {
+            MasterMesin::create([
+                'id_mesin' => "OC-{$i}", 'nama_mesin' => "Press {$i}", 'line' => '1',
+                'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100,
+            ]);
+        }
+        $result = (new ChatbotTools())->queryDatabase('SELECT id_mesin FROM master_mesin LIMIT 0, 1000');
+        $this->assertLessThanOrEqual(200, $result['row_count']);
+    }
+
+    public function test_query_database_caps_rows_even_with_subquery_only_limit(): void
+    {
+        for ($i = 1; $i <= 205; $i++) {
+            MasterMesin::create([
+                'id_mesin' => "SL-{$i}", 'nama_mesin' => "Press {$i}", 'line' => '1',
+                'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100,
+            ]);
+        }
+        $result = (new ChatbotTools())->queryDatabase('SELECT id_mesin FROM master_mesin WHERE id_mesin IN (SELECT id_mesin FROM master_mesin LIMIT 300)');
+        $this->assertLessThanOrEqual(200, $result['row_count']);
+    }
 }
