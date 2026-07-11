@@ -46,15 +46,15 @@ function chatbotPage() {
         },
 
         // History in-memory yang dikirim ke server: buang greeting pertama,
-        // ambil maksimal 20 turn terakhir, hanya field role+content.
+        // ambil maksimal 12 turn terakhir, hanya field role+content.
         buildHistory() {
-            // Clamp tiap konten ke batas server (max:4000). Balasan queryDatabase bisa
-            // panjang (sampai 200 baris) — tanpa clamp, satu balasan gede bikin request
-            // berikutnya kena 422 dan chat macet sampai reload. History cuma konteks.
+            // 12 turn = konteks lebih dari cukup buat chatbot data, tapi hemat token
+            // di percakapan panjang (history di-resend tiap request). Clamp konten ke
+            // batas server (max:4000) supaya balasan panjang tak bikin request berikut 422.
             return this.messages
                 .slice(1)
                 .filter(m => !m.typing)
-                .slice(-20)
+                .slice(-12)
                 .map(m => ({ role: m.role, content: (m.content ?? '').slice(0, 4000) }));
         },
 
