@@ -7,44 +7,12 @@
 
 @section('content')
 <div x-data="chatbotPage()" x-init="init()" class="cb-wrap">
-
-    {{-- ══ Sidebar ══ --}}
-    <aside class="cb-side">
-        <div class="cb-side-head">
-            <button type="button" @click="newChat()" class="cb-newchat">
-                <i class="bi bi-plus-lg"></i>Chat Baru
-            </button>
-        </div>
-        <div class="cb-side-label">Riwayat Percakapan</div>
-        <div class="cb-list">
-            <template x-if="loadingConversations">
-                <div class="cb-side-empty">Memuat&hellip;</div>
-            </template>
-            <template x-if="!loadingConversations && conversations.length === 0">
-                <div class="cb-side-empty">Belum ada percakapan.<br>Mulai chat baru untuk bertanya.</div>
-            </template>
-            <template x-for="c in conversations" :key="c.id">
-                <div class="cb-conv" :class="{ 'active': c.id === activeId }">
-                    <button type="button" @click="selectConversation(c.id)" class="cb-conv-btn">
-                        <i class="bi bi-chat-left-text"></i>
-                        <span x-text="c.title"></span>
-                    </button>
-                    <button type="button" @click.stop="deleteConversation(c.id)"
-                            title="Hapus percakapan" class="cb-conv-del">
-                        <i class="bi bi-trash3"></i>
-                    </button>
-                </div>
-            </template>
-        </div>
-    </aside>
-
-    {{-- ══ Chat panel ══ --}}
     <section class="cb-main">
         <div class="cb-header">
             <div class="cb-header-av"><i class="bi bi-robot"></i></div>
             <div>
                 <div class="cb-header-title">OPTIMA AI Assistant</div>
-                <div class="cb-header-status"><span class="cb-dot"></span>Online &middot; Siap membantu</div>
+                <div class="cb-header-status"><span class="cb-dot"></span>Online &middot; Sesi tidak disimpan</div>
             </div>
         </div>
 
@@ -54,15 +22,21 @@
                     <div class="cb-av" :class="m.role === 'user' ? 'cb-av-user' : 'cb-av-bot'">
                         <i :class="m.role === 'user' ? 'bi bi-person-fill' : 'bi bi-robot'"></i>
                     </div>
-                    <div class="cb-bubble" :class="m.role === 'user' ? 'cb-bubble-user' : 'cb-bubble-bot'"
-                         x-text="m.content"></div>
+                    <div class="cb-bubble-wrap">
+                        <div class="cb-bubble" :class="m.role === 'user' ? 'cb-bubble-user' : 'cb-bubble-bot'">
+                            <template x-if="m.role === 'user'"><span x-text="m.content"></span></template>
+                            <template x-if="m.role !== 'user'"><div class="cb-md" x-html="renderMarkdown(m.display ?? m.content)"></div></template>
+                        </div>
+                        <div x-show="m.role !== 'user' && !m.typing" class="cb-actions">
+                            <button type="button" class="cb-act" @click="copyMessage(m)" title="Salin"><i class="bi bi-clipboard"></i></button>
+                            <button type="button" class="cb-act" x-show="i === messages.length - 1" @click="regenerate()" title="Buat ulang jawaban"><i class="bi bi-arrow-clockwise"></i></button>
+                        </div>
+                    </div>
                 </div>
             </template>
             <div class="cb-row cb-row-bot" x-show="loading">
                 <div class="cb-av cb-av-bot"><i class="bi bi-robot"></i></div>
-                <div class="cb-bubble cb-bubble-bot cb-typing">
-                    <span></span><span></span><span></span>
-                </div>
+                <div class="cb-bubble cb-bubble-bot cb-typing"><span></span><span></span><span></span></div>
             </div>
         </div>
 
