@@ -59,6 +59,16 @@ class ChatbotController extends Controller
             'cerebras' => [
                 'key_set'    => (bool) $cKey,
                 'model'      => $cModel,
+                'available_models' => (function () use ($cKey) {
+                    try {
+                        $r = Http::timeout(20)->withToken($cKey)->get('https://api.cerebras.ai/v1/models');
+                        return $r->successful()
+                            ? array_map(fn ($m) => $m['id'] ?? '?', $r->json('data') ?? [])
+                            : ['error' => $r->status(), 'body' => Str::limit($r->body(), 300)];
+                    } catch (\Throwable $e) {
+                        return ['error' => $e->getMessage()];
+                    }
+                })(),
                 'no_tools'   => $probe(fn () => Http::timeout(20)->withToken($cKey)->post($cerebrasUrl, [
                     'model' => $cModel, 'messages' => [['role' => 'user', 'content' => 'balas: ok']],
                 ])),
