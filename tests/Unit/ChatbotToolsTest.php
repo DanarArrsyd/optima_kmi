@@ -180,6 +180,33 @@ class ChatbotToolsTest extends TestCase
         $this->assertSame(2, $result['jumlah_dies_terdampak']);
     }
 
+    public function test_get_total_breakdown_dies_all_time_matches_raw_count(): void
+    {
+        $part = MasterPart::create(['part_no' => 'CT-01', 'part_name' => 'Consistency', 'customer' => 'Toyota']);
+        $proses = MasterPartProses::create([
+            'id_part' => $part->id, 'id_proses' => 1, 'nama_proses' => 'PROGRESSIVE',
+            'sph_standar_produksi' => 500, 'sph_standar_qc' => 250,
+        ]);
+        foreach (['2024-03-01', '2025-08-10', '2026-07-05'] as $i => $tgl) {
+            TransaksiBreakdownDies::create([
+                'no_lkd' => "LKD-CT{$i}", 'id_part_proses' => $proses->id,
+                'tanggal_breakdown' => $tgl, 'jam_breakdown' => '08:00',
+                'tanggal_mulai_perbaikan' => $tgl, 'jam_mulai_perbaikan' => '09:00',
+                'tanggal_selesai_perbaikan' => $tgl, 'jam_selesai_perbaikan' => '10:00',
+                'problem_dies' => 'BURRY', 'penyebab_breakdown' => 'x', 'tindakan_perbaikan' => 'x',
+                'status_breakdown' => 'Selesai', 'pic_maintenance' => 'Budi',
+                'repair_time' => 1.0, 'total_downtime' => 1.0,
+            ]);
+        }
+
+        // getTotalBreakdownDies all-time HARUS sama dengan total_kejadian getTopProblemDies (count mentah).
+        $total = (new ChatbotTools())->getTotalBreakdownDies();
+        $top   = (new ChatbotTools())->getTopProblemDies();
+
+        $this->assertSame(3, $total['total_breakdown']);
+        $this->assertSame($top['total_kejadian'], $total['total_breakdown'], 'Total breakdown dies harus konsisten antar tool.');
+    }
+
     public function test_get_total_breakdown_dies_returns_error_for_invalid_month_format(): void
     {
         $result = (new ChatbotTools())->getTotalBreakdownDies('bulan-salah', '2026-07');

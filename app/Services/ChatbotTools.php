@@ -157,39 +157,41 @@ class ChatbotTools
         ];
     }
 
-    /** Total kejadian breakdown untuk SEMUA dies dalam rentang bulan. */
-    public function getTotalBreakdownDies(string $bulanMulai, string $bulanAkhir): array
+    /** Total kejadian breakdown SEMUA dies. Hitung baris mentah (konsisten dgn getTopProblemDies). Bulan opsional = all-time. */
+    public function getTotalBreakdownDies(?string $bulanMulai = null, ?string $bulanAkhir = null): array
     {
-        [$from, $to, $error] = $this->monthSpan($bulanMulai, $bulanAkhir);
+        [$from, $to, $error] = $this->monthSpanOptional($bulanMulai, $bulanAkhir);
         if ($error) {
             return ['error' => $error];
         }
 
-        $rows = $this->diesDashboard->compute($from, $to);
+        $q = TransaksiBreakdownDies::query()
+            ->when($from && $to, fn ($x) => $x->whereBetween('tanggal_breakdown', [$from->toDateString(), $to->toDateString()]));
 
         return [
-            'bulan_mulai'           => $bulanMulai,
-            'bulan_akhir'           => $bulanAkhir,
-            'total_breakdown'       => array_sum(array_column($rows, 'count')),
-            'jumlah_dies_terdampak' => count(array_filter($rows, fn ($r) => $r['count'] > 0)),
+            'bulan_mulai'           => $bulanMulai ?? 'semua periode',
+            'bulan_akhir'           => $bulanAkhir ?? 'semua periode',
+            'total_breakdown'       => (int) $q->clone()->count(),
+            'jumlah_dies_terdampak' => (int) $q->clone()->distinct('id_part_proses')->count('id_part_proses'),
         ];
     }
 
-    /** Total kejadian breakdown untuk SEMUA mesin dalam rentang bulan. */
-    public function getTotalBreakdownMesin(string $bulanMulai, string $bulanAkhir): array
+    /** Total kejadian breakdown SEMUA mesin. Hitung baris mentah (konsisten dgn getTopProblemMesin). Bulan opsional = all-time. */
+    public function getTotalBreakdownMesin(?string $bulanMulai = null, ?string $bulanAkhir = null): array
     {
-        [$from, $to, $error] = $this->monthSpan($bulanMulai, $bulanAkhir);
+        [$from, $to, $error] = $this->monthSpanOptional($bulanMulai, $bulanAkhir);
         if ($error) {
             return ['error' => $error];
         }
 
-        $rows = $this->mesinDashboard->compute($from, $to);
+        $q = TransaksiBreakdownMesin::query()
+            ->when($from && $to, fn ($x) => $x->whereBetween('tanggal_breakdown', [$from->toDateString(), $to->toDateString()]));
 
         return [
-            'bulan_mulai'            => $bulanMulai,
-            'bulan_akhir'            => $bulanAkhir,
-            'total_breakdown'        => array_sum(array_column($rows, 'count')),
-            'jumlah_mesin_terdampak' => count(array_filter($rows, fn ($r) => $r['count'] > 0)),
+            'bulan_mulai'            => $bulanMulai ?? 'semua periode',
+            'bulan_akhir'            => $bulanAkhir ?? 'semua periode',
+            'total_breakdown'        => (int) $q->clone()->count(),
+            'jumlah_mesin_terdampak' => (int) $q->clone()->distinct('id_mesin')->count('id_mesin'),
         ];
     }
 
@@ -915,26 +917,26 @@ class ChatbotTools
         return [
             [
                 'name' => 'getTotalBreakdownDies',
-                'description' => 'Total kejadian breakdown semua dies dalam rentang bulan.',
+                'description' => 'Total kejadian breakdown semua dies. Kosong=all-time.',
                 'parameters' => [
                     'type' => 'object',
                     'properties' => [
-                        'bulanMulai' => ['type' => 'string', 'description' => 'YYYY-MM'],
-                        'bulanAkhir' => ['type' => 'string', 'description' => 'YYYY-MM inklusif'],
+                        'bulanMulai' => ['type' => 'string', 'description' => 'Opsional YYYY-MM, kosong=all-time'],
+                        'bulanAkhir' => ['type' => 'string', 'description' => 'Opsional YYYY-MM inklusif, kosong=all-time'],
                     ],
-                    'required' => ['bulanMulai', 'bulanAkhir'],
+                    'required' => [],
                 ],
             ],
             [
                 'name' => 'getTotalBreakdownMesin',
-                'description' => 'Total kejadian breakdown semua mesin dalam rentang bulan.',
+                'description' => 'Total kejadian breakdown semua mesin. Kosong=all-time.',
                 'parameters' => [
                     'type' => 'object',
                     'properties' => [
-                        'bulanMulai' => ['type' => 'string', 'description' => 'YYYY-MM'],
-                        'bulanAkhir' => ['type' => 'string', 'description' => 'YYYY-MM inklusif'],
+                        'bulanMulai' => ['type' => 'string', 'description' => 'Opsional YYYY-MM, kosong=all-time'],
+                        'bulanAkhir' => ['type' => 'string', 'description' => 'Opsional YYYY-MM inklusif, kosong=all-time'],
                     ],
-                    'required' => ['bulanMulai', 'bulanAkhir'],
+                    'required' => [],
                 ],
             ],
             [
