@@ -73,7 +73,12 @@ function chatbotPage() {
             if (this.messages.length && this.messages[this.messages.length - 1].role === 'assistant') {
                 this.messages.pop();
             }
+            // Buang giliran user terakhir dari history — ia dikirim ulang lewat field
+            // message, jadi kalau ikut di history pertanyaannya dobel.
             const history = this.buildHistory();
+            if (history.length && history[history.length - 1].role === 'user') {
+                history.pop();
+            }
             await this.dispatch(this.lastUserMessage, history);
         },
 
@@ -156,7 +161,7 @@ function chatbotPage() {
             // Inline formatting: link (callback agar teks & href benar), code, bold, italic.
             // URL dibatasi http/https + charset aman (tanpa kutip/spasi/angle) sebagai
             // pertahanan berlapis di atas esc() — mencegah breakout atribut sekaligus javascript:.
-            const linkFix = s => s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s"'<>)]+)\)/g,
+            const linkFix = s => s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s"'<>)]+)\)/gi,
                 (_, t, u) => `<a href="${u}" rel="noopener noreferrer" target="_blank">${t}</a>`);
 
             const fmt = s => linkFix(s
