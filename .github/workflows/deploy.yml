@@ -49,14 +49,21 @@ jobs:
           mkdir -p ~/.ssh
           printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -p "${{ secrets.SSH_PORT }}" "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+          # ssh-keyscan kadang gagal sesaat (network runner→host). Coba beberapa kali,
+          # JANGAN gagalkan deploy kalau tetap gagal — ssh pakai accept-new (di bawah)
+          # sebagai jaring pengaman verifikasi host.
+          for i in 1 2 3; do
+            ssh-keyscan -p "${{ secrets.SSH_PORT }}" "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null && break
+            sleep 3
+          done
+          true
 
       # Sync source code saja (vendor/storage/.env dikecualikan — vendor
       # dibangun di server, storage & .env persisten & tidak boleh ketimpa).
       - name: Rsync source code ke server
         run: |
           rsync -az --delete \
-            -e "ssh -p ${{ secrets.SSH_PORT }} -i ~/.ssh/deploy_key" \
+            -e "ssh -p ${{ secrets.SSH_PORT }} -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new" \
             --exclude='.git/' \
             --exclude='.git*' \
             --exclude='node_modules/' \
@@ -77,7 +84,7 @@ jobs:
       # vendor/ dibangun LANGSUNG di server (14rb file tak pernah lewat jaringan).
       - name: Composer install di server
         run: |
-          ssh -p "${{ secrets.SSH_PORT }}" -i ~/.ssh/deploy_key \
+          ssh -p "${{ secrets.SSH_PORT }}" -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
             "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" \
             "cd ${{ env.REMOTE_PATH }} && ${{ env.REMOTE_PHP }} /usr/local/bin/composer install --no-dev --optimize-autoloader --no-interaction"
 
@@ -93,7 +100,7 @@ jobs:
         run: |
           upsert() {
             # upsert KEY VALUE ke .env server (hapus baris lama, tambah baru).
-            ssh -p "$SSH_PORT" -i ~/.ssh/deploy_key "$SSH_USERNAME@$SSH_HOST" \
+            ssh -p "$SSH_PORT" -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new "$SSH_USERNAME@$SSH_HOST" \
               "cd '${{ env.REMOTE_PATH }}' && grep -v '^$1=' .env > .env.new 2>/dev/null; mv .env.new .env; printf '%s=%s\n' '$1' '$2' >> .env"
             echo "$1 di-set di server."
           }
@@ -101,7 +108,7 @@ jobs:
           if [ -n "$CEREBRAS_API_KEY" ]; then upsert CEREBRAS_API_KEY "$CEREBRAS_API_KEY"; changed=1; fi
           if [ -n "$DEEPSEEK_API_KEY" ]; then upsert DEEPSEEK_API_KEY "$DEEPSEEK_API_KEY"; changed=1; fi
           if [ "$changed" = "1" ]; then
-            ssh -p "$SSH_PORT" -i ~/.ssh/deploy_key "$SSH_USERNAME@$SSH_HOST" \
+            ssh -p "$SSH_PORT" -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new "$SSH_USERNAME@$SSH_HOST" \
               "cd '${{ env.REMOTE_PATH }}' && ${{ env.REMOTE_PHP }} artisan config:clear; ${{ env.REMOTE_PHP }} artisan route:clear"
             echo "config/route cache dibersihkan."
           else
