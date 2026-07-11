@@ -9,7 +9,7 @@
 <div x-data="chatbotPage()" x-init="init()" class="cb-wrap">
     <section class="cb-main">
         <div class="cb-header">
-            <div class="cb-header-av"><i class="bi bi-robot"></i></div>
+            <div class="cb-header-av"><img src="{{ asset('logo.png') }}" alt="KC" class="cb-logo"></div>
             <div>
                 <div class="cb-header-title">OPTIMA AI Assistant</div>
                 <div class="cb-header-status"><span class="cb-dot"></span>Online &middot; Sesi tidak disimpan</div>
@@ -20,7 +20,8 @@
             <template x-for="(m, i) in messages" :key="i">
                 <div class="cb-row" :class="m.role === 'user' ? 'cb-row-user' : 'cb-row-bot'">
                     <div class="cb-av" :class="m.role === 'user' ? 'cb-av-user' : 'cb-av-bot'">
-                        <i :class="m.role === 'user' ? 'bi bi-person-fill' : 'bi bi-robot'"></i>
+                        <template x-if="m.role === 'user'"><i class="bi bi-person-fill"></i></template>
+                        <template x-if="m.role !== 'user'"><img src="{{ asset('logo.png') }}" alt="KC" class="cb-logo"></template>
                     </div>
                     <div class="cb-bubble-wrap">
                         <div class="cb-bubble" :class="m.role === 'user' ? 'cb-bubble-user' : 'cb-bubble-bot'">
@@ -35,7 +36,7 @@
                 </div>
             </template>
             <div class="cb-row cb-row-bot" x-show="loading">
-                <div class="cb-av cb-av-bot"><i class="bi bi-robot"></i></div>
+                <div class="cb-av cb-av-bot"><img src="{{ asset('logo.png') }}" alt="KC" class="cb-logo"></div>
                 <div class="cb-bubble cb-bubble-bot cb-typing"><span></span><span></span><span></span></div>
             </div>
         </div>

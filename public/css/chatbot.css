@@ -14,7 +14,7 @@
 .cb-main { flex: 1; display: flex; flex-direction: column; background: var(--cb-panel); overflow: hidden; width: 100%; }
 
 .cb-header { display: flex; align-items: center; gap: 12px; padding: 14px 18px; background: var(--cb-topbar); color: #fff; }
-.cb-header-av { width: 36px; height: 36px; border-radius: 8px; background: var(--cb-accent); display: flex; align-items: center; justify-content: center; font-size: 18px; }
+.cb-header-av { width: 36px; height: 36px; border-radius: 8px; background: #fff; overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 18px; }
 .cb-header-title { font-weight: 700; font-size: 15px; }
 .cb-header-status { font-size: 12px; color: #9ca3af; display: flex; align-items: center; gap: 6px; }
 .cb-dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; display: inline-block; }
@@ -23,7 +23,8 @@
 .cb-row { display: flex; gap: 12px; margin-bottom: 22px; align-items: flex-start; }
 .cb-row-user { flex-direction: row-reverse; }
 .cb-av { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 15px; }
-.cb-av-bot { background: var(--cb-accent); color: #fff; }
+.cb-av-bot { background: #fff; color: #fff; }
+.cb-logo { width: 100%; height: 100%; object-fit: cover; border-radius: 6px; display: block; }
 .cb-av-user { background: #d1d5db; color: var(--cb-text); }
 /* Bot: konten penuh-lebar tanpa kartu. User: pill kecil di kanan biar kebedaan. */
 .cb-bubble-wrap { flex: 1; min-width: 0; display: flex; flex-direction: column; }
