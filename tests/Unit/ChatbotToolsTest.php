@@ -15,6 +15,7 @@ use App\Models\TransaksiQc;
 use App\Models\User;
 use App\Services\ChatbotTools;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class ChatbotToolsTest extends TestCase
@@ -1256,6 +1257,15 @@ class ChatbotToolsTest extends TestCase
     public function test_describe_schema_rejects_non_whitelisted_table(): void
     {
         $result = (new ChatbotTools())->describeSchema('users');
+        $this->assertArrayHasKey('error', $result);
+    }
+
+    public function test_describe_schema_returns_error_when_introspection_fails(): void
+    {
+        Schema::shouldReceive('getColumnListing')->andThrow(new \RuntimeException('boom'));
+
+        $result = (new ChatbotTools())->describeSchema('master_mesin');
+
         $this->assertArrayHasKey('error', $result);
     }
 }

@@ -494,7 +494,9 @@ class ChatbotTools
     /** Introspeksi struktur DB untuk LLM: daftar tabel atau kolom real satu tabel. */
     public function describeSchema(?string $table = null): array
     {
-        if ($table === null || trim($table) === '') {
+        $table = trim($table ?? '');
+
+        if ($table === '') {
             return [
                 'tables' => collect(self::BUSINESS_TABLES)
                     ->map(fn ($desc, $name) => ['table' => $name, 'deskripsi' => $desc])
@@ -502,15 +504,18 @@ class ChatbotTools
             ];
         }
 
-        $table = trim($table);
         if (!array_key_exists($table, self::BUSINESS_TABLES)) {
             return ['error' => "Tabel \"{$table}\" tidak tersedia untuk ditelusuri."];
         }
 
-        $columns = array_map(
-            fn ($col) => ['nama' => $col, 'tipe' => Schema::getColumnType($table, $col)],
-            Schema::getColumnListing($table)
-        );
+        try {
+            $columns = array_map(
+                fn ($col) => ['nama' => $col, 'tipe' => Schema::getColumnType($table, $col)],
+                Schema::getColumnListing($table)
+            );
+        } catch (\Throwable $e) {
+            return ['error' => "Struktur tabel \"{$table}\" tidak bisa dibaca saat ini."];
+        }
 
         return [
             'table'     => $table,
