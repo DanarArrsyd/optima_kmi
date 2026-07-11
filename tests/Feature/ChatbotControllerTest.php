@@ -12,8 +12,8 @@ class ChatbotControllerTest extends TestCase
 
     public function test_admin_can_send_message_and_gets_reply(): void
     {
-        Http::fake(['generativelanguage.googleapis.com/*' => Http::response([
-            'candidates' => [['content' => ['role' => 'model', 'parts' => [['text' => 'Halo!']]]]],
+        Http::fake(['api.groq.com/*' => Http::response([
+            'choices' => [['message' => ['role' => 'assistant', 'content' => 'Halo!']]],
         ], 200)]);
 
         $admin = User::factory()->create(['role' => 'admin']);
@@ -26,8 +26,8 @@ class ChatbotControllerTest extends TestCase
 
     public function test_send_message_does_not_persist_to_database(): void
     {
-        Http::fake(['generativelanguage.googleapis.com/*' => Http::response([
-            'candidates' => [['content' => ['role' => 'model', 'parts' => [['text' => 'Halo!']]]]],
+        Http::fake(['api.groq.com/*' => Http::response([
+            'choices' => [['message' => ['role' => 'assistant', 'content' => 'Halo!']]],
         ], 200)]);
 
         $admin = User::factory()->create(['role' => 'admin']);
@@ -42,9 +42,9 @@ class ChatbotControllerTest extends TestCase
     {
         $captured = null;
         Http::fake(function ($request) use (&$captured) {
-            $captured = $request->data()['contents'];
+            $captured = $request->data()['messages'];
             return Http::response([
-                'candidates' => [['content' => ['role' => 'model', 'parts' => [['text' => 'oke']]]]],
+                'choices' => [['message' => ['role' => 'assistant', 'content' => 'oke']]],
             ], 200);
         });
 
@@ -58,7 +58,7 @@ class ChatbotControllerTest extends TestCase
             ],
         ])->assertOk();
 
-        $texts = array_map(fn ($c) => $c['parts'][0]['text'], $captured);
+        $texts = array_map(fn ($m) => $m['content'], $captured);
         $this->assertContains('pertama', $texts);
         $this->assertContains('kedua', $texts);
     }
@@ -106,19 +106,19 @@ class ChatbotControllerTest extends TestCase
         $this->actingAs($staff)->get(route('chatbot.index'))->assertForbidden();
     }
 
-    public function test_falls_back_to_groq_when_gemini_fails(): void
+    public function test_falls_back_to_gemini_when_groq_fails(): void
     {
         Http::fake([
-            'generativelanguage.googleapis.com/*' => Http::response([], 429),
-            'api.groq.com/*' => Http::response([
-                'choices' => [['message' => ['role' => 'assistant', 'content' => 'Jawaban dari Groq.']]],
+            'api.groq.com/*' => Http::response([], 500),
+            'generativelanguage.googleapis.com/*' => Http::response([
+                'candidates' => [['content' => ['role' => 'model', 'parts' => [['text' => 'Jawaban dari Gemini.']]]]],
             ], 200),
         ]);
 
         $admin = User::factory()->create(['role' => 'admin']);
 
         $this->actingAs($admin)->postJson(route('chatbot.send-message'), ['message' => 'halo'])
-            ->assertOk()->assertJson(['reply' => 'Jawaban dari Groq.']);
+            ->assertOk()->assertJson(['reply' => 'Jawaban dari Gemini.']);
     }
 
     public function test_returns_generic_fallback_when_both_providers_fail(): void

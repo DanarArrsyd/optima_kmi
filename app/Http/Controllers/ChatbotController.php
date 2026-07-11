@@ -88,8 +88,10 @@ class ChatbotController extends Controller
 
         $history = $data['history'] ?? [];
 
-        $reply = $this->gemini->ask($history, $data['message'])
-            ?? $this->groq->ask($history, $data['message'])
+        // Groq primary, Gemini fallback: free tier Gemini di key produksi = limit 0
+        // (dinonaktifkan), sedangkan Groq llama-3.3 melayani tool-call dengan sehat.
+        $reply = $this->groq->ask($history, $data['message'])
+            ?? $this->gemini->ask($history, $data['message'])
             ?? self::FALLBACK;
 
         return response()->json([
