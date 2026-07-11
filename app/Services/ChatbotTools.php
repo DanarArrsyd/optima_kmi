@@ -44,7 +44,7 @@ class ChatbotTools
     /** Baris queryDatabase yang dikirim balik ke LLM. Kecil sengaja — 200 baris mentah
      *  membengkakkan token per request sampai kena rate limit provider. LLM cukup butuh
      *  sampel untuk merangkum; kalau kepotong, flag 'truncated' memberi tahu ada sisanya. */
-    private const QUERY_ROW_CAP = 50;
+    private const QUERY_ROW_CAP = 25;
 
     public function __construct(
         private MaintenanceDiesDashboardService $diesDashboard = new MaintenanceDiesDashboardService(),
@@ -777,29 +777,31 @@ class ChatbotTools
         ];
     }
 
+    // Deskripsi schema sengaja padat: dikirim TIAP request × loop, jadi tiap kata
+    // makan kuota token provider (free tier ~12K/menit). Nama & parameter tetap utuh.
     private function mtbfMttrSchemas(): array
     {
         return [
             [
                 'name' => 'getMtbfMttrDies',
-                'description' => 'Ambil MTBF/MTTR untuk sebuah part/dies pada bulan tertentu, per proses.',
+                'description' => 'MTBF/MTTR part/dies per proses, satu bulan.',
                 'parameters' => [
                     'type' => 'object',
                     'properties' => [
-                        'partNo' => ['type' => 'string', 'description' => 'Nomor part/dies, contoh: BT-091A-3'],
-                        'bulan'  => ['type' => 'string', 'description' => 'Format YYYY-MM, contoh: 2026-07'],
+                        'partNo' => ['type' => 'string', 'description' => 'No part/dies, mis. BT-091A-3'],
+                        'bulan'  => ['type' => 'string', 'description' => 'YYYY-MM'],
                     ],
                     'required' => ['partNo', 'bulan'],
                 ],
             ],
             [
                 'name' => 'getMtbfMttrMesin',
-                'description' => 'Ambil MTBF/MTTR untuk sebuah mesin pada bulan tertentu.',
+                'description' => 'MTBF/MTTR satu mesin, satu bulan.',
                 'parameters' => [
                     'type' => 'object',
                     'properties' => [
-                        'idMesin' => ['type' => 'string', 'description' => 'Kode mesin, contoh: M-01'],
-                        'bulan'   => ['type' => 'string', 'description' => 'Format YYYY-MM'],
+                        'idMesin' => ['type' => 'string', 'description' => 'Kode mesin, mis. M-01'],
+                        'bulan'   => ['type' => 'string', 'description' => 'YYYY-MM'],
                     ],
                     'required' => ['idMesin', 'bulan'],
                 ],
@@ -812,36 +814,36 @@ class ChatbotTools
         return [
             [
                 'name' => 'getRekapNg',
-                'description' => 'Rekap total qty NG dan NG rate untuk sebuah nama proses. Periode opsional — kalau tidak diisi, pakai semua data.',
+                'description' => 'Total & rate NG per nama proses. periode opsional.',
                 'parameters' => [
                     'type' => 'object',
                     'properties' => [
-                        'namaProses' => ['type' => 'string', 'description' => 'Nama proses, contoh: BENDING'],
-                        'periode'    => ['type' => 'string', 'description' => 'Opsional. Format YYYY-MM. Kosongkan untuk semua data.'],
+                        'namaProses' => ['type' => 'string', 'description' => 'Nama proses, mis. BENDING'],
+                        'periode'    => ['type' => 'string', 'description' => 'Opsional YYYY-MM, kosong=semua'],
                     ],
                     'required' => ['namaProses'],
                 ],
             ],
             [
                 'name' => 'bandingkanProduksi',
-                'description' => 'Bandingkan total qty aktual & SPH rata-rata produksi antara 2 bulan.',
+                'description' => 'Banding qty & rata-rata SPH produksi antar 2 bulan.',
                 'parameters' => [
                     'type' => 'object',
                     'properties' => [
-                        'periode1' => ['type' => 'string', 'description' => 'Format YYYY-MM, periode pertama'],
-                        'periode2' => ['type' => 'string', 'description' => 'Format YYYY-MM, periode kedua'],
+                        'periode1' => ['type' => 'string', 'description' => 'YYYY-MM'],
+                        'periode2' => ['type' => 'string', 'description' => 'YYYY-MM'],
                     ],
                     'required' => ['periode1', 'periode2'],
                 ],
             ],
             [
                 'name' => 'getTotalProduksi',
-                'description' => 'Total qty aktual produksi (dalam Pcs) dan rata-rata SPH untuk SEMUA proses dalam rentang bulan (bisa multi-bulan). Beda dengan bandingkanProduksi yang membandingkan 2 periode terpisah — ini untuk total gabungan satu rentang. Kosongkan bulanMulai/bulanAkhir untuk analisa semua periode (all-time).',
+                'description' => 'Total qty (Pcs) & rata-rata SPH semua proses dalam rentang bulan. Kosong=all-time.',
                 'parameters' => [
                     'type' => 'object',
                     'properties' => [
-                        'bulanMulai' => ['type' => 'string', 'description' => 'Opsional, bulan mulai format YYYY-MM. Kosongkan untuk semua periode.'],
-                        'bulanAkhir' => ['type' => 'string', 'description' => 'Opsional, bulan akhir (inklusif) format YYYY-MM. Kosongkan untuk semua periode.'],
+                        'bulanMulai' => ['type' => 'string', 'description' => 'Opsional YYYY-MM, kosong=all-time'],
+                        'bulanAkhir' => ['type' => 'string', 'description' => 'Opsional YYYY-MM inklusif, kosong=all-time'],
                     ],
                     'required' => [],
                 ],
@@ -854,48 +856,48 @@ class ChatbotTools
         return [
             [
                 'name' => 'getTotalBreakdownDies',
-                'description' => 'Total kejadian breakdown untuk SEMUA dies dalam rentang bulan tertentu (dipakai untuk pertanyaan luas/agregat, bukan per part spesifik).',
+                'description' => 'Total kejadian breakdown semua dies dalam rentang bulan.',
                 'parameters' => [
                     'type' => 'object',
                     'properties' => [
-                        'bulanMulai' => ['type' => 'string', 'description' => 'Bulan mulai, format YYYY-MM'],
-                        'bulanAkhir' => ['type' => 'string', 'description' => 'Bulan akhir (inklusif), format YYYY-MM'],
+                        'bulanMulai' => ['type' => 'string', 'description' => 'YYYY-MM'],
+                        'bulanAkhir' => ['type' => 'string', 'description' => 'YYYY-MM inklusif'],
                     ],
                     'required' => ['bulanMulai', 'bulanAkhir'],
                 ],
             ],
             [
                 'name' => 'getTotalBreakdownMesin',
-                'description' => 'Total kejadian breakdown untuk SEMUA mesin dalam rentang bulan tertentu (dipakai untuk pertanyaan luas/agregat, bukan per mesin spesifik).',
+                'description' => 'Total kejadian breakdown semua mesin dalam rentang bulan.',
                 'parameters' => [
                     'type' => 'object',
                     'properties' => [
-                        'bulanMulai' => ['type' => 'string', 'description' => 'Bulan mulai, format YYYY-MM'],
-                        'bulanAkhir' => ['type' => 'string', 'description' => 'Bulan akhir (inklusif), format YYYY-MM'],
+                        'bulanMulai' => ['type' => 'string', 'description' => 'YYYY-MM'],
+                        'bulanAkhir' => ['type' => 'string', 'description' => 'YYYY-MM inklusif'],
                     ],
                     'required' => ['bulanMulai', 'bulanAkhir'],
                 ],
             ],
             [
                 'name' => 'getRankingBreakdownMesin',
-                'description' => 'Ranking mesin berdasarkan jumlah kejadian breakdown terbanyak dalam rentang bulan. Dipakai untuk pertanyaan seperti "mesin apa aja yang sering rusak". Kosongkan bulanMulai/bulanAkhir untuk analisa semua periode (all-time).',
+                'description' => 'Ranking mesin paling sering breakdown. Kosong=all-time.',
                 'parameters' => [
                     'type' => 'object',
                     'properties' => [
-                        'bulanMulai' => ['type' => 'string', 'description' => 'Opsional, bulan mulai format YYYY-MM. Kosongkan untuk semua periode.'],
-                        'bulanAkhir' => ['type' => 'string', 'description' => 'Opsional, bulan akhir (inklusif) format YYYY-MM. Kosongkan untuk semua periode.'],
+                        'bulanMulai' => ['type' => 'string', 'description' => 'Opsional YYYY-MM, kosong=all-time'],
+                        'bulanAkhir' => ['type' => 'string', 'description' => 'Opsional YYYY-MM inklusif, kosong=all-time'],
                     ],
                     'required' => [],
                 ],
             ],
             [
                 'name' => 'getRankingBreakdownDies',
-                'description' => 'Ranking dies/part berdasarkan jumlah kejadian breakdown terbanyak dalam rentang bulan. Dipakai untuk pertanyaan seperti "dies apa aja yang sering rusak". Kosongkan bulanMulai/bulanAkhir untuk analisa semua periode (all-time).',
+                'description' => 'Ranking dies/part paling sering breakdown. Kosong=all-time.',
                 'parameters' => [
                     'type' => 'object',
                     'properties' => [
-                        'bulanMulai' => ['type' => 'string', 'description' => 'Opsional, bulan mulai format YYYY-MM. Kosongkan untuk semua periode.'],
-                        'bulanAkhir' => ['type' => 'string', 'description' => 'Opsional, bulan akhir (inklusif) format YYYY-MM. Kosongkan untuk semua periode.'],
+                        'bulanMulai' => ['type' => 'string', 'description' => 'Opsional YYYY-MM, kosong=all-time'],
+                        'bulanAkhir' => ['type' => 'string', 'description' => 'Opsional YYYY-MM inklusif, kosong=all-time'],
                     ],
                     'required' => [],
                 ],
@@ -908,52 +910,52 @@ class ChatbotTools
         return [
             [
                 'name' => 'getProblemDies',
-                'description' => 'Ambil daftar mentah problem, penyebab, dan tindakan perbaikan breakdown dies dalam rentang bulan. Dipakai untuk pertanyaan root-cause seperti "problem apa yang sering muncul", "penyebabnya apa", "perbaikan yang cocok apa" — kamu HARUS merangkum sendiri dari data yang dikembalikan, jangan menambah pola yang tidak ada di teks. Kosongkan bulanMulai/bulanAkhir untuk analisa semua periode (all-time).',
+                'description' => 'Daftar mentah problem/penyebab/tindakan breakdown dies. Rangkum HANYA yang ada di data. Kosong=all-time.',
                 'parameters' => [
                     'type' => 'object',
                     'properties' => [
-                        'bulanMulai' => ['type' => 'string', 'description' => 'Opsional, bulan mulai format YYYY-MM. Kosongkan untuk semua periode.'],
-                        'bulanAkhir' => ['type' => 'string', 'description' => 'Opsional, bulan akhir (inklusif) format YYYY-MM. Kosongkan untuk semua periode.'],
-                        'partNo' => ['type' => 'string', 'description' => 'Opsional, nomor part/dies spesifik. Kosongkan untuk semua dies.'],
+                        'bulanMulai' => ['type' => 'string', 'description' => 'Opsional YYYY-MM, kosong=all-time'],
+                        'bulanAkhir' => ['type' => 'string', 'description' => 'Opsional YYYY-MM inklusif, kosong=all-time'],
+                        'partNo' => ['type' => 'string', 'description' => 'Opsional no part/dies, kosong=semua'],
                     ],
                     'required' => [],
                 ],
             ],
             [
                 'name' => 'getProblemMesin',
-                'description' => 'Sama seperti getProblemDies tapi untuk mesin — problem/penyebab/tindakan breakdown mesin. Kosongkan bulanMulai/bulanAkhir untuk analisa semua periode (all-time).',
+                'description' => 'Seperti getProblemDies untuk mesin.',
                 'parameters' => [
                     'type' => 'object',
                     'properties' => [
-                        'bulanMulai' => ['type' => 'string', 'description' => 'Opsional, bulan mulai format YYYY-MM. Kosongkan untuk semua periode.'],
-                        'bulanAkhir' => ['type' => 'string', 'description' => 'Opsional, bulan akhir (inklusif) format YYYY-MM. Kosongkan untuk semua periode.'],
-                        'idMesin' => ['type' => 'string', 'description' => 'Opsional, kode mesin spesifik. Kosongkan untuk semua mesin.'],
+                        'bulanMulai' => ['type' => 'string', 'description' => 'Opsional YYYY-MM, kosong=all-time'],
+                        'bulanAkhir' => ['type' => 'string', 'description' => 'Opsional YYYY-MM inklusif, kosong=all-time'],
+                        'idMesin' => ['type' => 'string', 'description' => 'Opsional kode mesin, kosong=semua'],
                     ],
                     'required' => [],
                 ],
             ],
             [
                 'name' => 'getTopProblemDies',
-                'description' => 'Ranking problem dies PALING SERING muncul (Pareto), dikelompokkan per teks problem, dalam rentang bulan opsional. Dipakai untuk pertanyaan seperti "problem dies apa yang paling sering muncul" — beda dengan getProblemDies yang mengembalikan daftar mentah per kejadian, tool ini sudah meranking berdasarkan frekuensi. Kosongkan bulanMulai/bulanAkhir untuk analisa semua periode (all-time).',
+                'description' => 'Ranking problem dies paling sering (Pareto) per teks problem. Kosong=all-time.',
                 'parameters' => [
                     'type' => 'object',
                     'properties' => [
-                        'bulanMulai' => ['type' => 'string', 'description' => 'Opsional, bulan mulai format YYYY-MM. Kosongkan untuk semua periode.'],
-                        'bulanAkhir' => ['type' => 'string', 'description' => 'Opsional, bulan akhir (inklusif) format YYYY-MM. Kosongkan untuk semua periode.'],
-                        'partNo' => ['type' => 'string', 'description' => 'Opsional, nomor part/dies spesifik. Kosongkan untuk semua dies.'],
+                        'bulanMulai' => ['type' => 'string', 'description' => 'Opsional YYYY-MM, kosong=all-time'],
+                        'bulanAkhir' => ['type' => 'string', 'description' => 'Opsional YYYY-MM inklusif, kosong=all-time'],
+                        'partNo' => ['type' => 'string', 'description' => 'Opsional no part/dies, kosong=semua'],
                     ],
                     'required' => [],
                 ],
             ],
             [
                 'name' => 'getTopProblemMesin',
-                'description' => 'Sama seperti getTopProblemDies tapi untuk mesin — ranking problem mesin paling sering muncul (Pareto).',
+                'description' => 'Seperti getTopProblemDies untuk mesin.',
                 'parameters' => [
                     'type' => 'object',
                     'properties' => [
-                        'bulanMulai' => ['type' => 'string', 'description' => 'Opsional, bulan mulai format YYYY-MM. Kosongkan untuk semua periode.'],
-                        'bulanAkhir' => ['type' => 'string', 'description' => 'Opsional, bulan akhir (inklusif) format YYYY-MM. Kosongkan untuk semua periode.'],
-                        'idMesin' => ['type' => 'string', 'description' => 'Opsional, kode mesin spesifik. Kosongkan untuk semua mesin.'],
+                        'bulanMulai' => ['type' => 'string', 'description' => 'Opsional YYYY-MM, kosong=all-time'],
+                        'bulanAkhir' => ['type' => 'string', 'description' => 'Opsional YYYY-MM inklusif, kosong=all-time'],
+                        'idMesin' => ['type' => 'string', 'description' => 'Opsional kode mesin, kosong=semua'],
                     ],
                     'required' => [],
                 ],
@@ -966,13 +968,13 @@ class ChatbotTools
         return [
             [
                 'name' => 'getRekapDandori',
-                'description' => 'Rekap kejadian dandori (ganti setup/part) dikelompokkan per jenis losstime, termasuk total menit over standar, dalam rentang bulan. Opsional filter per mesin. Kosongkan bulanMulai/bulanAkhir untuk analisa semua periode (all-time).',
+                'description' => 'Rekap dandori per jenis losstime + total over-menit, rentang bulan. Kosong=all-time.',
                 'parameters' => [
                     'type' => 'object',
                     'properties' => [
-                        'bulanMulai' => ['type' => 'string', 'description' => 'Opsional, bulan mulai format YYYY-MM. Kosongkan untuk semua periode.'],
-                        'bulanAkhir' => ['type' => 'string', 'description' => 'Opsional, bulan akhir (inklusif) format YYYY-MM. Kosongkan untuk semua periode.'],
-                        'idMesin' => ['type' => 'string', 'description' => 'Opsional, kode mesin spesifik. Kosongkan untuk semua mesin.'],
+                        'bulanMulai' => ['type' => 'string', 'description' => 'Opsional YYYY-MM, kosong=all-time'],
+                        'bulanAkhir' => ['type' => 'string', 'description' => 'Opsional YYYY-MM inklusif, kosong=all-time'],
+                        'idMesin' => ['type' => 'string', 'description' => 'Opsional kode mesin, kosong=semua'],
                     ],
                     'required' => [],
                 ],
@@ -985,22 +987,22 @@ class ChatbotTools
         return [
             [
                 'name' => 'describeSchema',
-                'description' => 'Lihat struktur database OPTIMA. Tanpa argumen: daftar semua tabel bisnis + deskripsi. Dengan argumen table: daftar kolom real + tipe untuk tabel itu. WAJIB dipanggil sebelum queryDatabase agar tahu nama kolom yang benar.',
+                'description' => 'Lihat struktur DB. Tanpa arg: daftar tabel. Dengan table: kolom+tipe. Panggil sebelum queryDatabase.',
                 'parameters' => [
                     'type' => 'object',
                     'properties' => [
-                        'table' => ['type' => 'string', 'description' => 'Opsional. Nama tabel untuk lihat kolomnya. Kosongkan untuk daftar semua tabel.'],
+                        'table' => ['type' => 'string', 'description' => 'Opsional nama tabel, kosong=daftar semua'],
                     ],
                     'required' => [],
                 ],
             ],
             [
                 'name' => 'queryDatabase',
-                'description' => 'Jalankan SQL SELECT read-only ke database OPTIMA untuk pertanyaan yang tidak tercakup tool analitik lain (mis. list master data, performa per-operator/inspector, per-shift, rekap jenis NG, gabungan lintas-tabel). Hanya SELECT, hanya tabel bisnis. Panggil describeSchema dulu untuk tahu nama kolom yang benar. Hasil dibatasi 200 baris.',
+                'description' => 'SQL SELECT read-only untuk pertanyaan di luar tool lain (master data, per-operator/shift, jenis NG, lintas-tabel). Hanya SELECT tabel bisnis. Cek describeSchema dulu. Maks 25 baris.',
                 'parameters' => [
                     'type' => 'object',
                     'properties' => [
-                        'sql' => ['type' => 'string', 'description' => 'Satu perintah SQL SELECT valid untuk MySQL. Contoh: SELECT nama_karyawan, departemen FROM master_karyawan WHERE is_aktif = 1'],
+                        'sql' => ['type' => 'string', 'description' => 'Satu SELECT MySQL valid. Mis: SELECT nama_karyawan,departemen FROM master_karyawan WHERE is_aktif=1'],
                     ],
                     'required' => ['sql'],
                 ],

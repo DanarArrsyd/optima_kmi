@@ -46,7 +46,9 @@ class GroqChatbotService implements ChatbotProviderInterface
                     return null;
                 }
 
-                $args = json_decode($toolCall['function']['arguments'] ?? '[]', true);
+                // Model kadang kirim arguments "null"/"" untuk tool tanpa argumen wajib —
+                // perlakukan sebagai array kosong, jangan gagalkan seluruh jawaban.
+                $args = json_decode($toolCall['function']['arguments'] ?? '[]', true) ?? [];
                 if (!is_array($args)) {
                     return null;
                 }
