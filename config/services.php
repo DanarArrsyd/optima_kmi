@@ -45,4 +45,9 @@ return [
         'model' => env('GROQ_MODEL', 'llama-3.3-70b-versatile'),
     ],
 
+    'cerebras' => [
+        'key'   => env('CEREBRAS_API_KEY'),
+        'model' => env('CEREBRAS_MODEL', 'llama-3.3-70b'),
+    ],
+
 ];

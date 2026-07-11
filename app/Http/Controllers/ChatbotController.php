@@ -7,6 +7,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Http;
 use Illuminate\View\View;
 use App\Services\ChatbotTools;
+use App\Services\CerebrasChatbotService;
 use App\Services\GeminiChatbotService;
 use App\Services\GroqChatbotService;
 
@@ -15,6 +16,7 @@ class ChatbotController extends Controller
     private const FALLBACK = 'Maaf, sistem AI lagi ga bisa diakses, coba lagi nanti.';
 
     public function __construct(
+        private CerebrasChatbotService $cerebras,
         private GeminiChatbotService $gemini,
         private GroqChatbotService $groq,
     ) {}
@@ -36,6 +38,8 @@ class ChatbotController extends Controller
         $gModel = config('services.gemini.model');
         $qKey   = config('services.groq.key');
         $qModel = config('services.groq.model');
+        $cKey   = config('services.cerebras.key');
+        $cModel = config('services.cerebras.model');
         $schema = $tools->schemaDefinitions();
 
         $probe = function (callable $call): array {
@@ -47,10 +51,23 @@ class ChatbotController extends Controller
             }
         };
 
-        $geminiUrl = "https://generativelanguage.googleapis.com/v1beta/models/{$gModel}:generateContent?key={$gKey}";
-        $groqUrl   = 'https://api.groq.com/openai/v1/chat/completions';
+        $geminiUrl   = "https://generativelanguage.googleapis.com/v1beta/models/{$gModel}:generateContent?key={$gKey}";
+        $groqUrl     = 'https://api.groq.com/openai/v1/chat/completions';
+        $cerebrasUrl = 'https://api.cerebras.ai/v1/chat/completions';
 
         return response()->json([
+            'cerebras' => [
+                'key_set'    => (bool) $cKey,
+                'model'      => $cModel,
+                'no_tools'   => $probe(fn () => Http::timeout(20)->withToken($cKey)->post($cerebrasUrl, [
+                    'model' => $cModel, 'messages' => [['role' => 'user', 'content' => 'balas: ok']],
+                ])),
+                'with_tools' => $probe(fn () => Http::timeout(20)->withToken($cKey)->post($cerebrasUrl, [
+                    'model'    => $cModel,
+                    'messages' => [['role' => 'user', 'content' => 'balas: ok']],
+                    'tools'    => array_map(fn ($t) => ['type' => 'function', 'function' => $t], $schema),
+                ])),
+            ],
             'gemini' => [
                 'key_set'    => (bool) $gKey,
                 'model'      => $gModel,
@@ -88,9 +105,11 @@ class ChatbotController extends Controller
 
         $history = $data['history'] ?? [];
 
-        // Groq primary, Gemini fallback: free tier Gemini di key produksi = limit 0
-        // (dinonaktifkan), sedangkan Groq llama-3.3 melayani tool-call dengan sehat.
-        $reply = $this->groq->ask($history, $data['message'])
+        // Urutan fallback: Cerebras (free tier lebih lega) → Groq → Gemini.
+        // Provider tanpa key otomatis di-skip (ask() balikin null), jadi aman
+        // walau CEREBRAS_API_KEY belum diisi.
+        $reply = $this->cerebras->ask($history, $data['message'])
+            ?? $this->groq->ask($history, $data['message'])
             ?? $this->gemini->ask($history, $data['message'])
             ?? self::FALLBACK;
 
