@@ -1147,16 +1147,17 @@ class ChatbotToolsTest extends TestCase
     {
         $names = collect((new ChatbotTools())->schemaDefinitions())->pluck('name');
 
-        // Free-tier: hanya subset esensial dipapar ke LLM (hemat token/request).
-        $this->assertCount(8, $names);
-        $this->assertCount(8, $names->unique(), 'Nama tool yang dipapar harus unik.');
+        // Free-tier: subset yang cover pertanyaan umum (chip) dipapar 1x panggil.
+        $this->assertCount(14, $names);
+        $this->assertCount(14, $names->unique(), 'Nama tool yang dipapar harus unik.');
         $this->assertTrue($names->contains('getMtbfMttrDies'));
-        $this->assertTrue($names->contains('getTotalProduksi'));
+        $this->assertTrue($names->contains('getRekapDandori'));
+        $this->assertTrue($names->contains('getTopProblemDies'));
         $this->assertTrue($names->contains('describeSchema'));
         $this->assertTrue($names->contains('queryDatabase'));
-        // Tool agregat sederhana tidak dipapar (dilayani queryDatabase).
-        $this->assertFalse($names->contains('getRekapDandori'));
-        $this->assertFalse($names->contains('getRekapNg'));
+        // Raw-list mentah tidak dipapar (dicover getTopProblem* / queryDatabase).
+        $this->assertFalse($names->contains('getProblemDies'));
+        $this->assertFalse($names->contains('getProblemMesin'));
     }
 
     /**

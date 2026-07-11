@@ -775,8 +775,11 @@ class ChatbotTools
      */
     private const EXPOSED_TOOLS = [
         'getMtbfMttrDies', 'getMtbfMttrMesin',
-        'getTotalProduksi', 'bandingkanProduksi',
+        'getRekapNg', 'getTotalProduksi', 'bandingkanProduksi',
         'getRankingBreakdownMesin', 'getRankingBreakdownDies',
+        'getTopProblemDies', 'getTopProblemMesin',
+        'getTotalBreakdownDies', 'getTotalBreakdownMesin',
+        'getRekapDandori',
         'describeSchema', 'queryDatabase',
     ];
 
