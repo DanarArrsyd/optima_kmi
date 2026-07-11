@@ -678,6 +678,44 @@ class ChatbotToolsTest extends TestCase
         $this->assertArrayHasKey('error', $result);
     }
 
+    public function test_get_top_problem_dies_returns_top_actions_and_pareto(): void
+    {
+        $part = MasterPart::create(['part_no' => 'REC-01', 'part_name' => 'Rec Part', 'customer' => 'Toyota']);
+        $proses = MasterPartProses::create([
+            'id_part' => $part->id, 'id_proses' => 1, 'nama_proses' => 'PROGRESSIVE',
+            'sph_standar_produksi' => 500, 'sph_standar_qc' => 250,
+        ]);
+        // 6 BURRY (tindakan: grinding 4x, ganti 2x), 1 CRACK, 1 DENT → total 8.
+        $data = array_merge(
+            array_fill(0, 4, ['BURRY', 'grinding punch']),
+            array_fill(0, 2, ['BURRY', 'ganti punch']),
+            [['CRACK', 'las ulang'], ['DENT', 'ketok']],
+        );
+        foreach ($data as $i => [$problem, $tindakan]) {
+            TransaksiBreakdownDies::create([
+                'no_lkd' => "LKD-REC{$i}", 'id_part_proses' => $proses->id,
+                'tanggal_breakdown' => '2026-07-05', 'jam_breakdown' => '08:00',
+                'tanggal_mulai_perbaikan' => '2026-07-05', 'jam_mulai_perbaikan' => '09:00',
+                'tanggal_selesai_perbaikan' => '2026-07-05', 'jam_selesai_perbaikan' => '10:00',
+                'problem_dies' => $problem, 'penyebab_breakdown' => 'punch aus', 'tindakan_perbaikan' => $tindakan,
+                'status_breakdown' => 'Selesai', 'pic_maintenance' => 'Budi',
+                'repair_time' => 1.0, 'total_downtime' => 1.0,
+            ]);
+        }
+
+        $result = (new ChatbotTools())->getTopProblemDies();
+
+        // A: tindakan tersering untuk BURRY = grinding punch (4x), dari data — bukan karangan.
+        $burry = collect($result['top_problem'])->firstWhere('problem', 'BURRY');
+        $this->assertSame('grinding punch', $burry['tindakan_teratas'][0]['teks']);
+        $this->assertSame(4, $burry['tindakan_teratas'][0]['jumlah']);
+
+        // B: Pareto — BURRY(6)+CRACK(7) sudah ≥80% dari 8 → fokus 2 problem.
+        $this->assertSame(2, $result['pareto']['jumlah_problem_fokus']);
+        $this->assertSame(3, $result['pareto']['total_jenis_problem']);
+        $this->assertGreaterThanOrEqual(80.0, $result['pareto']['cakupan_pct']);
+    }
+
     public function test_get_top_problem_dies_groups_by_keyword_deterministically(): void
     {
         $part = MasterPart::create(['part_no' => 'KW-01', 'part_name' => 'KW Part', 'customer' => 'Toyota']);
@@ -1050,7 +1088,9 @@ class ChatbotToolsTest extends TestCase
         $this->assertCount(2, $result['top_problem']);
         $this->assertSame(2, $result['top_problem'][0]['jumlah_kejadian']);
         $this->assertSame('motor overheat', $result['top_problem'][0]['problem']);
-        $this->assertSame('Bearing aus baru', $result['top_problem'][0]['contoh_penyebab']);
+        $penyebab = collect($result['top_problem'][0]['penyebab_teratas'])->pluck('teks');
+        $this->assertTrue($penyebab->contains('Bearing aus baru'));
+        $this->assertTrue($penyebab->contains('Bearing aus lama'));
         $this->assertEqualsWithDelta(66.67, $result['top_problem'][0]['pct_dari_total'], 0.01);
         $this->assertSame(1, $result['top_problem'][1]['jumlah_kejadian']);
         $this->assertSame('Baut kendor', $result['top_problem'][1]['problem']);
@@ -1181,7 +1221,8 @@ class ChatbotToolsTest extends TestCase
         $this->assertCount(2, $result['top_problem']);
         $this->assertSame(2, $result['top_problem'][0]['jumlah_kejadian']);
         $this->assertSame('panel error', $result['top_problem'][0]['problem']);
-        $this->assertSame('Korsleting baru', $result['top_problem'][0]['contoh_penyebab']);
+        $penyebab = collect($result['top_problem'][0]['penyebab_teratas'])->pluck('teks');
+        $this->assertTrue($penyebab->contains('Korsleting baru'));
     }
 
     public function test_get_top_problem_mesin_filters_by_mesin(): void

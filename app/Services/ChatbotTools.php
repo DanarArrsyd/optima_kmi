@@ -497,6 +497,7 @@ class ChatbotTools
             'bulan_mulai'    => $bulanMulai ?? 'semua periode',
             'bulan_akhir'    => $bulanAkhir ?? 'semua periode',
             'total_kejadian' => $records->count(),
+            'pareto'         => $this->paretoFocus($records, 'problem_dies'),
             'top_keyword'    => $this->keywordFrequency($records, 'problem_dies'),
             'top_problem'    => $groups->toArray(),
         ];
@@ -535,6 +536,7 @@ class ChatbotTools
             'bulan_mulai'    => $bulanMulai ?? 'semua periode',
             'bulan_akhir'    => $bulanAkhir ?? 'semua periode',
             'total_kejadian' => $records->count(),
+            'pareto'         => $this->paretoFocus($records, 'problem_mesin'),
             'top_keyword'    => $this->keywordFrequency($records, 'problem_mesin'),
             'top_problem'    => $groups->toArray(),
         ];
@@ -762,16 +764,66 @@ class ChatbotTools
             ->map(function ($rows) use ($total, $problemField, $penyebabField, $tindakanField) {
                 $latest = $rows->first();
                 return [
-                    'problem'         => trim($latest->{$problemField}),
-                    'jumlah_kejadian' => $rows->count(),
-                    'pct_dari_total'  => round($rows->count() / $total * 100, 2),
-                    'contoh_penyebab' => $latest->{$penyebabField},
-                    'contoh_tindakan' => $latest->{$tindakanField},
+                    'problem'          => trim($latest->{$problemField}),
+                    'jumlah_kejadian'  => $rows->count(),
+                    'pct_dari_total'   => round($rows->count() / $total * 100, 2),
+                    // Penyebab & tindakan TERSERING yang tercatat di data (basis rekomendasi).
+                    'penyebab_teratas' => $this->topValues($rows, $penyebabField, 2),
+                    'tindakan_teratas' => $this->topValues($rows, $tindakanField, 2),
                 ];
             })
             ->sortByDesc('jumlah_kejadian')
             ->values()
             ->take(10);
+    }
+
+    /** Nilai teks yang paling sering muncul di sebuah field (top $n, dengan frekuensi). */
+    private function topValues(\Illuminate\Support\Collection $rows, string $field, int $n): array
+    {
+        return $rows
+            ->map(fn ($r) => trim((string) $r->{$field}))
+            ->filter(fn ($v) => $v !== '')
+            ->countBy()
+            ->sortDesc()
+            ->take($n)
+            ->map(fn ($count, $teks) => ['teks' => $teks, 'jumlah' => $count])
+            ->values()
+            ->toArray();
+    }
+
+    /**
+     * Ringkasan Pareto: berapa SEDIKIT problem teratas yang sudah menutup ~$threshold%
+     * dari seluruh kejadian (dihitung atas SEMUA grup problem, bukan cuma top 10).
+     */
+    private function paretoFocus(\Illuminate\Support\Collection $records, string $problemField, float $threshold = 80.0): array
+    {
+        $counts = $records
+            ->groupBy(fn ($r) => strtolower(trim($r->{$problemField})))
+            ->map->count()
+            ->sortDesc()
+            ->values();
+
+        $total = $counts->sum();
+        if ($total === 0) {
+            return [];
+        }
+
+        $cum = 0;
+        $n = 0;
+        foreach ($counts as $c) {
+            $cum += $c;
+            $n++;
+            if ($cum / $total * 100 >= $threshold) {
+                break;
+            }
+        }
+
+        return [
+            'jumlah_problem_fokus' => $n,
+            'total_jenis_problem'  => $counts->count(),
+            'threshold_pct'        => $threshold,
+            'cakupan_pct'          => round($cum / $total * 100, 2),
+        ];
     }
 
     /**
