@@ -40,6 +40,9 @@ class ChatbotTools
         'transaksi_breakdown_dies'   => 'Breakdown dies (tanggal_breakdown, id_part_proses, problem_dies, penyebab_breakdown, tindakan_perbaikan, repair_time, total_downtime).',
     ];
 
+    /** Batas baris hasil queryDatabase sebelum ditandai truncated. */
+    private const QUERY_ROW_CAP = 200;
+
     public function __construct(
         private MaintenanceDiesDashboardService $diesDashboard = new MaintenanceDiesDashboardService(),
         private MaintenanceDashboardService $mesinDashboard = new MaintenanceDashboardService(),
@@ -524,6 +527,67 @@ class ChatbotTools
         ];
     }
 
+    /** Guarded read-only SELECT untuk pertanyaan lintas-tabel di luar tool analitik. */
+    public function queryDatabase(string $sql): array
+    {
+        $sql = trim($sql);
+
+        if (!preg_match('/^(select|with)\b/i', $sql)) {
+            return ['error' => 'Hanya query baca (SELECT) yang diizinkan.'];
+        }
+
+        // Tolak multi-statement (titik-koma selain trailing tunggal).
+        if (str_contains(rtrim($sql, "; \n\t"), ';')) {
+            return ['error' => 'Hanya satu perintah query yang diizinkan.'];
+        }
+
+        // Tolak keyword tulis/DDL sebagai kata utuh.
+        if (preg_match('/\b(insert|update|delete|replace|drop|alter|truncate|create|grant|revoke|attach|pragma|into|lock|call|exec|merge)\b/i', $sql)) {
+            return ['error' => 'Query mengandung operasi yang tidak diizinkan.'];
+        }
+
+        // Whitelist-only: setiap tabel setelah FROM/JOIN wajib ada di BUSINESS_TABLES.
+        preg_match_all('/\b(?:from|join)\s+`?([a-zA-Z_][a-zA-Z0-9_]*)`?/i', $sql, $m);
+        if (empty($m[1])) {
+            return ['error' => 'Query harus menyebut tabel bisnis yang valid.'];
+        }
+        foreach ($m[1] as $referenced) {
+            if (!array_key_exists(strtolower($referenced), self::BUSINESS_TABLES)) {
+                return ['error' => "Tabel \"{$referenced}\" tidak tersedia untuk ditelusuri."];
+            }
+        }
+
+        // Paksa LIMIT: clamp yang eksplisit > cap, atau append kalau tak ada.
+        $capped = preg_replace_callback(
+            '/\blimit\s+(\d+)/i',
+            fn ($mm) => 'LIMIT ' . min((int) $mm[1], self::QUERY_ROW_CAP),
+            $sql,
+            1,
+            $count
+        );
+        if ($count === 0) {
+            $capped = rtrim($sql, "; \n\t") . ' LIMIT ' . self::QUERY_ROW_CAP;
+        }
+
+        // Read-only: bungkus transaksi yang selalu rollback (safety net).
+        try {
+            DB::beginTransaction();
+            $rows = DB::select($capped);
+        } catch (\Throwable $e) {
+            return ['error' => 'Query gagal dijalankan: ' . $e->getMessage()];
+        } finally {
+            try { DB::rollBack(); } catch (\Throwable) {}
+        }
+
+        $rows = array_map(fn ($r) => (array) $r, $rows);
+
+        return [
+            'row_count' => count($rows),
+            'truncated' => count($rows) >= self::QUERY_ROW_CAP,
+            'rows'      => $rows,
+        ];
+    }
+
     private function produksiSummary(string $periode): array
     {
         [$from, $to] = $this->monthRange($periode);
@@ -894,6 +958,17 @@ class ChatbotTools
                         'table' => ['type' => 'string', 'description' => 'Opsional. Nama tabel untuk lihat kolomnya. Kosongkan untuk daftar semua tabel.'],
                     ],
                     'required' => [],
+                ],
+            ],
+            [
+                'name' => 'queryDatabase',
+                'description' => 'Jalankan SQL SELECT read-only ke database OPTIMA untuk pertanyaan yang tidak tercakup tool analitik lain (mis. list master data, performa per-operator/inspector, per-shift, rekap jenis NG, gabungan lintas-tabel). Hanya SELECT, hanya tabel bisnis. Panggil describeSchema dulu untuk tahu nama kolom yang benar. Hasil dibatasi 200 baris.',
+                'parameters' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'sql' => ['type' => 'string', 'description' => 'Satu perintah SQL SELECT valid untuk MySQL. Contoh: SELECT nama_karyawan, departemen FROM master_karyawan WHERE is_aktif = 1'],
+                    ],
+                    'required' => ['sql'],
                 ],
             ],
         ];
