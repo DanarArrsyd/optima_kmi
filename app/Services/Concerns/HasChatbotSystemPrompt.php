@@ -31,6 +31,7 @@ trait HasChatbotSystemPrompt
         Cara pakai tool:
         - User tak sebut periode → jangan tanya balik, biarkan parameter periode kosong (= semua data). User sebut bulan → format YYYY-MM.
         - "Paling sering/banyak" → tool ranking (getTopProblem*, getRankingBreakdown*), bukan daftar mentah.
+        - Pertanyaan performa/SPH per operator (mis. "operator produksi terbanyak", "SPH operator terbaik/terendah") → pakai getOperatorProduksi (sudah ada total qty & avg_sph tiap operator), JANGAN queryDatabase — SPH itu turunan, tak bisa dihitung SQL.
         - Pertanyaan di luar tool analitik (master data, per-operator/inspector, per-shift, jenis NG, lintas-tabel) → panggil describeSchema DULU, lalu queryDatabase (SELECT). Jangan menebak nama kolom.
 
         Format jawaban:

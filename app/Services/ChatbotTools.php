@@ -1,6 +1,7 @@
 <?php
 namespace App\Services;
 
+use App\Models\MasterKaryawan;
 use App\Models\MasterMesin;
 use App\Models\MasterPart;
 use App\Models\MasterPartProses;
@@ -426,7 +427,12 @@ class ChatbotTools
         ];
     }
 
-    /** Ranking operator berdasarkan total qty produksi (join di DB, deterministik). Bulan opsional = all-time. */
+    /**
+     * Performa per operator: total qty, jumlah LHP, DAN rata-rata SPH.
+     * SPH = accessor per baris (qty/waktu kerja), jadi tak bisa via SQL murni —
+     * dihitung di PHP. Kembalikan semua operator (cap 50) supaya model bisa jawab
+     * "produksi terbanyak", "SPH terbaik", maupun "SPH terendah" dari satu daftar.
+     */
     public function getOperatorProduksi(?string $bulanMulai = null, ?string $bulanAkhir = null): array
     {
         [$from, $to, $error] = $this->monthSpanOptional($bulanMulai, $bulanAkhir);
@@ -434,33 +440,33 @@ class ChatbotTools
             return ['error' => $error];
         }
 
-        $rows = TransaksiProduksi::query()
-            ->leftJoin('master_karyawan', function ($join) {
-                $join->on('transaksi_produksi.id_karyawan', '=', 'master_karyawan.id')
-                     ->whereNull('master_karyawan.deleted_at');
-            })
-            ->when($from && $to, fn ($q) => $q->whereBetween('transaksi_produksi.tanggal_produksi', [$from->toDateString(), $to->toDateString()]))
-            ->groupBy('operator')
-            ->orderByRaw('SUM(transaksi_produksi.qty_aktual) DESC')
-            ->limit(15)
-            ->get([
-                DB::raw("COALESCE(master_karyawan.nama_karyawan, 'Tidak diketahui') as operator"),
-                DB::raw('SUM(transaksi_produksi.qty_aktual) as total_qty'),
-                DB::raw('COUNT(*) as jumlah_lhp'),
-            ]);
+        $rows = TransaksiProduksi::when($from && $to, fn ($q) => $q->whereBetween('tanggal_produksi', [$from->toDateString(), $to->toDateString()]))
+            ->get(['id_karyawan', 'qty_aktual', 'jam_start', 'jam_finish']);
 
         if ($rows->isEmpty()) {
             return ['error' => "Tidak ada data produksi" . $this->periodeLabel($bulanMulai, $bulanAkhir) . "."];
         }
 
+        $nama = MasterKaryawan::pluck('nama_karyawan', 'id');
+
+        $ranking = $rows
+            ->groupBy('id_karyawan')
+            ->map(fn ($g, $id) => [
+                'operator'         => $nama[$id] ?? 'Tidak diketahui',
+                'total_qty_aktual' => (int) $g->sum('qty_aktual'),
+                'jumlah_lhp'       => $g->count(),
+                'avg_sph_aktual'   => (int) round($g->avg(fn ($r) => $r->sph_aktual)),
+            ])
+            ->sortByDesc('total_qty_aktual')
+            ->values()
+            ->take(50)
+            ->toArray();
+
         return [
             'bulan_mulai' => $bulanMulai ?? 'semua periode',
             'bulan_akhir' => $bulanAkhir ?? 'semua periode',
-            'ranking'     => $rows->map(fn ($r) => [
-                'operator'         => $r->operator,
-                'total_qty_aktual' => (int) $r->total_qty,
-                'jumlah_lhp'       => (int) $r->jumlah_lhp,
-            ])->toArray(),
+            'catatan'     => 'Daftar performa per operator: total_qty_aktual (produksi) & avg_sph_aktual (SPH rata-rata). Untuk "SPH terbaik/terendah", bandingkan avg_sph_aktual.',
+            'ranking'     => $ranking,
         ];
     }
 
@@ -1001,7 +1007,7 @@ class ChatbotTools
             ],
             [
                 'name' => 'getOperatorProduksi',
-                'description' => 'Ranking operator berdasarkan total qty produksi (siapa produksi terbanyak). Kosong=all-time.',
+                'description' => 'Performa per operator: total qty produksi + rata-rata SPH tiap operator. Pakai untuk "operator produksi terbanyak", "SPH operator terbaik/terendah". Kosong=all-time.',
                 'parameters' => [
                     'type' => 'object',
                     'properties' => [

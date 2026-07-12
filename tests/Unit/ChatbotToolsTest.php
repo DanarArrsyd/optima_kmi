@@ -952,8 +952,11 @@ class ChatbotToolsTest extends TestCase
         $this->assertArrayNotHasKey('error', $result);
         $this->assertSame('Andi', $result['ranking'][0]['operator']);
         $this->assertSame(5000, $result['ranking'][0]['total_qty_aktual']);
+        // avg SPH (accessor: qty/8jam) — Andi (3000/8=375, 2000/8=250) → 313; Budi 3000/8=375.
+        $this->assertSame(313, $result['ranking'][0]['avg_sph_aktual']);
         $this->assertSame('Budi', $result['ranking'][1]['operator']);
         $this->assertSame(3000, $result['ranking'][1]['total_qty_aktual']);
+        $this->assertSame(375, $result['ranking'][1]['avg_sph_aktual']);
     }
 
     public function test_get_total_produksi_sums_across_month_range(): void
