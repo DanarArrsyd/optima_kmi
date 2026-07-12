@@ -196,7 +196,7 @@
                         <th style="width:90px">Part No.</th>
                         <th style="width:140px">Part Name</th>
                         <th style="width:48px;text-align:center">ID<br>Proses</th>
-                        <th style="width:100px">Proses</th>
+                        <th style="white-space:nowrap">Proses</th>
                         <th style="width:95px;text-align:center">Jam</th>
                         <th style="width:70px;text-align:right">W. Kerja</th>
                         <th style="width:72px;text-align:right">SPH Std</th>
@@ -601,7 +601,7 @@ function buildOneRows(table) {
                 <td style="padding:6px 10px;font-size:11.5px;white-space:nowrap">${s.part_no}</td>
                 <td style="padding:6px 10px;font-size:11.5px;white-space:nowrap">${s.part_name}</td>
                 <td style="padding:6px 10px;text-align:center;font-weight:600">${s.id_proses}</td>
-                <td style="padding:6px 10px;font-size:11.5px">${s.nama_proses}</td>
+                <td style="padding:6px 10px;font-size:11.5px;white-space:nowrap">${s.nama_proses}</td>
                 <td style="padding:6px 10px;text-align:center;font-size:11px;color:#6b7280;white-space:nowrap">${s.jam}</td>
                 <td style="padding:6px 10px;text-align:right;color:#6b7280">${s.waktu_kerja}j</td>
                 <td style="padding:6px 10px;text-align:right;color:#6b7280">${n(s.sph_std)}</td>
