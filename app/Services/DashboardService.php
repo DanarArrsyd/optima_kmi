@@ -117,6 +117,7 @@ class DashboardService
                     'part_name'   => $r->partProses?->part?->part_name ?? '—',
                     'id_proses'   => $r->partProses?->id_proses ?? '—',
                     'nama_proses' => $r->partProses?->nama_proses ?? '—',
+                    'jam'         => substr((string) $r->jam_start, 0, 5) . '–' . substr((string) $r->jam_finish, 0, 5),
                     'waktu_kerja' => round($this->durationHours($r->jam_start, $r->jam_finish), 1),
                     'sph_std'     => (int) ($r->partProses?->sph_standar_produksi ?? 0),
                     'sph_act'     => (int) $r->sph_aktual,

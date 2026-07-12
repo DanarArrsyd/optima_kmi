@@ -186,7 +186,7 @@
             <span style="margin-left:auto;font-size:10px;font-weight:400;color:#9ca3af;text-transform:none;letter-spacing:0">Klik tanggal untuk expand/collapse</span>
         </div>
         <div style="overflow-x:auto">
-            <table class="erp-table" style="min-width:1050px">
+            <table class="erp-table" style="min-width:1150px">
                 <thead>
                     <tr>
                         <th style="width:80px">Tanggal</th>
@@ -197,6 +197,7 @@
                         <th style="width:140px">Part Name</th>
                         <th style="width:48px;text-align:center">ID<br>Proses</th>
                         <th style="width:100px">Proses</th>
+                        <th style="width:95px;text-align:center">Jam</th>
                         <th style="width:70px;text-align:right">W. Kerja</th>
                         <th style="width:72px;text-align:right">SPH Std</th>
                         <th style="width:72px;text-align:right">SPH Act</th>
@@ -579,7 +580,7 @@ function buildOneRows(table) {
                 <i class="bi bi-chevron-right" id="icon-${di}"
                    style="font-size:10px;color:#6b7280;transition:transform 0.15s;margin-right:5px;${expanded?'transform:rotate(90deg)':''}"></i>${day.tanggal}
             </td>
-            <td colspan="7" style="padding:8px 10px;color:#6b7280;font-size:11px">${day.sessions.length} sesi</td>
+            <td colspan="8" style="padding:8px 10px;color:#6b7280;font-size:11px">${day.sessions.length} sesi</td>
             <td style="text-align:right;padding:8px 10px;color:#6b7280">—</td>
             <td style="text-align:right;padding:8px 10px;font-weight:600;color:#6b7280">${n(day.avg_sph_std)}</td>
             <td style="text-align:right;padding:8px 10px;font-weight:700;color:${color}">${n(day.avg_sph_act)}</td>
@@ -601,6 +602,7 @@ function buildOneRows(table) {
                 <td style="padding:6px 10px;font-size:11.5px;white-space:nowrap">${s.part_name}</td>
                 <td style="padding:6px 10px;text-align:center;font-weight:600">${s.id_proses}</td>
                 <td style="padding:6px 10px;font-size:11.5px">${s.nama_proses}</td>
+                <td style="padding:6px 10px;text-align:center;font-size:11px;color:#6b7280;white-space:nowrap">${s.jam}</td>
                 <td style="padding:6px 10px;text-align:right;color:#6b7280">${s.waktu_kerja}j</td>
                 <td style="padding:6px 10px;text-align:right;color:#6b7280">${n(s.sph_std)}</td>
                 <td style="padding:6px 10px;text-align:right;font-weight:600;color:${sc}">${n(s.sph_act)}</td>
@@ -612,7 +614,7 @@ function buildOneRows(table) {
         // Average row
         html += `
         <tr class="day-rows-${di}" style="display:${expanded?'table-row':'none'};background:#f0f4f8;border-top:1px solid #d1d5db">
-            <td colspan="8" style="padding:6px 10px 6px 22px;font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:0.5px">
+            <td colspan="9" style="padding:6px 10px 6px 22px;font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:0.5px">
                 Average ${day.tanggal}
             </td>
             <td style="padding:6px 10px;text-align:right;color:#6b7280">—</td>
