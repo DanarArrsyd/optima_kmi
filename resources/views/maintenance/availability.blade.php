@@ -8,15 +8,34 @@
 <div class="erp-panel mb-4">
     <div class="card-body py-3">
         <form id="filterForm" class="row g-2 align-items-end">
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label class="form-label small mb-1">Tanggal Dari</label>
                 <input type="date" id="date_from" name="date_from" class="form-control form-control-sm" value="{{ date('Y-01-01') }}">
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label class="form-label small mb-1">Tanggal Sampai</label>
                 <input type="date" id="date_to" name="date_to" class="form-control form-control-sm" value="{{ date('Y-m-d') }}">
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
+                <label class="form-label small mb-1">Bulan</label>
+                <select id="bulan" name="bulan" class="form-select form-select-sm">
+                    <option value="">Semua Bulan</option>
+                    @php $namaBulan = [1=>'Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember']; $thn = date('Y'); @endphp
+                    @foreach($namaBulan as $no => $nm)
+                        <option value="{{ $thn }}-{{ sprintf('%02d', $no) }}">{{ $nm }} {{ $thn }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small mb-1">Tipe Mesin</label>
+                <select id="tipe_mesin" name="tipe_mesin" class="form-select form-select-sm">
+                    <option value="">Semua Tipe</option>
+                    @foreach($tipeList as $tipe)
+                        <option value="{{ $tipe }}">{{ $tipe }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-2">
                 <label class="form-label small mb-1">Mesin</label>
                 <div x-data="taField(taMesin)">
                     <div class="ta-wrap">
@@ -33,7 +52,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <button type="submit" class="btn btn-primary btn-sm w-100"><i class="bi bi-search me-1"></i>Tampilkan</button>
             </div>
         </form>
@@ -112,9 +131,11 @@ function availColor(pct) {
 
 async function loadData() {
     const params = new URLSearchParams({
-        date_from: document.getElementById('date_from').value,
-        date_to:   document.getElementById('date_to').value,
-        mesin_id:  document.getElementById('mesin_id').value,
+        date_from:  document.getElementById('date_from').value,
+        date_to:    document.getElementById('date_to').value,
+        bulan:      document.getElementById('bulan').value,
+        tipe_mesin: document.getElementById('tipe_mesin').value,
+        mesin_id:   document.getElementById('mesin_id').value,
     });
     const res  = await fetch(`{{ route('maintenance.availability.data') }}?${params}`);
     const data = await res.json();

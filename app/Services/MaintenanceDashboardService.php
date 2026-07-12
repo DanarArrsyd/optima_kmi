@@ -8,11 +8,13 @@ use Illuminate\Support\Facades\Schema;
 
 class MaintenanceDashboardService
 {
-    public function compute(Carbon $from, Carbon $to, ?int $mesinId = null): array
+    public function compute(Carbon $from, Carbon $to, ?int $mesinId = null, ?string $tipeMesin = null): array
     {
         $hasInstalasi = Schema::hasColumn('master_mesin', 'tanggal_instalasi');
+        $hasTipe      = Schema::hasColumn('master_mesin', 'tipe_mesin');
 
         $mesins = MasterMesin::when($mesinId, fn ($q) => $q->where('id', $mesinId))
+            ->when($tipeMesin && $hasTipe, fn ($q) => $q->where('tipe_mesin', $tipeMesin))
             ->orderBy('id_mesin')->get();
 
         $stats = TransaksiBreakdownMesin::query()
