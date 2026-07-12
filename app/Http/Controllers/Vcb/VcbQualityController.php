@@ -66,6 +66,7 @@ class VcbQualityController extends Controller
     private function trafficHex(string $light): string
     {
         return match($light) {
+            'info'    => '#1d4ed8',   // >100% = melebihi target (biru), bukan merah
             'success' => '#15803d',
             'warning' => '#a16207',
             default   => '#b91c1c',

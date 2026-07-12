@@ -74,6 +74,7 @@ class VcbProduksiController extends Controller
     private function trafficColor(string $light): string
     {
         return match($light) {
+            'info'    => 'rgba(29,78,216,0.8)',   // >100% = melebihi target (biru)
             'success' => 'rgba(34,197,94,0.8)',
             'warning' => 'rgba(234,179,8,0.8)',
             default   => 'rgba(239,68,68,0.8)',
@@ -83,6 +84,7 @@ class VcbProduksiController extends Controller
     private function trafficHex(string $light): string
     {
         return match($light) {
+            'info'    => '#1d4ed8',   // >100% = melebihi target (biru), bukan merah
             'success' => '#15803d',
             'warning' => '#a16207',
             default   => '#b91c1c',
