@@ -40,8 +40,9 @@
             <div class="mb-3">
                 <label class="form-label">Tipe Mesin <span class="text-danger">*</span></label>
                 <select name="tipe_mesin" class="form-select @error('tipe_mesin') is-invalid @enderror">
-                    <option value="PROGRESSIVE" {{ old('tipe_mesin', $mesin->tipe_mesin) === 'PROGRESSIVE' ? 'selected' : '' }}>PROGRESSIVE</option>
-                    <option value="STAMPING" {{ old('tipe_mesin', $mesin->tipe_mesin) === 'STAMPING' ? 'selected' : '' }}>STAMPING</option>
+                    @foreach(\App\Models\MasterMesin::TIPE_MESIN as $tipe)
+                        <option value="{{ $tipe }}" {{ old('tipe_mesin', $mesin->tipe_mesin) === $tipe ? 'selected' : '' }}>{{ $tipe }}</option>
+                    @endforeach
                 </select>
                 @error('tipe_mesin')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>

@@ -1,5 +1,6 @@
 <?php
 namespace App\Http\Requests;
+use App\Models\MasterMesin;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -16,7 +17,7 @@ class StoreMasterMesinRequest extends FormRequest
             ],
             'nama_mesin'           => 'required|string|max:100',
             'line'                 => 'required|string|max:10',
-            'tipe_mesin'           => 'required|in:PROGRESSIVE,STAMPING',
+            'tipe_mesin'           => ['required', Rule::in(MasterMesin::TIPE_MESIN)],
             'kapasitas_max_stroke' => 'nullable|integer|min:0',
             'tanggal_instalasi'    => 'nullable|date',
         ];

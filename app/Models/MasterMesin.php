@@ -7,6 +7,18 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class MasterMesin extends Model
 {
     use SoftDeletes;
+
+    /** Sumber tunggal daftar tipe mesin (dipakai validasi + dropdown). Tambah tipe = edit di sini saja. */
+    public const TIPE_MESIN = [
+        'STAMPING',
+        'PROGRESSIVE',
+        'WELDING',
+        'FORKLIFT',
+        'HANDLIFT ELECTRIC',
+        'HANDLIFT MANUAL',
+        'ENGINEERING',
+    ];
+
     protected $table = 'master_mesin';
     protected $fillable = ['id_mesin', 'nama_mesin', 'line', 'tipe_mesin', 'kapasitas_max_stroke', 'tanggal_instalasi'];
     public function transaksiProduksi(): HasMany

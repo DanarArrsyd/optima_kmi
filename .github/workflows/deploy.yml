@@ -88,6 +88,13 @@ jobs:
             "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" \
             "cd ${{ env.REMOTE_PATH }} && ${{ env.REMOTE_PHP }} /usr/local/bin/composer install --no-dev --optimize-autoloader --no-interaction"
 
+      # Jalankan migration DB di server (auto-apply perubahan skema saat deploy).
+      - name: Migrate database di server
+        run: |
+          ssh -p "${{ secrets.SSH_PORT }}" -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+            "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" \
+            "cd ${{ env.REMOTE_PATH }} && ${{ env.REMOTE_PHP }} artisan migrate --force"
+
       # Inject secret runtime (mis. CEREBRAS_API_KEY) ke .env server dari GitHub
       # Secrets — .env tidak pernah di-commit. No-op kalau secret belum diisi.
       - name: Sync runtime secrets ke .env server
