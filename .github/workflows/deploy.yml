@@ -88,12 +88,15 @@ jobs:
             "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" \
             "cd ${{ env.REMOTE_PATH }} && ${{ env.REMOTE_PHP }} /usr/local/bin/composer install --no-dev --optimize-autoloader --no-interaction"
 
-      # Jalankan migration DB di server (auto-apply perubahan skema saat deploy).
-      - name: Migrate database di server
+      # CATATAN: DB prod dikelola manual (schema drift) — `migrate` blanket meledak
+      # di migration lama yang perubahannya sudah diterapkan manual. Jadi jalankan
+      # HANYA migration yang memang perlu diterapkan, per --path. Tambah baris baru
+      # di sini tiap ada migration yang harus jalan di prod.
+      - name: Migrate (targeted) di server
         run: |
           ssh -p "${{ secrets.SSH_PORT }}" -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
             "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" \
-            "cd ${{ env.REMOTE_PATH }} && ${{ env.REMOTE_PHP }} artisan migrate --force"
+            "cd ${{ env.REMOTE_PATH }} && ${{ env.REMOTE_PHP }} artisan migrate --force --path=database/migrations/2026_07_12_000001_change_tipe_mesin_to_string_on_master_mesin.php"
 
       # Inject secret runtime (mis. CEREBRAS_API_KEY) ke .env server dari GitHub
       # Secrets — .env tidak pernah di-commit. No-op kalau secret belum diisi.
