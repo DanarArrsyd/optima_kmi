@@ -168,7 +168,7 @@ class DandoriController extends Controller
     {
         $validated = $request->validate([
             'tanggal'        => 'required|date',
-            'id_shift'       => 'required|exists:master_shifts,id',
+            'id_shift'       => 'required|exists:master_shift,id',
             'id_karyawan'    => 'required|exists:master_karyawan,id',
             'id_mesin'       => 'required|exists:master_mesin,id',
             'id_part_proses' => 'required|exists:master_part_proses,id',
