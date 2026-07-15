@@ -18,6 +18,7 @@ class ControlStrokeDiesController extends Controller
         return view('maintenance.control-stroke-dies', [
             'partList'  => MasterPart::orderBy('part_no')->get(),
             'customers' => MasterPart::whereNotNull('customer')->where('customer', '!=', '')->distinct()->orderBy('customer')->pluck('customer'),
+            'threshold' => MaintenanceDiesDashboardService::STROKE_THRESHOLD,
         ]);
     }
 

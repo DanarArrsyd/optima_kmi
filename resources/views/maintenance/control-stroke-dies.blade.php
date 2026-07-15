@@ -9,7 +9,7 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h4 class="mb-0"><i class="bi bi-arrow-repeat me-2"></i>Control Stroke Dies</h4>
-    <div class="text-muted small">Target preventive: <strong>30.000 stroke</strong> / dies</div>
+    <div class="text-muted small">Target preventive: <strong>{{ number_format($threshold, 0, ',', '.') }} stroke</strong> / dies</div>
 </div>
 
 <div class="erp-panel mb-4">
@@ -76,7 +76,7 @@
                 <div>
                     <div class="text-muted small">Segera Preventive</div>
                     <div style="font-size:1.9rem;font-weight:700;line-height:1;color:#b91c1c"><span id="kpiOverdue">0</span></div>
-                    <div class="text-muted" style="font-size:11px">sudah lewat batas 30.000</div>
+                    <div class="text-muted" style="font-size:11px">sudah lewat batas {{ number_format($threshold, 0, ',', '.') }}</div>
                 </div>
             </div>
         </div>
@@ -88,7 +88,7 @@
                 <div>
                     <div class="text-muted small">Mendekati Batas</div>
                     <div style="font-size:1.9rem;font-weight:700;line-height:1;color:#b45309"><span id="kpiWarning">0</span></div>
-                    <div class="text-muted" style="font-size:11px">sudah &ge; 80% (24.000 stroke)</div>
+                    <div class="text-muted" style="font-size:11px">sudah &ge; 80% ({{ number_format($threshold * 0.8, 0, ',', '.') }} stroke)</div>
                 </div>
             </div>
         </div>
