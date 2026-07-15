@@ -21,6 +21,7 @@ class MasterMesin extends Model
 
     protected $table = 'master_mesin';
     protected $fillable = ['id_mesin', 'nama_mesin', 'line', 'tipe_mesin', 'kapasitas_max_stroke', 'tanggal_instalasi'];
+    protected $casts = ['tanggal_instalasi' => 'date'];
     public function transaksiProduksi(): HasMany
     {
         return $this->hasMany(TransaksiProduksi::class, 'id_mesin');
