@@ -174,6 +174,8 @@ Route::middleware('auth')->group(function () {
 
         Route::get('availability/control-stroke-dies',       [ControlStrokeDiesController::class, 'index'])->name('control-stroke-dies');
         Route::get('availability/control-stroke-dies/data',   [ControlStrokeDiesController::class, 'data'])->name('control-stroke-dies.data');
+        Route::get('availability/control-stroke-dies/{partProses}/history', [ControlStrokeDiesController::class, 'history'])->name('control-stroke-dies.history');
+        Route::post('availability/control-stroke-dies/{partProses}/preventive', [ControlStrokeDiesController::class, 'storePreventive'])->name('control-stroke-dies.preventive');
     });
 
     // --- NOTIFICATIONS (all authenticated users) ---
