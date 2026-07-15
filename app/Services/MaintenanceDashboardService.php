@@ -3,6 +3,7 @@ namespace App\Services;
 
 use App\Models\MasterMesin;
 use App\Models\TransaksiBreakdownMesin;
+use App\Models\TransaksiProduksi;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Schema;
 
@@ -61,5 +62,28 @@ class MaintenanceDashboardService
         }
 
         return $rows;
+    }
+
+    public function computeStroke(Carbon $from, Carbon $to, ?int $mesinId = null, ?string $tipeMesin = null): array
+    {
+        $hasTipe = Schema::hasColumn('master_mesin', 'tipe_mesin');
+
+        $mesins = MasterMesin::when($mesinId, fn ($q) => $q->where('id', $mesinId))
+            ->when($tipeMesin && $hasTipe, fn ($q) => $q->where('tipe_mesin', $tipeMesin))
+            ->orderBy('id_mesin')->get();
+
+        $stats = TransaksiProduksi::query()
+            ->whereBetween('tanggal_produksi', [$from->toDateString(), $to->toDateString()])
+            ->when($mesinId, fn ($q) => $q->where('id_mesin', $mesinId))
+            ->selectRaw('id_mesin, SUM(qty_aktual) as total_stroke')
+            ->groupBy('id_mesin')
+            ->pluck('total_stroke', 'id_mesin');
+
+        return $mesins->map(fn ($m) => [
+            'id_mesin'     => $m->id,
+            'kode_mesin'   => $m->id_mesin,
+            'nama_mesin'   => $m->nama_mesin,
+            'total_stroke' => (int) ($stats->get($m->id) ?? 0),
+        ])->values()->all();
     }
 }
