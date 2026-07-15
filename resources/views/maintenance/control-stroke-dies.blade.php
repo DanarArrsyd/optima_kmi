@@ -1,6 +1,12 @@
 @extends('layouts.app')
 @section('title', 'Control Stroke Dies')
 @section('content')
+<style>
+    /* Kolom mengikuti panjang isinya (tidak dipaksa wrap); tabel geser horizontal
+       lewat .table-responsive kalau melebihi lebar layar. */
+    #strokeTable tbody td { white-space: nowrap; }
+</style>
+
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h4 class="mb-0"><i class="bi bi-arrow-repeat me-2"></i>Control Stroke Dies</h4>
     <div class="text-muted small">Target preventive: <strong>30.000 stroke</strong> / dies</div>
@@ -93,57 +99,18 @@
     <div class="erp-panel-header">Detail per Dies</div>
     <div class="erp-panel-body p-0">
         <div class="table-responsive">
-            <table class="erp-table">
+            <table class="erp-table" id="strokeTable">
                 <thead>
                     <tr>
                         <th>Part No</th><th>Nama Dies</th><th>Proses</th>
-                        <th style="min-width:260px">Stroke Saat Ini</th>
-                        <th>Status</th><th>Preventive Terakhir</th><th class="text-end" style="min-width:220px">Aksi</th>
+                        <th style="min-width:240px">Stroke Saat Ini</th>
+                        <th>Status</th><th>Preventive Terakhir</th><th class="text-end">Aksi</th>
                     </tr>
                 </thead>
                 <tbody id="strokeTableBody">
                     <tr><td colspan="7" class="text-center text-muted py-3">Memuat data...</td></tr>
                 </tbody>
             </table>
-        </div>
-    </div>
-</div>
-
-{{-- Modal: Input Preventive --}}
-<div class="modal fade" id="preventiveModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Input Preventive — <span id="pvDiesLabel"></span></h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form id="preventiveForm">
-                <div class="modal-body">
-                    <div class="alert alert-warning d-flex align-items-center gap-2 py-2" id="pvResetPreview" style="font-size:14px"></div>
-                    <div class="mb-3">
-                        <label class="form-label">Tanggal Preventive <span class="text-danger">*</span></label>
-                        <input type="date" id="pv_tanggal" name="tanggal_preventive" class="form-control" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">PIC / Petugas <span class="text-danger">*</span></label>
-                        <select id="pv_karyawan" name="id_karyawan" class="form-select" required>
-                            <option value="">-- Pilih Petugas --</option>
-                            @foreach($karyawanList as $k)
-                                <option value="{{ $k->id }}">{{ $k->nama_karyawan }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Catatan</label>
-                        <textarea id="pv_catatan" name="catatan" class="form-control" rows="3" placeholder="Opsional — mis. ganti pisau, cek clearance"></textarea>
-                    </div>
-                    <div id="pvError" class="text-danger small" style="display:none"></div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-save me-1"></i>Simpan &amp; Reset ke 0</button>
-                </div>
-            </form>
         </div>
     </div>
 </div>
@@ -180,8 +147,8 @@
 <script>
 const taCustomer = @json($customers->map(fn($c) => ['v' => $c, 't' => $c]));
 const taPart = @json($partList->map(fn($m) => ['v' => $m->id, 't' => $m->part_no.' – '.$m->part_name]));
-const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 const canInputPreventive = {{ in_array(auth()->user()->role, ['admin', 'staff_maintenance']) ? 'true' : 'false' }};
+const baseUrl = `{{ url('maintenance/availability/control-stroke-dies') }}`;
 
 function escHtml(str) {
     if (str === null || str === undefined) return '';
@@ -212,13 +179,13 @@ function taField(items, initText = '', initVal = null) {
 
 // warna & label per status — dipakai badge, teks %, bar, dan tint baris
 const STATUS = {
-    ok:      { label: 'OK',                 badge: 'bg-success',           bar: 'bg-success', icon: 'bi-check-circle-fill',       color: '#15803d', tint: '' },
+    ok:      { label: 'OK',                 badge: 'bg-success',           bar: 'bg-success', icon: 'bi-check-circle-fill',         color: '#15803d', tint: '' },
     warning: { label: 'Perlu Perhatian',    badge: 'bg-warning text-dark', bar: 'bg-warning', icon: 'bi-exclamation-triangle-fill', color: '#b45309', tint: '#fffbeb' },
     overdue: { label: 'Segera Preventive',  badge: 'bg-danger',            bar: 'bg-danger',  icon: 'bi-exclamation-octagon-fill',  color: '#b91c1c', tint: '#fef2f2' },
 };
 
 let currentRows = [];
-let preventiveModal, historyModal;
+let historyModal;
 
 async function loadData() {
     const params = new URLSearchParams({
@@ -254,9 +221,11 @@ async function loadData() {
             : `<span style="color:#b91c1c;font-weight:600">lewat ${fmt(-sisa)} stroke</span>`;
         const rowStyle = st.tint ? `style="background:${st.tint}"` : '';
         const lastPrev = r.last_preventive_date
-            ? `${r.last_preventive_date}<br><span class="text-muted" style="font-size:11px">${escHtml(r.last_preventive_pic) || '—'}</span>`
+            ? `${r.last_preventive_date} <span class="text-muted">· ${escHtml(r.last_preventive_pic) || '—'}</span>`
             : '<span class="text-muted">Belum pernah</span>';
-        const disabledAttr = canInputPreventive ? '' : 'disabled title="Hanya Maintenance yang bisa input"';
+        const prevBtn  = canInputPreventive
+            ? `<a href="${baseUrl}/${r.id_part_proses}/preventive" class="btn btn-primary btn-sm"><i class="bi bi-tools me-1"></i>Preventive</a>`
+            : `<button type="button" class="btn btn-primary btn-sm" disabled title="Hanya Maintenance yang bisa input"><i class="bi bi-tools me-1"></i>Preventive</button>`;
         return `<tr ${rowStyle}>
             <td style="font-weight:600">${escHtml(r.kode_mesin)}</td>
             <td>${escHtml(r.nama_mesin)}</td>
@@ -264,38 +233,23 @@ async function loadData() {
             <td>
                 <div class="d-flex justify-content-between align-items-baseline mb-1">
                     <span><strong>${fmt(r.current_stroke)}</strong> <span class="text-muted">/ ${fmt(r.threshold)}</span></span>
-                    <strong style="font-size:15px;color:${st.color}">${r.pct}%</strong>
+                    <strong style="color:${st.color}">${r.pct}%</strong>
                 </div>
-                <div class="progress" style="height:9px;background:#e5e7eb;border-radius:4px">
+                <div class="progress" style="height:8px;background:#e5e7eb;border-radius:4px">
                     <div class="progress-bar ${st.bar}" style="width:${barPct}%"></div>
                 </div>
                 <div style="font-size:11px;margin-top:3px">${sisaTxt}</div>
             </td>
-            <td><span class="badge ${st.badge}" style="font-size:12px;padding:6px 10px"><i class="bi ${st.icon} me-1"></i>${st.label}</span></td>
+            <td><span class="badge ${st.badge}"><i class="bi ${st.icon} me-1"></i>${st.label}</span></td>
             <td>${lastPrev}</td>
             <td class="text-end">
                 <div class="d-flex gap-1 justify-content-end">
-                    <button type="button" class="btn btn-primary btn-sm" ${disabledAttr} onclick="openPreventiveModal(${r.id_part_proses})"><i class="bi bi-tools me-1"></i>Preventive</button>
+                    ${prevBtn}
                     <button type="button" class="btn btn-outline-secondary btn-sm" onclick="openHistoryModal(${r.id_part_proses})"><i class="bi bi-clock-history me-1"></i>Riwayat</button>
                 </div>
             </td>
         </tr>`;
     }).join('');
-}
-
-function openPreventiveModal(idPartProses) {
-    const row = currentRows.find(r => r.id_part_proses === idPartProses);
-    if (!row) return;
-    document.getElementById('preventiveForm').dataset.idPartProses = idPartProses;
-    document.getElementById('pvDiesLabel').textContent = `${row.kode_mesin} — ${row.nama_proses}`;
-    document.getElementById('pvResetPreview').innerHTML =
-        `<i class="bi bi-arrow-counterclockwise"></i><span>Stroke akan direset dari <strong>${fmt(row.current_stroke)}</strong> ke <strong>0</strong>.</span>`;
-    document.getElementById('pv_tanggal').value    = new Date().toISOString().slice(0, 10);
-    document.getElementById('pv_tanggal').max      = new Date().toISOString().slice(0, 10);
-    document.getElementById('pv_karyawan').value   = '';
-    document.getElementById('pv_catatan').value    = '';
-    document.getElementById('pvError').style.display = 'none';
-    preventiveModal.show();
 }
 
 async function openHistoryModal(idPartProses) {
@@ -305,10 +259,9 @@ async function openHistoryModal(idPartProses) {
     tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">Memuat...</td></tr>';
     historyModal.show();
 
-    const url = `{{ url('maintenance/availability/control-stroke-dies') }}/${idPartProses}/history`;
     let data;
     try {
-        const res = await fetch(url);
+        const res = await fetch(`${baseUrl}/${idPartProses}/history`);
         if (!res.ok) throw new Error('HTTP ' + res.status);
         data = await res.json();
     } catch (e) {
@@ -328,38 +281,10 @@ async function openHistoryModal(idPartProses) {
     </tr>`).join('');
 }
 
-document.getElementById('preventiveForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const idPartProses = e.target.dataset.idPartProses;
-    const errorEl = document.getElementById('pvError');
-    errorEl.style.display = 'none';
-
-    const url = `{{ url('maintenance/availability/control-stroke-dies') }}/${idPartProses}/preventive`;
-    const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
-        body: JSON.stringify({
-            tanggal_preventive: document.getElementById('pv_tanggal').value,
-            id_karyawan:        document.getElementById('pv_karyawan').value,
-            catatan:            document.getElementById('pv_catatan').value,
-        }),
-    });
-
-    if (res.ok) {
-        preventiveModal.hide();
-        loadData();
-        return;
-    }
-    const err = await res.json().catch(() => ({}));
-    errorEl.textContent = err.message || 'Gagal menyimpan preventive.';
-    errorEl.style.display = 'block';
-});
-
 document.getElementById('filterForm').addEventListener('submit', e => { e.preventDefault(); loadData(); });
 
 document.addEventListener('DOMContentLoaded', () => {
-    preventiveModal = new bootstrap.Modal(document.getElementById('preventiveModal'));
-    historyModal    = new bootstrap.Modal(document.getElementById('historyModal'));
+    historyModal = new bootstrap.Modal(document.getElementById('historyModal'));
     loadData();
 });
 </script>

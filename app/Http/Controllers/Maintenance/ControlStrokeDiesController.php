@@ -16,9 +16,20 @@ class ControlStrokeDiesController extends Controller
     public function index()
     {
         return view('maintenance.control-stroke-dies', [
-            'partList'     => MasterPart::orderBy('part_no')->get(),
-            'customers'    => MasterPart::whereNotNull('customer')->where('customer', '!=', '')->distinct()->orderBy('customer')->pluck('customer'),
-            'karyawanList' => MasterKaryawan::aktif()->where('departemen', 'Maintenance')->orderBy('nama_karyawan')->get(),
+            'partList'  => MasterPart::orderBy('part_no')->get(),
+            'customers' => MasterPart::whereNotNull('customer')->where('customer', '!=', '')->distinct()->orderBy('customer')->pluck('customer'),
+        ]);
+    }
+
+    public function createPreventive(MasterPartProses $partProses)
+    {
+        abort_if(!in_array(auth()->user()->role, ['admin', 'staff_maintenance']), 403);
+
+        return view('maintenance.control-stroke-dies-preventive', [
+            'partProses'    => $partProses->load('part'),
+            'currentStroke' => $this->svc->currentStrokeFor($partProses),
+            'threshold'     => MaintenanceDiesDashboardService::STROKE_THRESHOLD,
+            'karyawanList'  => MasterKaryawan::aktif()->where('departemen', 'Maintenance')->orderBy('nama_karyawan')->get(),
         ]);
     }
 
@@ -77,6 +88,12 @@ class ControlStrokeDiesController extends Controller
             'created_by'           => auth()->id(),
         ]);
 
-        return response()->json(['ok' => true]);
+        $partNo = $partProses->part?->part_no;
+
+        return redirect()->route('maintenance.control-stroke-dies')->with(
+            'success',
+            "Preventive {$partNo} — {$partProses->nama_proses} tersimpan. Stroke direset dari "
+            . number_format($currentStroke, 0, ',', '.') . ' ke 0.'
+        );
     }
 }

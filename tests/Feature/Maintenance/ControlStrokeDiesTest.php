@@ -46,7 +46,30 @@ class ControlStrokeDiesTest extends TestCase
 
         $response->assertOk();
         $response->assertViewIs('maintenance.control-stroke-dies');
+    }
+
+    public function test_admin_can_view_preventive_form_page(): void
+    {
+        $f = $this->fixtures();
+        $this->produksi($f, '2026-06-01', 25000);
+
+        $response = $this->actingAs($f['admin'])->get(route('maintenance.control-stroke-dies.preventive.create', $f['proses']->id));
+
+        $response->assertOk();
+        $response->assertViewIs('maintenance.control-stroke-dies-preventive');
+        $response->assertViewHas('currentStroke', 25000);
+        $response->assertViewHas('threshold', 30000);
         $response->assertViewHas('karyawanList');
+    }
+
+    public function test_manager_cannot_view_preventive_form_page(): void
+    {
+        $f       = $this->fixtures();
+        $manager = User::factory()->create(['role' => 'manager']);
+
+        $response = $this->actingAs($manager)->get(route('maintenance.control-stroke-dies.preventive.create', $f['proses']->id));
+
+        $response->assertForbidden();
     }
 
     public function test_staff_produksi_cannot_access_control_stroke_dies(): void
@@ -100,14 +123,14 @@ class ControlStrokeDiesTest extends TestCase
         $f = $this->fixtures();
         $this->produksi($f, '2026-06-01', 30500);
 
-        $response = $this->actingAs($f['admin'])->postJson(route('maintenance.control-stroke-dies.preventive', $f['proses']->id), [
+        $response = $this->actingAs($f['admin'])->post(route('maintenance.control-stroke-dies.preventive', $f['proses']->id), [
             'tanggal_preventive' => '2026-06-15',
             'id_karyawan'        => $f['karyawan']->id,
             'catatan'            => 'Preventive rutin',
         ]);
 
-        $response->assertOk();
-        $response->assertJsonPath('ok', true);
+        $response->assertRedirect(route('maintenance.control-stroke-dies'));
+        $response->assertSessionHas('success');
 
         $log = DiesPreventiveLog::first();
         $this->assertSame(30500, $log->stroke_at_preventive);
@@ -122,12 +145,13 @@ class ControlStrokeDiesTest extends TestCase
         $f     = $this->fixtures();
         $staff = User::factory()->create(['role' => 'staff_maintenance']);
 
-        $response = $this->actingAs($staff)->postJson(route('maintenance.control-stroke-dies.preventive', $f['proses']->id), [
+        $response = $this->actingAs($staff)->post(route('maintenance.control-stroke-dies.preventive', $f['proses']->id), [
             'tanggal_preventive' => '2026-06-15',
             'id_karyawan'        => $f['karyawan']->id,
         ]);
 
-        $response->assertOk();
+        $response->assertRedirect(route('maintenance.control-stroke-dies'));
+        $this->assertDatabaseCount('dies_preventive_log', 1);
     }
 
     public function test_manager_cannot_store_preventive(): void
@@ -135,37 +159,38 @@ class ControlStrokeDiesTest extends TestCase
         $f       = $this->fixtures();
         $manager = User::factory()->create(['role' => 'manager']);
 
-        $response = $this->actingAs($manager)->postJson(route('maintenance.control-stroke-dies.preventive', $f['proses']->id), [
+        $response = $this->actingAs($manager)->post(route('maintenance.control-stroke-dies.preventive', $f['proses']->id), [
             'tanggal_preventive' => '2026-06-15',
             'id_karyawan'        => $f['karyawan']->id,
         ]);
 
         $response->assertForbidden();
+        $this->assertDatabaseCount('dies_preventive_log', 0);
     }
 
     public function test_store_preventive_rejects_future_date(): void
     {
         $f = $this->fixtures();
 
-        $response = $this->actingAs($f['admin'])->postJson(route('maintenance.control-stroke-dies.preventive', $f['proses']->id), [
+        $response = $this->actingAs($f['admin'])->post(route('maintenance.control-stroke-dies.preventive', $f['proses']->id), [
             'tanggal_preventive' => now()->addDay()->toDateString(),
             'id_karyawan'        => $f['karyawan']->id,
         ]);
 
-        $response->assertStatus(422);
-        $response->assertJsonValidationErrors('tanggal_preventive');
+        $response->assertSessionHasErrors('tanggal_preventive');
+        $this->assertDatabaseCount('dies_preventive_log', 0);
     }
 
     public function test_store_preventive_rejects_unknown_karyawan(): void
     {
         $f = $this->fixtures();
 
-        $response = $this->actingAs($f['admin'])->postJson(route('maintenance.control-stroke-dies.preventive', $f['proses']->id), [
+        $response = $this->actingAs($f['admin'])->post(route('maintenance.control-stroke-dies.preventive', $f['proses']->id), [
             'tanggal_preventive' => '2026-06-15',
             'id_karyawan'        => 999999,
         ]);
 
-        $response->assertStatus(422);
-        $response->assertJsonValidationErrors('id_karyawan');
+        $response->assertSessionHasErrors('id_karyawan');
+        $this->assertDatabaseCount('dies_preventive_log', 0);
     }
 }
