@@ -1,6 +1,7 @@
 <?php
 namespace App\Services;
 
+use App\Models\DiesPreventiveLog;
 use App\Models\MasterPartProses;
 use App\Models\TransaksiBreakdownDies;
 use App\Models\TransaksiProduksi;
@@ -9,6 +10,8 @@ use Illuminate\Support\Facades\Schema;
 
 class MaintenanceDiesDashboardService
 {
+    public const STROKE_THRESHOLD = 30000;
+
     /**
      * Per-dies+proses MTTR/MTBF/Availability (1 part bisa punya banyak proses/dies).
      * Output keys mirror the mesin service so the dashboard views stay identical
@@ -77,35 +80,52 @@ class MaintenanceDiesDashboardService
         return array_values($rows);
     }
 
-    public function computeStroke(Carbon $from, Carbon $to, ?int $partId = null, ?string $customer = null): array
+    public function currentStrokeFor(MasterPartProses $pr): int
     {
-        $partProsesList = MasterPartProses::with('part')
+        $lastPreventive = DiesPreventiveLog::where('id_part_proses', $pr->id)->max('tanggal_preventive');
+        $cycleStart     = $lastPreventive ?? $pr->part?->tanggal_instalasi;
+
+        return (int) TransaksiProduksi::query()
+            ->where('id_part_proses', $pr->id)
+            ->when($cycleStart, fn ($q) => $q->where('tanggal_produksi', '>', $cycleStart))
+            ->sum('qty_aktual');
+    }
+
+    public function computeCurrentCycle(?int $partId = null, ?string $customer = null): array
+    {
+        $partProsesList = MasterPartProses::with(['part', 'preventiveLogs.karyawan'])
+            ->whereHas('transaksiProduksi')
             ->when($partId, fn ($q) => $q->where('id_part', $partId))
             ->when($customer, fn ($q) => $q->whereHas('part', fn ($p) => $p->where('customer', $customer)))
             ->get()
             ->sortBy(fn ($pr) => $pr->part->part_no ?? '');
 
-        $stats = TransaksiProduksi::query()
-            ->whereBetween('tanggal_produksi', [$from->toDateString(), $to->toDateString()])
-            ->when($partId, fn ($q) => $q->whereHas('partProses', fn ($p) => $p->where('id_part', $partId)))
-            ->selectRaw('id_part_proses, SUM(qty_aktual) as total_stroke')
-            ->groupBy('id_part_proses')
-            ->pluck('total_stroke', 'id_part_proses');
-
         $rows = [];
         foreach ($partProsesList as $pr) {
-            $total = (int) ($stats->get($pr->id) ?? 0);
-            if ($total === 0) {
-                continue;
-            }
+            $currentStroke = $this->currentStrokeFor($pr);
+            $pct           = round($currentStroke / self::STROKE_THRESHOLD * 100, 1);
+            $status        = $pct >= 100 ? 'overdue' : ($pct >= 80 ? 'warning' : 'ok');
+            $lastLog       = $pr->preventiveLogs->first();
+
             $rows[] = [
-                'id_mesin'     => $pr->id,
-                'kode_mesin'   => $pr->part?->part_no,
-                'nama_mesin'   => $pr->part?->part_name,
-                'nama_proses'  => $pr->nama_proses,
-                'total_stroke' => $total,
+                'id_part_proses'        => $pr->id,
+                'kode_mesin'            => $pr->part?->part_no,
+                'nama_mesin'            => $pr->part?->part_name,
+                'nama_proses'           => $pr->nama_proses,
+                'current_stroke'        => $currentStroke,
+                'threshold'             => self::STROKE_THRESHOLD,
+                'pct'                   => $pct,
+                'status'                => $status,
+                'last_preventive_date'  => $lastLog?->tanggal_preventive?->format('Y-m-d'),
+                'last_preventive_pic'   => $lastLog?->karyawan?->nama_karyawan,
             ];
         }
+
+        $statusOrder = ['overdue' => 0, 'warning' => 1, 'ok' => 2];
+        usort($rows, function ($a, $b) use ($statusOrder) {
+            $byStatus = $statusOrder[$a['status']] <=> $statusOrder[$b['status']];
+            return $byStatus !== 0 ? $byStatus : $b['pct'] <=> $a['pct'];
+        });
 
         return array_values($rows);
     }
