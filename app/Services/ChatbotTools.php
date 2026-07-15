@@ -10,10 +10,19 @@ use App\Models\TransaksiBreakdownMesin;
 use App\Models\TransaksiDandoriRincian;
 use App\Models\TransaksiProduksi;
 use App\Models\TransaksiQc;
+use App\Services\Chatbot\BusinessTableCatalog;
+use App\Services\Chatbot\SqlGuard;
+use App\Services\Chatbot\ToolSchemaCatalog;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
+/**
+ * Facade tool chatbot: mengeksekusi tool analitik domain (MTBF/MTTR, breakdown,
+ * dandori, produksi) + memapar schema + guarded SQL. Tanggung jawab yang berdiri
+ * sendiri sudah dipisah: whitelist tabel ({@see BusinessTableCatalog}), validasi
+ * SQL ({@see SqlGuard}), dan katalog schema LLM ({@see ToolSchemaCatalog}).
+ */
 class ChatbotTools
 {
     /** Batas baris detail mentah yang dikirim ke LLM sebelum dipotong. */
@@ -22,34 +31,12 @@ class ChatbotTools
     /** Tanggal lantai untuk analisa "semua periode" (all-time) saat filter bulan kosong. */
     private const ALL_TIME_FROM = '2000-01-01';
 
-    /** Tabel bisnis yang boleh ditelusuri describeSchema/queryDatabase (whitelist). */
-    private const BUSINESS_TABLES = [
-        'master_karyawan'            => 'Data karyawan/operator/inspector (nik, nama_karyawan, departemen, is_aktif).',
-        'master_mesin'               => 'Master mesin press (id_mesin, nama_mesin, line, tipe_mesin, kapasitas_max_stroke).',
-        'master_part'                => 'Master part/dies (part_no, part_name, customer, tanggal_instalasi).',
-        'master_part_proses'         => 'Proses per part + standar SPH (nama_proses, sph_standar_produksi, sph_standar_qc).',
-        'master_part_proses_sph_log' => 'Riwayat perubahan standar SPH per proses.',
-        'master_shift'               => 'Master shift (nama_shift, jam_start, jam_finish).',
-        'master_shift_istirahat'     => 'Jadwal istirahat per shift.',
-        'master_jenis_ng'            => 'Master jenis defect/NG.',
-        'master_losstime'            => 'Master jenis losstime dandori + standar menit.',
-        'transaksi_produksi'         => 'LHP produksi (tanggal_produksi, id_karyawan, id_mesin, id_part_proses, id_shift, qty_aktual, qty_ng).',
-        'transaksi_qc'               => 'LHP quality (tgl_pengecekan, id_karyawan_qc, id_part_proses, qty_ok, qty_ng).',
-        'transaksi_dandori'          => 'Header dandori (ganti setup/part).',
-        'transaksi_dandori_rincian'  => 'Rincian dandori per losstime (tanggal, id_mesin, id_losstime, actual_menit, std_menit, over_menit).',
-        'transaksi_breakdown_mesin'  => 'Breakdown mesin (tanggal_breakdown, id_mesin, problem_mesin, penyebab_breakdown, tindakan_perbaikan, repair_time, total_downtime).',
-        'transaksi_breakdown_dies'   => 'Breakdown dies (tanggal_breakdown, id_part_proses, problem_dies, penyebab_breakdown, tindakan_perbaikan, repair_time, total_downtime).',
-    ];
-
-    /** Batas baris hasil queryDatabase sebelum ditandai truncated. */
-    /** Baris queryDatabase yang dikirim balik ke LLM. Kecil sengaja — 200 baris mentah
-     *  membengkakkan token per request sampai kena rate limit provider. LLM cukup butuh
-     *  sampel untuk merangkum; kalau kepotong, flag 'truncated' memberi tahu ada sisanya. */
-    private const QUERY_ROW_CAP = 25;
-
     public function __construct(
         private MaintenanceDiesDashboardService $diesDashboard = new MaintenanceDiesDashboardService(),
         private MaintenanceDashboardService $mesinDashboard = new MaintenanceDashboardService(),
+        private BusinessTableCatalog $tableCatalog = new BusinessTableCatalog(),
+        private SqlGuard $sqlGuard = new SqlGuard(),
+        private ToolSchemaCatalog $schemaCatalog = new ToolSchemaCatalog(),
     ) {}
 
     /** MTBF/MTTR untuk sebuah part/dies (per proses), dalam 1 bulan. */
@@ -555,13 +542,13 @@ class ChatbotTools
 
         if ($table === '') {
             return [
-                'tables' => collect(self::BUSINESS_TABLES)
+                'tables' => collect($this->tableCatalog->all())
                     ->map(fn ($desc, $name) => ['table' => $name, 'deskripsi' => $desc])
                     ->values()->toArray(),
             ];
         }
 
-        if (!array_key_exists($table, self::BUSINESS_TABLES)) {
+        if (!$this->tableCatalog->has($table)) {
             return ['error' => "Tabel \"{$table}\" tidak tersedia untuk ditelusuri."];
         }
 
@@ -576,7 +563,7 @@ class ChatbotTools
 
         return [
             'table'     => $table,
-            'deskripsi' => self::BUSINESS_TABLES[$table],
+            'deskripsi' => $this->tableCatalog->describe($table),
             'columns'   => $columns,
         ];
     }
@@ -584,73 +571,15 @@ class ChatbotTools
     /** Guarded read-only SELECT untuk pertanyaan lintas-tabel di luar tool analitik. */
     public function queryDatabase(string $sql): array
     {
-        // 0. Buang komentar DULU supaya tak bisa dipakai memisah token atau menyembunyikan tabel.
-        $stripped = preg_replace('/\/\*.*?\*\//s', ' ', trim($sql));
-        $stripped = preg_replace('/--[^\n]*/', ' ', $stripped);
-        $stripped = trim(preg_replace('/#[^\n]*/', ' ', $stripped));
+        // Validasi & clamp LIMIT dipisah ke SqlGuard (boundary keamanan teruji terisolasi).
+        $guard = $this->sqlGuard->sanitize($sql);
+        if (isset($guard['error'])) {
+            return $guard;
+        }
+        $capped = $guard['sql'];
 
-        // 1. Harus SELECT/WITH.
-        if (!preg_match('/^(select|with)\b/i', $stripped)) {
-            return ['error' => 'Hanya query baca (SELECT) yang diizinkan.'];
-        }
-
-        // 2. Tolak multi-statement (titik-koma selain trailing tunggal).
-        if (str_contains(rtrim($stripped, "; \n\t"), ';')) {
-            return ['error' => 'Hanya satu perintah query yang diizinkan.'];
-        }
-
-        // 3. Tolak keyword tulis/DDL sebagai kata utuh.
-        if (preg_match('/\b(insert|update|delete|replace|drop|alter|truncate|create|grant|revoke|attach|pragma|into|lock|call|exec|merge)\b/i', $stripped)) {
-            return ['error' => 'Query mengandung operasi yang tidak diizinkan.'];
-        }
-
-        // 3b. Tolak fungsi baca-file / bocor-metadata dan akses system-variable — allowlist
-        //     tabel bukan sandbox penuh. Bentuk fungsi `fn(` + `@@` untuk system var.
-        if (preg_match('/\b(load_file|user|current_user|system_user|session_user|database|schema|version)\s*\(|@@/i', $stripped)) {
-            return ['error' => 'Query mengandung fungsi yang tidak diizinkan.'];
-        }
-
-        // 4. Blacklist keras: nama tabel sistem / skema metadata tak boleh muncul sama sekali,
-        //    apa pun cara referensinya (identifier bersifat atomik — tak bisa dipecah komentar).
-        if (preg_match('/\b(users|sessions|jobs|job_batches|failed_jobs|password_reset_tokens|cache|cache_locks|activity_log|app_notifications|chat_conversations|chat_messages|migrations|information_schema|performance_schema|mysql|sys|sqlite_master|sqlite_sequence|sqlite_schema)\b/i', $stripped)) {
-            return ['error' => 'Query menyentuh tabel yang tidak tersedia untuk ditelusuri.'];
-        }
-
-        // 5. Whitelist positif: tiap tabel setelah FROM/JOIN (termasuk daftar dipisah koma) wajib bisnis.
-        preg_match_all('/\b(?:from|join)\s+([a-zA-Z_][a-zA-Z0-9_]*(?:\s*,\s*[a-zA-Z_][a-zA-Z0-9_]*)*)/i', $stripped, $mm);
-        $referenced = [];
-        foreach ($mm[1] as $clause) {
-            foreach (preg_split('/\s*,\s*/', $clause) as $tbl) {
-                $referenced[] = strtolower(trim($tbl));
-            }
-        }
-        if (empty($referenced)) {
-            return ['error' => 'Query harus menyebut tabel bisnis yang valid.'];
-        }
-        foreach ($referenced as $tbl) {
-            if (!array_key_exists($tbl, self::BUSINESS_TABLES)) {
-                return ['error' => "Tabel \"{$tbl}\" tidak tersedia untuk ditelusuri."];
-            }
-        }
-
-        // 6. Clamp SEMUA angka LIMIT ke cap (bentuk `n` dan `offset, count`), lalu pastikan
-        //    ada LIMIT top-level (append kalau query tak diakhiri LIMIT — mis. LIMIT cuma di subquery).
-        $capped = preg_replace_callback(
-            '/\blimit\s+(\d+)\s*,\s*(\d+)/i',
-            fn ($x) => 'LIMIT ' . $x[1] . ', ' . min((int) $x[2], self::QUERY_ROW_CAP),
-            $stripped
-        );
-        $capped = preg_replace_callback(
-            '/\blimit\s+(\d+)(?!\s*,)/i',
-            fn ($x) => 'LIMIT ' . min((int) $x[1], self::QUERY_ROW_CAP),
-            $capped
-        );
-        if (!preg_match('/\blimit\s+\d+(\s*,\s*\d+)?\s*;?\s*$/i', $capped)) {
-            $capped = rtrim($capped, "; \n\t") . ' LIMIT ' . self::QUERY_ROW_CAP;
-        }
-
-        // 7. Eksekusi read-only + SELALU rollback (safety net). Cap keras hasil di PHP sebagai
-        //    jaminan terakhir (≤ cap) walau ada LIMIT yang lolos di level DB.
+        // Eksekusi read-only + SELALU rollback (safety net). Cap keras hasil di PHP sebagai
+        // jaminan terakhir (≤ cap) walau ada LIMIT yang lolos di level DB.
         try {
             DB::beginTransaction();
             $rows = DB::select($capped);
@@ -661,14 +590,14 @@ class ChatbotTools
         }
 
         $rows = array_map(fn ($r) => (array) $r, $rows);
-        $overCap = count($rows) > self::QUERY_ROW_CAP;
+        $overCap = count($rows) > SqlGuard::ROW_CAP;
         if ($overCap) {
-            $rows = array_slice($rows, 0, self::QUERY_ROW_CAP);
+            $rows = array_slice($rows, 0, SqlGuard::ROW_CAP);
         }
 
         return [
             'row_count' => count($rows),
-            'truncated' => $overCap || count($rows) >= self::QUERY_ROW_CAP,
+            'truncated' => $overCap || count($rows) >= SqlGuard::ROW_CAP,
             'rows'      => $rows,
         ];
     }
@@ -901,281 +830,13 @@ class ChatbotTools
         return $mesin ?? ['error' => "Mesin dengan kode \"{$idMesin}\" tidak ditemukan di master data."];
     }
 
-    /** Provider-neutral tool schema (name/description/JSON-Schema parameters), wrapped per-provider by each ChatbotProviderInterface implementation. */
     /**
-     * Tool yang DIPAPAR ke LLM. Sengaja subset esensial: schema dikirim tiap
-     * request × loop, jadi makin sedikit tool makin banyak jatah token tersisa
-     * untuk jawaban (free tier ~12K/menit). Tool yang butuh komputasi PHP tetap
-     * dipapar (MTBF/MTTR, SPH, ranking-availability); agregat sederhana
-     * (COUNT/SUM/GROUP BY, Pareto, rekap) dilayani lewat queryDatabase.
-     * Method non-papar tetap ada & tetap berfungsi bila dipanggil.
+     * Schema function-calling yang dipapar ke LLM. Data schema-nya hidup di
+     * ToolSchemaCatalog; method ini tetap public karena dipanggil provider
+     * ({@see OpenAiCompatibleChatbotService::toolSchema()}).
      */
-    private const EXPOSED_TOOLS = [
-        'getMtbfMttrDies', 'getMtbfMttrMesin',
-        'getRekapNg', 'getTotalProduksi', 'bandingkanProduksi', 'getOperatorProduksi',
-        'getRankingBreakdownMesin', 'getRankingBreakdownDies',
-        'getTopProblemDies', 'getTopProblemMesin',
-        'getTotalBreakdownDies', 'getTotalBreakdownMesin',
-        'getRekapDandori',
-        'describeSchema', 'queryDatabase',
-    ];
-
     public function schemaDefinitions(): array
     {
-        $all = [
-            ...$this->mtbfMttrSchemas(),
-            ...$this->productionSchemas(),
-            ...$this->breakdownAggregateSchemas(),
-            ...$this->breakdownDetailSchemas(),
-            ...$this->dandoriSchemas(),
-            ...$this->dataExplorerSchemas(),
-        ];
-
-        return array_values(array_filter($all, fn ($t) => in_array($t['name'], self::EXPOSED_TOOLS, true)));
-    }
-
-    // Deskripsi schema sengaja padat: dikirim TIAP request × loop, jadi tiap kata
-    // makan kuota token provider (free tier ~12K/menit). Nama & parameter tetap utuh.
-    private function mtbfMttrSchemas(): array
-    {
-        return [
-            [
-                'name' => 'getMtbfMttrDies',
-                'description' => 'MTBF/MTTR part/dies per proses, satu bulan.',
-                'parameters' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'partNo' => ['type' => 'string', 'description' => 'No part/dies, mis. BT-091A-3'],
-                        'bulan'  => ['type' => 'string', 'description' => 'YYYY-MM'],
-                    ],
-                    'required' => ['partNo', 'bulan'],
-                ],
-            ],
-            [
-                'name' => 'getMtbfMttrMesin',
-                'description' => 'MTBF/MTTR satu mesin, satu bulan.',
-                'parameters' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'idMesin' => ['type' => 'string', 'description' => 'Kode mesin, mis. M-01'],
-                        'bulan'   => ['type' => 'string', 'description' => 'YYYY-MM'],
-                    ],
-                    'required' => ['idMesin', 'bulan'],
-                ],
-            ],
-        ];
-    }
-
-    private function productionSchemas(): array
-    {
-        return [
-            [
-                'name' => 'getRekapNg',
-                'description' => 'Total & rate NG per nama proses. periode opsional.',
-                'parameters' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'namaProses' => ['type' => 'string', 'description' => 'Nama proses, mis. BENDING'],
-                        'periode'    => ['type' => 'string', 'description' => 'Opsional YYYY-MM, kosong=semua'],
-                    ],
-                    'required' => ['namaProses'],
-                ],
-            ],
-            [
-                'name' => 'bandingkanProduksi',
-                'description' => 'Banding qty & rata-rata SPH produksi antar 2 bulan.',
-                'parameters' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'periode1' => ['type' => 'string', 'description' => 'YYYY-MM'],
-                        'periode2' => ['type' => 'string', 'description' => 'YYYY-MM'],
-                    ],
-                    'required' => ['periode1', 'periode2'],
-                ],
-            ],
-            [
-                'name' => 'getTotalProduksi',
-                'description' => 'Total qty (Pcs) & rata-rata SPH semua proses dalam rentang bulan. Kosong=all-time.',
-                'parameters' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'bulanMulai' => ['type' => 'string', 'description' => 'Opsional YYYY-MM, kosong=all-time'],
-                        'bulanAkhir' => ['type' => 'string', 'description' => 'Opsional YYYY-MM inklusif, kosong=all-time'],
-                    ],
-                    'required' => [],
-                ],
-            ],
-            [
-                'name' => 'getOperatorProduksi',
-                'description' => 'Performa per operator: total qty produksi + rata-rata SPH tiap operator. Pakai untuk "operator produksi terbanyak", "SPH operator terbaik/terendah". Kosong=all-time.',
-                'parameters' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'bulanMulai' => ['type' => 'string', 'description' => 'Opsional YYYY-MM, kosong=all-time'],
-                        'bulanAkhir' => ['type' => 'string', 'description' => 'Opsional YYYY-MM inklusif, kosong=all-time'],
-                    ],
-                    'required' => [],
-                ],
-            ],
-        ];
-    }
-
-    private function breakdownAggregateSchemas(): array
-    {
-        return [
-            [
-                'name' => 'getTotalBreakdownDies',
-                'description' => 'Total kejadian breakdown semua dies. Kosong=all-time.',
-                'parameters' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'bulanMulai' => ['type' => 'string', 'description' => 'Opsional YYYY-MM, kosong=all-time'],
-                        'bulanAkhir' => ['type' => 'string', 'description' => 'Opsional YYYY-MM inklusif, kosong=all-time'],
-                    ],
-                    'required' => [],
-                ],
-            ],
-            [
-                'name' => 'getTotalBreakdownMesin',
-                'description' => 'Total kejadian breakdown semua mesin. Kosong=all-time.',
-                'parameters' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'bulanMulai' => ['type' => 'string', 'description' => 'Opsional YYYY-MM, kosong=all-time'],
-                        'bulanAkhir' => ['type' => 'string', 'description' => 'Opsional YYYY-MM inklusif, kosong=all-time'],
-                    ],
-                    'required' => [],
-                ],
-            ],
-            [
-                'name' => 'getRankingBreakdownMesin',
-                'description' => 'Ranking mesin paling sering breakdown. Kosong=all-time.',
-                'parameters' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'bulanMulai' => ['type' => 'string', 'description' => 'Opsional YYYY-MM, kosong=all-time'],
-                        'bulanAkhir' => ['type' => 'string', 'description' => 'Opsional YYYY-MM inklusif, kosong=all-time'],
-                    ],
-                    'required' => [],
-                ],
-            ],
-            [
-                'name' => 'getRankingBreakdownDies',
-                'description' => 'Ranking dies/part paling sering breakdown. Kosong=all-time.',
-                'parameters' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'bulanMulai' => ['type' => 'string', 'description' => 'Opsional YYYY-MM, kosong=all-time'],
-                        'bulanAkhir' => ['type' => 'string', 'description' => 'Opsional YYYY-MM inklusif, kosong=all-time'],
-                    ],
-                    'required' => [],
-                ],
-            ],
-        ];
-    }
-
-    private function breakdownDetailSchemas(): array
-    {
-        return [
-            [
-                'name' => 'getProblemDies',
-                'description' => 'Daftar mentah problem/penyebab/tindakan breakdown dies. Rangkum HANYA yang ada di data. Kosong=all-time.',
-                'parameters' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'bulanMulai' => ['type' => 'string', 'description' => 'Opsional YYYY-MM, kosong=all-time'],
-                        'bulanAkhir' => ['type' => 'string', 'description' => 'Opsional YYYY-MM inklusif, kosong=all-time'],
-                        'partNo' => ['type' => 'string', 'description' => 'Opsional no part/dies, kosong=semua'],
-                    ],
-                    'required' => [],
-                ],
-            ],
-            [
-                'name' => 'getProblemMesin',
-                'description' => 'Seperti getProblemDies untuk mesin.',
-                'parameters' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'bulanMulai' => ['type' => 'string', 'description' => 'Opsional YYYY-MM, kosong=all-time'],
-                        'bulanAkhir' => ['type' => 'string', 'description' => 'Opsional YYYY-MM inklusif, kosong=all-time'],
-                        'idMesin' => ['type' => 'string', 'description' => 'Opsional kode mesin, kosong=semua'],
-                    ],
-                    'required' => [],
-                ],
-            ],
-            [
-                'name' => 'getTopProblemDies',
-                'description' => 'Ranking problem dies paling sering (Pareto) per teks problem. Kosong=all-time.',
-                'parameters' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'bulanMulai' => ['type' => 'string', 'description' => 'Opsional YYYY-MM, kosong=all-time'],
-                        'bulanAkhir' => ['type' => 'string', 'description' => 'Opsional YYYY-MM inklusif, kosong=all-time'],
-                        'partNo' => ['type' => 'string', 'description' => 'Opsional no part/dies, kosong=semua'],
-                    ],
-                    'required' => [],
-                ],
-            ],
-            [
-                'name' => 'getTopProblemMesin',
-                'description' => 'Seperti getTopProblemDies untuk mesin.',
-                'parameters' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'bulanMulai' => ['type' => 'string', 'description' => 'Opsional YYYY-MM, kosong=all-time'],
-                        'bulanAkhir' => ['type' => 'string', 'description' => 'Opsional YYYY-MM inklusif, kosong=all-time'],
-                        'idMesin' => ['type' => 'string', 'description' => 'Opsional kode mesin, kosong=semua'],
-                    ],
-                    'required' => [],
-                ],
-            ],
-        ];
-    }
-
-    private function dandoriSchemas(): array
-    {
-        return [
-            [
-                'name' => 'getRekapDandori',
-                'description' => 'Rekap dandori per jenis losstime + total over-menit, rentang bulan. Kosong=all-time.',
-                'parameters' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'bulanMulai' => ['type' => 'string', 'description' => 'Opsional YYYY-MM, kosong=all-time'],
-                        'bulanAkhir' => ['type' => 'string', 'description' => 'Opsional YYYY-MM inklusif, kosong=all-time'],
-                        'idMesin' => ['type' => 'string', 'description' => 'Opsional kode mesin, kosong=semua'],
-                    ],
-                    'required' => [],
-                ],
-            ],
-        ];
-    }
-
-    private function dataExplorerSchemas(): array
-    {
-        return [
-            [
-                'name' => 'describeSchema',
-                'description' => 'Lihat struktur DB. Tanpa arg: daftar tabel. Dengan table: kolom+tipe. Panggil sebelum queryDatabase.',
-                'parameters' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'table' => ['type' => 'string', 'description' => 'Opsional nama tabel, kosong=daftar semua'],
-                    ],
-                    'required' => [],
-                ],
-            ],
-            [
-                'name' => 'queryDatabase',
-                'description' => 'SQL SELECT read-only untuk pertanyaan di luar tool lain (master data, per-operator/shift, jenis NG, lintas-tabel). Hanya SELECT tabel bisnis. Cek describeSchema dulu. Maks 25 baris.',
-                'parameters' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'sql' => ['type' => 'string', 'description' => 'Satu SELECT MySQL valid. Mis: SELECT nama_karyawan,departemen FROM master_karyawan WHERE is_aktif=1'],
-                    ],
-                    'required' => ['sql'],
-                ],
-            ],
-        ];
+        return $this->schemaCatalog->definitions();
     }
 }
