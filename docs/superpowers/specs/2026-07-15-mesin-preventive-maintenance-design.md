@@ -234,7 +234,17 @@ phpunit:
 
 ## Catatan Implementasi
 
-- `MasterMesin` **tidak punya `$casts`**, jadi `tanggal_instalasi` bernilai string `'Y-m-d'`
+- ~~`MasterMesin` **tidak punya `$casts`**, jadi `tanggal_instalasi` bernilai string `'Y-m-d'`~~
+  **SUDAH TIDAK BERLAKU (2026-07-15, commit b528e12):** `MasterMesin` kini punya
+  `$casts = ['tanggal_instalasi' => 'date']`, jadi nilainya **Carbon**, sama seperti `MasterPart`.
+  Cast itu ditambahkan untuk memperbaiki bug terpisah (form edit mesin menghapus tanggal instalasi
+  karena `optional($string)->format()` balikin null). `currentStrokeFor()` tetap benar: Carbon
+  di-bind sebagai `'Y-m-d 00:00:00'` dan perbandingan strict `>` terhadap kolom DATE tetap
+  mengecualikan produksi di tanggal batas — dipagari test
+  `test_produksi_exactly_on_preventive_date_belongs_to_the_old_cycle`. Catatan asli di bawah
+  dipertahankan sebagai rekaman kondisi saat desain dibuat:
+
+- (historis) `MasterMesin` **tidak punya `$casts`**, jadi `tanggal_instalasi` bernilai string `'Y-m-d'`
   (bukan Carbon) — beda dari `MasterPart` yang punya cast `date`. Aman dipakai langsung sebagai
   `$cycleStart` di query SQL; JANGAN panggil `->format()` di atasnya tanpa `Carbon::parse()`.
 - `stroke_at_preventive` WAJIB dihitung server-side, TIDAK boleh terima nilai dari request —

@@ -25,7 +25,8 @@
 
 ## Environment Notes (read before writing tests)
 
-- **`MasterMesin` has no `$casts`**, so `tanggal_instalasi` is a plain `'Y-m-d'` string, NOT a Carbon instance (unlike `MasterPart`, which casts it to `date`). It is safe to pass straight into a SQL comparison. Never call `->format()` on it without `Carbon::parse()` first.
+- ~~**`MasterMesin` has no `$casts`**, so `tanggal_instalasi` is a plain `'Y-m-d'` string, NOT a Carbon instance (unlike `MasterPart`, which casts it to `date`). It is safe to pass straight into a SQL comparison. Never call `->format()` on it without `Carbon::parse()` first.~~
+  **NO LONGER TRUE as of commit b528e12 (2026-07-15):** `MasterMesin` now has `$casts = ['tanggal_instalasi' => 'date']`, so it IS a Carbon instance — added to fix a separate bug where editing a machine wiped its install date. `currentStrokeFor()` remains correct (Carbon binds as `'Y-m-d 00:00:00'`; strict `>` against a DATE column still excludes boundary-date production), guarded by `test_produksi_exactly_on_preventive_date_belongs_to_the_old_cycle`. Kept struck-through as a record of the constraint at planning time.
 - **SQLite test-DB quirk:** `master_karyawan.departemen` still has a stale CHECK constraint allowing only `'Produksi'`/`'QC'` (the migration that widens it to include `'Maintenance'` is MySQL-only). In test fixtures always use `'departemen' => 'Produksi'`. No test asserts on that value, so this is harmless. This is pre-existing and out of scope.
 - `users.role` already allows `'staff_maintenance'` (migration `2026_07_15_000002`), so `User::factory()->create(['role' => 'staff_maintenance'])` works.
 
