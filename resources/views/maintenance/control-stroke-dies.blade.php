@@ -202,15 +202,22 @@ async function loadData() {
         part_id:  document.getElementById('part_id').value,
         customer: document.getElementById('customer').value,
     });
-    const res  = await fetch(`{{ route('maintenance.control-stroke-dies.data') }}?${params}`);
-    const data = await res.json();
+    const tbody = document.getElementById('strokeTableBody');
+    let data;
+    try {
+        const res = await fetch(`{{ route('maintenance.control-stroke-dies.data') }}?${params}`);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        data = await res.json();
+    } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger py-3">Gagal memuat data — coba lagi.</td></tr>';
+        return;
+    }
     currentRows = data.rows || [];
 
     document.getElementById('kpiTotalDies').textContent = data.summary?.total_dies ?? 0;
     document.getElementById('kpiOverdue').textContent   = data.summary?.overdue ?? 0;
     document.getElementById('kpiWarning').textContent   = data.summary?.warning ?? 0;
 
-    const tbody = document.getElementById('strokeTableBody');
     if (!currentRows.length) {
         tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-3">Tidak ada data.</td></tr>';
         return;
@@ -261,8 +268,15 @@ async function openHistoryModal(idPartProses) {
     historyModal.show();
 
     const url = `{{ url('maintenance/availability/control-stroke-dies') }}/${idPartProses}/history`;
-    const res  = await fetch(url);
-    const data = await res.json();
+    let data;
+    try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        data = await res.json();
+    } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger py-3">Gagal memuat riwayat — coba lagi.</td></tr>';
+        return;
+    }
     const logs = data.logs || [];
 
     if (!logs.length) {
