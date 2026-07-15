@@ -3,6 +3,7 @@ namespace App\Services;
 
 use App\Models\MasterPartProses;
 use App\Models\TransaksiBreakdownDies;
+use App\Models\TransaksiProduksi;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Schema;
 
@@ -70,6 +71,39 @@ class MaintenanceDiesDashboardService
                 'mtbf_hari'        => $mtbfHari,
                 'availability_pct' => $availPct,
                 'instalasi_set'    => $instalasiSet,
+            ];
+        }
+
+        return array_values($rows);
+    }
+
+    public function computeStroke(Carbon $from, Carbon $to, ?int $partId = null, ?string $customer = null): array
+    {
+        $partProsesList = MasterPartProses::with('part')
+            ->when($partId, fn ($q) => $q->where('id_part', $partId))
+            ->when($customer, fn ($q) => $q->whereHas('part', fn ($p) => $p->where('customer', $customer)))
+            ->get()
+            ->sortBy(fn ($pr) => $pr->part->part_no ?? '');
+
+        $stats = TransaksiProduksi::query()
+            ->whereBetween('tanggal_produksi', [$from->toDateString(), $to->toDateString()])
+            ->when($partId, fn ($q) => $q->whereHas('partProses', fn ($p) => $p->where('id_part', $partId)))
+            ->selectRaw('id_part_proses, SUM(qty_aktual) as total_stroke')
+            ->groupBy('id_part_proses')
+            ->pluck('total_stroke', 'id_part_proses');
+
+        $rows = [];
+        foreach ($partProsesList as $pr) {
+            $total = (int) ($stats->get($pr->id) ?? 0);
+            if ($total === 0) {
+                continue;
+            }
+            $rows[] = [
+                'id_mesin'     => $pr->id,
+                'kode_mesin'   => $pr->part?->part_no,
+                'nama_mesin'   => $pr->part?->part_name,
+                'nama_proses'  => $pr->nama_proses,
+                'total_stroke' => $total,
             ];
         }
 
