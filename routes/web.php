@@ -171,6 +171,9 @@ Route::middleware('auth')->group(function () {
 
         Route::get('availability/control-stroke-mesin',      [ControlStrokeMesinController::class, 'index'])->name('control-stroke-mesin');
         Route::get('availability/control-stroke-mesin/data',  [ControlStrokeMesinController::class, 'data'])->name('control-stroke-mesin.data');
+        Route::get('availability/control-stroke-mesin/{mesin}/history', [ControlStrokeMesinController::class, 'history'])->name('control-stroke-mesin.history');
+        Route::get('availability/control-stroke-mesin/{mesin}/preventive', [ControlStrokeMesinController::class, 'createPreventive'])->name('control-stroke-mesin.preventive.create');
+        Route::post('availability/control-stroke-mesin/{mesin}/preventive', [ControlStrokeMesinController::class, 'storePreventive'])->name('control-stroke-mesin.preventive');
 
         Route::get('availability/control-stroke-dies',       [ControlStrokeDiesController::class, 'index'])->name('control-stroke-dies');
         Route::get('availability/control-stroke-dies/data',   [ControlStrokeDiesController::class, 'data'])->name('control-stroke-dies.data');
