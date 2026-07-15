@@ -3,6 +3,7 @@
 @section('content')
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h4 class="mb-0"><i class="bi bi-arrow-repeat me-2"></i>Control Stroke Dies</h4>
+    <div class="text-muted small">Target preventive: <strong>30.000 stroke</strong> / dies</div>
 </div>
 
 <div class="erp-panel mb-4">
@@ -51,22 +52,40 @@
 
 <div class="row g-3 mb-4">
     <div class="col-md-4">
-        <div class="erp-panel h-100"><div class="card-body py-3">
-            <div class="text-muted small">Total Dies Dipantau</div>
-            <div style="font-size:1.6rem;font-weight:700"><span id="kpiTotalDies">0</span></div>
-        </div></div>
+        <div class="erp-panel h-100" style="border-left:4px solid #6b7280">
+            <div class="card-body py-3 d-flex align-items-center gap-3">
+                <i class="bi bi-grid-3x3-gap-fill" style="font-size:1.9rem;color:#6b7280"></i>
+                <div>
+                    <div class="text-muted small">Total Dies Dipantau</div>
+                    <div style="font-size:1.9rem;font-weight:700;line-height:1"><span id="kpiTotalDies">0</span></div>
+                    <div class="text-muted" style="font-size:11px">punya data produksi</div>
+                </div>
+            </div>
+        </div>
     </div>
     <div class="col-md-4">
-        <div class="erp-panel h-100"><div class="card-body py-3">
-            <div class="text-muted small">Segera Preventive</div>
-            <div style="font-size:1.6rem;font-weight:700;color:#b91c1c"><span id="kpiOverdue">0</span></div>
-        </div></div>
+        <div class="erp-panel h-100" style="border-left:4px solid #b91c1c">
+            <div class="card-body py-3 d-flex align-items-center gap-3">
+                <i class="bi bi-exclamation-octagon-fill" style="font-size:1.9rem;color:#b91c1c"></i>
+                <div>
+                    <div class="text-muted small">Segera Preventive</div>
+                    <div style="font-size:1.9rem;font-weight:700;line-height:1;color:#b91c1c"><span id="kpiOverdue">0</span></div>
+                    <div class="text-muted" style="font-size:11px">sudah lewat batas 30.000</div>
+                </div>
+            </div>
+        </div>
     </div>
     <div class="col-md-4">
-        <div class="erp-panel h-100"><div class="card-body py-3">
-            <div class="text-muted small">Mendekati Batas</div>
-            <div style="font-size:1.6rem;font-weight:700;color:#b45309"><span id="kpiWarning">0</span></div>
-        </div></div>
+        <div class="erp-panel h-100" style="border-left:4px solid #b45309">
+            <div class="card-body py-3 d-flex align-items-center gap-3">
+                <i class="bi bi-exclamation-triangle-fill" style="font-size:1.9rem;color:#b45309"></i>
+                <div>
+                    <div class="text-muted small">Mendekati Batas</div>
+                    <div style="font-size:1.9rem;font-weight:700;line-height:1;color:#b45309"><span id="kpiWarning">0</span></div>
+                    <div class="text-muted" style="font-size:11px">sudah &ge; 80% (24.000 stroke)</div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -78,8 +97,8 @@
                 <thead>
                     <tr>
                         <th>Part No</th><th>Nama Dies</th><th>Proses</th>
-                        <th style="min-width:220px">Stroke Saat Ini</th>
-                        <th>Status</th><th>Preventive Terakhir</th><th class="text-end">Aksi</th>
+                        <th style="min-width:260px">Stroke Saat Ini</th>
+                        <th>Status</th><th>Preventive Terakhir</th><th class="text-end" style="min-width:220px">Aksi</th>
                     </tr>
                 </thead>
                 <tbody id="strokeTableBody">
@@ -92,7 +111,7 @@
 
 {{-- Modal: Input Preventive --}}
 <div class="modal fade" id="preventiveModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Input Preventive — <span id="pvDiesLabel"></span></h5>
@@ -100,7 +119,7 @@
             </div>
             <form id="preventiveForm">
                 <div class="modal-body">
-                    <div class="alert alert-warning py-2 small" id="pvResetPreview"></div>
+                    <div class="alert alert-warning d-flex align-items-center gap-2 py-2" id="pvResetPreview" style="font-size:14px"></div>
                     <div class="mb-3">
                         <label class="form-label">Tanggal Preventive <span class="text-danger">*</span></label>
                         <input type="date" id="pv_tanggal" name="tanggal_preventive" class="form-control" required>
@@ -116,13 +135,13 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Catatan</label>
-                        <textarea id="pv_catatan" name="catatan" class="form-control" rows="3" placeholder="Opsional"></textarea>
+                        <textarea id="pv_catatan" name="catatan" class="form-control" rows="3" placeholder="Opsional — mis. ganti pisau, cek clearance"></textarea>
                     </div>
                     <div id="pvError" class="text-danger small" style="display:none"></div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-save me-1"></i>Simpan Preventive</button>
+                    <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-save me-1"></i>Simpan &amp; Reset ke 0</button>
                 </div>
             </form>
         </div>
@@ -131,7 +150,7 @@
 
 {{-- Modal: History --}}
 <div class="modal fade" id="historyModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Riwayat Preventive — <span id="hDiesLabel"></span></h5>
@@ -168,6 +187,7 @@ function escHtml(str) {
     if (str === null || str === undefined) return '';
     return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
+function fmt(n) { return Number(n || 0).toLocaleString('id-ID'); }
 
 function taField(items, initText = '', initVal = null) {
     return {
@@ -190,9 +210,12 @@ function taField(items, initText = '', initVal = null) {
     };
 }
 
-const STATUS_LABEL = { ok: 'OK', warning: 'Perlu Perhatian', overdue: 'SEGERA PREVENTIVE' };
-const STATUS_BADGE = { ok: 'bg-success', warning: 'bg-warning text-dark', overdue: 'bg-danger' };
-const STATUS_BAR   = { ok: 'bg-success', warning: 'bg-warning', overdue: 'bg-danger' };
+// warna & label per status — dipakai badge, teks %, bar, dan tint baris
+const STATUS = {
+    ok:      { label: 'OK',                 badge: 'bg-success',           bar: 'bg-success', icon: 'bi-check-circle-fill',       color: '#15803d', tint: '' },
+    warning: { label: 'Perlu Perhatian',    badge: 'bg-warning text-dark', bar: 'bg-warning', icon: 'bi-exclamation-triangle-fill', color: '#b45309', tint: '#fffbeb' },
+    overdue: { label: 'Segera Preventive',  badge: 'bg-danger',            bar: 'bg-danger',  icon: 'bi-exclamation-octagon-fill',  color: '#b91c1c', tint: '#fef2f2' },
+};
 
 let currentRows = [];
 let preventiveModal, historyModal;
@@ -214,33 +237,47 @@ async function loadData() {
     }
     currentRows = data.rows || [];
 
-    document.getElementById('kpiTotalDies').textContent = data.summary?.total_dies ?? 0;
-    document.getElementById('kpiOverdue').textContent   = data.summary?.overdue ?? 0;
-    document.getElementById('kpiWarning').textContent   = data.summary?.warning ?? 0;
+    document.getElementById('kpiTotalDies').textContent = fmt(data.summary?.total_dies ?? 0);
+    document.getElementById('kpiOverdue').textContent   = fmt(data.summary?.overdue ?? 0);
+    document.getElementById('kpiWarning').textContent   = fmt(data.summary?.warning ?? 0);
 
     if (!currentRows.length) {
         tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-3">Tidak ada data.</td></tr>';
         return;
     }
     tbody.innerHTML = currentRows.map(r => {
-        const pct        = Math.min(r.pct, 100);
-        const rowClass   = r.status === 'overdue' ? 'table-danger' : '';
-        const lastPrev   = r.last_preventive_date ? `${r.last_preventive_date} — ${escHtml(r.last_preventive_pic) || '—'}` : 'Belum pernah';
-        const disabledAttr = canInputPreventive ? '' : 'disabled title="Hanya Maintenance"';
-        return `<tr class="${rowClass}">
-            <td>${r.kode_mesin}</td><td>${r.nama_mesin}</td><td>${r.nama_proses}</td>
+        const st       = STATUS[r.status] || STATUS.ok;
+        const barPct   = Math.min(r.pct, 100);
+        const sisa     = r.threshold - r.current_stroke;
+        const sisaTxt  = sisa >= 0
+            ? `<span class="text-muted">sisa ${fmt(sisa)} stroke</span>`
+            : `<span style="color:#b91c1c;font-weight:600">lewat ${fmt(-sisa)} stroke</span>`;
+        const rowStyle = st.tint ? `style="background:${st.tint}"` : '';
+        const lastPrev = r.last_preventive_date
+            ? `${r.last_preventive_date}<br><span class="text-muted" style="font-size:11px">${escHtml(r.last_preventive_pic) || '—'}</span>`
+            : '<span class="text-muted">Belum pernah</span>';
+        const disabledAttr = canInputPreventive ? '' : 'disabled title="Hanya Maintenance yang bisa input"';
+        return `<tr ${rowStyle}>
+            <td style="font-weight:600">${escHtml(r.kode_mesin)}</td>
+            <td>${escHtml(r.nama_mesin)}</td>
+            <td>${escHtml(r.nama_proses)}</td>
             <td>
-                <div class="progress" style="height:20px">
-                    <div class="progress-bar ${STATUS_BAR[r.status]}" style="width:${pct}%">
-                        ${Number(r.current_stroke).toLocaleString()} / ${Number(r.threshold).toLocaleString()} (${r.pct}%)
-                    </div>
+                <div class="d-flex justify-content-between align-items-baseline mb-1">
+                    <span><strong>${fmt(r.current_stroke)}</strong> <span class="text-muted">/ ${fmt(r.threshold)}</span></span>
+                    <strong style="font-size:15px;color:${st.color}">${r.pct}%</strong>
                 </div>
+                <div class="progress" style="height:9px;background:#e5e7eb;border-radius:4px">
+                    <div class="progress-bar ${st.bar}" style="width:${barPct}%"></div>
+                </div>
+                <div style="font-size:11px;margin-top:3px">${sisaTxt}</div>
             </td>
-            <td><span class="badge ${STATUS_BADGE[r.status]}">${STATUS_LABEL[r.status]}</span></td>
+            <td><span class="badge ${st.badge}" style="font-size:12px;padding:6px 10px"><i class="bi ${st.icon} me-1"></i>${st.label}</span></td>
             <td>${lastPrev}</td>
             <td class="text-end">
-                <button type="button" class="btn btn-primary btn-sm" ${disabledAttr} onclick="openPreventiveModal(${r.id_part_proses})"><i class="bi bi-tools"></i></button>
-                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="openHistoryModal(${r.id_part_proses})"><i class="bi bi-clock-history"></i></button>
+                <div class="d-flex gap-1 justify-content-end">
+                    <button type="button" class="btn btn-primary btn-sm" ${disabledAttr} onclick="openPreventiveModal(${r.id_part_proses})"><i class="bi bi-tools me-1"></i>Preventive</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="openHistoryModal(${r.id_part_proses})"><i class="bi bi-clock-history me-1"></i>Riwayat</button>
+                </div>
             </td>
         </tr>`;
     }).join('');
@@ -251,7 +288,8 @@ function openPreventiveModal(idPartProses) {
     if (!row) return;
     document.getElementById('preventiveForm').dataset.idPartProses = idPartProses;
     document.getElementById('pvDiesLabel').textContent = `${row.kode_mesin} — ${row.nama_proses}`;
-    document.getElementById('pvResetPreview').textContent = `Stroke akan direset dari ${Number(row.current_stroke).toLocaleString()} ke 0.`;
+    document.getElementById('pvResetPreview').innerHTML =
+        `<i class="bi bi-arrow-counterclockwise"></i><span>Stroke akan direset dari <strong>${fmt(row.current_stroke)}</strong> ke <strong>0</strong>.</span>`;
     document.getElementById('pv_tanggal').value    = new Date().toISOString().slice(0, 10);
     document.getElementById('pv_tanggal').max      = new Date().toISOString().slice(0, 10);
     document.getElementById('pv_karyawan').value   = '';
@@ -285,7 +323,7 @@ async function openHistoryModal(idPartProses) {
     }
     tbody.innerHTML = logs.map(l => `<tr>
         <td>${l.tanggal_preventive}</td><td>${escHtml(l.pic) || '—'}</td>
-        <td class="text-end">${Number(l.stroke_at_preventive).toLocaleString()}</td>
+        <td class="text-end">${fmt(l.stroke_at_preventive)}</td>
         <td>${escHtml(l.catatan) || '—'}</td><td>${escHtml(l.input_by) || '—'}</td>
     </tr>`).join('');
 }

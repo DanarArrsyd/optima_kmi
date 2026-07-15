@@ -710,6 +710,10 @@
         }
         .dropdown-item { padding: 7px 16px; font-size: 14px; }
         .dropdown-item:hover { background: var(--surface-2); color: var(--text); }
+        /* Modal harus di atas topbar (1100) & sidebar (1050), kalau tidak backdrop
+           tidak menutup chrome dan dialog tertimpa topbar → tampak macet & tak bisa diklik. */
+        .modal { z-index: 1200; }
+        .modal-backdrop { z-index: 1190; }
         .modal-content { border-radius: 2px; border: 1px solid var(--border); }
         .modal-header { background: var(--surface-2); border-bottom: 1px solid var(--border); padding: 10px 14px; }
         .modal-title { font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
