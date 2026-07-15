@@ -129,7 +129,7 @@ async function loadData() {
     if (strokeChart) strokeChart.destroy();
     strokeChart = new Chart(document.getElementById('strokeChart'), {
         type: 'bar',
-        data: { labels: rows.map(r => r.kode_mesin), datasets: [{ label: 'Total Stroke', data: rows.map(r => r.total_stroke), backgroundColor: '#1f2937' }] },
+        data: { labels: rows.map(r => r.kode_mesin + ' – ' + r.nama_proses), datasets: [{ label: 'Total Stroke', data: rows.map(r => r.total_stroke), backgroundColor: '#1f2937' }] },
         options: { responsive: true, plugins: { legend: { display: false }, datalabels: { display: true, anchor: 'end', align: 'top', font: { size: 10, weight: 'bold' }, color: '#111827', formatter: v => v.toLocaleString() } }, scales: { y: { beginAtZero: true } } }
     });
 
