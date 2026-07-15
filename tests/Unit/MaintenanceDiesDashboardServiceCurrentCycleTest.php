@@ -189,4 +189,32 @@ class MaintenanceDiesDashboardServiceCurrentCycleTest extends TestCase
         $this->assertCount(1, $rows);
         $this->assertSame(200, $rows[0]['current_stroke']);
     }
+
+    /**
+     * N+1 guard: computeCurrentCycle already eager-loads preventiveLogs, so the latest
+     * preventive date must be read from that relation — NOT re-queried once per dies.
+     */
+    public function test_compute_current_cycle_does_not_run_per_dies_max_preventive_query(): void
+    {
+        $f = $this->fixtures();
+        for ($i = 0; $i < 3; $i++) {
+            $pr = $this->partProses('2026-01-01');
+            $this->preventive($f, $pr, '2026-02-01', 1000);
+            $this->produksi($f, $pr, '2026-03-01', 100);
+        }
+
+        \DB::flushQueryLog();
+        \DB::enableQueryLog();
+        (new MaintenanceDiesDashboardService())->computeCurrentCycle();
+        $queries = \DB::getQueryLog();
+        \DB::disableQueryLog();
+
+        $maxPreventiveQueries = collect($queries)->filter(fn ($q) =>
+            str_contains(strtolower($q['query']), 'max(')
+            && str_contains($q['query'], 'tanggal_preventive')
+        )->count();
+
+        $this->assertSame(0, $maxPreventiveQueries,
+            'Latest preventive date should come from the eager-loaded relation, not a per-dies MAX() query.');
+    }
 }

@@ -82,7 +82,12 @@ class MaintenanceDiesDashboardService
 
     public function currentStrokeFor(MasterPartProses $pr): int
     {
-        $lastPreventive = DiesPreventiveLog::where('id_part_proses', $pr->id)->max('tanggal_preventive');
+        // Reuse the eager-loaded preventiveLogs relation when present (computeCurrentCycle
+        // loads it) to avoid a per-dies MAX() query. toDateString() keeps the exact 'Y-m-d'
+        // string that DB::max() returned, so the strict `>` boundary stays byte-identical.
+        $lastPreventive = $pr->relationLoaded('preventiveLogs')
+            ? optional($pr->preventiveLogs->max('tanggal_preventive'))->toDateString()
+            : DiesPreventiveLog::where('id_part_proses', $pr->id)->max('tanggal_preventive');
         $cycleStart     = $lastPreventive ?? $pr->part?->tanggal_instalasi;
 
         return (int) TransaksiProduksi::query()

@@ -71,7 +71,12 @@ class MaintenanceDashboardService
 
     public function currentStrokeFor(MasterMesin $m): int
     {
-        $lastPreventive = MesinPreventiveLog::where('id_mesin', $m->id)->max('tanggal_preventive');
+        // Reuse the eager-loaded preventiveLogs relation when present (computeCurrentCycle
+        // loads it) to avoid a per-mesin MAX() query. toDateString() keeps the exact 'Y-m-d'
+        // string that DB::max() returned, so the strict `>` boundary stays byte-identical.
+        $lastPreventive = $m->relationLoaded('preventiveLogs')
+            ? optional($m->preventiveLogs->max('tanggal_preventive'))->toDateString()
+            : MesinPreventiveLog::where('id_mesin', $m->id)->max('tanggal_preventive');
         $cycleStart     = $lastPreventive ?? $m->tanggal_instalasi;
 
         return (int) TransaksiProduksi::query()
