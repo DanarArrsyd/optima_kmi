@@ -28,7 +28,7 @@
                     <div><span class="text-muted">Customer:</span> <strong>{{ $part?->customer ?? '—' }}</strong></div>
                 </div>
                 <div class="mt-3">
-                    @include('maintenance.partials.dies-stroke-summary', [
+                    @include('maintenance.partials.stroke-summary', [
                         'currentStroke' => $currentStroke,
                         'threshold'     => $threshold,
                     ])

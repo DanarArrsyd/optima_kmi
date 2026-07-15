@@ -27,7 +27,7 @@
 
         {{-- Ringkasan stroke dies ini --}}
         <div class="mb-3">
-            @include('maintenance.partials.dies-stroke-summary', [
+            @include('maintenance.partials.stroke-summary', [
                 'currentStroke' => $currentStroke,
                 'threshold'     => $threshold,
             ])
