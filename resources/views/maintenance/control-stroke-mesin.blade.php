@@ -66,10 +66,6 @@
     </div>
 </div>
 
-<div class="erp-panel mb-4">
-    <div class="card-body"><canvas id="strokeChart" height="100"></canvas></div>
-</div>
-
 <div class="erp-panel">
     <div class="erp-panel-header">Detail per Mesin</div>
     <div class="erp-panel-body p-0">
@@ -112,8 +108,6 @@ function taField(items, initText = '', initVal = null) {
     };
 }
 
-let strokeChart = null;
-
 async function loadData() {
     const params = new URLSearchParams({
         date_from:  document.getElementById('date_from').value,
@@ -127,13 +121,6 @@ async function loadData() {
     const rows = data.rows || [];
 
     document.getElementById('kpiTotalStroke').textContent = (data.summary?.total_stroke ?? 0).toLocaleString();
-
-    if (strokeChart) strokeChart.destroy();
-    strokeChart = new Chart(document.getElementById('strokeChart'), {
-        type: 'bar',
-        data: { labels: rows.map(r => r.kode_mesin), datasets: [{ label: 'Total Stroke', data: rows.map(r => r.total_stroke), backgroundColor: '#1f2937' }] },
-        options: { responsive: true, plugins: { legend: { display: false }, datalabels: { display: true, anchor: 'end', align: 'top', font: { size: 10, weight: 'bold' }, color: '#111827', formatter: v => v.toLocaleString() } }, scales: { y: { beginAtZero: true } } }
-    });
 
     const tbody = document.getElementById('strokeTableBody');
     if (!rows.length) {
