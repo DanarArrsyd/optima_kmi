@@ -135,11 +135,11 @@ function shiftForm() {
         days: { senin_kamis: [], jumat: [], sabtu: [] },
         init() {
             // Load existing data dari DB (via Blade PHP → JS)
-            const existing = {!! $istirahatByKel->toJson() !!};
+            const existing = @json($istirahatByKel);
             // Fallback dari old() jika ada validation error
             @foreach(['senin_kamis','jumat','sabtu'] as $kel)
             @if(old("istirahat.{$kel}"))
-            this.days['{{ $kel }}'] = {!! json_encode(array_values(old("istirahat.{$kel}"))) !!};
+            this.days['{{ $kel }}'] = @json(array_values(old("istirahat.{$kel}")));
             @else
             this.days['{{ $kel }}'] = existing['{{ $kel }}'] ?? [];
             @endif
