@@ -164,6 +164,11 @@ const taPart = @json($partList->map(fn($m) => ['v' => $m->id, 't' => $m->part_no
 const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 const canInputPreventive = {{ in_array(auth()->user()->role, ['admin', 'staff_maintenance']) ? 'true' : 'false' }};
 
+function escHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
 function taField(items, initText = '', initVal = null) {
     return {
         items, query: initText, val: initVal, open: false, idx: -1,
@@ -213,7 +218,7 @@ async function loadData() {
     tbody.innerHTML = currentRows.map(r => {
         const pct        = Math.min(r.pct, 100);
         const rowClass   = r.status === 'overdue' ? 'table-danger' : '';
-        const lastPrev   = r.last_preventive_date ? `${r.last_preventive_date} — ${r.last_preventive_pic ?? '—'}` : 'Belum pernah';
+        const lastPrev   = r.last_preventive_date ? `${r.last_preventive_date} — ${escHtml(r.last_preventive_pic) || '—'}` : 'Belum pernah';
         const disabledAttr = canInputPreventive ? '' : 'disabled title="Hanya Maintenance"';
         return `<tr class="${rowClass}">
             <td>${r.kode_mesin}</td><td>${r.nama_mesin}</td><td>${r.nama_proses}</td>
@@ -265,9 +270,9 @@ async function openHistoryModal(idPartProses) {
         return;
     }
     tbody.innerHTML = logs.map(l => `<tr>
-        <td>${l.tanggal_preventive}</td><td>${l.pic ?? '—'}</td>
+        <td>${l.tanggal_preventive}</td><td>${escHtml(l.pic) || '—'}</td>
         <td class="text-end">${Number(l.stroke_at_preventive).toLocaleString()}</td>
-        <td>${l.catatan ?? '—'}</td><td>${l.input_by ?? '—'}</td>
+        <td>${escHtml(l.catatan) || '—'}</td><td>${escHtml(l.input_by) || '—'}</td>
     </tr>`).join('');
 }
 
