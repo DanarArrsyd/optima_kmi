@@ -111,11 +111,25 @@ class ControlStrokeDiesTest extends TestCase
             'id_karyawan' => $f['karyawan']->id, 'stroke_at_preventive' => 12000, 'created_by' => $f['admin']->id,
         ]);
 
-        $response = $this->actingAs($f['admin'])->getJson(route('maintenance.control-stroke-dies.history', $f['proses']->id));
+        $response = $this->actingAs($f['admin'])->get(route('maintenance.control-stroke-dies.history', $f['proses']->id));
 
         $response->assertOk();
-        $response->assertJsonCount(1, 'logs');
-        $response->assertJsonFragment(['tanggal_preventive' => '2026-05-01', 'pic' => 'Teknisi A', 'stroke_at_preventive' => 30500, 'catatan' => 'Ganti dies']);
+        $response->assertViewIs('maintenance.control-stroke-dies-history');
+        $response->assertViewHas('logs', fn ($logs) => $logs->count() === 1 && $logs->first()->stroke_at_preventive === 30500);
+        $response->assertSee('Ganti dies');
+        $response->assertSee('Teknisi A');
+        $response->assertDontSee('12000'); // log dies lain tidak ikut terbawa
+    }
+
+    public function test_manager_can_view_history_page(): void
+    {
+        $f       = $this->fixtures();
+        $manager = User::factory()->create(['role' => 'manager']);
+
+        $response = $this->actingAs($manager)->get(route('maintenance.control-stroke-dies.history', $f['proses']->id));
+
+        $response->assertOk();
+        $response->assertViewIs('maintenance.control-stroke-dies-history');
     }
 
     public function test_admin_can_store_preventive_and_it_resets_the_running_cycle(): void

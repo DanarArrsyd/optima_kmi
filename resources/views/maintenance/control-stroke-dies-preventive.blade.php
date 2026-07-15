@@ -1,15 +1,7 @@
 @extends('layouts.app')
 @section('title', 'Input Preventive Dies')
 
-@php
-    $part    = $partProses->part;
-    $pct     = $threshold > 0 ? round($currentStroke / $threshold * 100, 1) : 0;
-    $sisa    = $threshold - $currentStroke;
-    $barPct  = min($pct, 100);
-    $status  = $pct >= 100 ? 'overdue' : ($pct >= 80 ? 'warning' : 'ok');
-    $barCls  = ['ok' => 'bg-success', 'warning' => 'bg-warning', 'overdue' => 'bg-danger'][$status];
-    $txtCol  = ['ok' => '#15803d', 'warning' => '#b45309', 'overdue' => '#b91c1c'][$status];
-@endphp
+@php $part = $partProses->part; @endphp
 
 @section('content')
 <div class="page-header">
@@ -34,25 +26,11 @@
     <div class="erp-panel-body">
 
         {{-- Ringkasan stroke dies ini --}}
-        <div style="border:1px solid var(--border);background:var(--surface-2);padding:12px 14px;margin-bottom:18px">
-            <div class="d-flex justify-content-between align-items-baseline mb-1">
-                <span class="text-muted small">Stroke berjalan saat ini</span>
-                <strong style="color:{{ $txtCol }}">{{ $pct }}%</strong>
-            </div>
-            <div class="d-flex justify-content-between align-items-baseline mb-1">
-                <span><strong>{{ number_format($currentStroke, 0, ',', '.') }}</strong>
-                      <span class="text-muted">/ {{ number_format($threshold, 0, ',', '.') }}</span></span>
-                <span style="font-size:12px">
-                    @if($sisa >= 0)
-                        <span class="text-muted">sisa {{ number_format($sisa, 0, ',', '.') }} stroke</span>
-                    @else
-                        <span style="color:#b91c1c;font-weight:600">lewat {{ number_format(-$sisa, 0, ',', '.') }} stroke</span>
-                    @endif
-                </span>
-            </div>
-            <div class="progress" style="height:9px;background:#e5e7eb;border-radius:4px">
-                <div class="progress-bar {{ $barCls }}" style="width:{{ $barPct }}%"></div>
-            </div>
+        <div class="mb-3">
+            @include('maintenance.partials.dies-stroke-summary', [
+                'currentStroke' => $currentStroke,
+                'threshold'     => $threshold,
+            ])
         </div>
 
         <div class="alert alert-warning d-flex align-items-center gap-2 py-2" style="font-size:14px">

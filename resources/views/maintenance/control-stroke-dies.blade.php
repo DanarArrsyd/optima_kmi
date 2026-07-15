@@ -115,32 +115,6 @@
     </div>
 </div>
 
-{{-- Modal: History --}}
-<div class="modal fade" id="historyModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Riwayat Preventive — <span id="hDiesLabel"></span></h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="table-responsive">
-                    <table class="erp-table">
-                        <thead>
-                            <tr><th>Tanggal</th><th>PIC</th><th class="text-end">Stroke Tercapai</th><th>Catatan</th><th>Diinput Oleh</th></tr>
-                        </thead>
-                        <tbody id="historyTableBody">
-                            <tr><td colspan="5" class="text-center text-muted py-3">Memuat...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Tutup</button>
-            </div>
-        </div>
-    </div>
-</div>
 @endsection
 
 @push('scripts')
@@ -185,7 +159,6 @@ const STATUS = {
 };
 
 let currentRows = [];
-let historyModal;
 
 async function loadData() {
     const params = new URLSearchParams({
@@ -245,47 +218,15 @@ async function loadData() {
             <td class="text-end">
                 <div class="d-flex gap-1 justify-content-end">
                     ${prevBtn}
-                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="openHistoryModal(${r.id_part_proses})"><i class="bi bi-clock-history me-1"></i>Riwayat</button>
+                    <a href="${baseUrl}/${r.id_part_proses}/history" class="btn btn-outline-secondary btn-sm"><i class="bi bi-clock-history me-1"></i>Riwayat</a>
                 </div>
             </td>
         </tr>`;
     }).join('');
 }
 
-async function openHistoryModal(idPartProses) {
-    const row = currentRows.find(r => r.id_part_proses === idPartProses);
-    document.getElementById('hDiesLabel').textContent = row ? `${row.kode_mesin} — ${row.nama_proses}` : '';
-    const tbody = document.getElementById('historyTableBody');
-    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">Memuat...</td></tr>';
-    historyModal.show();
-
-    let data;
-    try {
-        const res = await fetch(`${baseUrl}/${idPartProses}/history`);
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        data = await res.json();
-    } catch (e) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger py-3">Gagal memuat riwayat — coba lagi.</td></tr>';
-        return;
-    }
-    const logs = data.logs || [];
-
-    if (!logs.length) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">Belum ada riwayat preventive.</td></tr>';
-        return;
-    }
-    tbody.innerHTML = logs.map(l => `<tr>
-        <td>${l.tanggal_preventive}</td><td>${escHtml(l.pic) || '—'}</td>
-        <td class="text-end">${fmt(l.stroke_at_preventive)}</td>
-        <td>${escHtml(l.catatan) || '—'}</td><td>${escHtml(l.input_by) || '—'}</td>
-    </tr>`).join('');
-}
-
 document.getElementById('filterForm').addEventListener('submit', e => { e.preventDefault(); loadData(); });
 
-document.addEventListener('DOMContentLoaded', () => {
-    historyModal = new bootstrap.Modal(document.getElementById('historyModal'));
-    loadData();
-});
+document.addEventListener('DOMContentLoaded', loadData);
 </script>
 @endpush

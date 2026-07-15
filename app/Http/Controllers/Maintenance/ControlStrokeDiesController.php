@@ -51,19 +51,14 @@ class ControlStrokeDiesController extends Controller
 
     public function history(MasterPartProses $partProses)
     {
-        $logs = $partProses->preventiveLogs()
-            ->with(['karyawan:id,nama_karyawan', 'createdBy:id,name'])
-            ->orderByDesc('tanggal_preventive')
-            ->get();
-
-        return response()->json([
-            'logs' => $logs->map(fn ($l) => [
-                'tanggal_preventive'   => $l->tanggal_preventive->format('Y-m-d'),
-                'pic'                  => $l->karyawan?->nama_karyawan,
-                'stroke_at_preventive' => $l->stroke_at_preventive,
-                'catatan'              => $l->catatan,
-                'input_by'             => $l->createdBy?->name,
-            ]),
+        return view('maintenance.control-stroke-dies-history', [
+            'partProses'    => $partProses->load('part'),
+            'logs'          => $partProses->preventiveLogs()
+                ->with(['karyawan:id,nama_karyawan', 'createdBy:id,name'])
+                ->orderByDesc('tanggal_preventive')
+                ->get(),
+            'currentStroke' => $this->svc->currentStrokeFor($partProses),
+            'threshold'     => MaintenanceDiesDashboardService::STROKE_THRESHOLD,
         ]);
     }
 
