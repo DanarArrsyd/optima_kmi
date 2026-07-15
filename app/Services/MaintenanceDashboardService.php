@@ -2,6 +2,7 @@
 namespace App\Services;
 
 use App\Models\MasterMesin;
+use App\Models\MesinPreventiveLog;
 use App\Models\TransaksiBreakdownMesin;
 use App\Models\TransaksiProduksi;
 use Illuminate\Support\Carbon;
@@ -9,6 +10,10 @@ use Illuminate\Support\Facades\Schema;
 
 class MaintenanceDashboardService
 {
+    /** Target preventive mesin (stroke). Sengaja 10× threshold dies: stroke mesin
+        adalah gabungan semua part yang dikerjakan mesin itu. */
+    public const STROKE_THRESHOLD = 300000;
+
     public function compute(Carbon $from, Carbon $to, ?int $mesinId = null, ?string $tipeMesin = null): array
     {
         $hasInstalasi = Schema::hasColumn('master_mesin', 'tanggal_instalasi');
@@ -64,26 +69,53 @@ class MaintenanceDashboardService
         return $rows;
     }
 
-    public function computeStroke(Carbon $from, Carbon $to, ?int $mesinId = null, ?string $tipeMesin = null): array
+    public function currentStrokeFor(MasterMesin $m): int
+    {
+        $lastPreventive = MesinPreventiveLog::where('id_mesin', $m->id)->max('tanggal_preventive');
+        $cycleStart     = $lastPreventive ?? $m->tanggal_instalasi;
+
+        return (int) TransaksiProduksi::query()
+            ->where('id_mesin', $m->id)
+            ->when($cycleStart, fn ($q) => $q->where('tanggal_produksi', '>', $cycleStart))
+            ->sum('qty_aktual');
+    }
+
+    public function computeCurrentCycle(?int $mesinId = null, ?string $tipeMesin = null): array
     {
         $hasTipe = Schema::hasColumn('master_mesin', 'tipe_mesin');
 
-        $mesins = MasterMesin::when($mesinId, fn ($q) => $q->where('id', $mesinId))
+        $mesins = MasterMesin::with('preventiveLogs.karyawan')
+            ->when($mesinId, fn ($q) => $q->where('id', $mesinId))
             ->when($tipeMesin && $hasTipe, fn ($q) => $q->where('tipe_mesin', $tipeMesin))
             ->orderBy('id_mesin')->get();
 
-        $stats = TransaksiProduksi::query()
-            ->whereBetween('tanggal_produksi', [$from->toDateString(), $to->toDateString()])
-            ->when($mesinId, fn ($q) => $q->where('id_mesin', $mesinId))
-            ->selectRaw('id_mesin, SUM(qty_aktual) as total_stroke')
-            ->groupBy('id_mesin')
-            ->pluck('total_stroke', 'id_mesin');
+        $rows = [];
+        foreach ($mesins as $m) {
+            $currentStroke = $this->currentStrokeFor($m);
+            $pct           = round($currentStroke / self::STROKE_THRESHOLD * 100, 1);
+            $status        = $pct >= 100 ? 'overdue' : ($pct >= 80 ? 'warning' : 'ok');
+            $lastLog       = $m->preventiveLogs->first();
 
-        return $mesins->map(fn ($m) => [
-            'id_mesin'     => $m->id,
-            'kode_mesin'   => $m->id_mesin,
-            'nama_mesin'   => $m->nama_mesin,
-            'total_stroke' => (int) ($stats->get($m->id) ?? 0),
-        ])->values()->all();
+            $rows[] = [
+                'id_mesin'             => $m->id,
+                'kode_mesin'           => $m->id_mesin,
+                'nama_mesin'           => $m->nama_mesin,
+                'tipe_mesin'           => $m->tipe_mesin,
+                'current_stroke'       => $currentStroke,
+                'threshold'            => self::STROKE_THRESHOLD,
+                'pct'                  => $pct,
+                'status'               => $status,
+                'last_preventive_date' => $lastLog?->tanggal_preventive?->format('Y-m-d'),
+                'last_preventive_pic'  => $lastLog?->karyawan?->nama_karyawan,
+            ];
+        }
+
+        $statusOrder = ['overdue' => 0, 'warning' => 1, 'ok' => 2];
+        usort($rows, function ($a, $b) use ($statusOrder) {
+            $byStatus = $statusOrder[$a['status']] <=> $statusOrder[$b['status']];
+            return $byStatus !== 0 ? $byStatus : $b['pct'] <=> $a['pct'];
+        });
+
+        return array_values($rows);
     }
 }
