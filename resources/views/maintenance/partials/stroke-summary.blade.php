@@ -1,4 +1,4 @@
-{{-- Ringkasan stroke berjalan satu dies. Butuh: $currentStroke, $threshold --}}
+{{-- Ringkasan stroke berjalan satu unit (dies atau mesin). Butuh: $currentStroke, $threshold --}}
 @php
     $sPct    = $threshold > 0 ? round($currentStroke / $threshold * 100, 1) : 0;
     $sSisa   = $threshold - $currentStroke;

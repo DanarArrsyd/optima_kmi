@@ -95,6 +95,19 @@ class MaintenanceDashboardServiceCurrentCycleTest extends TestCase
         $this->assertSame(800, $svc->currentStrokeFor($m->fresh()));
     }
 
+    public function test_produksi_exactly_on_preventive_date_belongs_to_the_old_cycle(): void
+    {
+        $f = $this->fixtures();
+        $m = $this->mesin('2026-01-01');
+        $this->preventive($f, $m, '2026-03-01', 300000);
+        $this->produksi($f, $m, '2026-03-01', 9999); // TEPAT di tanggal preventive — sudah masuk snapshot lama
+        $this->produksi($f, $m, '2026-04-01', 500);  // setelah preventive — masuk siklus baru
+
+        $svc = new MaintenanceDashboardService();
+        // Perbandingan sengaja strict `>`: produksi di tanggal preventive TIDAK ikut siklus baru.
+        $this->assertSame(500, $svc->currentStrokeFor($m->fresh()));
+    }
+
     public function test_current_stroke_uses_latest_preventive_not_earliest(): void
     {
         $f = $this->fixtures();

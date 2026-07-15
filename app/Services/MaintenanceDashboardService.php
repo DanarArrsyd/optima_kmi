@@ -84,6 +84,8 @@ class MaintenanceDashboardService
     {
         $hasTipe = Schema::hasColumn('master_mesin', 'tipe_mesin');
 
+        // Sengaja TANPA whereHas('transaksiProduksi') — beda dari service Dies yang memfilter.
+        // Mesin jumlahnya sedikit; mesin nganggur (0 stroke) tetap informasi berguna.
         $mesins = MasterMesin::with('preventiveLogs.karyawan')
             ->when($mesinId, fn ($q) => $q->where('id', $mesinId))
             ->when($tipeMesin && $hasTipe, fn ($q) => $q->where('tipe_mesin', $tipeMesin))

@@ -17,6 +17,7 @@ class ControlStrokeMesinController extends Controller
         return view('maintenance.control-stroke-mesin', [
             'mesinList' => MasterMesin::orderBy('id_mesin')->get(),
             'tipeList'  => MasterMesin::TIPE_MESIN,
+            'threshold' => MaintenanceDashboardService::STROKE_THRESHOLD,
         ]);
     }
 

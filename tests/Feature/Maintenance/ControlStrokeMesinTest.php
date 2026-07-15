@@ -123,7 +123,7 @@ class ControlStrokeMesinTest extends TestCase
         $response->assertViewHas('logs', fn ($logs) => $logs->count() === 1 && $logs->first()->stroke_at_preventive === 300500);
         $response->assertSee('Ganti bearing');
         $response->assertSee('Teknisi A');
-        $response->assertDontSee('12000'); // log mesin lain tidak ikut terbawa
+        $response->assertDontSee('12.000'); // log mesin lain tidak ikut terbawa
     }
 
     public function test_manager_can_view_history_page(): void
