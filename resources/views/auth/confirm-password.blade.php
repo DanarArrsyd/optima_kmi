@@ -1,27 +1,32 @@
-<x-guest-layout>
-    <div class="mb-4 text-sm text-gray-600">
-        {{ __('This is a secure area of the application. Please confirm your password before continuing.') }}
+@extends('layouts.auth')
+@section('title', 'Konfirmasi Password')
+@section('auth_title', 'Konfirmasi Password')
+@section('auth_subtitle', 'Area aman OPTIMA MES')
+@section('content')
+
+<p style="font-size:13px;color:#4b5563;margin:0 0 16px">
+    Ini area aman aplikasi. Konfirmasi password Anda sebelum melanjutkan.
+</p>
+
+<form method="POST" action="{{ route('password.confirm') }}" style="margin:0">
+    @csrf
+
+    <div style="margin-bottom:16px">
+        <label class="form-label">Password</label>
+        <div class="input-group-icon">
+            <i class="bi bi-lock"></i>
+            <input type="password" name="password"
+                   class="form-control @error('password') is-invalid @enderror"
+                   placeholder="••••••••"
+                   required autocomplete="current-password" autofocus>
+        </div>
+        @error('password')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
 
-    <form method="POST" action="{{ route('password.confirm') }}">
-        @csrf
+    <button type="submit" class="btn-login">
+        <i class="bi bi-shield-check" style="margin-right:6px"></i>
+        Konfirmasi
+    </button>
+</form>
 
-        <!-- Password -->
-        <div>
-            <x-input-label for="password" :value="__('Password')" />
-
-            <x-text-input id="password" class="block mt-1 w-full"
-                            type="password"
-                            name="password"
-                            required autocomplete="current-password" />
-
-            <x-input-error :messages="$errors->get('password')" class="mt-2" />
-        </div>
-
-        <div class="flex justify-end mt-4">
-            <x-primary-button>
-                {{ __('Confirm') }}
-            </x-primary-button>
-        </div>
-    </form>
-</x-guest-layout>
+@endsection
