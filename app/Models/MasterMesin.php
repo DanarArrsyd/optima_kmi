@@ -34,4 +34,9 @@ class MasterMesin extends Model
     {
         return $this->hasMany(TransaksiBreakdownMesin::class, 'id_mesin');
     }
+    public function preventiveLogs(): HasMany
+    {
+        return $this->hasMany(MesinPreventiveLog::class, 'id_mesin')
+                    ->orderByDesc('tanggal_preventive');
+    }
 }
