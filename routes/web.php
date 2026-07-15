@@ -24,6 +24,7 @@ use App\Http\Controllers\Maintenance\BreakdownDiesController;
 use App\Http\Controllers\Maintenance\MttrDiesController;
 use App\Http\Controllers\Maintenance\MtbfDiesController;
 use App\Http\Controllers\Maintenance\AvailabilityDiesController;
+use App\Http\Controllers\Maintenance\ControlStrokeMesinController;
 
 Route::get('/', fn() => redirect('/dashboard'));
 
@@ -166,6 +167,9 @@ Route::middleware('auth')->group(function () {
         Route::get('mtbf-dies/data',     [MtbfDiesController::class, 'data'])->name('mtbf-dies.data');
         Route::get('availability-dies',      [AvailabilityDiesController::class, 'index'])->name('availability-dies');
         Route::get('availability-dies/data', [AvailabilityDiesController::class, 'data'])->name('availability-dies.data');
+
+        Route::get('availability/control-stroke-mesin',      [ControlStrokeMesinController::class, 'index'])->name('control-stroke-mesin');
+        Route::get('availability/control-stroke-mesin/data',  [ControlStrokeMesinController::class, 'data'])->name('control-stroke-mesin.data');
     });
 
     // --- NOTIFICATIONS (all authenticated users) ---
