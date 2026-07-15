@@ -328,8 +328,8 @@
     <div class="login-right">
         <div class="login-card">
 
-            <div class="login-title">Selamat Datang</div>
-            <div class="login-subtitle">Masuk ke sistem OPTIMA MES</div>
+            <div class="login-title">@yield('auth_title', 'Selamat Datang')</div>
+            <div class="login-subtitle">@yield('auth_subtitle', 'Masuk ke sistem OPTIMA MES')</div>
 
             @yield('content')
 
