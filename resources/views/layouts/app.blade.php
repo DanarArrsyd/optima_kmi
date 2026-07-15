@@ -1044,8 +1044,11 @@
             <a href="{{ route('maintenance.mtbf') }}" class="nav-item-link {{ $vcbActive==='mtcmesin' && str_starts_with($uri,'maintenance/mtbf')?'active':'' }}">
                 <i class="bi bi-arrow-repeat"></i><span class="nav-text">MTBF</span>
             </a>
-            <a href="{{ route('maintenance.availability') }}" class="nav-item-link {{ $vcbActive==='mtcmesin' && str_starts_with($uri,'maintenance/availability')?'active':'' }}">
+            <a href="{{ route('maintenance.availability') }}" class="nav-item-link {{ $vcbActive==='mtcmesin' && str_starts_with($uri,'maintenance/availability') && !str_starts_with($uri,'maintenance/availability/control-stroke')?'active':'' }}">
                 <i class="bi bi-graph-up"></i><span class="nav-text">Availability</span>
+            </a>
+            <a href="{{ route('maintenance.control-stroke-mesin') }}" class="nav-item-link {{ str_starts_with($uri,'maintenance/availability/control-stroke-mesin')?'active':'' }}">
+                <i class="bi bi-speedometer2"></i><span class="nav-text">Control Stroke</span>
             </a>
         </div>
         @endif
@@ -1066,6 +1069,9 @@
             </a>
             <a href="{{ route('maintenance.availability-dies') }}" class="nav-item-link {{ str_starts_with($uri,'maintenance/availability-dies')?'active':'' }}">
                 <i class="bi bi-graph-up"></i><span class="nav-text">Availability</span>
+            </a>
+            <a href="{{ route('maintenance.control-stroke-dies') }}" class="nav-item-link {{ str_starts_with($uri,'maintenance/availability/control-stroke-dies')?'active':'' }}">
+                <i class="bi bi-speedometer2"></i><span class="nav-text">Control Stroke</span>
             </a>
         </div>
         @endif
