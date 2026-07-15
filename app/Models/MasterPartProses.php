@@ -60,4 +60,10 @@ class MasterPartProses extends Model
     {
         return $this->hasMany(TransaksiDandoriRincian::class, 'id_part_proses');
     }
+
+    public function preventiveLogs(): HasMany
+    {
+        return $this->hasMany(DiesPreventiveLog::class, 'id_part_proses')
+                    ->orderByDesc('tanggal_preventive');
+    }
 }
