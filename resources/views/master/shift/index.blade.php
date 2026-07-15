@@ -409,7 +409,7 @@ function shiftForm() {
         days: { senin_kamis: [], jumat: [], sabtu: [] },
         init() {
             @if(old('istirahat.senin_kamis'))
-            this.days.senin_kamis = {!! json_encode(array_values(old('istirahat.senin_kamis'))) !!};
+            this.days.senin_kamis = @json(array_values(old('istirahat.senin_kamis')));
             @else
             this.days.senin_kamis = [
                 { jam_start: '10:00', jam_finish: '10:15' },
@@ -418,7 +418,7 @@ function shiftForm() {
             @endif
 
             @if(old('istirahat.jumat'))
-            this.days.jumat = {!! json_encode(array_values(old('istirahat.jumat'))) !!};
+            this.days.jumat = @json(array_values(old('istirahat.jumat')));
             @else
             this.days.jumat = [
                 { jam_start: '10:00', jam_finish: '10:15' },
@@ -427,7 +427,7 @@ function shiftForm() {
             @endif
 
             @if(old('istirahat.sabtu'))
-            this.days.sabtu = {!! json_encode(array_values(old('istirahat.sabtu'))) !!};
+            this.days.sabtu = @json(array_values(old('istirahat.sabtu')));
             @else
             this.days.sabtu = [
                 { jam_start: '10:00', jam_finish: '10:15' },

@@ -125,7 +125,7 @@ function shiftForm() {
             // Pre-fill from old() jika ada validation error balik
             @foreach(['senin_kamis','jumat','sabtu'] as $kel)
             @if(old("istirahat.{$kel}"))
-            this.days['{{ $kel }}'] = {!! json_encode(array_values(old("istirahat.{$kel}"))) !!};
+            this.days['{{ $kel }}'] = @json(array_values(old("istirahat.{$kel}")));
             @else
             // Default rows sesuai ketentuan perusahaan
             @if($kel === 'senin_kamis')
