@@ -1,5 +1,6 @@
 <?php
 namespace App\Imports;
+use App\Support\SaneDate;
 
 use App\Models\MasterPart;
 use App\Models\MasterPartProses;
@@ -28,20 +29,27 @@ class PartImport implements ToCollection, SkipsEmptyRows
         return '';
     }
 
-    /** Parse Excel date cell (serial number atau string) → Y-m-d, atau null. */
+    /**
+     * Parse Excel date cell (serial number atau string) → Y-m-d, atau null.
+     *
+     * null berarti "tidak ada nilai yang bisa dipakai" — caller menafsirkannya sebagai
+     * jangan-sentuh, bukan hapus. Batas bawah 1990 (bukan 2020 seperti tabel transaksi):
+     * ini tanggal dies dipasang, bisa jauh lebih tua dari umur OPTIMA.
+     */
     private function parseDate(string $raw): ?string
     {
         if (trim($raw) === '') {
             return null;
         }
         try {
-            if (is_numeric($raw)) {
-                return \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject((float) $raw)->format('Y-m-d');
-            }
-            return \Illuminate\Support\Carbon::parse(trim($raw))->toDateString();
+            $parsed = is_numeric($raw)
+                ? \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject((float) $raw)->format('Y-m-d')
+                : \Illuminate\Support\Carbon::parse(trim($raw))->toDateString();
         } catch (\Throwable $e) {
             return null;
         }
+
+        return SaneDate::isSane($parsed, SaneDate::MIN_INSTALASI) ? $parsed : null;
     }
 
     public function collection(Collection $rows): void
@@ -73,9 +81,15 @@ class PartImport implements ToCollection, SkipsEmptyRows
                         ->first()
                     ?? new MasterPart(['part_no' => $partNo, 'part_name' => $partName]);
             $part->customer   = $this->get($row, ['customer', 'pelanggan', 'cust']);
-            $part->tanggal_instalasi = $this->parseDate(
+            // Hanya set kalau ada nilai yang bisa dibaca — lihat catatan sama di MesinImport:
+            // record lama dimuat ulang, jadi null di sini menghapus tanggal instalasi dies
+            // yang sudah ada cuma karena kolomnya tidak ikut di file Excel.
+            $tanggalInstalasi = $this->parseDate(
                 $this->get($row, ['tanggal_instalasi', 'tgl_instalasi', 'instalasi', 'tanggal_instalasi_dies'])
             );
+            if ($tanggalInstalasi !== null) {
+                $part->tanggal_instalasi = $tanggalInstalasi;
+            }
             $part->deleted_at = null;
             $part->save();
 
