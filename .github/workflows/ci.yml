@@ -1,0 +1,60 @@
+name: CI — Test suite
+
+# Gerbang sebelum merge. deploy.yml dulu cuma menjalankan `php -l` (cek syntax),
+# jadi PR dengan test merah bisa ter-merge dan langsung menembak produksi asal
+# syntax-nya valid. Itu berbahaya khusus di project ini: bug-bug yang sudah ketemu
+# (route register terbuka, tahun 0026 lolos, SPH keinjek 0) semuanya TIDAK melempar
+# error — `php -l` menganggapnya sehat, tapi datanya diam-diam berhenti terhitung.
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout kode
+        uses: actions/checkout@v5
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'   # samakan dengan server (REMOTE_PHP = php84)
+          # pdo_sqlite: test pakai SQLite in-memory (lihat phpunit.xml).
+          # zip/gd/mbstring: dibutuhkan phpspreadsheet lewat maatwebsite/excel.
+          extensions: mbstring, pdo_sqlite, sqlite3, zip, gd, bcmath
+          coverage: none
+
+      - name: Cache composer
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-${{ runner.os }}-php84-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-php84-
+
+      - name: Composer install
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Siapkan .env
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Lint PHP (syntax gate)
+        run: |
+          err=0
+          while IFS= read -r -d '' f; do
+            if ! php -l "$f" >/dev/null 2>&1; then
+              echo "::error file=$f::PHP parse error"
+              php -l "$f" || true
+              err=1
+            fi
+          done < <(find app bootstrap config database routes -name '*.php' -print0)
+          exit $err
+
+      - name: Test suite
+        run: php artisan test

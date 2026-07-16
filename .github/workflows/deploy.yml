@@ -19,7 +19,47 @@ env:
   REMOTE_PHP: /opt/alt/php84/usr/bin/php   # default `php` server = 8.1, project butuh ^8.3
 
 jobs:
+  # Gerbang mutu, job terpisah dari deploy. `php -l` cuma melihat syntax, sementara tiap
+  # bug yang pernah ketemu di project ini justru TIDAK melempar error — route register
+  # terbuka, tahun 0026 lolos validasi, SPH keinjek 0. Semua "sehat" menurut lint, tapi
+  # datanya diam-diam berhenti terhitung. Cuma test suite yang menangkap kelas bug itu.
+  #
+  # Dipisah (bukan step di dalam deploy) supaya workspace deploy tetap bersih: `composer
+  # install` menghasilkan bootstrap/cache/packages.php, dan folder itu tidak ada di daftar
+  # exclude rsync — kalau digabung, artefak runner ikut terkirim ke server.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout kode
+        uses: actions/checkout@v5
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'   # samakan dengan server (REMOTE_PHP = php84)
+          # pdo_sqlite: test pakai SQLite in-memory (phpunit.xml).
+          # zip/gd/mbstring: dibutuhkan phpspreadsheet lewat maatwebsite/excel.
+          extensions: mbstring, pdo_sqlite, sqlite3, zip, gd, bcmath
+          coverage: none
+
+      - name: Cache composer
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-${{ runner.os }}-php84-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-php84-
+
+      - name: Composer install
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Test suite
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+          php artisan test
+
   deploy:
+    needs: test          # test merah = deploy tidak pernah jalan
     runs-on: ubuntu-latest
     steps:
       - name: Checkout kode
