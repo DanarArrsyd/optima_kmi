@@ -167,13 +167,17 @@ class DandoriController extends Controller
     public function update(Request $request, TransaksiDandoriRincian $dandori)
     {
         $validated = $request->validate([
-            'tanggal'        => 'required|date',
+            // Batas atas `tomorrow`, bukan `today`: app timezone UTC, pabrik WIB (UTC+7).
+            'tanggal'        => 'required|date|after_or_equal:2020-01-01|before_or_equal:tomorrow',
             'id_shift'       => 'required|exists:master_shift,id',
             'id_karyawan'    => 'required|exists:master_karyawan,id',
             'id_mesin'       => 'required|exists:master_mesin,id',
             'id_part_proses' => 'required|exists:master_part_proses,id',
             'id_losstime'    => 'required|exists:master_losstime,id',
             'actual_menit'   => 'required|numeric|min:0',
+        ], [
+            'tanggal.after_or_equal'  => 'Tanggal tidak masuk akal — periksa tahunnya (contoh salah ketik: 0026 untuk 2026).',
+            'tanggal.before_or_equal' => 'Tanggal tidak boleh di masa depan.',
         ]);
 
         $partProses    = MasterPartProses::findOrFail($validated['id_part_proses']);
