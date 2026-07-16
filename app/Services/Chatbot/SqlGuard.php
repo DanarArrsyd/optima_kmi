@@ -48,6 +48,13 @@ class SqlGuard
             return ['error' => 'Query mengandung fungsi yang tidak diizinkan.'];
         }
 
+        // 3c. MySQL menerima CURRENT_USER/SESSION_USER/SYSTEM_USER TANPA tanda kurung, jadi
+        //     penjaga `fn(` di atas melewatkannya. Tak ada kolom bisnis bernama begini,
+        //     jadi menolaknya sebagai kata utuh aman.
+        if (preg_match('/\b(current_user|session_user|system_user)\b/i', $stripped)) {
+            return ['error' => 'Query mengandung fungsi yang tidak diizinkan.'];
+        }
+
         // 4. Blacklist keras: nama tabel sistem / skema metadata tak boleh muncul sama sekali,
         //    apa pun cara referensinya (identifier bersifat atomik — tak bisa dipecah komentar).
         if (preg_match('/\b(users|sessions|jobs|job_batches|failed_jobs|password_reset_tokens|cache|cache_locks|activity_log|app_notifications|chat_conversations|chat_messages|migrations|information_schema|performance_schema|mysql|sys|sqlite_master|sqlite_sequence|sqlite_schema)\b/i', $stripped)) {
@@ -55,7 +62,19 @@ class SqlGuard
         }
 
         // 5. Whitelist positif: tiap tabel setelah FROM/JOIN (termasuk daftar dipisah koma) wajib bisnis.
-        preg_match_all('/\b(?:from|join)\s+([a-zA-Z_][a-zA-Z0-9_]*(?:\s*,\s*[a-zA-Z_][a-zA-Z0-9_]*)*)/i', $stripped, $mm);
+        //
+        //    Backtick dibuang DULU. Itu pembungkus identifier MySQL, dan regex di bawah cuma
+        //    cocok dengan nama telanjang — tanpa langkah ini `JOIN `x`` tak terbaca sebagai
+        //    tabel sama sekali, jadi lolos tanpa pernah dicek (asal ada satu FROM telanjang
+        //    yang sah), sementara `FROM `master_mesin`` yang benar malah ditolak karena
+        //    dianggap tak menyebut tabel. Whitelist ini lapis kedua setelah blacklist; kalau
+        //    ia buta, keamanan bergantung penuh pada kelengkapan blacklist.
+        //
+        //    Hanya backtick yang dibuang, bukan tanda kutip: di MySQL default `"` adalah
+        //    pembatas string, jadi membuangnya bisa mengubah literal jadi identifier semu.
+        $forTables = str_replace('`', '', $stripped);
+
+        preg_match_all('/\b(?:from|join)\s+([a-zA-Z_][a-zA-Z0-9_]*(?:\s*,\s*[a-zA-Z_][a-zA-Z0-9_]*)*)/i', $forTables, $mm);
         $referenced = [];
         foreach ($mm[1] as $clause) {
             foreach (preg_split('/\s*,\s*/', $clause) as $tbl) {

@@ -61,6 +61,49 @@ class SqlGuardTest extends TestCase
         $this->assertArrayHasKey('error', $out);
     }
 
+    /**
+     * Backtick adalah pembungkus identifier MySQL. Regex whitelist dulu cuma cocok dengan
+     * nama telanjang, jadi `JOIN \`x\`` tak pernah terbaca sebagai tabel — asalkan ada satu
+     * FROM telanjang yang sah, tabel di dalam backtick lolos tanpa pernah dicek.
+     *
+     * Efek hari ini terbatas (yang tembus cuma dies/mesin_preventive_log — data yang sudah
+     * dilihat admin/manager lewat UI, dan chatbot memang cuma untuk dua role itu). Yang
+     * dibetulkan di sini adalah strukturnya: whitelist itu lapis kedua, jaring pengaman
+     * kalau blacklist kelupaan. Dengan celah ini keamanan bergantung penuh pada kelengkapan
+     * blacklist — tambah satu tabel sensitif tanpa mendaftarkannya, dan backtick menembus
+     * tanpa error.
+     */
+    public function test_rejects_backticked_non_whitelisted_table(): void
+    {
+        $out = $this->guard()->sanitize(
+            'SELECT * FROM master_mesin JOIN `dies_preventive_log` ON 1=1'
+        );
+        $this->assertArrayHasKey('error', $out);
+        $this->assertStringContainsString('dies_preventive_log', $out['error']);
+    }
+
+    public function test_allows_backticked_business_table(): void
+    {
+        $out = $this->guard()->sanitize('SELECT nama_mesin FROM `master_mesin` LIMIT 5');
+        $this->assertArrayNotHasKey('error', $out);
+    }
+
+    /**
+     * MySQL menerima CURRENT_USER/SESSION_USER/SYSTEM_USER tanpa tanda kurung, sementara
+     * penjaga fungsi hanya cocok dengan bentuk `fn(`. Bocornya kecil (username DB), tapi
+     * ini sisa lubang yang sama dengan version()/database() yang sudah ditutup.
+     */
+    public function test_rejects_bare_user_system_variables(): void
+    {
+        foreach (['CURRENT_USER', 'SESSION_USER', 'SYSTEM_USER'] as $fn) {
+            $this->assertArrayHasKey(
+                'error',
+                $this->guard()->sanitize("SELECT {$fn} FROM master_mesin"),
+                "{$fn} tanpa tanda kurung masih lolos.",
+            );
+        }
+    }
+
     public function test_rejects_non_whitelisted_table(): void
     {
         $out = $this->guard()->sanitize('SELECT * FROM secret_table');
