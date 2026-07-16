@@ -14,8 +14,8 @@ class UpdateQcRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'tgl_pengecekan'    => 'required|date',
-            'tgl_produksi_part' => 'required|date',
+            'tgl_pengecekan'    => 'required|date|after_or_equal:2020-01-01|before_or_equal:tomorrow',
+            'tgl_produksi_part' => 'required|date|after_or_equal:2020-01-01|before_or_equal:tomorrow',
             'id_shift'          => 'required|exists:master_shift,id',
             'id_karyawan_qc'    => 'required|exists:master_karyawan,id',
             'id_part_proses'    => 'required|exists:master_part_proses,id',

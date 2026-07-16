@@ -1,5 +1,6 @@
 <?php
 namespace App\Imports;
+use App\Support\SaneDate;
 
 use App\Models\MasterJenisNg;
 use App\Models\MasterKaryawan;
@@ -154,7 +155,19 @@ class ProduksiImport implements ToCollection, WithHeadingRow
 
     /* ── Helpers ─────────────────────────────────────────────────────── */
 
+    /**
+     * Tanggal di luar rentang wajar diperlakukan tak terbaca — tahun 4-digit apa pun lolos
+     * parsing, jadi "0026-06-21" (salah ketik "2026") akan tersimpan diam-diam dan hilang
+     * dari laporan yang memfilter per rentang tanggal.
+     */
     private function parseDate(mixed $value): ?string
+    {
+        $parsed = $this->parseDateUnbounded($value);
+
+        return SaneDate::isSane($parsed) ? $parsed : null;
+    }
+
+    private function parseDateUnbounded(mixed $value): ?string
     {
         if ($value === null || trim((string) $value) === '') return null;
 

@@ -19,7 +19,7 @@ class StoreMasterMesinRequest extends FormRequest
             'line'                 => 'required|string|max:10',
             'tipe_mesin'           => ['required', Rule::in(MasterMesin::TIPE_MESIN)],
             'kapasitas_max_stroke' => 'nullable|integer|min:0',
-            'tanggal_instalasi'    => 'nullable|date',
+            'tanggal_instalasi'    => 'nullable|date|after_or_equal:1990-01-01|before_or_equal:tomorrow',
         ];
     }
 }
