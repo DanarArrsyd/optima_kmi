@@ -102,11 +102,18 @@
              ikut setinggi tabel sehingga scrollbar horizontal ada di dasar seluruh tabel —
              harus scroll jauh ke bawah dulu buat menggesernya. Dies jauh lebih banyak
              daripada mesin, jadi efeknya lebih parah di sini.
-             Angka 420px = tinggi isi di atas tabel (judul + panel filter + kartu KPI
-             ≈ 406px) + margin. Halaman lain pakai 260px karena chrome-nya lebih pendek;
-             menyalin angka itu ke sini membuat dasar kotak selalu jatuh 146px di bawah
-             lipatan berapa pun tinggi layarnya — scrollbar-nya tetap harus dicari. --}}
-        <div style="overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 420px);min-height:200px">
+             min-height 600px = thead (37px) + 8 baris (70px each) = 593, dibulatkan.
+             Sebelumnya 200px: di layar 1366x600 cuma muat 2,4 baris — tabelnya jadi tak
+             terpakai. Konten di atas tabel setinggi ~407px, jadi di layar sependek itu
+             8 baris DAN scrollbar-nya mustahil terlihat bersamaan (407 + 593 = 1000 > 600);
+             8 baris dipilih, scrollbar-nya beberapa ratus px di bawah — masih jauh lebih
+             dekat daripada 1410px waktu kotaknya belum dibatasi sama sekali.
+
+             max-height 420px = tinggi konten di atas + margin, biar di layar tinggi
+             (>1020px) kotaknya melar dan scrollbar-nya tetap di layar. Jangan disalin
+             angka 260px dari maintenance/breakdown — chrome halaman itu jauh lebih
+             pendek (tabelnya mulai y=156, di sini y=407). --}}
+        <div style="overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 420px);min-height:600px">
             <table class="erp-table" id="strokeTable">
                 {{-- Sticky: kotaknya sekarang scroll vertikal sendiri, header harus ikut terlihat. --}}
                 <thead style="position:sticky;top:0;z-index:10">
