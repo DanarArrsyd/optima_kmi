@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers\Input;
 use App\Exports\ProduksiImportTemplate;
+use App\Http\Controllers\Concerns\ResolvesStaffNote;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreProduksiRequest;
 use App\Http\Requests\UpdateProduksiRequest;
@@ -19,6 +20,8 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class ProduksiController extends Controller
 {
+    use ResolvesStaffNote;
+
     public function __construct(
         private ProduksiService $produksiService,
         private NotificationService $notifSvc,
@@ -182,6 +185,12 @@ class ProduksiController extends Controller
         } catch (\Throwable) {
             $produksi->update([...$validated, 'actual_cycle_time' => $cycleTime]);
         }
+
+        $this->resolveStaffNoteIfRequested(
+            $request, $produksi, 'produksi',
+            $produksi->tanggal_produksi->format('Y-m-d')
+        );
+
         return redirect()->route('input.produksi.index')->with('success', 'LHP Produksi berhasil diupdate.');
     }
 

@@ -140,6 +140,14 @@
 
         </div>
 
+        @if ($dandori->staff_note && !$dandori->staff_note_resolved_at)
+            @include('input.partials.note-resolve-box', [
+                'note'   => $dandori->staff_note,
+                'noteBy' => $dandori->noteBy?->name,
+                'noteAt' => $dandori->staff_note_at,
+            ])
+        @endif
+
         <hr style="margin:24px 0 20px">
         <div style="display:flex;gap:10px">
             <button type="submit" class="btn btn-primary">

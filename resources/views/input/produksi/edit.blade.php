@@ -253,6 +253,18 @@ $initProsesListPhp = $initPart
                 </div>
 
             </div>
+
+            {{-- Note staff yang belum ditangani. Ditampilkan di sini supaya admin membaca
+                 yang diminta sambil mengedit — sebelumnya isi note cuma ada di halaman index,
+                 jadi harus diingat-ingat. Checkbox menyatukan simpan + tandai selesai. --}}
+            @if ($produksi->staff_note && !$produksi->staff_note_resolved_at)
+                @include('input.partials.note-resolve-box', [
+                    'note'   => $produksi->staff_note,
+                    'noteBy' => $produksi->noteBy?->name,
+                    'noteAt' => $produksi->staff_note_at,
+                ])
+            @endif
+
             <div class="mt-4 d-flex gap-2">
                 <button type="submit" class="btn btn-primary btn-sm">
                     <i class="bi bi-save me-1"></i>Update

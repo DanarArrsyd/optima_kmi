@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers\Input;
 use App\Exports\QcImportTemplate;
+use App\Http\Controllers\Concerns\ResolvesStaffNote;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreQcRequest;
 use App\Http\Requests\UpdateQcRequest;
@@ -17,6 +18,8 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class QcController extends Controller
 {
+    use ResolvesStaffNote;
+
     public function __construct(
         private QcService $qcService,
         private NotificationService $notifSvc,
@@ -164,6 +167,11 @@ class QcController extends Controller
             ...$validated,
             'actual_cycle_time' => $cycleTime,
         ]);
+        $this->resolveStaffNoteIfRequested(
+            $request, $qc, 'qc',
+            $qc->tgl_pengecekan->format('Y-m-d')
+        );
+
         return redirect()->route('input.qc.index')->with('success', 'LHP Quality berhasil diupdate.');
     }
 

@@ -65,6 +65,11 @@ class TransaksiDandoriRincian extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function noteBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'staff_note_by');
+    }
+
     public function noteResolvedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'staff_note_resolved_by');

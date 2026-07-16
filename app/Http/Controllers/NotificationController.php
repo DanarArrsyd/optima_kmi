@@ -7,6 +7,17 @@ use Illuminate\Http\JsonResponse;
 
 class NotificationController extends Controller
 {
+    /**
+     * App jalan di UTC (config/app.php) sementara pabrik di WIB, jadi timestamp mentah
+     * tampil 7 jam mundur — note yang dikirim 14:32 muncul sebagai "07:32".
+     *
+     * Konversi ditaruh di TAMPILAN, bukan di APP_TIMEZONE. MySQL DATETIME tak menyimpan
+     * timezone: mengubah zona app akan membuat setiap timestamp lama (yang isinya UTC)
+     * dibaca ulang sebagai WIB, jadi seluruh riwayat mundur 7 jam tanpa error apa pun.
+     * Kolom DB tetap UTC; yang bergeser cuma yang dilihat orang.
+     */
+    private const DISPLAY_TZ = 'Asia/Jakarta';
+
     public function poll(): JsonResponse
     {
         $userId = auth()->id();
@@ -20,7 +31,7 @@ class NotificationController extends Controller
                 'type'       => $n->type,
                 'text'       => $this->buildText($n),
                 'url'        => $this->buildUrl($n),
-                'created_at' => $n->created_at->format('d M H:i'),
+                'created_at' => $n->created_at->timezone(self::DISPLAY_TZ)->format('d M H:i'),
                 'read_at'    => $n->read_at,
             ]);
 

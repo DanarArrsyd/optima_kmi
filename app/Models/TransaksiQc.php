@@ -26,6 +26,7 @@ class TransaksiQc extends Model
     public function jenisNg(): BelongsTo { return $this->belongsTo(MasterJenisNg::class, 'id_jenis_ng'); }
     public function createdBy(): BelongsTo { return $this->belongsTo(User::class, 'created_by'); }
     public function updatedBy(): BelongsTo { return $this->belongsTo(User::class, 'updated_by'); }
+    public function noteBy(): BelongsTo         { return $this->belongsTo(User::class, 'staff_note_by'); }
     public function noteResolvedBy(): BelongsTo { return $this->belongsTo(User::class, 'staff_note_resolved_by'); }
 
     /** Waktu kerja dalam desimal jam — handle overnight shift */
