@@ -23,11 +23,23 @@ class AuthPagesRenderTest extends TestCase
         $this->assertStringNotContainsString('@vite', $html);
     }
 
-    public function test_register_page_renders_on_auth_layout(): void
+    /**
+     * OPTIMA adalah MES internal — akun dibuat admin, bukan daftar sendiri.
+     * Registrasi publik dulu bikin user role default 'staff_produksi' lalu
+     * auto-login, jadi siapa pun dari internet bisa menulis LHP/Dandori/VCB.
+     */
+    public function test_public_registration_is_not_reachable(): void
     {
-        $html = $this->get(route('register'))->assertOk()->getContent();
-        $this->assertAuthLayoutNoVite($html);
-        $this->assertStringContainsString('name="password_confirmation"', $html);
+        $this->get('/register')->assertNotFound();
+        $this->post('/register', [
+            'name' => 'Orang Luar',
+            'email' => 'orangluar@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+        ])->assertNotFound();
+
+        $this->assertDatabaseMissing('users', ['email' => 'orangluar@example.com']);
+        $this->assertGuest();
     }
 
     public function test_forgot_password_page_renders_on_auth_layout(): void
