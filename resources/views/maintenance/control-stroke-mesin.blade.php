@@ -101,13 +101,13 @@
             <table class="erp-table" id="strokeTable">
                 <thead style="position:sticky;top:0;z-index:10">
                     <tr>
-                        <th>Mesin</th><th>Nama Mesin</th><th>Tipe</th><th>Line</th>
+                        <th style="width:48px">No.</th><th>Mesin</th><th>Nama Mesin</th><th>Tipe</th><th>Line</th>
                         <th style="min-width:240px">Stroke Saat Ini</th>
                         <th>Status</th><th>Preventive Terakhir</th><th class="text-end">Aksi</th>
                     </tr>
                 </thead>
                 <tbody id="strokeTableBody">
-                    <tr><td colspan="8" class="text-center text-muted py-3">Memuat data...</td></tr>
+                    <tr><td colspan="9" class="text-center text-muted py-3">Memuat data...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -121,7 +121,7 @@
 const canInputPreventive = {{ in_array(auth()->user()->role, ['admin', 'staff_maintenance']) ? 'true' : 'false' }};
 const baseUrl = `{{ url('maintenance/availability/control-stroke-mesin') }}`;
 const dataUrl = `{{ route('maintenance.control-stroke-mesin.data') }}`;
-const COLSPAN = 8;
+const COLSPAN = 9;
 
 function escHtml(str) {
     if (str === null || str === undefined) return '';
@@ -222,7 +222,7 @@ function render() {
         tbody.innerHTML = `<tr><td colspan="${COLSPAN}" class="text-center text-muted py-3">Tidak ada mesin yang cocok dengan filter.</td></tr>`;
         return;
     }
-    tbody.innerHTML = rows.map(r => {
+    tbody.innerHTML = rows.map((r, i) => {
         const st      = STATUS[r.status] || STATUS.ok;
         const barPct  = Math.min(r.pct, 100);
         const sisa    = r.threshold - r.current_stroke;
@@ -237,6 +237,7 @@ function render() {
             ? `<a href="${baseUrl}/${r.id_mesin}/preventive" class="btn btn-primary btn-sm"><i class="bi bi-tools me-1"></i>Preventive</a>`
             : `<button type="button" class="btn btn-primary btn-sm" disabled title="Hanya Maintenance yang bisa input"><i class="bi bi-tools me-1"></i>Preventive</button>`;
         return `<tr ${rowStyle}>
+            <td class="text-muted">${i + 1}</td>
             <td style="font-weight:600">${escHtml(r.kode_mesin)}</td>
             <td>${escHtml(r.nama_mesin)}</td>
             <td>${escHtml(r.tipe_mesin) || '—'}</td>
