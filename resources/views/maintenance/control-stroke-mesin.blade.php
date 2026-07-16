@@ -65,27 +65,22 @@
     <button type="button" id="csReset" class="btn btn-outline-secondary btn-sm d-none"><i class="bi bi-x-lg me-1"></i>Reset</button>
 </div>
 
-{{-- Panel filter lanjutan — tersembunyi sampai tombol Filter ditekan. --}}
+{{-- Panel filter lanjutan — tersembunyi sampai tombol Filter ditekan. Tiap filter typeahead
+     (bisa diketik): opsinya diisi dari data yang dimuat, jadi tak ada opsi kosong. --}}
 <div id="csFilterPanel" class="erp-panel mb-2 d-none">
     <div class="card-body py-2">
         <div class="row g-2 align-items-end">
             <div class="col-md-4">
+                <label class="form-label small mb-1">Mesin</label>
+                <div class="cs-ta" data-key="mesin"><input type="text" class="form-control form-control-sm cs-ta-input" placeholder="Semua Mesin..." autocomplete="off"><div class="cs-ta-dd d-none"></div></div>
+            </div>
+            <div class="col-md-4">
                 <label class="form-label small mb-1">Tipe Mesin</label>
-                <select id="csTipe" class="form-select form-select-sm">
-                    <option value="">Semua Tipe</option>
-                    @foreach($tipeList as $tipe)
-                        <option value="{{ $tipe }}">{{ $tipe }}</option>
-                    @endforeach
-                </select>
+                <div class="cs-ta" data-key="tipe"><input type="text" class="form-control form-control-sm cs-ta-input" placeholder="Semua Tipe..." autocomplete="off"><div class="cs-ta-dd d-none"></div></div>
             </div>
             <div class="col-md-4">
                 <label class="form-label small mb-1">Line</label>
-                <select id="csLine" class="form-select form-select-sm">
-                    <option value="">Semua Line</option>
-                    @foreach($lineList as $line)
-                        <option value="{{ $line }}">{{ $line }}</option>
-                    @endforeach
-                </select>
+                <div class="cs-ta" data-key="line"><input type="text" class="form-control form-control-sm cs-ta-input" placeholder="Semua Line..." autocomplete="off"><div class="cs-ta-dd d-none"></div></div>
             </div>
         </div>
     </div>
@@ -121,6 +116,7 @@
 @endsection
 
 @push('scripts')
+@include('maintenance.partials.typeahead')
 <script>
 const canInputPreventive = {{ in_array(auth()->user()->role, ['admin', 'staff_maintenance']) ? 'true' : 'false' }};
 const baseUrl = `{{ url('maintenance/availability/control-stroke-mesin') }}`;
@@ -140,7 +136,27 @@ const STATUS = {
 };
 
 let allRows = [];
-const state = { status: '', q: '', tipe: '', line: '', sort: 'pct_desc' };
+const state = { status: '', q: '', mesin: '', tipe: '', line: '', sort: 'pct_desc' };
+const ta = {};   // combobox instance per key
+
+// bangun daftar opsi unik dari data yang dimuat → tak ada opsi kosong
+function uniqueOpts(rows, valFn, labelFn) {
+    const seen = new Map();
+    rows.forEach(r => { const v = valFn(r); if (v != null && v !== '' && !seen.has(v)) seen.set(v, labelFn(r)); });
+    return [...seen].map(([v, t]) => ({ v, t })).sort((a, b) => String(a.t).localeCompare(String(b.t)));
+}
+
+function initFilters() {
+    ta.mesin = csCombobox(document.querySelector('.cs-ta[data-key="mesin"]'),
+        uniqueOpts(allRows, r => r.kode_mesin, r => `${r.kode_mesin} – ${r.nama_mesin}`),
+        v => { state.mesin = v; render(); });
+    ta.tipe = csCombobox(document.querySelector('.cs-ta[data-key="tipe"]'),
+        uniqueOpts(allRows, r => r.tipe_mesin, r => r.tipe_mesin),
+        v => { state.tipe = v; render(); });
+    ta.line = csCombobox(document.querySelector('.cs-ta[data-key="line"]'),
+        uniqueOpts(allRows, r => r.line, r => r.line),
+        v => { state.line = v; render(); });
+}
 
 async function loadData() {
     const tbody = document.getElementById('strokeTableBody');
@@ -157,6 +173,7 @@ async function loadData() {
     document.getElementById('kpiTotalMesin').textContent = fmt(allRows.length);
     document.getElementById('kpiOverdue').textContent    = fmt(allRows.filter(r => r.status === 'overdue').length);
     document.getElementById('kpiWarning').textContent    = fmt(allRows.filter(r => r.status === 'warning').length);
+    initFilters();
     render();
 }
 
@@ -164,6 +181,7 @@ function render() {
     const q = state.q.trim().toLowerCase();
     let rows = allRows.filter(r =>
         (!state.status || r.status === state.status) &&
+        (!state.mesin  || r.kode_mesin === state.mesin) &&
         (!state.tipe   || r.tipe_mesin === state.tipe) &&
         (!state.line   || r.line === state.line) &&
         (!q || (`${r.kode_mesin} ${r.nama_mesin}`.toLowerCase().includes(q)))
@@ -185,11 +203,11 @@ function render() {
     });
 
     // badge jumlah filter lanjutan + tombol reset
-    const advCount = (state.tipe ? 1 : 0) + (state.line ? 1 : 0);
+    const advCount = (state.mesin ? 1 : 0) + (state.tipe ? 1 : 0) + (state.line ? 1 : 0);
     const badge = document.getElementById('csFilterCount');
     badge.textContent = advCount;
     badge.classList.toggle('d-none', advCount === 0);
-    const anyFilter = state.status || state.q || state.tipe || state.line;
+    const anyFilter = state.status || state.q || state.mesin || state.tipe || state.line;
     document.getElementById('csReset').classList.toggle('d-none', !anyFilter);
 
     document.getElementById('csCount').textContent =
@@ -258,8 +276,7 @@ document.querySelectorAll('.kpi-cell').forEach(cell => {
 
 document.getElementById('csSearch').addEventListener('input', e => { state.q = e.target.value; render(); });
 document.getElementById('csSort').addEventListener('change', e => { state.sort = e.target.value; render(); });
-document.getElementById('csTipe').addEventListener('change', e => { state.tipe = e.target.value; render(); });
-document.getElementById('csLine').addEventListener('change', e => { state.line = e.target.value; render(); });
+// Filter mesin/tipe/line = combobox typeahead (di-wire lewat onSelect di initFilters()).
 
 document.getElementById('csFilterToggle').addEventListener('click', () => {
     const panel = document.getElementById('csFilterPanel');
@@ -269,10 +286,9 @@ document.getElementById('csFilterToggle').addEventListener('click', () => {
 });
 
 document.getElementById('csReset').addEventListener('click', () => {
-    state.status = ''; state.q = ''; state.tipe = ''; state.line = '';
+    state.status = ''; state.q = ''; state.mesin = ''; state.tipe = ''; state.line = '';
     document.getElementById('csSearch').value = '';
-    document.getElementById('csTipe').value = '';
-    document.getElementById('csLine').value = '';
+    ta.mesin?.reset(); ta.tipe?.reset(); ta.line?.reset();
     render();
 });
 
