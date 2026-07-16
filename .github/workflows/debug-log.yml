@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'log = tail laravel.log, schema = cek kolom/tabel, migstatus = migrate:status'
+        description: 'log = tail laravel.log, schema = cek kolom/tabel, migstatus = migrate:status, usersaudit = daftar akun (read-only)'
         required: false
         default: 'log'
 
@@ -64,6 +64,30 @@ jobs:
           ssh -p "${{ secrets.SSH_PORT }}" -i ~/.ssh/deploy_key \
             "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" \
             "cd ${{ env.REMOTE_PATH }} && ${{ env.REMOTE_PHP }} artisan migrate:status | grep -E 'tanggal_instalasi|breakdown'"
+
+      # READ-ONLY. Audit sisa dari lubang registrasi publik (route /register dicabut
+      # di commit 8beccd1). Controller lama tak pernah mengisi role & id_karyawan,
+      # jadi akun hasil daftar-sendiri = role default 'staff_produksi' + id_karyawan NULL.
+      # CATATAN: akun sah yang dibuat admin tapi belum di-assign karyawan terlihat
+      # identik. Output ini perlu dibaca manusia, bukan dasar hapus otomatis.
+      - name: Audit akun (read-only)
+        if: ${{ github.event.inputs.mode == 'usersaudit' }}
+        run: |
+          ssh -p "${{ secrets.SSH_PORT }}" -i ~/.ssh/deploy_key \
+            "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" \
+            'cd ${{ env.REMOTE_PATH }} && ${{ env.REMOTE_PHP }} artisan tinker --execute="
+              echo \"total user: \" . Illuminate\\Support\\Facades\\DB::table(\"users\")->count() . PHP_EOL . PHP_EOL;
+              echo \"=== SEBARAN ROLE ===\" . PHP_EOL;
+              foreach (Illuminate\\Support\\Facades\\DB::table(\"users\")->selectRaw(\"role, COUNT(*) as c\")->groupBy(\"role\")->orderBy(\"role\")->get() as \$r) {
+                echo sprintf(\"%-20s %s\", \$r->role, \$r->c) . PHP_EOL;
+              }
+              echo PHP_EOL . \"=== AKUN id_karyawan NULL (kandidat, BUKAN vonis) ===\" . PHP_EOL;
+              \$rows = Illuminate\\Support\\Facades\\DB::table(\"users\")->whereNull(\"id_karyawan\")->orderBy(\"created_at\")->get();
+              echo \"jumlah: \" . \$rows->count() . PHP_EOL;
+              foreach (\$rows as \$r) {
+                echo sprintf(\"#%-4s %-24s %-34s %-18s %s\", \$r->id, \$r->name, \$r->email, \$r->role, \$r->created_at) . PHP_EOL;
+              }
+            "'
 
       - name: Max batch number
         if: ${{ github.event.inputs.mode == 'maxbatch' }}
