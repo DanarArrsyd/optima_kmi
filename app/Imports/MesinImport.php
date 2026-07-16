@@ -23,11 +23,26 @@ class MesinImport implements ToCollection, WithHeadingRow, SkipsEmptyRows
                 continue;
             }
             $record = MasterMesin::withTrashed()->firstOrNew(['id_mesin' => $idMesin]);
-            $record->nama_mesin          = $nama;
-            $record->line                = trim((string) ($row['line'] ?? ''));
-            $record->tipe_mesin          = trim((string) ($row['tipe_mesin'] ?? ''));
-            $record->kapasitas_max_stroke = is_numeric($row['kapasitas_max_stroke'] ?? null)
-                                                ? (int) $row['kapasitas_max_stroke'] : null;
+            $record->nama_mesin = $nama;
+
+            // Kolom yang tidak ada di file / sel kosong tidak boleh menimpa data yang sudah
+            // benar — record lama dimuat ulang di sini. Record BARU tetap diisi apa adanya:
+            // master_mesin.line & tipe_mesin NOT NULL, jadi tak boleh dilewat.
+            $line = trim((string) ($row['line'] ?? ''));
+            if ($line !== '' || ! $record->exists) {
+                $record->line = $line;
+            }
+
+            $tipe = trim((string) ($row['tipe_mesin'] ?? ''));
+            if ($tipe !== '' || ! $record->exists) {
+                $record->tipe_mesin = $tipe;
+            }
+
+            if (is_numeric($row['kapasitas_max_stroke'] ?? null)) {
+                $record->kapasitas_max_stroke = (int) $row['kapasitas_max_stroke'];
+            } elseif (! $record->exists) {
+                $record->kapasitas_max_stroke = null;
+            }
             // Hanya set kalau ada nilai yang bisa dibaca. firstOrNew() memuat record lama,
             // jadi menugaskan null di sini akan menghapus tanggal instalasi yang sudah ada
             // hanya karena kolomnya tidak ikut di file Excel — dan tanggal itu adalah titik

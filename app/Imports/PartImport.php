@@ -80,7 +80,12 @@ class PartImport implements ToCollection, SkipsEmptyRows
                         ->where('part_name', $partName)
                         ->first()
                     ?? new MasterPart(['part_no' => $partNo, 'part_name' => $partName]);
-            $part->customer   = $this->get($row, ['customer', 'pelanggan', 'cust']);
+            // Kolom hilang / sel kosong tidak boleh menimpa nilai lama — record lama dimuat
+            // ulang di sini. Record baru tetap diisi (customer nullable, '' aman).
+            $customer = $this->get($row, ['customer', 'pelanggan', 'cust']);
+            if ($customer !== '' || ! $part->exists) {
+                $part->customer = $customer;
+            }
             // Hanya set kalau ada nilai yang bisa dibaca — lihat catatan sama di MesinImport:
             // record lama dimuat ulang, jadi null di sini menghapus tanggal instalasi dies
             // yang sudah ada cuma karena kolomnya tidak ikut di file Excel.
@@ -112,11 +117,25 @@ class PartImport implements ToCollection, SkipsEmptyRows
             $trial   = $this->get($row, ['std_trial_qc_menit', 'trial_qc', 'trial_menit', 'std_trial']);
             $setting = $this->get($row, ['std_setting_dies_menit', 'setting_dies', 'setting_menit', 'std_setting']);
 
-            $proses->nama_proses            = $namaProses;
-            $proses->sph_standar_produksi   = is_numeric($sphProd) ? (float) $sphProd : 0;
-            $proses->sph_standar_qc         = is_numeric($sphQc)   ? (float) $sphQc   : 0;
-            $proses->std_trial_qc_menit     = is_numeric($trial)   ? (int)   $trial   : 0;
-            $proses->std_setting_dies_menit = is_numeric($setting) ? (int)   $setting : 0;
+            $proses->nama_proses = $namaProses;
+
+            // Sel kosong tidak boleh menurunkan standar yang sudah benar jadi 0. SPH 0 tak
+            // melempar error — DashboardService memfilter `sph_standar_produksi > 0`, jadi
+            // part-nya cuma diam-diam hilang dari statistik achievement dan target_qty-nya
+            // jadi 0. Record baru tetap dapat 0 seperti sebelumnya (default kolom).
+            foreach ([
+                'sph_standar_produksi'   => [$sphProd, 'float'],
+                'sph_standar_qc'         => [$sphQc,   'float'],
+                'std_trial_qc_menit'     => [$trial,   'int'],
+                'std_setting_dies_menit' => [$setting, 'int'],
+            ] as $kolom => [$raw, $tipe]) {
+                if (is_numeric($raw)) {
+                    $proses->$kolom = $tipe === 'float' ? (float) $raw : (int) $raw;
+                } elseif (! $proses->exists) {
+                    $proses->$kolom = 0;
+                }
+            }
+
             $proses->deleted_at             = null;
             $proses->save();
 
