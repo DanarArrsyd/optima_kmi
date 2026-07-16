@@ -1,5 +1,6 @@
 <?php
 namespace App\Imports;
+use App\Support\SaneDate;
 
 use App\Models\MasterKaryawan;
 use App\Models\MasterLosstime;
@@ -42,7 +43,7 @@ class DandoriImport implements ToCollection, WithHeadingRow, WithStartRow
                 // Tahun 4-digit apa pun lolos parseDate — "0026" (salah ketik "2026") tersimpan
                 // diam-diam lalu hilang dari laporan VCB yang memfilter per rentang tanggal.
                 // Batas atas besok, bukan hari ini: app timezone UTC, pabrik WIB (UTC+7).
-                if (!$this->isDateSane($tanggal)) {
+                if (!SaneDate::isSane($tanggal)) {
                     $this->errors[] = "Baris {$rowNum}: Tanggal \"{$tanggal}\" di luar rentang wajar — periksa tahunnya.";
                     continue;
                 }
@@ -143,12 +144,6 @@ class DandoriImport implements ToCollection, WithHeadingRow, WithStartRow
     }
 
     /* ── Helpers ───────────────────────────────────────────────────── */
-
-    private function isDateSane(string $tanggal): bool
-    {
-        return $tanggal >= '2020-01-01'
-            && $tanggal <= \Carbon\Carbon::now()->addDay()->format('Y-m-d');
-    }
 
     private function parseDate(mixed $value): ?string
     {

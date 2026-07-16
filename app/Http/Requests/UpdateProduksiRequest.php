@@ -15,7 +15,7 @@ class UpdateProduksiRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'tanggal_produksi' => 'required|date',
+            'tanggal_produksi' => 'required|date|after_or_equal:2020-01-01|before_or_equal:tomorrow',
             'id_shift'         => 'required|exists:master_shift,id',
             'id_karyawan'      => 'required|exists:master_karyawan,id',
             'id_mesin'         => 'required|exists:master_mesin,id',

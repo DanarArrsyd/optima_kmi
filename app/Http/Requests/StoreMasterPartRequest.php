@@ -23,7 +23,7 @@ class StoreMasterPartRequest extends FormRequest
             ],
             'customer'  => 'nullable|string|max:100',
             'part_name' => 'required|string|max:200',
-            'tanggal_instalasi' => 'nullable|date',
+            'tanggal_instalasi' => 'nullable|date|after_or_equal:1990-01-01|before_or_equal:tomorrow',
         ];
     }
 }

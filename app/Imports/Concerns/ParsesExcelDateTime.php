@@ -1,13 +1,27 @@
 <?php
 namespace App\Imports\Concerns;
 
+use App\Support\SaneDate;
 use Illuminate\Support\Carbon;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 
 trait ParsesExcelDateTime
 {
-    /** Excel date cell (serial number atau string) → Y-m-d, atau null. */
+    /**
+     * Excel date cell (serial number atau string) → Y-m-d, atau null.
+     *
+     * Tanggal di luar rentang wajar diperlakukan sebagai tak terbaca (null) supaya caller
+     * menolak barisnya lewat jalur error yang sudah ada — Carbon::parse() sendiri menerima
+     * tahun 4-digit apa pun, jadi "0026-06-21" akan lolos tanpa penjaga ini.
+     */
     protected function parseDate($raw): ?string
+    {
+        $parsed = $this->parseDateUnbounded($raw);
+
+        return SaneDate::isSane($parsed) ? $parsed : null;
+    }
+
+    private function parseDateUnbounded($raw): ?string
     {
         if ($raw === null || trim((string) $raw) === '') {
             return null;
