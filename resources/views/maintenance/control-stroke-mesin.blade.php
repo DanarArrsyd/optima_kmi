@@ -2,7 +2,7 @@
 @section('title', 'Control Stroke Mesin')
 @section('content')
 <style>
-    /* Kolom mengikuti panjang isinya; tabel geser horizontal lewat .table-responsive. */
+    /* Kolom mengikuti panjang isinya; tabel geser horizontal di dalam kotaknya sendiri. */
     #strokeTable tbody td { white-space: nowrap; }
 </style>
 
@@ -89,9 +89,17 @@
 <div class="erp-panel">
     <div class="erp-panel-header">Detail per Mesin</div>
     <div class="erp-panel-body p-0">
-        <div class="table-responsive">
+        {{-- Kotak setinggi layar, bukan .table-responsive polos: tanpa batas tinggi, div-nya
+             ikut setinggi tabel (24 mesin ≈ 1700px) sehingga scrollbar horizontal ada di
+             dasar seluruh tabel — harus scroll ~1400px ke bawah dulu buat menggesernya.
+             Angka 420px = tinggi isi di atas tabel (judul + panel filter + kartu KPI
+             ≈ 406px) + margin. Halaman lain pakai 260px karena chrome-nya lebih pendek;
+             menyalin angka itu ke sini membuat dasar kotak selalu jatuh 146px di bawah
+             lipatan berapa pun tinggi layarnya — scrollbar-nya tetap harus dicari. --}}
+        <div style="overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 420px);min-height:200px">
             <table class="erp-table" id="strokeTable">
-                <thead>
+                {{-- Sticky: kotaknya sekarang scroll vertikal sendiri, header harus ikut terlihat. --}}
+                <thead style="position:sticky;top:0;z-index:10">
                     <tr>
                         <th>Mesin</th><th>Nama Mesin</th><th>Tipe</th>
                         <th style="min-width:240px">Stroke Saat Ini</th>
