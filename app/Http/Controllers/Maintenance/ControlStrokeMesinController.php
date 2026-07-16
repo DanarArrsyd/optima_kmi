@@ -14,9 +14,9 @@ class ControlStrokeMesinController extends Controller
 
     public function index()
     {
+        // Opsi filter (mesin/tipe/line) dibangun di klien dari data yang dimuat — lihat
+        // initFilters() di view. Controller cukup mengirim threshold.
         return view('maintenance.control-stroke-mesin', [
-            'tipeList'  => MasterMesin::TIPE_MESIN,
-            'lineList'  => MasterMesin::whereNotNull('line')->where('line', '!=', '')->distinct()->orderBy('line')->pluck('line'),
             'threshold' => MaintenanceDashboardService::STROKE_THRESHOLD,
         ]);
     }

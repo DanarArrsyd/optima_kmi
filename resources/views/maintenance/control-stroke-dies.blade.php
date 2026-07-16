@@ -62,26 +62,21 @@
     <button type="button" id="csReset" class="btn btn-outline-secondary btn-sm d-none"><i class="bi bi-x-lg me-1"></i>Reset</button>
 </div>
 
+{{-- Tiap filter typeahead (bisa diketik); opsinya diisi dari data yang dimuat. --}}
 <div id="csFilterPanel" class="erp-panel mb-2 d-none">
     <div class="card-body py-2">
         <div class="row g-2 align-items-end">
             <div class="col-md-4">
+                <label class="form-label small mb-1">Part</label>
+                <div class="cs-ta" data-key="part"><input type="text" class="form-control form-control-sm cs-ta-input" placeholder="Semua Part..." autocomplete="off"><div class="cs-ta-dd d-none"></div></div>
+            </div>
+            <div class="col-md-4">
                 <label class="form-label small mb-1">Customer</label>
-                <select id="csCustomer" class="form-select form-select-sm">
-                    <option value="">Semua Customer</option>
-                    @foreach($customers as $c)
-                        <option value="{{ $c }}">{{ $c }}</option>
-                    @endforeach
-                </select>
+                <div class="cs-ta" data-key="customer"><input type="text" class="form-control form-control-sm cs-ta-input" placeholder="Semua Customer..." autocomplete="off"><div class="cs-ta-dd d-none"></div></div>
             </div>
             <div class="col-md-4">
                 <label class="form-label small mb-1">Proses</label>
-                <select id="csProses" class="form-select form-select-sm">
-                    <option value="">Semua Proses</option>
-                    @foreach($prosesList as $pr)
-                        <option value="{{ $pr }}">{{ $pr }}</option>
-                    @endforeach
-                </select>
+                <div class="cs-ta" data-key="proses"><input type="text" class="form-control form-control-sm cs-ta-input" placeholder="Semua Proses..." autocomplete="off"><div class="cs-ta-dd d-none"></div></div>
             </div>
         </div>
     </div>
@@ -115,6 +110,7 @@
 @endsection
 
 @push('scripts')
+@include('maintenance.partials.typeahead')
 <script>
 const canInputPreventive = {{ in_array(auth()->user()->role, ['admin', 'staff_maintenance']) ? 'true' : 'false' }};
 const baseUrl = `{{ url('maintenance/availability/control-stroke-dies') }}`;
@@ -134,7 +130,26 @@ const STATUS = {
 };
 
 let allRows = [];
-const state = { status: '', q: '', customer: '', proses: '', sort: 'pct_desc' };
+const state = { status: '', q: '', part: '', customer: '', proses: '', sort: 'pct_desc' };
+const ta = {};
+
+function uniqueOpts(rows, valFn, labelFn) {
+    const seen = new Map();
+    rows.forEach(r => { const v = valFn(r); if (v != null && v !== '' && !seen.has(v)) seen.set(v, labelFn(r)); });
+    return [...seen].map(([v, t]) => ({ v, t })).sort((a, b) => String(a.t).localeCompare(String(b.t)));
+}
+
+function initFilters() {
+    ta.part = csCombobox(document.querySelector('.cs-ta[data-key="part"]'),
+        uniqueOpts(allRows, r => r.kode_mesin, r => `${r.kode_mesin} – ${r.nama_mesin}`),
+        v => { state.part = v; render(); });
+    ta.customer = csCombobox(document.querySelector('.cs-ta[data-key="customer"]'),
+        uniqueOpts(allRows, r => r.customer, r => r.customer),
+        v => { state.customer = v; render(); });
+    ta.proses = csCombobox(document.querySelector('.cs-ta[data-key="proses"]'),
+        uniqueOpts(allRows, r => r.nama_proses, r => r.nama_proses),
+        v => { state.proses = v; render(); });
+}
 
 async function loadData() {
     const tbody = document.getElementById('strokeTableBody');
@@ -150,6 +165,7 @@ async function loadData() {
     document.getElementById('kpiTotalDies').textContent = fmt(allRows.length);
     document.getElementById('kpiOverdue').textContent   = fmt(allRows.filter(r => r.status === 'overdue').length);
     document.getElementById('kpiWarning').textContent   = fmt(allRows.filter(r => r.status === 'warning').length);
+    initFilters();
     render();
 }
 
@@ -157,6 +173,7 @@ function render() {
     const q = state.q.trim().toLowerCase();
     let rows = allRows.filter(r =>
         (!state.status   || r.status === state.status) &&
+        (!state.part     || r.kode_mesin === state.part) &&
         (!state.customer || r.customer === state.customer) &&
         (!state.proses   || r.nama_proses === state.proses) &&
         (!q || (`${r.kode_mesin} ${r.nama_mesin} ${r.nama_proses}`.toLowerCase().includes(q)))
@@ -176,11 +193,11 @@ function render() {
         c.setAttribute('aria-pressed', on ? 'true' : 'false');
     });
 
-    const advCount = (state.customer ? 1 : 0) + (state.proses ? 1 : 0);
+    const advCount = (state.part ? 1 : 0) + (state.customer ? 1 : 0) + (state.proses ? 1 : 0);
     const badge = document.getElementById('csFilterCount');
     badge.textContent = advCount;
     badge.classList.toggle('d-none', advCount === 0);
-    const anyFilter = state.status || state.q || state.customer || state.proses;
+    const anyFilter = state.status || state.q || state.part || state.customer || state.proses;
     document.getElementById('csReset').classList.toggle('d-none', !anyFilter);
 
     document.getElementById('csCount').textContent =
@@ -248,8 +265,7 @@ document.querySelectorAll('.kpi-cell').forEach(cell => {
 
 document.getElementById('csSearch').addEventListener('input', e => { state.q = e.target.value; render(); });
 document.getElementById('csSort').addEventListener('change', e => { state.sort = e.target.value; render(); });
-document.getElementById('csCustomer').addEventListener('change', e => { state.customer = e.target.value; render(); });
-document.getElementById('csProses').addEventListener('change', e => { state.proses = e.target.value; render(); });
+// Filter part/customer/proses = combobox typeahead (di-wire lewat onSelect di initFilters()).
 
 document.getElementById('csFilterToggle').addEventListener('click', () => {
     const panel = document.getElementById('csFilterPanel');
@@ -259,10 +275,9 @@ document.getElementById('csFilterToggle').addEventListener('click', () => {
 });
 
 document.getElementById('csReset').addEventListener('click', () => {
-    state.status = ''; state.q = ''; state.customer = ''; state.proses = '';
+    state.status = ''; state.q = ''; state.part = ''; state.customer = ''; state.proses = '';
     document.getElementById('csSearch').value = '';
-    document.getElementById('csCustomer').value = '';
-    document.getElementById('csProses').value = '';
+    ta.part?.reset(); ta.customer?.reset(); ta.proses?.reset();
     render();
 });
 

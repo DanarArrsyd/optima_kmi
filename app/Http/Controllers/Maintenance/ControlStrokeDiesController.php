@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Maintenance;
 use App\Http\Controllers\Controller;
 use App\Models\DiesPreventiveLog;
 use App\Models\MasterKaryawan;
-use App\Models\MasterPart;
 use App\Models\MasterPartProses;
 use App\Services\MaintenanceDiesDashboardService;
 use Illuminate\Http\Request;
@@ -15,9 +14,9 @@ class ControlStrokeDiesController extends Controller
 
     public function index()
     {
+        // Opsi filter (part/customer/proses) dibangun di klien dari data yang dimuat — lihat
+        // initFilters() di view. Controller cukup mengirim threshold.
         return view('maintenance.control-stroke-dies', [
-            'customers'  => MasterPart::whereNotNull('customer')->where('customer', '!=', '')->distinct()->orderBy('customer')->pluck('customer'),
-            'prosesList' => MasterPartProses::whereNotNull('nama_proses')->where('nama_proses', '!=', '')->distinct()->orderBy('nama_proses')->pluck('nama_proses'),
             'threshold'  => MaintenanceDiesDashboardService::STROKE_THRESHOLD,
         ]);
     }
