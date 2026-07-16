@@ -194,6 +194,15 @@ $initQtyNg = $useOld ? (int) old('qty_ng', $qc->qty_ng ?? 0) : (int) ($qc->qty_n
                 </div>
 
             </div>
+
+            @if ($qc->staff_note && !$qc->staff_note_resolved_at)
+                @include('input.partials.note-resolve-box', [
+                    'note'   => $qc->staff_note,
+                    'noteBy' => $qc->noteBy?->name,
+                    'noteAt' => $qc->staff_note_at,
+                ])
+            @endif
+
             <div class="mt-4 d-flex gap-2">
                 <button type="submit" class="btn btn-primary btn-sm">
                     <i class="bi bi-save me-1"></i>Update

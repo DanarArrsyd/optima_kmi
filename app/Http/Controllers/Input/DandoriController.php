@@ -2,6 +2,7 @@
 namespace App\Http\Controllers\Input;
 
 use App\Exports\DandoriImportTemplate;
+use App\Http\Controllers\Concerns\ResolvesStaffNote;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreDandoriRequest;
 use App\Exports\LhpDandoriExport;
@@ -19,6 +20,8 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class DandoriController extends Controller
 {
+    use ResolvesStaffNote;
+
     public function __construct(private NotificationService $notifSvc) {}
 
     public function index(Request $request)
@@ -194,6 +197,11 @@ class DandoriController extends Controller
             'std_menit'  => $stdMenit,
             'over_menit' => max(0, $actualMenit - $stdMenit),
         ]);
+
+        $this->resolveStaffNoteIfRequested(
+            $request, $dandori, 'dandori',
+            $dandori->tanggal->format('Y-m-d')
+        );
 
         return redirect()->route('input.dandori.index')->with('success', 'Data Dandori berhasil diupdate.');
     }
