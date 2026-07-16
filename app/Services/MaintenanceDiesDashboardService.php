@@ -117,6 +117,7 @@ class MaintenanceDiesDashboardService
                 'kode_mesin'            => $pr->part?->part_no,
                 'nama_mesin'            => $pr->part?->part_name,
                 'nama_proses'           => $pr->nama_proses,
+                'customer'              => $pr->part?->customer,
                 'current_stroke'        => $currentStroke,
                 'threshold'             => self::STROKE_THRESHOLD,
                 'pct'                   => $pct,

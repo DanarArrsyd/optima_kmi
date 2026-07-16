@@ -108,6 +108,7 @@ class MaintenanceDashboardService
                 'kode_mesin'           => $m->id_mesin,
                 'nama_mesin'           => $m->nama_mesin,
                 'tipe_mesin'           => $m->tipe_mesin,
+                'line'                 => $m->line,
                 'current_stroke'       => $currentStroke,
                 'threshold'            => self::STROKE_THRESHOLD,
                 'pct'                  => $pct,
