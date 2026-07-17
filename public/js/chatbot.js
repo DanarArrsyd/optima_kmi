@@ -90,22 +90,13 @@ function chatbotPage() {
             this.$nextTick(() => this.scrollDown());
 
             try {
-                const res = await fetch('/chatbot/message', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    },
-                    body: JSON.stringify({ message: text, history }),
-                });
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const data = await res.json();
-                await this.pushTyped(data.reply);
-
-                if (Array.isArray(data.suggestions) && data.suggestions.length) {
-                    this.suggestions = data.suggestions;
-                } else {
-                    this.shuffleSuggestions();
+                // Coba streaming (SSE) dulu — render progresif. Kalau gagal SEBELUM
+                // ada teks yang tampil, jatuh ke endpoint non-stream (fallback aman).
+                const streamed = await this.streamReply(text, history);
+                if (!streamed) {
+                    const data = await this.postMessage(text, history);
+                    this.pushTyped(data.reply);
+                    this.applySuggestions(data.suggestions);
                 }
             } catch (e) {
                 this.messages.push({ role: 'assistant', content: 'Maaf, sistem AI lagi ga bisa diakses, coba lagi nanti.', typing: false });
@@ -113,6 +104,90 @@ function chatbotPage() {
             } finally {
                 this.loading = false;
                 this.$nextTick(() => this.scrollDown());
+            }
+        },
+
+        // POST non-stream (fallback). Lempar error kalau HTTP gagal.
+        async postMessage(text, history) {
+            const res = await fetch('/chatbot/message', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                },
+                body: JSON.stringify({ message: text, history }),
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return res.json();
+        },
+
+        // Streaming SSE dari /chatbot/stream. Balikin true kalau ada teks yang
+        // ter-render (sukses), false kalau tak ada — biar pemanggil fallback.
+        async streamReply(text, history) {
+            const res = await fetch('/chatbot/stream', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                },
+                body: JSON.stringify({ message: text, history }),
+            });
+            if (!res.ok || !res.body) return false;
+
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+            let acc = '';
+            let idx = -1;
+            let suggestions = null;
+
+            const applyDelta = (delta) => {
+                acc += delta;
+                if (idx === -1) {
+                    this.messages.push({ role: 'assistant', content: '', display: '', typing: false });
+                    idx = this.messages.length - 1;
+                }
+                // Reassign objek (bukan mutasi ref mentah) supaya Alpine melacak update.
+                this.messages[idx] = { ...this.messages[idx], content: acc, display: acc };
+                this.$nextTick(() => this.scrollDown());
+            };
+
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+
+                let sep;
+                while ((sep = buffer.indexOf('\n\n')) !== -1) {
+                    const raw = buffer.slice(0, sep);
+                    buffer = buffer.slice(sep + 2);
+                    const evt = this.parseSse(raw);
+                    if (!evt) continue;
+                    if (evt.done) { suggestions = evt.suggestions; continue; }
+                    if (evt.delta != null) applyDelta(evt.delta);
+                }
+            }
+
+            if (idx === -1) return false; // tak ada delta → fallback
+            this.applySuggestions(suggestions);
+            return true;
+        },
+
+        // Parse satu blok event SSE → objek payload (gabung baris data:).
+        parseSse(raw) {
+            let dataStr = '';
+            for (const line of raw.split('\n')) {
+                if (line.startsWith('data:')) dataStr += line.slice(5).trimStart();
+            }
+            if (!dataStr) return null;
+            try { return JSON.parse(dataStr); } catch (e) { return null; }
+        },
+
+        applySuggestions(suggestions) {
+            if (Array.isArray(suggestions) && suggestions.length) {
+                this.suggestions = suggestions;
+            } else {
+                this.shuffleSuggestions();
             }
         },
 

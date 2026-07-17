@@ -204,6 +204,8 @@ Route::middleware('auth')->group(function () {
         Route::get('health', [\App\Http\Controllers\ChatbotController::class, 'health'])->name('health'); // DIAGNOSTIK SEMENTARA — hapus setelah AI provider prod fixed
         Route::post('message', [\App\Http\Controllers\ChatbotController::class, 'sendMessage'])
             ->middleware('throttle:20,1')->name('send-message');
+        Route::post('stream', [\App\Http\Controllers\ChatbotController::class, 'stream'])
+            ->middleware('throttle:20,1')->name('stream');
     });
 });
 
