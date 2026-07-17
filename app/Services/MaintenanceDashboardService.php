@@ -69,7 +69,14 @@ class MaintenanceDashboardService
         return $rows;
     }
 
-    public function currentStrokeFor(MasterMesin $m): int
+    /**
+     * Total siklus berjalan (sejak preventive terakhir / instalasi): stroke +
+     * running time. Stroke & durasi di-SUM dalam SATU query — durasi dari kolom
+     * persist durasi_menit ({@see TransaksiProduksi}), jadi tetap murni SQL.
+     *
+     * @return array{stroke:int, durasi_menit:int}
+     */
+    public function cycleTotalsFor(MasterMesin $m): array
     {
         // Reuse the eager-loaded preventiveLogs relation when present (computeCurrentCycle
         // loads it) to avoid a per-mesin MAX() query. toDateString() keeps the exact 'Y-m-d'
@@ -79,10 +86,18 @@ class MaintenanceDashboardService
             : MesinPreventiveLog::where('id_mesin', $m->id)->max('tanggal_preventive');
         $cycleStart     = $lastPreventive ?? $m->tanggal_instalasi;
 
-        return (int) TransaksiProduksi::query()
+        $agg = TransaksiProduksi::query()
             ->where('id_mesin', $m->id)
             ->when($cycleStart, fn ($q) => $q->where('tanggal_produksi', '>', $cycleStart))
-            ->sum('qty_aktual');
+            ->selectRaw('COALESCE(SUM(qty_aktual),0) as stroke, COALESCE(SUM(durasi_menit),0) as durasi_menit')
+            ->first();
+
+        return ['stroke' => (int) $agg->stroke, 'durasi_menit' => (int) $agg->durasi_menit];
+    }
+
+    public function currentStrokeFor(MasterMesin $m): int
+    {
+        return $this->cycleTotalsFor($m)['stroke'];
     }
 
     public function computeCurrentCycle(?int $mesinId = null, ?string $tipeMesin = null): array
@@ -98,7 +113,8 @@ class MaintenanceDashboardService
 
         $rows = [];
         foreach ($mesins as $m) {
-            $currentStroke = $this->currentStrokeFor($m);
+            $totals        = $this->cycleTotalsFor($m);
+            $currentStroke = $totals['stroke'];
             $pct           = round($currentStroke / self::STROKE_THRESHOLD * 100, 1);
             $status        = $pct >= 100 ? 'overdue' : ($pct >= 80 ? 'warning' : 'ok');
             $lastLog       = $m->preventiveLogs->first();
@@ -110,6 +126,7 @@ class MaintenanceDashboardService
                 'tipe_mesin'           => $m->tipe_mesin,
                 'line'                 => $m->line,
                 'current_stroke'       => $currentStroke,
+                'running_time_menit'   => $totals['durasi_menit'],
                 'threshold'            => self::STROKE_THRESHOLD,
                 'pct'                  => $pct,
                 'status'               => $status,

@@ -32,18 +32,40 @@ class TransaksiProduksi extends Model
     public function noteBy(): BelongsTo         { return $this->belongsTo(User::class, 'staff_note_by'); }
     public function noteResolvedBy(): BelongsTo { return $this->belongsTo(User::class, 'staff_note_resolved_by'); }
 
-    /** Waktu kerja dalam desimal jam — handle overnight shift */
-    public function getWaktuKerjaJamAttribute(): float
+    /**
+     * Isi durasi_menit otomatis tiap simpan (create & update) dari jam_start/finish,
+     * jadi kolom persist selalu sinkron walau jam diedit. Sumber tunggal:
+     * hitungDurasiMenit(). durasi_menit sengaja TIDAK di-$fillable — dikelola sistem.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (self $lhp) {
+            $lhp->durasi_menit = self::hitungDurasiMenit($lhp->jam_start, $lhp->jam_finish);
+        });
+    }
+
+    /**
+     * Waktu operasi dalam MENIT dari jam_start→jam_finish. Handle shift lewat
+     * tengah malam (finish ≤ start → +1 hari). Jam tak valid → 0. SATU tempat
+     * logika ini hidup: dipakai saving hook, accessor, & backfill migrasi.
+     */
+    public static function hitungDurasiMenit(?string $jamStart, ?string $jamFinish): int
     {
         try {
-            $start  = \Carbon\Carbon::parse('2000-01-01 ' . $this->jam_start);
-            $finish = \Carbon\Carbon::parse('2000-01-01 ' . $this->jam_finish);
+            $start  = \Carbon\Carbon::parse('2000-01-01 ' . $jamStart);
+            $finish = \Carbon\Carbon::parse('2000-01-01 ' . $jamFinish);
             if ($finish->lte($start)) $finish->addDay();
-            $menit = $start->diffInMinutes($finish);
-            return round($menit / 60, 2);
+            return (int) $start->diffInMinutes($finish);
         } catch (\Throwable) {
             return 0;
         }
+    }
+
+    /** Waktu kerja dalam desimal jam — pakai durasi_menit tersimpan (fallback hitung live). */
+    public function getWaktuKerjaJamAttribute(): float
+    {
+        $menit = $this->durasi_menit ?? self::hitungDurasiMenit($this->jam_start, $this->jam_finish);
+        return round($menit / 60, 2);
     }
 
     /** SPH Aktual = qty_aktual / waktu_kerja_jam */
