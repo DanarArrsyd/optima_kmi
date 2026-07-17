@@ -2,6 +2,7 @@
 namespace App\Services;
 
 use App\Contracts\ChatbotProviderInterface;
+use App\Services\Chatbot\CapabilityRegistry;
 use App\Services\Concerns\HasChatbotSystemPrompt;
 use App\Services\Concerns\HasRetryingHttpCall;
 use Illuminate\Support\Facades\Http;
@@ -17,7 +18,16 @@ abstract class OpenAiCompatibleChatbotService implements ChatbotProviderInterfac
 
     private const MAX_ITERATIONS = 3;
 
-    public function __construct(protected ChatbotTools $tools) {}
+    public function __construct(
+        protected ChatbotTools $tools,
+        protected ?CapabilityRegistry $registry = null,
+    ) {}
+
+    /** Registry capability — sumber schema + dispatch. Resolve lazy dari container. */
+    protected function registry(): CapabilityRegistry
+    {
+        return $this->registry ??= app(CapabilityRegistry::class);
+    }
 
     abstract protected function endpoint(): string;
     abstract protected function apiKey(): ?string;
@@ -56,7 +66,9 @@ abstract class OpenAiCompatibleChatbotService implements ChatbotProviderInterfac
 
             foreach ($toolCalls as $toolCall) {
                 $name = $toolCall['function']['name'] ?? null;
-                if ($name === null || !method_exists($this->tools, $name)) {
+                $capability = $name !== null ? $this->registry()->find($name) : null;
+                // Fallback method_exists jaga-jaga tool callable yang belum jadi capability.
+                if ($capability === null && ($name === null || !method_exists($this->tools, $name))) {
                     return null;
                 }
 
@@ -68,7 +80,7 @@ abstract class OpenAiCompatibleChatbotService implements ChatbotProviderInterfac
                 }
 
                 try {
-                    $result = $this->tools->{$name}(...$args);
+                    $result = $capability ? $capability->handle($args) : $this->tools->{$name}(...$args);
                 } catch (\Throwable $e) {
                     Log::warning('Chatbot tool dispatch failed', ['provider' => $this->providerLabel(), 'name' => $name, 'message' => $e->getMessage()]);
                     return null;
@@ -110,6 +122,6 @@ abstract class OpenAiCompatibleChatbotService implements ChatbotProviderInterfac
         return array_map(fn ($tool) => [
             'type'     => 'function',
             'function' => $tool,
-        ], $this->tools->schemaDefinitions());
+        ], $this->registry()->schemaDefinitions());
     }
 }

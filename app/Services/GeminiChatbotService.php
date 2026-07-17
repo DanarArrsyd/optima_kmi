@@ -2,6 +2,7 @@
 namespace App\Services;
 
 use App\Contracts\ChatbotProviderInterface;
+use App\Services\Chatbot\CapabilityRegistry;
 use App\Services\Concerns\HasChatbotSystemPrompt;
 use App\Services\Concerns\HasRetryingHttpCall;
 use Illuminate\Support\Facades\Http;
@@ -13,7 +14,16 @@ class GeminiChatbotService implements ChatbotProviderInterface
 
     private const MAX_ITERATIONS = 3;
 
-    public function __construct(private ChatbotTools $tools) {}
+    public function __construct(
+        private ChatbotTools $tools,
+        private ?CapabilityRegistry $registry = null,
+    ) {}
+
+    /** Registry capability — sumber schema + dispatch. Resolve lazy dari container. */
+    private function registry(): CapabilityRegistry
+    {
+        return $this->registry ??= app(CapabilityRegistry::class);
+    }
 
     public function ask(array $history, string $userMessage): ?string
     {
@@ -43,12 +53,14 @@ class GeminiChatbotService implements ChatbotProviderInterface
 
                 $args = $part['functionCall']['args'] ?? [];
 
-                if (!method_exists($this->tools, $name)) {
+                $capability = $this->registry()->find($name);
+                // Fallback method_exists jaga-jaga tool callable yang belum jadi capability.
+                if ($capability === null && !method_exists($this->tools, $name)) {
                     return null;
                 }
 
                 try {
-                    $result = $this->tools->{$name}(...$args);
+                    $result = $capability ? $capability->handle($args) : $this->tools->{$name}(...$args);
                 } catch (\Throwable $e) {
                     Log::warning('Chatbot tool dispatch failed', ['provider' => 'gemini', 'name' => $name, 'message' => $e->getMessage()]);
                     return null;
@@ -89,7 +101,7 @@ class GeminiChatbotService implements ChatbotProviderInterface
         $body  = [
             'system_instruction' => ['parts' => [['text' => $this->systemPrompt()]]],
             'contents'           => $contents,
-            'tools'              => [['functionDeclarations' => $this->tools->schemaDefinitions()]],
+            'tools'              => [['functionDeclarations' => $this->registry()->schemaDefinitions()]],
         ];
 
         return $this->withRetry(fn () => Http::timeout(15)->post($url, $body), 'Gemini');
