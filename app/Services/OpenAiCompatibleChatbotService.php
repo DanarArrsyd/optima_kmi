@@ -45,8 +45,12 @@ abstract class OpenAiCompatibleChatbotService implements ChatbotProviderInterfac
         $messages = array_merge($messages, $this->buildHistory($history));
         $messages[] = ['role' => 'user', 'content' => $userMessage];
 
+        // Subset schema dihitung SEKALI dari konteks percakapan (history + pesan),
+        // lalu dipakai untuk semua iterasi tool-loop — hemat token schema.
+        $toolSchema = $this->toolSchema($this->relevanceContext($history, $userMessage));
+
         for ($i = 0; $i < self::MAX_ITERATIONS; $i++) {
-            $response = $this->call($messages);
+            $response = $this->call($messages, $toolSchema);
             if ($response === null) {
                 return null;
             }
@@ -80,7 +84,7 @@ abstract class OpenAiCompatibleChatbotService implements ChatbotProviderInterfac
                 }
 
                 try {
-                    $result = $capability ? $capability->handle($args) : $this->tools->{$name}(...$args);
+                    $result = $capability ? $this->registry()->run($capability, $args) : $this->tools->{$name}(...$args);
                 } catch (\Throwable $e) {
                     Log::warning('Chatbot tool dispatch failed', ['provider' => $this->providerLabel(), 'name' => $name, 'message' => $e->getMessage()]);
                     return null;
@@ -105,23 +109,30 @@ abstract class OpenAiCompatibleChatbotService implements ChatbotProviderInterfac
         ], $history);
     }
 
-    private function call(array $messages): ?array
+    private function call(array $messages, array $toolSchema): ?array
     {
         return $this->withRetry(
             fn () => Http::timeout(20)->withToken($this->apiKey())->post($this->endpoint(), [
                 'model'    => $this->model(),
                 'messages' => $messages,
-                'tools'    => $this->toolSchema(),
+                'tools'    => $toolSchema,
             ]),
             $this->providerLabel()
         );
     }
 
-    private function toolSchema(): array
+    /** Teks konteks untuk relevansi tool-subsetting: pesan sekarang + isi history. */
+    private function relevanceContext(array $history, string $userMessage): string
+    {
+        $past = implode(' ', array_map(fn ($m) => (string) ($m['content'] ?? ''), $history));
+        return $userMessage . ' ' . $past;
+    }
+
+    private function toolSchema(string $context): array
     {
         return array_map(fn ($tool) => [
             'type'     => 'function',
             'function' => $tool,
-        ], $this->registry()->schemaDefinitions());
+        ], $this->registry()->schemaForQuery($context));
     }
 }

@@ -30,8 +30,12 @@ class GeminiChatbotService implements ChatbotProviderInterface
         $contents = $this->buildHistory($history);
         $contents[] = ['role' => 'user', 'parts' => [['text' => $userMessage]]];
 
+        // Subset schema dihitung sekali dari konteks percakapan (hemat token).
+        $past   = implode(' ', array_map(fn ($m) => (string) ($m['content'] ?? ''), $history));
+        $schema = $this->registry()->schemaForQuery($userMessage . ' ' . $past);
+
         for ($i = 0; $i < self::MAX_ITERATIONS; $i++) {
-            $response = $this->callGemini($contents);
+            $response = $this->callGemini($contents, $schema);
             if ($response === null) {
                 return null;
             }
@@ -60,7 +64,7 @@ class GeminiChatbotService implements ChatbotProviderInterface
                 }
 
                 try {
-                    $result = $capability ? $capability->handle($args) : $this->tools->{$name}(...$args);
+                    $result = $capability ? $this->registry()->run($capability, $args) : $this->tools->{$name}(...$args);
                 } catch (\Throwable $e) {
                     Log::warning('Chatbot tool dispatch failed', ['provider' => 'gemini', 'name' => $name, 'message' => $e->getMessage()]);
                     return null;
@@ -93,7 +97,7 @@ class GeminiChatbotService implements ChatbotProviderInterface
         ], $history);
     }
 
-    private function callGemini(array $contents): ?array
+    private function callGemini(array $contents, array $schema): ?array
     {
         $model = config('services.gemini.model');
         $key   = config('services.gemini.key');
@@ -101,7 +105,7 @@ class GeminiChatbotService implements ChatbotProviderInterface
         $body  = [
             'system_instruction' => ['parts' => [['text' => $this->systemPrompt()]]],
             'contents'           => $contents,
-            'tools'              => [['functionDeclarations' => $this->registry()->schemaDefinitions()]],
+            'tools'              => [['functionDeclarations' => $schema]],
         ];
 
         return $this->withRetry(fn () => Http::timeout(15)->post($url, $body), 'Gemini');
