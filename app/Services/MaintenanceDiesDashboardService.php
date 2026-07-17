@@ -12,6 +12,14 @@ class MaintenanceDiesDashboardService
 {
     public const STROKE_THRESHOLD = 30000;
 
+    /** Memo per-instance: kolom durasi_menit ada di DB? (hosting kadang telat migrasi) */
+    private ?bool $durasiKolomAda = null;
+
+    private function durasiKolomAda(): bool
+    {
+        return $this->durasiKolomAda ??= Schema::hasColumn('transaksi_produksi', 'durasi_menit');
+    }
+
     /**
      * Per-dies+proses MTTR/MTBF/Availability (1 part bisa punya banyak proses/dies).
      * Output keys mirror the mesin service so the dashboard views stay identical
@@ -98,10 +106,14 @@ class MaintenanceDiesDashboardService
             : DiesPreventiveLog::where('id_part_proses', $pr->id)->max('tanggal_preventive');
         $cycleStart     = $lastPreventive ?? $pr->part?->tanggal_instalasi;
 
+        // DEFENSIF: kolom durasi_menit bisa belum ada di hosting (migrasi telat).
+        // Kalau belum, jangan sentuh kolomnya — cukup SUM stroke, running time 0.
+        $durasiExpr = $this->durasiKolomAda() ? 'COALESCE(SUM(durasi_menit),0)' : '0';
+
         $agg = TransaksiProduksi::query()
             ->where('id_part_proses', $pr->id)
             ->when($cycleStart, fn ($q) => $q->where('tanggal_produksi', '>', $cycleStart))
-            ->selectRaw('COALESCE(SUM(qty_aktual),0) as stroke, COALESCE(SUM(durasi_menit),0) as durasi_menit')
+            ->selectRaw("COALESCE(SUM(qty_aktual),0) as stroke, {$durasiExpr} as durasi_menit")
             ->first();
 
         return ['stroke' => (int) $agg->stroke, 'durasi_menit' => (int) $agg->durasi_menit];

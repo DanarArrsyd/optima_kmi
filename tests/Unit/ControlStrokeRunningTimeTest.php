@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\MaintenanceDashboardService;
 use App\Services\MaintenanceDiesDashboardService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 /**
@@ -43,6 +44,27 @@ class ControlStrokeRunningTimeTest extends TestCase
             'jam_start' => $start, 'jam_finish' => $finish, 'qty_aktual' => $qty, 'qty_ng' => 0,
             'created_by' => $this->user->id,
         ]);
+    }
+
+    public function test_gracefully_degrades_when_durasi_menit_column_missing(): void
+    {
+        // Simulasi hosting yang belum migrasi: buang kolomnya, app WAJIB tetap jalan.
+        Schema::table('transaksi_produksi', fn ($t) => $t->dropColumn('durasi_menit'));
+
+        $mesin = MasterMesin::create(['id_mesin' => 'MX', 'nama_mesin' => 'P', 'line' => '1', 'tipe_mesin' => 'BLANK', 'kapasitas_max_stroke' => 100, 'tanggal_instalasi' => '2026-01-01']);
+        $part  = MasterPart::create(['part_no' => 'PX', 'part_name' => 'X', 'customer' => 'Toyota']);
+        $pr    = MasterPartProses::create(['id_part' => $part->id, 'id_proses' => 1, 'nama_proses' => 'BLANK', 'sph_standar_produksi' => 400, 'sph_standar_qc' => 200]);
+
+        // Input LHP TIDAK boleh 500 walau kolom hilang (saving hook di-guard).
+        $this->lhp($mesin->id, $pr->id, '2026-02-10', 1000);
+
+        // Service tetap balik stroke; running time 0 (bukan error unknown column).
+        $totals = (new MaintenanceDashboardService())->cycleTotalsFor($mesin->fresh());
+        $this->assertSame(1000, $totals['stroke']);
+        $this->assertSame(0, $totals['durasi_menit']);
+
+        $row = collect((new MaintenanceDashboardService())->computeCurrentCycle($mesin->id))->first();
+        $this->assertSame(0, $row['running_time_menit']);
     }
 
     public function test_mesin_running_time_sums_durasi_since_install(): void

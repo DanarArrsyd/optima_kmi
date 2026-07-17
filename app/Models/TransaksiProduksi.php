@@ -3,6 +3,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Schema;
 
 class TransaksiProduksi extends Model
 {
@@ -36,11 +37,17 @@ class TransaksiProduksi extends Model
      * Isi durasi_menit otomatis tiap simpan (create & update) dari jam_start/finish,
      * jadi kolom persist selalu sinkron walau jam diedit. Sumber tunggal:
      * hitungDurasiMenit(). durasi_menit sengaja TIDAK di-$fillable — dikelola sistem.
+     *
+     * DEFENSIF: hosting kadang telat migrasi (lihat feedback "Defensive DB Code").
+     * Kalau kolom belum ada, JANGAN set — kalau dipaksa, INSERT/UPDATE LHP bakal
+     * 500 "unknown column". Begitu migrasi mendarat, otomatis aktif lagi.
      */
     protected static function booted(): void
     {
         static::saving(function (self $lhp) {
-            $lhp->durasi_menit = self::hitungDurasiMenit($lhp->jam_start, $lhp->jam_finish);
+            if (Schema::hasColumn('transaksi_produksi', 'durasi_menit')) {
+                $lhp->durasi_menit = self::hitungDurasiMenit($lhp->jam_start, $lhp->jam_finish);
+            }
         });
     }
 
