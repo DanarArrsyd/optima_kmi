@@ -20,6 +20,7 @@ class AppServiceProvider extends ServiceProvider
         Capabilities\OeeMesinCapability::class,
         Capabilities\RekapNgCapability::class,
         Capabilities\CustomerQualityCapability::class,
+        Capabilities\TrendCapability::class,
         Capabilities\ProductionTotalCapability::class,
         Capabilities\BandingkanProduksiCapability::class,
         Capabilities\OperatorProduksiCapability::class,
