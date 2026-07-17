@@ -5,12 +5,13 @@ use App\Contracts\ChatbotProviderInterface;
 use App\Services\Chatbot\CapabilityRegistry;
 use App\Services\Concerns\HasChatbotSystemPrompt;
 use App\Services\Concerns\HasRetryingHttpCall;
+use App\Services\Concerns\LogsTokenUsage;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class GeminiChatbotService implements ChatbotProviderInterface
 {
-    use HasChatbotSystemPrompt, HasRetryingHttpCall;
+    use HasChatbotSystemPrompt, HasRetryingHttpCall, LogsTokenUsage;
 
     private const MAX_ITERATIONS = 3;
 
@@ -39,6 +40,7 @@ class GeminiChatbotService implements ChatbotProviderInterface
             if ($response === null) {
                 return null;
             }
+            $this->logGeminiUsage('Gemini', $response);
 
             $part = $response['candidates'][0]['content']['parts'][0] ?? null;
             if ($part === null) {
