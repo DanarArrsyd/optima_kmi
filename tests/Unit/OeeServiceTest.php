@@ -137,5 +137,46 @@ class OeeServiceTest extends TestCase
     {
         $r = (new ChatbotTools())->getOeeMesin('GHOST', '2026-07');
         $this->assertArrayHasKey('error', $r);
+        $this->assertSame([], $r['kandidat'], 'Benar-benar tak ada → kandidat kosong.');
+    }
+
+    public function test_resolves_machine_by_nama_mesin(): void
+    {
+        // Kode A4, nama AMADA 80T — user sebut NAMA, harus tetap ketemu.
+        $mesin = MasterMesin::create(['id_mesin' => 'A4', 'nama_mesin' => 'AMADA 80T', 'line' => 'A', 'tipe_mesin' => 'STAMPING', 'kapasitas_max_stroke' => 100, 'tanggal_instalasi' => '2026-01-01']);
+        $part  = MasterPart::create(['part_no' => 'PA', 'part_name' => 'X', 'customer' => 'Toyota']);
+        $pr    = MasterPartProses::create(['id_part' => $part->id, 'id_proses' => 1, 'nama_proses' => 'BLANK', 'sph_standar_produksi' => 400, 'sph_standar_qc' => 200]);
+        $this->lhp($mesin->id, $pr->id, qty: 3200, ng: 0);
+
+        $byName    = (new ChatbotTools())->getOeeMesin('AMADA 80T', '2026-07');
+        $byPartial = (new ChatbotTools())->getOeeMesin('amada', '2026-07');
+
+        $this->assertSame('A4', $byName['kode_mesin']);
+        $this->assertSame('A4', $byPartial['kode_mesin'], 'Partial unik juga resolve.');
+    }
+
+    public function test_ambiguous_machine_returns_candidates(): void
+    {
+        MasterMesin::create(['id_mesin' => 'A4', 'nama_mesin' => 'AMADA 80T', 'line' => 'A', 'tipe_mesin' => 'STAMPING', 'kapasitas_max_stroke' => 100]);
+        MasterMesin::create(['id_mesin' => 'P3', 'nama_mesin' => 'AMADA 150T', 'line' => 'P', 'tipe_mesin' => 'STAMPING', 'kapasitas_max_stroke' => 100]);
+
+        $r = (new ChatbotTools())->getOeeMesin('amada', '2026-07');
+
+        $this->assertArrayHasKey('error', $r);
+        $this->assertCount(2, $r['kandidat']);
+        $this->assertEqualsCanonicalizing(['A4', 'P3'], array_column($r['kandidat'], 'kode'));
+    }
+
+    public function test_methodology_shows_actual_numbers(): void
+    {
+        ['mesin' => $mesin, 'proses' => $proses] = $this->scaffold(sph: 400);
+        $this->lhp($mesin->id, $proses->id, qty: 3200, ng: 200); // teoretis 3200, perf 100, qual 93.75
+
+        [$from, $to] = $this->july();
+        $r = (new OeeService())->computeMesin($mesin->id, $from, $to);
+
+        $this->assertSame(3200, $r['output_teoretis']);
+        $this->assertStringContainsString('3200 ÷ 3200', $r['metodologi']['performance']);
+        $this->assertStringContainsString('(3200 − 200) ÷ 3200', $r['metodologi']['quality']);
     }
 }

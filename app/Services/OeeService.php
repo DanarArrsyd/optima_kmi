@@ -91,6 +91,8 @@ class OeeService
             $catatan[] = 'OEE tak lengkap: sebagian komponen belum tersedia (lihat catatan di atas).';
         }
 
+        $theoreticalOut = (int) round($theoretical);
+
         return [
             'availability_pct' => $availabilityPct,
             'performance_pct'  => $performancePct,
@@ -98,8 +100,34 @@ class OeeService
             'oee_pct'          => $oeePct,
             'total_qty'        => $totalQty,
             'total_ng'         => $totalNg,
+            'output_teoretis'  => $theoreticalOut,
             'jumlah_lhp'       => $rows->count(),
+            // Rumus + angka yang BENAR-BENAR dipakai sistem, biar chatbot bisa
+            // menjelaskan cara hitungnya dari data (bukan rumus textbook tebakan).
+            'metodologi'       => $this->metodologi($availabilityPct, $performancePct, $qualityPct, $totalQty, $totalNg, $theoreticalOut),
             'catatan'          => $catatan,
+        ];
+    }
+
+    /**
+     * Penjelasan rumus tiap komponen OEE + substitusi angkanya. Komponen yang
+     * null diberi keterangan "belum bisa dihitung" — jangan diarang.
+     *
+     * @return array<string,string>
+     */
+    private function metodologi(?float $av, ?float $perf, ?float $qual, int $qty, int $ng, int $teoretis): array
+    {
+        return [
+            'availability' => $av !== null
+                ? "Availability = waktu uptime ÷ jam operasi × 100 = {$av}%. Jam operasi = jam kalender sejak tanggal instalasi mesin − total downtime breakdown (basis kalender 24/7, sama seperti dashboard maintenance)."
+                : 'Availability belum bisa dihitung: tanggal instalasi mesin belum diset.',
+            'performance'  => $perf !== null
+                ? "Performance = output aktual ÷ output teoretis × 100 = {$qty} ÷ {$teoretis} × 100 = {$perf}%. Output teoretis = SPH standar produksi × jam kerja tiap LHP (ditotal)."
+                : 'Performance belum bisa dihitung: SPH standar proses belum diset.',
+            'quality'      => $qual !== null
+                ? "Quality = (qty aktual − qty NG) ÷ qty aktual × 100 = ({$qty} − {$ng}) ÷ {$qty} × 100 = {$qual}%."
+                : 'Quality belum bisa dihitung: belum ada qty produksi.',
+            'oee'          => 'OEE = Availability × Performance × Quality (ketiga dalam desimal), lalu ×100.',
         ];
     }
 }
