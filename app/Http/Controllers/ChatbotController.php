@@ -6,6 +6,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Http;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use App\Services\ChatbotTools;
 use App\Services\CerebrasChatbotService;
 use App\Services\DeepseekChatbotService;
@@ -121,29 +122,87 @@ class ChatbotController extends Controller
         ], 200, [], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
     }
 
+    /** Aturan validasi request chat, dipakai bareng sendMessage & stream. */
+    private const MESSAGE_RULES = [
+        'message'           => ['required', 'string', 'max:2000'],
+        'history'           => ['nullable', 'array', 'max:20'],
+        'history.*.role'    => ['required', 'in:user,assistant'],
+        'history.*.content' => ['required', 'string', 'max:4000'],
+    ];
+
     public function sendMessage(Request $request): JsonResponse
     {
-        $data = $request->validate([
-            'message'           => ['required', 'string', 'max:2000'],
-            'history'           => ['nullable', 'array', 'max:20'],
-            'history.*.role'    => ['required', 'in:user,assistant'],
-            'history.*.content' => ['required', 'string', 'max:4000'],
-        ]);
-
-        $history = $data['history'] ?? [];
-
-        // Urutan fallback: DeepSeek (paid, andal) → Cerebras → Groq → Gemini.
-        // Provider tanpa key otomatis di-skip (ask() balikin null).
-        $reply = $this->deepseek->ask($history, $data['message'])
-            ?? $this->cerebras->ask($history, $data['message'])
-            ?? $this->groq->ask($history, $data['message'])
-            ?? $this->gemini->ask($history, $data['message'])
-            ?? self::FALLBACK;
+        $data  = $request->validate(self::MESSAGE_RULES);
+        $reply = $this->resolveReply($data['history'] ?? [], $data['message']);
 
         return response()->json([
             'reply'       => $reply,
             'suggestions' => $this->suggestFollowUps($data['message'], $reply),
         ]);
+    }
+
+    /**
+     * Varian streaming (Server-Sent Events). Jawaban dihasilkan sync (tool-loop
+     * butuh hasil tool utuh), lalu dikirim bertahap sebagai event SSE supaya
+     * frontend bisa render progresif. TANPA sleep di server — begitu jawaban
+     * jadi, chunk di-flush cepat; worker tak ditahan lebih lama dari generasi.
+     * Cadence "ngetik" diatur di sisi klien. /chatbot/message tetap jadi fallback.
+     */
+    public function stream(Request $request): StreamedResponse
+    {
+        $data    = $request->validate(self::MESSAGE_RULES);
+        $history = $data['history'] ?? [];
+        $message = $data['message'];
+
+        return response()->stream(function () use ($history, $message) {
+            // ask() di dalam closure: koneksi kebuka duluan (klien tampil "mengetik"),
+            // baru streaming hasil begitu siap.
+            $reply       = $this->resolveReply($history, $message);
+            $suggestions = $this->suggestFollowUps($message, $reply);
+
+            foreach ($this->chunkReply($reply) as $chunk) {
+                $this->sse(['delta' => $chunk]);
+            }
+            $this->sse(['done' => true, 'suggestions' => $suggestions], 'done');
+        }, 200, [
+            'Content-Type'      => 'text/event-stream',
+            'Cache-Control'     => 'no-cache',
+            'Connection'        => 'keep-alive',
+            'X-Accel-Buffering' => 'no', // matikan buffering nginx/proxy
+        ]);
+    }
+
+    /**
+     * Rantai fallback provider: DeepSeek (paid, andal) → Cerebras → Groq → Gemini.
+     * Provider tanpa key otomatis di-skip (ask() balikin null).
+     */
+    private function resolveReply(array $history, string $message): string
+    {
+        return $this->deepseek->ask($history, $message)
+            ?? $this->cerebras->ask($history, $message)
+            ?? $this->groq->ask($history, $message)
+            ?? $this->gemini->ask($history, $message)
+            ?? self::FALLBACK;
+    }
+
+    /** Pecah jawaban jadi potongan kecil untuk SSE (per kata, spasi dipertahankan). */
+    private function chunkReply(string $reply): array
+    {
+        return preg_split('/(?<=\s)/u', $reply, -1, PREG_SPLIT_NO_EMPTY) ?: [$reply];
+    }
+
+    /** Kirim satu event SSE dan flush. */
+    private function sse(array $payload, ?string $event = null): void
+    {
+        if ($event !== null) {
+            echo "event: {$event}\n";
+        }
+        echo 'data: ' . json_encode($payload, JSON_UNESCAPED_UNICODE) . "\n\n";
+
+        if (function_exists('ob_get_level') && ob_get_level() > 0) {
+            @ob_flush();
+        }
+        flush();
     }
 
     /**
