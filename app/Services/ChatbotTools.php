@@ -206,6 +206,94 @@ class ChatbotTools
         ];
     }
 
+    /** Metrik yang didukung getTrend => satuan tampil. */
+    private const TREND_METRICS = [
+        'produksi'        => 'Pcs',
+        'ng'             => '% NG',
+        'breakdown_mesin' => 'kejadian',
+        'breakdown_dies'  => 'kejadian',
+        'dandori'         => 'menit over',
+    ];
+
+    /**
+     * Deret bulanan sebuah metrik untuk analisa TREN + ringkasan arah (naik/turun).
+     * Default rentang = 6 bulan terakhir s/d bulan ini. Dihitung per-bulan di PHP
+     * (bukan GROUP BY DATE_FORMAT) supaya portabel MySQL↔SQLite. Rentang di-cap 24 bulan.
+     */
+    public function getTrend(string $metric, ?string $bulanMulai = null, ?string $bulanAkhir = null): array
+    {
+        $metric = strtolower(trim($metric));
+        if (!isset(self::TREND_METRICS[$metric])) {
+            return ['error' => "Metrik \"{$metric}\" tak dikenal. Pilihan: " . implode(', ', array_keys(self::TREND_METRICS)) . "."];
+        }
+
+        // Tentukan rentang bulan (start & end = awal bulan).
+        if ($bulanMulai === null && $bulanAkhir === null) {
+            $end   = Carbon::now()->startOfMonth();
+            $start = $end->copy()->subMonthsNoOverflow(5);
+        } else {
+            [$from, $to, $error] = $this->monthSpanOptional($bulanMulai, $bulanAkhir);
+            if ($error) {
+                return ['error' => $error];
+            }
+            $start = $from->copy()->startOfMonth();
+            $end   = $to->copy()->startOfMonth();
+        }
+
+        // Susun daftar bulan (cap 24 untuk batasi jumlah query).
+        $months = [];
+        for ($cur = $start->copy(); $cur->lte($end) && count($months) < 24; $cur->addMonthNoOverflow()) {
+            $months[] = $cur->copy();
+        }
+
+        $seri = array_map(fn ($m) => [
+            'bulan' => $m->format('Y-m'),
+            'nilai' => $this->trendValue($metric, $m),
+        ], $months);
+
+        $nilai = array_column($seri, 'nilai');
+        $awal  = $nilai[0];
+        $akhir = end($nilai);
+        $delta = round($akhir - $awal, 2);
+
+        return [
+            'metric'      => $metric,
+            'satuan'      => self::TREND_METRICS[$metric],
+            'bulan_mulai' => $months[0]->format('Y-m'),
+            'bulan_akhir' => end($months)->format('Y-m'),
+            'seri'        => $seri,
+            'ringkasan'   => [
+                'awal'  => $awal,
+                'akhir' => $akhir,
+                'delta' => $delta,
+                'arah'  => $delta > 0 ? 'naik' : ($delta < 0 ? 'turun' : 'stabil'),
+                'min'   => min($nilai),
+                'max'   => max($nilai),
+            ],
+        ];
+    }
+
+    /** Nilai satu metrik untuk satu bulan (dipakai getTrend). */
+    private function trendValue(string $metric, Carbon $month): float|int
+    {
+        $from = $month->copy()->startOfMonth()->toDateString();
+        $to   = $month->copy()->endOfMonth()->toDateString();
+
+        return match ($metric) {
+            'produksi'        => (int) TransaksiProduksi::whereBetween('tanggal_produksi', [$from, $to])->sum('qty_aktual'),
+            'breakdown_mesin' => (int) TransaksiBreakdownMesin::whereBetween('tanggal_breakdown', [$from, $to])->count(),
+            'breakdown_dies'  => (int) TransaksiBreakdownDies::whereBetween('tanggal_breakdown', [$from, $to])->count(),
+            'dandori'         => (int) round((float) TransaksiDandoriRincian::whereBetween('tanggal', [$from, $to])->sum('over_menit')),
+            'ng'              => (function () use ($from, $to) {
+                $q  = TransaksiQc::whereBetween('tgl_pengecekan', [$from, $to]);
+                $ok = (int) $q->clone()->sum('qty_ok');
+                $ng = (int) $q->clone()->sum('qty_ng');
+                $t  = $ok + $ng;
+                return $t > 0 ? round($ng / $t * 100, 2) : 0.0;
+            })(),
+        };
+    }
+
     /** Bandingkan qty aktual & SPH rata-rata produksi antara 2 periode bulanan. */
     public function bandingkanProduksi(string $periode1, string $periode2): array
     {
