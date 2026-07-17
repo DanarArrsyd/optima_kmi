@@ -17,6 +17,7 @@ class AppServiceProvider extends ServiceProvider
     private const CHATBOT_CAPABILITIES = [
         Capabilities\MtbfMttrDiesCapability::class,
         Capabilities\MtbfMttrMesinCapability::class,
+        Capabilities\OeeMesinCapability::class,
         Capabilities\RekapNgCapability::class,
         Capabilities\ProductionTotalCapability::class,
         Capabilities\BandingkanProduksiCapability::class,

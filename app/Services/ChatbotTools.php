@@ -37,6 +37,7 @@ class ChatbotTools
         private BusinessTableCatalog $tableCatalog = new BusinessTableCatalog(),
         private SqlGuard $sqlGuard = new SqlGuard(),
         private ToolSchemaCatalog $schemaCatalog = new ToolSchemaCatalog(),
+        private OeeService $oee = new OeeService(),
     ) {}
 
     /** MTBF/MTTR untuk sebuah part/dies (per proses), dalam 1 bulan. */
@@ -90,6 +91,25 @@ class ChatbotTools
             'mtbf_jam'         => $rows[0]['mtbf_jam'],
             'availability_pct' => $rows[0]['availability_pct'],
         ];
+    }
+
+    /** OEE (Availability × Performance × Quality) untuk sebuah mesin, dalam 1 bulan. */
+    public function getOeeMesin(string $idMesin, string $bulan): array
+    {
+        $mesin = $this->findMesinByKode($idMesin);
+        if (is_array($mesin)) {
+            return $mesin;
+        }
+
+        [$from, $to] = $this->monthRange($bulan);
+        if (!$from) {
+            return ['error' => "Format bulan \"{$bulan}\" tidak valid, gunakan format YYYY-MM."];
+        }
+
+        return array_merge(
+            ['mesin' => $mesin->nama_mesin, 'kode_mesin' => $mesin->id_mesin, 'periode' => $bulan],
+            $this->oee->computeMesin($mesin->id, $from, $to),
+        );
     }
 
     /** Rekap qty NG untuk sebuah nama proses, dalam 1 bulan. */

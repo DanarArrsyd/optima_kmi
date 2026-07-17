@@ -6,10 +6,10 @@ use App\Services\Chatbot\ToolSchemaCatalog;
 use Tests\TestCase;
 
 /**
- * Mengunci migrasi tool → capability: schema yang dipapar registry HARUS identik
- * dengan ToolSchemaCatalog lama (nama, deskripsi, parameters). Kalau meleset,
- * LLM lihat tool yang beda dari sebelum refactor — regresi senyap. Test ini
- * jaring pengaman selama layer lama & baru hidup berdampingan.
+ * Mengunci migrasi tool → capability: SETIAP tool di ToolSchemaCatalog lama harus
+ * tetap ada di registry dengan schema (deskripsi + parameters) IDENTIK. Registry
+ * boleh punya tool TAMBAHAN (capability baru pasca-migrasi, mis. getOeeMesin) —
+ * itu superset yang sah, bukan regresi. Yang dijaga: tool lama tak hilang/berubah.
  */
 class ChatbotCapabilityParityTest extends TestCase
 {
@@ -23,18 +23,13 @@ class ChatbotCapabilityParityTest extends TestCase
         return $out;
     }
 
-    public function test_registry_schema_matches_legacy_catalog(): void
+    public function test_registry_is_superset_of_legacy_catalog_with_identical_schema(): void
     {
         $legacy   = $this->byName((new ToolSchemaCatalog())->definitions());
         $registry = $this->byName(app(CapabilityRegistry::class)->schemaDefinitions());
 
-        $this->assertSame(
-            array_keys($legacy),
-            array_keys($registry),
-            'Set nama tool registry harus sama persis dengan katalog lama.',
-        );
-
         foreach ($legacy as $name => $def) {
+            $this->assertArrayHasKey($name, $registry, "Tool lama {$name} hilang dari registry.");
             $this->assertSame($def['description'], $registry[$name]['description'], "Deskripsi {$name} berubah.");
             $this->assertEquals($def['parameters'], $registry[$name]['parameters'], "Parameters {$name} berubah.");
         }
