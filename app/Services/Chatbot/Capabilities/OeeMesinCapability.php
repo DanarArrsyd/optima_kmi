@@ -11,7 +11,7 @@ class OeeMesinCapability extends AbstractCapability
 
     public function description(): string
     {
-        return 'OEE mesin (Availability × Performance × Quality) satu bulan. Balikin tiap komponen + OEE %. Komponen yang belum bisa dihitung diberi catatan.';
+        return 'OEE mesin (Availability × Performance × Quality) satu bulan. Balikin tiap komponen + OEE % + field "metodologi" (rumus & angka yang dipakai) supaya bisa dijelaskan. Komponen yang belum bisa dihitung diberi catatan.';
     }
 
     public function parameters(): array
@@ -19,7 +19,7 @@ class OeeMesinCapability extends AbstractCapability
         return [
             'type' => 'object',
             'properties' => [
-                'idMesin' => ['type' => 'string', 'description' => 'Kode mesin, mis. M-01'],
+                'idMesin' => ['type' => 'string', 'description' => 'Kode mesin (mis. A4, B2, C10) ATAU nama mesin (mis. AMADA 80T). Kirim apa adanya yang user sebut.'],
                 'bulan'   => ['type' => 'string', 'description' => 'YYYY-MM'],
             ],
             'required' => ['idMesin', 'bulan'],
@@ -33,7 +33,7 @@ class OeeMesinCapability extends AbstractCapability
 
     public function examples(): array
     {
-        return ['Berapa OEE mesin M-01 bulan ini?', 'Breakdown OEE mesin M-02 Juli 2026.'];
+        return ['Berapa OEE mesin A4 bulan ini?', 'Breakdown OEE mesin AMADA 80T Juli 2026.', 'Rumus performance OEE mesin A4 gimana?'];
     }
 
     public function handle(array $args): array

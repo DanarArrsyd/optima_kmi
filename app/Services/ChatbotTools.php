@@ -838,16 +838,78 @@ class ChatbotTools
         return $value ? " untuk {$noun} \"{$value}\"" : '';
     }
 
+    /**
+     * Resolusi part/dies toleran: user bisa sebut PART NO atau NAMA DIES, persis
+     * atau sebagian. Pola sama dengan {@see findMesinByKode}.
+     */
     private function findPartByNo(string $partNo): MasterPart|array
     {
-        $part = MasterPart::whereRaw('LOWER(TRIM(part_no)) = ?', [strtolower(trim($partNo))])->first();
-        return $part ?? ['error' => "Part/dies dengan nomor \"{$partNo}\" tidak ditemukan di master data."];
+        $q = strtolower(trim($partNo));
+        if ($q === '') {
+            return ['error' => 'Sebutkan nomor atau nama part/dies-nya.'];
+        }
+
+        $exact = MasterPart::whereRaw('LOWER(TRIM(part_no)) = ?', [$q])
+            ->orWhereRaw('LOWER(TRIM(part_name)) = ?', [$q])
+            ->first();
+        if ($exact) {
+            return $exact;
+        }
+
+        $matches = MasterPart::where(fn ($w) => $w
+                ->whereRaw('LOWER(part_no) LIKE ?', ["%{$q}%"])
+                ->orWhereRaw('LOWER(part_name) LIKE ?', ["%{$q}%"]))
+            ->orderBy('part_no')->limit(8)->get();
+
+        if ($matches->count() === 1) {
+            return $matches->first();
+        }
+
+        $kandidat = $matches->map(fn ($p) => ['part_no' => $p->part_no, 'nama' => $p->part_name])->toArray();
+        return [
+            'error'    => $kandidat
+                ? "Part/dies \"{$partNo}\" tidak cocok persis — ada beberapa kemungkinan. Tanyakan user mana yang dimaksud."
+                : "Part/dies \"{$partNo}\" tidak ada di master data. Minta user cek ulang no/nama-nya.",
+            'kandidat' => $kandidat,
+        ];
     }
 
+    /**
+     * Resolusi mesin toleran: user bisa sebut KODE (A4) atau NAMA (AMADA 80T),
+     * persis atau sebagian. Urutan: id_mesin/nama_mesin persis → LIKE (id/nama) →
+     * kalau tepat 1 pakai; kalau banyak/nol balikin kandidat supaya LLM tanya
+     * balik, bukan asal nolak. LIKE pakai binding (aman injeksi).
+     */
     private function findMesinByKode(string $idMesin): MasterMesin|array
     {
-        $mesin = MasterMesin::whereRaw('LOWER(TRIM(id_mesin)) = ?', [strtolower(trim($idMesin))])->first();
-        return $mesin ?? ['error' => "Mesin dengan kode \"{$idMesin}\" tidak ditemukan di master data."];
+        $q = strtolower(trim($idMesin));
+        if ($q === '') {
+            return ['error' => 'Sebutkan kode atau nama mesinnya.'];
+        }
+
+        $exact = MasterMesin::whereRaw('LOWER(TRIM(id_mesin)) = ?', [$q])
+            ->orWhereRaw('LOWER(TRIM(nama_mesin)) = ?', [$q])
+            ->first();
+        if ($exact) {
+            return $exact;
+        }
+
+        $matches = MasterMesin::where(fn ($w) => $w
+                ->whereRaw('LOWER(id_mesin) LIKE ?', ["%{$q}%"])
+                ->orWhereRaw('LOWER(nama_mesin) LIKE ?', ["%{$q}%"]))
+            ->orderBy('id_mesin')->limit(8)->get();
+
+        if ($matches->count() === 1) {
+            return $matches->first();
+        }
+
+        $kandidat = $matches->map(fn ($m) => ['kode' => $m->id_mesin, 'nama' => $m->nama_mesin])->toArray();
+        return [
+            'error'    => $kandidat
+                ? "Mesin \"{$idMesin}\" tidak cocok persis — ada beberapa kemungkinan. Tanyakan user mana yang dimaksud (sebut kode & nama)."
+                : "Mesin \"{$idMesin}\" tidak ada di master data. Minta user cek ulang kode/nama mesinnya.",
+            'kandidat' => $kandidat,
+        ];
     }
 
     /**

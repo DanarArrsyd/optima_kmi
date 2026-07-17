@@ -64,7 +64,7 @@ class ToolSchemaCatalog
                 'parameters' => [
                     'type' => 'object',
                     'properties' => [
-                        'idMesin' => ['type' => 'string', 'description' => 'Kode mesin, mis. M-01'],
+                        'idMesin' => ['type' => 'string', 'description' => 'Kode mesin (mis. A4, B2, C10) ATAU nama mesin (mis. AMADA 80T). Kirim apa adanya yang user sebut.'],
                         'bulan'   => ['type' => 'string', 'description' => 'YYYY-MM'],
                     ],
                     'required' => ['idMesin', 'bulan'],

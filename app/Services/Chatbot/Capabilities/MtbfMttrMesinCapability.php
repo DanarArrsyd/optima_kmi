@@ -19,7 +19,7 @@ class MtbfMttrMesinCapability extends AbstractCapability
         return [
             'type' => 'object',
             'properties' => [
-                'idMesin' => ['type' => 'string', 'description' => 'Kode mesin, mis. M-01'],
+                'idMesin' => ['type' => 'string', 'description' => 'Kode mesin (mis. A4, B2, C10) ATAU nama mesin (mis. AMADA 80T). Kirim apa adanya yang user sebut.'],
                 'bulan'   => ['type' => 'string', 'description' => 'YYYY-MM'],
             ],
             'required' => ['idMesin', 'bulan'],
@@ -33,7 +33,7 @@ class MtbfMttrMesinCapability extends AbstractCapability
 
     public function examples(): array
     {
-        return ['MTBF mesin M-01 bulan lalu berapa?'];
+        return ['MTBF mesin A4 bulan lalu berapa?'];
     }
 
     public function handle(array $args): array
