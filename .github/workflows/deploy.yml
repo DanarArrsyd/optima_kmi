@@ -140,7 +140,8 @@ jobs:
               --path=database/migrations/2026_07_12_000001_change_tipe_mesin_to_string_on_master_mesin.php \
               --path=database/migrations/2026_07_15_000001_create_dies_preventive_log_table.php \
               --path=database/migrations/2026_07_15_000002_add_staff_maintenance_to_users_role_enum.php \
-              --path=database/migrations/2026_07_15_000003_create_mesin_preventive_log_table.php"
+              --path=database/migrations/2026_07_15_000003_create_mesin_preventive_log_table.php \
+              --path=database/migrations/2026_07_17_014834_add_durasi_menit_to_transaksi_produksi.php"
 
       # Inject secret runtime (mis. CEREBRAS_API_KEY) ke .env server dari GitHub
       # Secrets — .env tidak pernah di-commit. No-op kalau secret belum diisi.
