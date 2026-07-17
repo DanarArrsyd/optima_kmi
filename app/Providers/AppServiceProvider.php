@@ -5,7 +5,7 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Pagination\Paginator;
 use App\Services\Chatbot\CapabilityRegistry;
-use App\Services\Chatbot\Capabilities\ProductionTotalCapability;
+use App\Services\Chatbot\Capabilities;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -15,8 +15,21 @@ class AppServiceProvider extends ServiceProvider
      * TIDAK perlu edit ChatbotTools, ToolSchemaCatalog, atau system prompt.
      */
     private const CHATBOT_CAPABILITIES = [
-        ProductionTotalCapability::class,
-        // Migrasi tool lain menyusul: RankingBreakdownMesinCapability::class, dst.
+        Capabilities\MtbfMttrDiesCapability::class,
+        Capabilities\MtbfMttrMesinCapability::class,
+        Capabilities\RekapNgCapability::class,
+        Capabilities\ProductionTotalCapability::class,
+        Capabilities\BandingkanProduksiCapability::class,
+        Capabilities\OperatorProduksiCapability::class,
+        Capabilities\RankingBreakdownMesinCapability::class,
+        Capabilities\RankingBreakdownDiesCapability::class,
+        Capabilities\TopProblemDiesCapability::class,
+        Capabilities\TopProblemMesinCapability::class,
+        Capabilities\TotalBreakdownDiesCapability::class,
+        Capabilities\TotalBreakdownMesinCapability::class,
+        Capabilities\RekapDandoriCapability::class,
+        Capabilities\DescribeSchemaCapability::class,
+        Capabilities\QueryDatabaseCapability::class,
     ];
 
     public function register(): void
