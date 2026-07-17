@@ -97,11 +97,12 @@
                     <tr>
                         <th style="width:48px">No.</th><th>Part No</th><th>Nama Dies</th><th>Customer</th><th>Proses</th>
                         <th style="min-width:240px">Stroke Saat Ini</th>
+                        <th class="text-end">Running Time</th>
                         <th>Status</th><th>Preventive Terakhir</th><th class="text-end">Aksi</th>
                     </tr>
                 </thead>
                 <tbody id="strokeTableBody">
-                    <tr><td colspan="9" class="text-center text-muted py-3">Memuat data...</td></tr>
+                    <tr><td colspan="10" class="text-center text-muted py-3">Memuat data...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -115,13 +116,19 @@
 const canInputPreventive = {{ in_array(auth()->user()->role, ['admin', 'staff_maintenance']) ? 'true' : 'false' }};
 const baseUrl = `{{ url('maintenance/availability/control-stroke-dies') }}`;
 const dataUrl = `{{ route('maintenance.control-stroke-dies.data') }}`;
-const COLSPAN = 9;
+const COLSPAN = 10;
 
 function escHtml(str) {
     if (str === null || str === undefined) return '';
     return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 function fmt(n) { return Number(n || 0).toLocaleString('id-ID'); }
+// Running time: menit → jam desimal (1 angka di belakang koma). 0 → "—".
+function fmtJam(menit) {
+    const j = Number(menit || 0) / 60;
+    if (j <= 0) return '<span class="text-muted">—</span>';
+    return `${j.toLocaleString('id-ID', { maximumFractionDigits: 1 })} jam`;
+}
 
 const STATUS = {
     ok:      { label: 'OK',                 badge: 'bg-success',           bar: 'bg-success', icon: 'bi-check-circle-fill',         color: '#15803d', tint: '' },
@@ -242,6 +249,7 @@ function render() {
                 </div>
                 <div style="font-size:11px;margin-top:3px">${sisaTxt}</div>
             </td>
+            <td class="text-end" style="font-weight:600">${fmtJam(r.running_time_menit)}</td>
             <td><span class="badge ${st.badge}"><i class="bi ${st.icon} me-1"></i>${st.label}</span></td>
             <td>${lastPrev}</td>
             <td class="text-end">
