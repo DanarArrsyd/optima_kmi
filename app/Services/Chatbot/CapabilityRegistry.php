@@ -2,6 +2,7 @@
 namespace App\Services\Chatbot;
 
 use App\Contracts\ChatCapability;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Mengumpulkan semua ChatCapability yang ter-tag di container, lalu membangun
@@ -42,6 +43,27 @@ class CapabilityRegistry
     public function find(string $name): ?ChatCapability
     {
         return $this->byName[$name] ?? null;
+    }
+
+    /**
+     * Jalankan capability dengan cache read-only (tool + argumen sama = hasil
+     * sama dalam TTL). Data pabrik berubah per jam, jadi cache pendek memangkas
+     * hit DB pada pertanyaan beruntun/regenerate tanpa bikin jawaban basi.
+     *
+     * Cache global (bukan per-user): hasil murni data, belum ada isolasi baris
+     * per departemen. Saat data-isolation masuk, key WAJIB disertai identitas role.
+     */
+    public function run(ChatCapability $cap, array $args): array
+    {
+        $ttl = (int) config('chatbot.tool_cache_ttl', 0);
+        if ($ttl <= 0) {
+            return $cap->handle($args);
+        }
+
+        ksort($args);
+        $key = 'chatbot_tool:' . $cap->name() . ':' . md5(json_encode($args));
+
+        return Cache::remember($key, $ttl, fn () => $cap->handle($args));
     }
 
     /**
@@ -112,6 +134,23 @@ class CapabilityRegistry
             'description' => $c->description(),
             'parameters'  => $c->parameters(),
         ], $caps));
+    }
+
+    /**
+     * Schema untuk sebuah konteks pertanyaan. Kalau tool-subsetting nyala
+     * (config chatbot.tool_subsetting), cuma kirim tool relevan (hemat token,
+     * dengan fallback aman ke semua bila tak ada keyword cocok). Kalau mati,
+     * kirim semua tool yang boleh untuk role tsb.
+     *
+     * @param string[] $roles
+     */
+    public function schemaForQuery(string $context, array $roles = []): array
+    {
+        $subset = config('chatbot.tool_subsetting', true)
+            ? $this->relevant($context, $roles)
+            : $this->forRoles($roles);
+
+        return $this->schemaDefinitions($subset);
     }
 
     /**
