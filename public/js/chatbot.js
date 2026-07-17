@@ -211,9 +211,27 @@ function chatbotPage() {
             this.$refs.scrollArea.scrollTop = this.$refs.scrollArea.scrollHeight;
         },
 
+        // Netralkan notasi LaTeX → teks biasa. Model kadang membungkus rumus dalam
+        // \[ \frac{}{} \text{} \] yang tak bisa dirender front-end (tampak berantakan).
+        // Prompt sudah melarangnya; ini jaring pengaman kalau model tetap bandel.
+        deLatex(s) {
+            return s
+                .replace(/\\\[|\\\]|\\\(|\\\)/g, ' ')
+                .replace(/\\frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, '$1 ÷ $2')
+                .replace(/\\(?:text|mathbf|mathrm|mathit|bm|boldsymbol|operatorname)\s*\{([^{}]*)\}/g, '$1')
+                .replace(/\\times/g, '×').replace(/\\cdot/g, '×').replace(/\\div/g, '÷')
+                .replace(/\\approx/g, '≈').replace(/\\%/g, '%').replace(/\\,/g, ' ').replace(/\\ /g, ' ')
+                .replace(/\\[a-zA-Z]+/g, '')
+                .replace(/[{}]/g, '');
+        },
+
         // Micro-parser markdown → HTML aman. Escape dulu, lalu bangun tag whitelist.
         renderMarkdown(src) {
             if (src == null) return '';
+            // Buang LaTeX dulu (cuma kalau ada sinyalnya, biar teks normal tak kesenggol).
+            if (/\\\[|\\\(|\\frac|\\text|\\times|\\div|\\mathbf/.test(src)) {
+                src = this.deLatex(src);
+            }
             // Escape SEMUA karakter HTML-sensitif termasuk kutip — cegah breakout dari
             // atribut href="..." (XSS). Wajib jalan sebelum tag apa pun dibangun.
             const esc = s => s
