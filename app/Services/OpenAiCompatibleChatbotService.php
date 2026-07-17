@@ -5,6 +5,7 @@ use App\Contracts\ChatbotProviderInterface;
 use App\Services\Chatbot\CapabilityRegistry;
 use App\Services\Concerns\HasChatbotSystemPrompt;
 use App\Services\Concerns\HasRetryingHttpCall;
+use App\Services\Concerns\LogsTokenUsage;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -14,7 +15,7 @@ use Illuminate\Support\Facades\Log;
  */
 abstract class OpenAiCompatibleChatbotService implements ChatbotProviderInterface
 {
-    use HasChatbotSystemPrompt, HasRetryingHttpCall;
+    use HasChatbotSystemPrompt, HasRetryingHttpCall, LogsTokenUsage;
 
     private const MAX_ITERATIONS = 3;
 
@@ -54,6 +55,7 @@ abstract class OpenAiCompatibleChatbotService implements ChatbotProviderInterfac
             if ($response === null) {
                 return null;
             }
+            $this->logOpenAiUsage($this->providerLabel(), $response);
 
             $message = $response['choices'][0]['message'] ?? null;
             if ($message === null) {
