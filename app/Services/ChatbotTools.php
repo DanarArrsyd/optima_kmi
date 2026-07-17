@@ -147,6 +147,65 @@ class ChatbotTools
         ];
     }
 
+    /**
+     * Kualitas per CUSTOMER: total inspeksi, NG, & rate NG dari data QC,
+     * dikelompokkan per customer (master_part.customer). Rentang bulan opsional,
+     * filter customer opsional. Diurut NG terbanyak (dampak volume) — rate juga
+     * disertakan supaya customer volume-kecil-rate-tinggi tak menyesatkan.
+     */
+    public function getCustomerQuality(?string $bulanMulai = null, ?string $bulanAkhir = null, ?string $customer = null): array
+    {
+        [$from, $to, $error] = $this->monthSpanOptional($bulanMulai, $bulanAkhir);
+        if ($error) {
+            return ['error' => $error];
+        }
+
+        // leftJoin + whereNull(deleted_at) meniru eager-load yang menghormati
+        // soft-delete: part/proses terhapus → customer jatuh ke "Tidak diketahui".
+        // TransaksiQc sendiri sudah tersaring scope SoftDeletes.
+        $rows = TransaksiQc::query()
+            ->leftJoin('master_part_proses', function ($j) {
+                $j->on('transaksi_qc.id_part_proses', '=', 'master_part_proses.id')
+                  ->whereNull('master_part_proses.deleted_at');
+            })
+            ->leftJoin('master_part', function ($j) {
+                $j->on('master_part_proses.id_part', '=', 'master_part.id')
+                  ->whereNull('master_part.deleted_at');
+            })
+            ->when($from && $to, fn ($q) => $q->whereBetween('transaksi_qc.tgl_pengecekan', [$from->toDateString(), $to->toDateString()]))
+            ->when($customer !== null, fn ($q) => $q->whereRaw('LOWER(TRIM(master_part.customer)) LIKE ?', ['%' . strtolower(trim($customer)) . '%']))
+            ->groupBy('master_part.customer')
+            ->orderByRaw('SUM(transaksi_qc.qty_ng) DESC')
+            ->get([
+                DB::raw("COALESCE(NULLIF(TRIM(master_part.customer), ''), 'Tidak diketahui') as customer"),
+                DB::raw('SUM(transaksi_qc.qty_ok) as total_ok'),
+                DB::raw('SUM(transaksi_qc.qty_ng) as total_ng'),
+            ]);
+
+        if ($rows->isEmpty()) {
+            return ['error' => "Tidak ada data QC" . $this->filterLabel($customer, 'customer') . $this->periodeLabel($bulanMulai, $bulanAkhir) . "."];
+        }
+
+        $ranking = $rows->map(function ($r) {
+            $ok      = (int) $r->total_ok;
+            $ng      = (int) $r->total_ng;
+            $inspek  = $ok + $ng;
+            return [
+                'customer'       => $r->customer,
+                'total_inspeksi' => $inspek,
+                'total_ng'       => $ng,
+                'ng_rate_pct'    => $inspek > 0 ? round($ng / $inspek * 100, 2) : 0.0,
+            ];
+        })->take(20)->values()->toArray();
+
+        return [
+            'bulan_mulai'    => $bulanMulai ?? 'semua periode',
+            'bulan_akhir'    => $bulanAkhir ?? 'semua periode',
+            'catatan'        => 'Diurut dari NG terbanyak. Untuk "kualitas terburuk", bandingkan ng_rate_pct — tapi perhatikan total_inspeksi (rate tinggi di volume kecil belum tentu masalah besar).',
+            'ranking'        => $ranking,
+        ];
+    }
+
     /** Bandingkan qty aktual & SPH rata-rata produksi antara 2 periode bulanan. */
     public function bandingkanProduksi(string $periode1, string $periode2): array
     {
