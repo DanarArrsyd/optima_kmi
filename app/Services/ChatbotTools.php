@@ -702,6 +702,99 @@ class ChatbotTools
         ];
     }
 
+    /**
+     * Bahan Root Cause Analysis (RCA) untuk breakdown mesin/dies — DATA-GROUNDED.
+     * Fokus ke satu problem (yang paling sering, atau yang diminta), lalu balikin
+     * penyebab & tindakan yang BENAR-BENAR TERCATAT di lapangan (dengan frekuensi,
+     * tak dibatasi 2 seperti getTopProblem*) + contoh kejadian. TIDAK menyimpulkan
+     * akar sendiri — itu tugas LLM, dari fakta ini, dan wajib dilabel hipotesis.
+     */
+    public function getRootCause(string $target, ?string $kode = null, ?string $problem = null, ?string $bulanMulai = null, ?string $bulanAkhir = null): array
+    {
+        $target = strtolower(trim($target));
+        if (!in_array($target, ['mesin', 'dies'], true)) {
+            return ['error' => 'target harus "mesin" atau "dies".'];
+        }
+
+        [$from, $to, $error] = $this->monthSpanOptional($bulanMulai, $bulanAkhir);
+        if ($error) {
+            return ['error' => $error];
+        }
+
+        $isMesin      = $target === 'mesin';
+        $problemField = $isMesin ? 'problem_mesin' : 'problem_dies';
+        $fokusLabel   = $isMesin ? 'semua mesin' : 'semua dies';
+
+        if ($isMesin) {
+            $query = TransaksiBreakdownMesin::query();
+            if ($kode !== null) {
+                $mesin = $this->findMesinByKode($kode);
+                if (is_array($mesin)) {
+                    return $mesin;
+                }
+                $query->where('id_mesin', $mesin->id);
+                $fokusLabel = $mesin->nama_mesin;
+            }
+        } else {
+            $query = TransaksiBreakdownDies::query();
+            if ($kode !== null) {
+                $part = $this->findPartByNo($kode);
+                if (is_array($part)) {
+                    return $part;
+                }
+                $prosesIds = MasterPartProses::where('id_part', $part->id)->pluck('id');
+                $query->whereIn('id_part_proses', $prosesIds);
+                $fokusLabel = $part->part_name;
+            }
+        }
+
+        $records = $query
+            ->when($from && $to, fn ($q) => $q->whereBetween('tanggal_breakdown', [$from->toDateString(), $to->toDateString()]))
+            ->orderByDesc('tanggal_breakdown')
+            ->get([$problemField, 'penyebab_breakdown', 'tindakan_perbaikan', 'tanggal_breakdown']);
+
+        if ($records->isEmpty()) {
+            return ['error' => "Tidak ada data breakdown {$target}" . $this->filterLabel($kode, $target) . $this->periodeLabel($bulanMulai, $bulanAkhir) . "."];
+        }
+
+        // Pilih problem fokus: yang diminta (cocok sebagian) atau yang paling sering.
+        if ($problem !== null) {
+            $needle = strtolower(trim($problem));
+            $focus  = $records->filter(fn ($r) => str_contains(strtolower((string) $r->{$problemField}), $needle));
+            if ($focus->isEmpty()) {
+                return ['error' => "Problem \"{$problem}\" tak ditemukan di data breakdown {$target} untuk {$fokusLabel}."];
+            }
+        } else {
+            $topKey = $records
+                ->groupBy(fn ($r) => strtolower(trim($r->{$problemField})))
+                ->sortByDesc(fn ($g) => $g->count())
+                ->keys()
+                ->first();
+            $focus = $records->filter(fn ($r) => strtolower(trim($r->{$problemField})) === $topKey);
+        }
+
+        $problemText = trim($focus->first()->{$problemField});
+
+        return [
+            'target'                 => $target,
+            'fokus'                  => $fokusLabel,
+            'periode'                => ($bulanMulai && $bulanAkhir) ? "{$bulanMulai} s/d {$bulanAkhir}" : 'semua periode',
+            'problem_fokus'          => $problemText,
+            'total_kejadian_problem' => $focus->count(),
+            'total_kejadian_semua'   => $records->count(),
+            'pct_dari_semua'         => round($focus->count() / $records->count() * 100, 2),
+            // Penyebab & tindakan TERCATAT (top 8, dengan frekuensi) — basis RCA.
+            'penyebab_tercatat'      => $this->topValues($focus, 'penyebab_breakdown', 8),
+            'tindakan_tercatat'      => $this->topValues($focus, 'tindakan_perbaikan', 8),
+            'contoh_kejadian'        => $focus->take(5)->map(fn ($r) => [
+                'tanggal'  => $r->tanggal_breakdown->format('Y-m-d'),
+                'penyebab' => $r->penyebab_breakdown,
+                'tindakan' => $r->tindakan_perbaikan,
+            ])->values()->toArray(),
+            'catatan'                => 'penyebab_tercatat & tindakan_tercatat = data lapangan yang benar-benar tercatat, BUKAN analisa 5-Why otomatis. Susun RCA dari sini; akar yang tak tercatat sebut sebagai hipotesis, jangan seolah fakta.',
+        ];
+    }
+
     /** Introspeksi struktur DB untuk LLM: daftar tabel atau kolom real satu tabel. */
     public function describeSchema(?string $table = null): array
     {
