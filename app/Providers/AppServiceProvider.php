@@ -21,6 +21,7 @@ class AppServiceProvider extends ServiceProvider
         Capabilities\RekapNgCapability::class,
         Capabilities\CustomerQualityCapability::class,
         Capabilities\TrendCapability::class,
+        Capabilities\RootCauseCapability::class,
         Capabilities\ProductionTotalCapability::class,
         Capabilities\BandingkanProduksiCapability::class,
         Capabilities\OperatorProduksiCapability::class,
