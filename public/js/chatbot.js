@@ -170,6 +170,7 @@ function chatbotPage() {
 
             if (idx === -1) return false; // tak ada delta → fallback
             this.applySuggestions(suggestions);
+            this.renderCharts();
             return true;
         },
 
@@ -197,6 +198,7 @@ function chatbotPage() {
         pushTyped(fullText) {
             this.messages.push({ role: 'assistant', content: fullText, display: fullText, typing: false });
             this.$nextTick(() => this.scrollDown());
+            this.renderCharts();
         },
 
         async copyMessage(m) {
@@ -228,6 +230,18 @@ function chatbotPage() {
         // Micro-parser markdown → HTML aman. Escape dulu, lalu bangun tag whitelist.
         renderMarkdown(src) {
             if (src == null) return '';
+            src = String(src);
+
+            // Ekstrak blok ```chart {json}``` → spec, ganti sentinel (jadi <canvas>
+            // Chart.js setelah HTML dibangun). Angka diambil model dari hasil tool.
+            const charts = [];
+            src = src.replace(/```chart\s*\n?([\s\S]*?)```/g, (_, body) => {
+                try { charts.push(JSON.parse(body.trim())); return `\n@@CHART${charts.length - 1}@@\n`; }
+                catch (e) { return ''; } // JSON rusak → buang, jangan tampil mentah
+            });
+            // Blok chart belum ketutup (mid-stream) → sembunyikan sampai lengkap.
+            src = src.replace(/```chart[\s\S]*$/, '');
+
             // Buang LaTeX dulu (cuma kalau ada sinyalnya, biar teks normal tak kesenggol).
             if (/\\\[|\\\(|\\frac|\\text|\\times|\\div|\\mathbf/.test(src)) {
                 src = this.deLatex(src);
@@ -240,7 +254,7 @@ function chatbotPage() {
                 .replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;')
                 .replace(/'/g, '&#39;');
-            let text = esc(String(src));
+            let text = esc(src);
 
             const lines = text.split('\n');
             let html = '';
@@ -310,7 +324,61 @@ function chatbotPage() {
                 html += `<p>${fmt(para)}</p>`;
             }
 
+            // Ganti sentinel dengan wadah canvas (spec di data-spec, di-escape aman).
+            html = html.replace(/@@CHART(\d+)@@/g, (_, idx) => {
+                const spec = charts[idx];
+                if (!spec) return '';
+                return `<div class="cb-chart-box" style="position:relative;height:240px;margin:10px 0">`
+                     + `<canvas class="cb-chart" data-spec="${esc(JSON.stringify(spec))}"></canvas></div>`;
+            });
+
             return html;
+        },
+
+        // Inisialisasi Chart.js untuk canvas hasil renderMarkdown yang belum dirender.
+        // Dipanggil setelah bubble bot masuk DOM. Aman kalau Chart/CDN tak tersedia.
+        renderCharts() {
+            if (typeof Chart === 'undefined' || !this.$refs.scrollArea) return;
+            this.$nextTick(() => {
+                this.$refs.scrollArea.querySelectorAll('canvas.cb-chart:not([data-done])').forEach(cv => {
+                    cv.setAttribute('data-done', '1');
+                    let spec;
+                    try { spec = JSON.parse(cv.dataset.spec); } catch (e) { return; }
+                    try { this.buildChart(cv, spec); } catch (e) { /* jangan patahkan render teks */ }
+                });
+            });
+        },
+
+        // Bangun chart dari spec model: {type:'line|bar', title, labels[], data[], label}.
+        // Opsi Chart di-fix di sini; dari model hanya ambil type/labels/data/judul (aman).
+        buildChart(canvas, spec) {
+            const type = spec.type === 'bar' ? 'bar' : 'line';
+            new Chart(canvas.getContext('2d'), {
+                type,
+                data: {
+                    labels: (spec.labels || []).map(String),
+                    datasets: [{
+                        label: String(spec.label || ''),
+                        data: (spec.data || []).map(Number),
+                        borderColor: '#111827',
+                        backgroundColor: type === 'bar' ? '#374151' : 'rgba(17,24,39,.12)',
+                        borderWidth: 2,
+                        fill: type === 'line',
+                        tension: 0.25,
+                        pointRadius: 3,
+                    }],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        title: { display: !!spec.title, text: String(spec.title || '') },
+                        datalabels: { display: false },
+                    },
+                    scales: { y: { beginAtZero: true } },
+                },
+            });
         },
     };
 }
