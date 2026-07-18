@@ -17,11 +17,20 @@ return [
     |--------------------------------------------------------------------------
     | Keyword tool-subsetting
     |--------------------------------------------------------------------------
-    | Kalau true, schema yang dikirim ke LLM cuma tool yang relevan dengan
-    | pertanyaan (hemat token). Registry otomatis fallback ke SEMUA tool kalau
-    | tak ada keyword yang cocok, jadi aman. false = selalu kirim semua tool.
+    | Kalau true, schema yang dikirim ke LLM cuma tool yang keyword-nya cocok
+    | dengan pertanyaan (hemat ~1.500 token/request).
+    |
+    | DEFAULT OFF (2026-07-18). Match keyword berbasis substring frasa TERLALU
+    | rapuh: pertanyaan natural "mesin mana yang paling sering breakdown" tak
+    | cocok keyword "breakdown mesin" (beda urutan kata), jadi getRankingBreakdown*
+    | tak dikirim → LLM ngambang → "data belum ada" padahal datanya ADA. Hemat
+    | ~$0.0004/pertanyaan tak sepadan dengan chatbot yang salah jawab. Semua 19
+    | tool (~1.972 token) selalu dikirim = LLM selalu punya tool yang tepat.
+    |
+    | Aktifkan lagi HANYA kalau matching sudah diperbaiki (berbasis kata, bukan
+    | frasa) + keyword tiap tool diperluas.
     */
-    'tool_subsetting' => (bool) env('CHATBOT_TOOL_SUBSETTING', true),
+    'tool_subsetting' => (bool) env('CHATBOT_TOOL_SUBSETTING', false),
 
     /*
     |--------------------------------------------------------------------------
