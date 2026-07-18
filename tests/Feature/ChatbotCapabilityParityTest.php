@@ -35,6 +35,25 @@ class ChatbotCapabilityParityTest extends TestCase
         }
     }
 
+    /**
+     * Regresi 2026-07-18: keyword subsetting (default OFF sekarang) pernah bikin
+     * "mesin mana yang paling sering breakdown" TIDAK dapat getRankingBreakdownMesin
+     * (keyword frasa "breakdown mesin" tak cocok urutan kata) → bot jawab "data belum
+     * ada" padahal ADA. Dengan default OFF, tool ranking WAJIB selalu ikut.
+     */
+    public function test_natural_breakdown_query_still_offers_ranking_tool(): void
+    {
+        $this->assertFalse(config('chatbot.tool_subsetting'), 'Subsetting harus OFF by default.');
+
+        $names = array_column(
+            app(CapabilityRegistry::class)->schemaForQuery('mesin mana yang paling sering breakdown?'),
+            'name'
+        );
+
+        $this->assertContains('getRankingBreakdownMesin', $names);
+        $this->assertContains('getTopProblemMesin', $names);
+    }
+
     public function test_every_exposed_tool_dispatchable_via_registry(): void
     {
         $registry = app(CapabilityRegistry::class);
