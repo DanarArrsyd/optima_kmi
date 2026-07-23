@@ -77,7 +77,7 @@
                     <tr>
                         <th>Tanggal</th><th>PIC / Petugas</th>
                         <th class="text-end">Stroke Tercapai</th>
-                        <th>Catatan</th><th>Diinput Oleh</th>
+                        <th>Catatan</th><th>Checksheet</th><th>Diinput Oleh</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -87,11 +87,20 @@
                         <td style="white-space:nowrap">{{ $log->karyawan?->nama_karyawan ?? '—' }}</td>
                         <td class="text-end" style="white-space:nowrap">{{ number_format($log->stroke_at_preventive, 0, ',', '.') }}</td>
                         <td>{{ $log->catatan ?? '—' }}</td>
+                        <td style="white-space:nowrap">
+                            @if($log->checksheet_path)
+                                <a href="{{ route('maintenance.control-stroke-dies.preventive.checksheet', $log) }}" target="_blank" rel="noopener">
+                                    <i class="bi bi-file-earmark-pdf"></i> Lihat PDF
+                                </a>
+                            @else
+                                —
+                            @endif
+                        </td>
                         <td style="white-space:nowrap">{{ $log->createdBy?->name ?? '—' }}</td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="5" class="text-center text-muted py-4">
+                        <td colspan="6" class="text-center text-muted py-4">
                             <i class="bi bi-clock-history d-block mb-2" style="font-size:1.6rem;color:#9ca3af"></i>
                             Belum ada riwayat preventive untuk dies ini.
                         </td>
