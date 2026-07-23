@@ -70,9 +70,16 @@ class ControlStrokeDiesController extends Controller
             'tanggal_preventive' => 'required|date|before_or_equal:today',
             'id_karyawan'        => 'required|exists:master_karyawan,id',
             'catatan'            => 'nullable|string|max:1000',
+            'checksheet'         => 'required|file|mimes:pdf|max:2048',
         ]);
 
         $currentStroke = $this->svc->currentStrokeFor($partProses);
+
+        $checksheetPath = $request->file('checksheet')->storeAs(
+            'checksheet/dies-preventive',
+            $partProses->id . '_' . now()->format('YmdHis') . '.pdf',
+            'local'
+        );
 
         DiesPreventiveLog::create([
             'id_part_proses'       => $partProses->id,
@@ -80,6 +87,7 @@ class ControlStrokeDiesController extends Controller
             'id_karyawan'          => $validated['id_karyawan'],
             'stroke_at_preventive' => $currentStroke,
             'catatan'              => $validated['catatan'] ?? null,
+            'checksheet_path'      => $checksheetPath,
             'created_by'           => auth()->id(),
         ]);
 
