@@ -1,4 +1,5 @@
 <?php
+
 namespace Tests\Unit;
 
 use App\Services\ChatbotTools;
@@ -19,7 +20,7 @@ class DeepseekChatbotServiceTest extends TestCase
             ], 200),
         ]);
 
-        $reply = (new DeepseekChatbotService(new ChatbotTools()))->ask([], 'halo');
+        $reply = (new DeepseekChatbotService(new ChatbotTools))->ask([], 'halo');
 
         $this->assertSame('Halo dari DeepSeek.', $reply);
     }
@@ -29,7 +30,7 @@ class DeepseekChatbotServiceTest extends TestCase
         config(['services.deepseek.key' => null]);
         Http::fake();
 
-        $reply = (new DeepseekChatbotService(new ChatbotTools()))->ask([], 'halo');
+        $reply = (new DeepseekChatbotService(new ChatbotTools))->ask([], 'halo');
 
         $this->assertNull($reply);
         Http::assertNothingSent();
@@ -53,12 +54,13 @@ class DeepseekChatbotServiceTest extends TestCase
                     ]]],
                 ], 200);
             }
+
             return Http::response([
                 'choices' => [['message' => ['role' => 'assistant', 'content' => 'Rekap NG selesai.']]],
             ], 200);
         });
 
-        $reply = (new DeepseekChatbotService(new ChatbotTools()))->ask([], 'rekap NG bending');
+        $reply = (new DeepseekChatbotService(new ChatbotTools))->ask([], 'rekap NG bending');
 
         $this->assertSame('Rekap NG selesai.', $reply);
     }

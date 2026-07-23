@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services;
 
 class DeepseekChatbotService extends OpenAiCompatibleChatbotService

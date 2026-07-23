@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services;
 
 use App\Contracts\ChatbotProviderInterface;
@@ -31,8 +32,11 @@ abstract class OpenAiCompatibleChatbotService implements ChatbotProviderInterfac
     }
 
     abstract protected function endpoint(): string;
+
     abstract protected function apiKey(): ?string;
+
     abstract protected function model(): ?string;
+
     abstract protected function providerLabel(): string;
 
     public function ask(array $history, string $userMessage): ?string
@@ -74,14 +78,14 @@ abstract class OpenAiCompatibleChatbotService implements ChatbotProviderInterfac
                 $name = $toolCall['function']['name'] ?? null;
                 $capability = $name !== null ? $this->registry()->find($name) : null;
                 // Fallback method_exists jaga-jaga tool callable yang belum jadi capability.
-                if ($capability === null && ($name === null || !method_exists($this->tools, $name))) {
+                if ($capability === null && ($name === null || ! method_exists($this->tools, $name))) {
                     return null;
                 }
 
                 // Model kadang kirim arguments "null"/"" untuk tool tanpa argumen wajib —
                 // perlakukan sebagai array kosong, jangan gagalkan seluruh jawaban.
                 $args = json_decode($toolCall['function']['arguments'] ?? '[]', true) ?? [];
-                if (!is_array($args)) {
+                if (! is_array($args)) {
                     return null;
                 }
 
@@ -89,13 +93,14 @@ abstract class OpenAiCompatibleChatbotService implements ChatbotProviderInterfac
                     $result = $capability ? $this->registry()->run($capability, $args) : $this->tools->{$name}(...$args);
                 } catch (\Throwable $e) {
                     Log::warning('Chatbot tool dispatch failed', ['provider' => $this->providerLabel(), 'name' => $name, 'message' => $e->getMessage()]);
+
                     return null;
                 }
 
                 $messages[] = [
-                    'role'         => 'tool',
+                    'role' => 'tool',
                     'tool_call_id' => $toolCall['id'] ?? '',
-                    'content'      => json_encode($result),
+                    'content' => json_encode($result),
                 ];
             }
         }
@@ -106,7 +111,7 @@ abstract class OpenAiCompatibleChatbotService implements ChatbotProviderInterfac
     private function buildHistory(array $history): array
     {
         return array_map(fn ($m) => [
-            'role'    => ($m['role'] ?? 'user') === 'assistant' ? 'assistant' : 'user',
+            'role' => ($m['role'] ?? 'user') === 'assistant' ? 'assistant' : 'user',
             'content' => $m['content'] ?? '',
         ], $history);
     }
@@ -115,9 +120,9 @@ abstract class OpenAiCompatibleChatbotService implements ChatbotProviderInterfac
     {
         return $this->withRetry(
             fn () => Http::timeout(20)->withToken($this->apiKey())->post($this->endpoint(), [
-                'model'    => $this->model(),
+                'model' => $this->model(),
                 'messages' => $messages,
-                'tools'    => $toolSchema,
+                'tools' => $toolSchema,
             ]),
             $this->providerLabel()
         );
@@ -127,13 +132,14 @@ abstract class OpenAiCompatibleChatbotService implements ChatbotProviderInterfac
     private function relevanceContext(array $history, string $userMessage): string
     {
         $past = implode(' ', array_map(fn ($m) => (string) ($m['content'] ?? ''), $history));
-        return $userMessage . ' ' . $past;
+
+        return $userMessage.' '.$past;
     }
 
     private function toolSchema(string $context): array
     {
         return array_map(fn ($tool) => [
-            'type'     => 'function',
+            'type' => 'function',
             'function' => $tool,
         ], $this->registry()->schemaForQuery($context));
     }

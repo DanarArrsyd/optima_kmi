@@ -1,4 +1,5 @@
 <?php
+
 namespace Tests\Unit;
 
 use App\Models\MasterKaryawan;
@@ -14,9 +15,9 @@ class MesinPreventiveLogTest extends TestCase
 
     private function fixtures(): array
     {
-        $user     = User::factory()->create(['role' => 'admin']);
+        $user = User::factory()->create(['role' => 'admin']);
         $karyawan = MasterKaryawan::create(['nik' => uniqid(), 'nama_karyawan' => 'Teknisi A', 'departemen' => 'Produksi', 'is_aktif' => true]);
-        $mesin    = MasterMesin::create([
+        $mesin = MasterMesin::create([
             'id_mesin' => 'MPL-01', 'nama_mesin' => 'MPL Mesin', 'line' => '1',
             'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100,
         ]);
@@ -29,12 +30,12 @@ class MesinPreventiveLogTest extends TestCase
         $f = $this->fixtures();
 
         $log = MesinPreventiveLog::create([
-            'id_mesin'             => $f['mesin']->id,
-            'tanggal_preventive'   => '2026-07-01',
-            'id_karyawan'          => $f['karyawan']->id,
+            'id_mesin' => $f['mesin']->id,
+            'tanggal_preventive' => '2026-07-01',
+            'id_karyawan' => $f['karyawan']->id,
             'stroke_at_preventive' => 301500,
-            'catatan'              => 'Ganti bearing',
-            'created_by'           => $f['user']->id,
+            'catatan' => 'Ganti bearing',
+            'created_by' => $f['user']->id,
         ]);
 
         $this->assertSame('2026-07-01', $log->fresh()->tanggal_preventive->format('Y-m-d'));

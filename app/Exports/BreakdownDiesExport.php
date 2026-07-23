@@ -1,7 +1,9 @@
 <?php
+
 namespace App\Exports;
 
 use App\Models\TransaksiBreakdownDies;
+use Illuminate\Support\Enumerable;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 
@@ -9,8 +11,8 @@ class BreakdownDiesExport implements FromCollection, WithHeadings
 {
     public function __construct(
         private ?string $dateFrom = null,
-        private ?string $dateTo   = null,
-        private ?int $partId      = null,
+        private ?string $dateTo = null,
+        private ?int $partId = null,
     ) {}
 
     public function headings(): array
@@ -25,18 +27,24 @@ class BreakdownDiesExport implements FromCollection, WithHeadings
         ];
     }
 
-    public function collection(): \Illuminate\Support\Enumerable
+    public function collection(): Enumerable
     {
         $q = TransaksiBreakdownDies::with('partProses.part');
-        if ($this->dateFrom) $q->whereDate('tanggal_breakdown', '>=', $this->dateFrom);
-        if ($this->dateTo)   $q->whereDate('tanggal_breakdown', '<=', $this->dateTo);
-        if ($this->partId)   $q->whereHas('partProses', fn ($p) => $p->where('id_part', $this->partId));
+        if ($this->dateFrom) {
+            $q->whereDate('tanggal_breakdown', '>=', $this->dateFrom);
+        }
+        if ($this->dateTo) {
+            $q->whereDate('tanggal_breakdown', '<=', $this->dateTo);
+        }
+        if ($this->partId) {
+            $q->whereHas('partProses', fn ($p) => $p->where('id_part', $this->partId));
+        }
 
         return $q->orderBy('tanggal_breakdown')->orderBy('id')->get()->map(fn ($b) => [
             $b->no_lkd,
-            $b->partProses?->part?->part_no   ?? '',
+            $b->partProses?->part?->part_no ?? '',
             $b->partProses?->part?->part_name ?? '',
-            $b->partProses?->nama_proses       ?? '',
+            $b->partProses?->nama_proses ?? '',
             optional($b->tanggal_breakdown)->format('Y-m-d'),
             substr((string) $b->jam_breakdown, 0, 5),
             optional($b->tanggal_mulai_perbaikan)->format('Y-m-d'),

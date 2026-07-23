@@ -1,7 +1,9 @@
 <?php
+
 namespace App\Exports;
 
 use App\Models\MasterPartProses;
+use Illuminate\Support\Enumerable;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 
@@ -20,7 +22,7 @@ class PartExport implements FromCollection, WithHeadings
         ];
     }
 
-    public function collection(): \Illuminate\Support\Enumerable
+    public function collection(): Enumerable
     {
         $q = MasterPartProses::with('part')
             ->join('master_part', 'master_part_proses.id_part', '=', 'master_part.id')
@@ -34,7 +36,7 @@ class PartExport implements FromCollection, WithHeadings
         return $q->orderBy('master_part.part_name')->orderBy('master_part_proses.id_proses')
             ->get()->map(fn ($pr) => [
                 $pr->part?->customer ?? '',
-                $pr->part?->part_no  ?? '',
+                $pr->part?->part_no ?? '',
                 $pr->part?->part_name ?? '',
                 optional($pr->part?->tanggal_instalasi)->format('Y-m-d'),
                 $pr->id_proses,

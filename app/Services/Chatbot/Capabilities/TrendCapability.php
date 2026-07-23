@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services\Chatbot\Capabilities;
 
 /** getTrend — deret bulanan sebuah metrik untuk analisa tren (naik/turun). */

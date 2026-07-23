@@ -1,19 +1,20 @@
 <?php
+
 namespace App\Http\Controllers\Maintenance;
 
+use App\Exports\BreakdownDiesExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreBreakdownDiesRequest;
 use App\Http\Requests\UpdateBreakdownDiesRequest;
-use App\Exports\BreakdownDiesExport;
 use App\Imports\BreakdownDiesImport;
 use App\Models\MasterKaryawan;
 use App\Models\MasterPart;
 use App\Models\TransaksiBreakdownDies;
 use App\Services\BreakdownDiesService;
 use Illuminate\Http\Request;
-use Maatwebsite\Excel\Facades\Excel;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Facades\Excel;
 
 class BreakdownDiesController extends Controller
 {
@@ -35,13 +36,15 @@ class BreakdownDiesController extends Controller
         Excel::import($import, $request->file('file'));
 
         $msg = "{$import->imported} breakdown berhasil diimport"
-             . ($import->skipped ? ", {$import->skipped} baris dilewati." : ".");
+             .($import->skipped ? ", {$import->skipped} baris dilewati." : '.');
+
         return back()->with('import_success', $msg)->with('import_errors', $import->errors);
     }
 
     public function importTemplate()
     {
-        $export = new class implements FromArray, WithHeadings {
+        $export = new class implements FromArray, WithHeadings
+        {
             public function headings(): array
             {
                 return [
@@ -52,6 +55,7 @@ class BreakdownDiesController extends Controller
                     'Problem', 'Penyebab', 'Tindakan', 'PIC',
                 ];
             }
+
             public function array(): array
             {
                 return [
@@ -59,14 +63,15 @@ class BreakdownDiesController extends Controller
                 ];
             }
         };
+
         return Excel::download($export, 'template_breakdown_dies.xlsx');
     }
 
     public function index(Request $request)
     {
         $dateFrom = $request->input('date_from', date('Y-m-01'));
-        $dateTo   = $request->input('date_to',   date('Y-m-d'));
-        $partId   = (int) $request->input('part_id', 0);
+        $dateTo = $request->input('date_to', date('Y-m-d'));
+        $partId = (int) $request->input('part_id', 0);
 
         $breakdowns = TransaksiBreakdownDies::with('partProses.part')
             ->whereBetween('tanggal_breakdown', [$dateFrom, $dateTo])
@@ -75,13 +80,13 @@ class BreakdownDiesController extends Controller
             ->paginate(50)->withQueryString();
 
         return view('maintenance.breakdown-dies.index', [
-            'breakdowns'      => $breakdowns,
-            'partList'        => MasterPart::with('proses')->orderBy('part_no')->get(),
-            'picMaintenance'  => MasterKaryawan::where('departemen', 'Maintenance')->aktif()->orderBy('nama_karyawan')->get(),
-            'dateFrom'        => $dateFrom,
-            'dateTo'          => $dateTo,
-            'partId'          => $partId,
-            'nextNomor'       => $this->svc->nextNomorUrut(),
+            'breakdowns' => $breakdowns,
+            'partList' => MasterPart::with('proses')->orderBy('part_no')->get(),
+            'picMaintenance' => MasterKaryawan::where('departemen', 'Maintenance')->aktif()->orderBy('nama_karyawan')->get(),
+            'dateFrom' => $dateFrom,
+            'dateTo' => $dateTo,
+            'partId' => $partId,
+            'nextNomor' => $this->svc->nextNomorUrut(),
         ]);
     }
 
@@ -101,18 +106,18 @@ class BreakdownDiesController extends Controller
 
         $derived = $this->svc->computeDerived($data);
         TransaksiBreakdownDies::create([
-            'no_lkd'                    => $noLkd,
-            'id_part_proses'            => $data['id_part_proses'],
-            'tanggal_breakdown'         => $data['tanggal_breakdown'],
-            'jam_breakdown'             => $data['jam_breakdown'],
-            'tanggal_mulai_perbaikan'   => $data['tanggal_mulai_perbaikan'],
-            'jam_mulai_perbaikan'       => $data['jam_mulai_perbaikan'],
+            'no_lkd' => $noLkd,
+            'id_part_proses' => $data['id_part_proses'],
+            'tanggal_breakdown' => $data['tanggal_breakdown'],
+            'jam_breakdown' => $data['jam_breakdown'],
+            'tanggal_mulai_perbaikan' => $data['tanggal_mulai_perbaikan'],
+            'jam_mulai_perbaikan' => $data['jam_mulai_perbaikan'],
             'tanggal_selesai_perbaikan' => $data['tanggal_selesai_perbaikan'],
-            'jam_selesai_perbaikan'     => $data['jam_selesai_perbaikan'],
-            'problem_dies'              => $data['problem_dies'],
-            'penyebab_breakdown'        => $data['penyebab_breakdown'],
-            'tindakan_perbaikan'        => $data['tindakan_perbaikan'],
-            'pic_maintenance'           => $data['pic_maintenance'],
+            'jam_selesai_perbaikan' => $data['jam_selesai_perbaikan'],
+            'problem_dies' => $data['problem_dies'],
+            'penyebab_breakdown' => $data['penyebab_breakdown'],
+            'tindakan_perbaikan' => $data['tindakan_perbaikan'],
+            'pic_maintenance' => $data['pic_maintenance'],
             ...$derived,
         ]);
 
@@ -122,15 +127,15 @@ class BreakdownDiesController extends Controller
     public function edit(TransaksiBreakdownDies $breakdownDy)
     {
         return view('maintenance.breakdown-dies.edit', [
-            'b'              => $breakdownDy,
-            'partList'       => MasterPart::with('proses')->orderBy('part_no')->get(),
+            'b' => $breakdownDy,
+            'partList' => MasterPart::with('proses')->orderBy('part_no')->get(),
             'picMaintenance' => MasterKaryawan::where('departemen', 'Maintenance')->aktif()->orderBy('nama_karyawan')->get(),
         ]);
     }
 
     public function update(UpdateBreakdownDiesRequest $request, TransaksiBreakdownDies $breakdownDy)
     {
-        $data  = $request->validated();
+        $data = $request->validated();
         $noLkd = $this->svc->generateNoLkd((int) $data['nomor_urut'], $data['tanggal_breakdown']);
 
         $dupe = TransaksiBreakdownDies::withTrashed()->where('no_lkd', $noLkd)->where('id', '!=', $breakdownDy->id)->exists();
@@ -140,18 +145,18 @@ class BreakdownDiesController extends Controller
 
         $derived = $this->svc->computeDerived($data);
         $breakdownDy->update([
-            'no_lkd'                    => $noLkd,
-            'id_part_proses'            => $data['id_part_proses'],
-            'tanggal_breakdown'         => $data['tanggal_breakdown'],
-            'jam_breakdown'             => $data['jam_breakdown'],
-            'tanggal_mulai_perbaikan'   => $data['tanggal_mulai_perbaikan'],
-            'jam_mulai_perbaikan'       => $data['jam_mulai_perbaikan'],
+            'no_lkd' => $noLkd,
+            'id_part_proses' => $data['id_part_proses'],
+            'tanggal_breakdown' => $data['tanggal_breakdown'],
+            'jam_breakdown' => $data['jam_breakdown'],
+            'tanggal_mulai_perbaikan' => $data['tanggal_mulai_perbaikan'],
+            'jam_mulai_perbaikan' => $data['jam_mulai_perbaikan'],
             'tanggal_selesai_perbaikan' => $data['tanggal_selesai_perbaikan'],
-            'jam_selesai_perbaikan'     => $data['jam_selesai_perbaikan'],
-            'problem_dies'              => $data['problem_dies'],
-            'penyebab_breakdown'        => $data['penyebab_breakdown'],
-            'tindakan_perbaikan'        => $data['tindakan_perbaikan'],
-            'pic_maintenance'           => $data['pic_maintenance'],
+            'jam_selesai_perbaikan' => $data['jam_selesai_perbaikan'],
+            'problem_dies' => $data['problem_dies'],
+            'penyebab_breakdown' => $data['penyebab_breakdown'],
+            'tindakan_perbaikan' => $data['tindakan_perbaikan'],
+            'pic_maintenance' => $data['pic_maintenance'],
             ...$derived,
         ]);
 
@@ -161,6 +166,7 @@ class BreakdownDiesController extends Controller
     public function destroy(TransaksiBreakdownDies $breakdownDy)
     {
         $breakdownDy->delete();
+
         return redirect()->route('maintenance.breakdown-dies.index')->with('success', 'Breakdown dihapus.');
     }
 }

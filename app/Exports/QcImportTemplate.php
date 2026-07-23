@@ -1,34 +1,34 @@
 <?php
+
 namespace App\Exports;
 
+use App\Models\MasterJenisNg;
 use App\Models\MasterKaryawan;
 use App\Models\MasterPart;
-use App\Models\MasterPartProses;
 use App\Models\MasterShift;
-use App\Models\MasterJenisNg;
 use Maatwebsite\Excel\Concerns\FromArray;
-use Maatwebsite\Excel\Concerns\WithHeadings;
-use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\WithColumnWidths;
+use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMultipleSheets;
-use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
-use PhpOffice\PhpSpreadsheet\Style\Fill;
+use Maatwebsite\Excel\Concerns\WithStyles;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 class QcImportTemplate implements WithMultipleSheets
 {
     public function sheets(): array
     {
         return [
-            'Data'      => new QcTemplateDataSheet(),
-            'Referensi' => new QcTemplateReferensiSheet(),
+            'Data' => new QcTemplateDataSheet,
+            'Referensi' => new QcTemplateReferensiSheet,
         ];
     }
 }
 
 /* ── Sheet 1: Data template ───────────────────────────────────────── */
-class QcTemplateDataSheet implements FromArray, WithHeadings, WithStyles, WithColumnWidths
+class QcTemplateDataSheet implements FromArray, WithColumnWidths, WithHeadings, WithStyles
 {
     public function headings(): array
     {
@@ -124,7 +124,7 @@ class QcTemplateDataSheet implements FromArray, WithHeadings, WithStyles, WithCo
 }
 
 /* ── Sheet 2: Referensi ───────────────────────────────────────────── */
-class QcTemplateReferensiSheet implements FromArray, WithStyles, WithColumnWidths
+class QcTemplateReferensiSheet implements FromArray, WithColumnWidths, WithStyles
 {
     public function array(): array
     {
@@ -176,6 +176,7 @@ class QcTemplateReferensiSheet implements FromArray, WithStyles, WithColumnWidth
             'font' => ['bold' => true, 'size' => 12, 'color' => ['argb' => 'FF1F2937']],
         ]);
         $sheet->getStyle('A1:E200')->applyFromArray(['font' => ['size' => 10]]);
+
         return [];
     }
 

@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services\Chatbot\Capabilities;
 
 /** getTopProblemDies — ranking problem dies paling sering (Pareto) per teks problem. */
@@ -21,7 +22,7 @@ class TopProblemDiesCapability extends AbstractCapability
             'properties' => [
                 'bulanMulai' => ['type' => 'string', 'description' => 'Opsional YYYY-MM, kosong=all-time'],
                 'bulanAkhir' => ['type' => 'string', 'description' => 'Opsional YYYY-MM inklusif, kosong=all-time'],
-                'partNo'     => ['type' => 'string', 'description' => 'Opsional no part/dies, kosong=semua'],
+                'partNo' => ['type' => 'string', 'description' => 'Opsional no part/dies, kosong=semua'],
             ],
             'required' => [],
         ];

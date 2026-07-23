@@ -1,4 +1,5 @@
 <?php
+
 namespace Tests\Feature\Input;
 
 use App\Imports\BreakdownMesinImport;
@@ -52,38 +53,38 @@ class ImportDateRangeTest extends TestCase
     {
         return [
             'tanggal_produksi' => $tanggal,
-            'nama_shift'       => 'Shift 1',
-            'nama_operator'    => 'Operator X',
-            'id_mesin'         => 'X-01',
-            'part_no'          => 'X-P1',
-            'id_proses'        => '1',
-            'jam_start'        => '08:00',
-            'jam_finish'       => '16:00',
-            'qty_aktual'       => 100,
-            'qty_ng'           => 0,
+            'nama_shift' => 'Shift 1',
+            'nama_operator' => 'Operator X',
+            'id_mesin' => 'X-01',
+            'part_no' => 'X-P1',
+            'id_proses' => '1',
+            'jam_start' => '08:00',
+            'jam_finish' => '16:00',
+            'qty_aktual' => 100,
+            'qty_ng' => 0,
         ];
     }
 
     private function qcRow(string $tanggal): array
     {
         return [
-            'tgl_pengecekan'    => $tanggal,
+            'tgl_pengecekan' => $tanggal,
             'tgl_produksi_part' => '2026-06-20',
-            'nama_shift'        => 'Shift 1',
-            'nama_inspector'    => 'Inspector X',
-            'part_no'           => 'X-P1',
-            'id_proses'         => '1',
-            'jam_start'         => '08:00',
-            'jam_finish'        => '16:00',
-            'qty_ok'            => 100,
-            'qty_ng'            => 0,
+            'nama_shift' => 'Shift 1',
+            'nama_inspector' => 'Inspector X',
+            'part_no' => 'X-P1',
+            'id_proses' => '1',
+            'jam_start' => '08:00',
+            'jam_finish' => '16:00',
+            'qty_ok' => 100,
+            'qty_ng' => 0,
         ];
     }
 
     /** Baris kontrol: tanggal wajar harus benar-benar masuk, membuktikan seed master cukup. */
     public function test_produksi_import_accepts_a_sane_date(): void
     {
-        $import = new ProduksiImport();
+        $import = new ProduksiImport;
         $import->collection(new Collection([$this->produksiRow('2026-06-21')]));
 
         $this->assertSame([], $import->errors);
@@ -92,7 +93,7 @@ class ImportDateRangeTest extends TestCase
 
     public function test_produksi_import_rejects_year_typo(): void
     {
-        $import = new ProduksiImport();
+        $import = new ProduksiImport;
         $import->collection(new Collection([$this->produksiRow('0026-06-21')]));
 
         $this->assertDatabaseCount('transaksi_produksi', 0);
@@ -102,7 +103,7 @@ class ImportDateRangeTest extends TestCase
 
     public function test_qc_import_accepts_a_sane_date(): void
     {
-        $import = new QcImport();
+        $import = new QcImport;
         $import->collection(new Collection([$this->qcRow('2026-06-21')]));
 
         $this->assertSame([], $import->errors);
@@ -111,7 +112,7 @@ class ImportDateRangeTest extends TestCase
 
     public function test_qc_import_rejects_year_typo(): void
     {
-        $import = new QcImport();
+        $import = new QcImport;
         $import->collection(new Collection([$this->qcRow('0026-06-21')]));
 
         $this->assertDatabaseCount('transaksi_qc', 0);
@@ -121,19 +122,19 @@ class ImportDateRangeTest extends TestCase
     private function breakdownRow(string $tanggal): array
     {
         return [
-            'nomor_urut'                => 1,
-            'id_mesin'                  => 'X-01',
-            'tanggal_breakdown'         => $tanggal,
-            'jam_breakdown'             => '08:00',
-            'tanggal_mulai_perbaikan'   => $tanggal,
-            'jam_mulai_perbaikan'       => '09:00',
+            'nomor_urut' => 1,
+            'id_mesin' => 'X-01',
+            'tanggal_breakdown' => $tanggal,
+            'jam_breakdown' => '08:00',
+            'tanggal_mulai_perbaikan' => $tanggal,
+            'jam_mulai_perbaikan' => '09:00',
             'tanggal_selesai_perbaikan' => $tanggal,
-            'jam_selesai_perbaikan'     => '10:00',
-            'problem_mesin'             => 'Bearing aus',
-            'penyebab_breakdown'        => 'Umur pakai',
-            'tindakan_perbaikan'        => 'Ganti bearing',
-            'pic_maintenance'           => 'Teknisi X',
-            'status_breakdown'          => 'Ringan',
+            'jam_selesai_perbaikan' => '10:00',
+            'problem_mesin' => 'Bearing aus',
+            'penyebab_breakdown' => 'Umur pakai',
+            'tindakan_perbaikan' => 'Ganti bearing',
+            'pic_maintenance' => 'Teknisi X',
+            'status_breakdown' => 'Ringan',
         ];
     }
 

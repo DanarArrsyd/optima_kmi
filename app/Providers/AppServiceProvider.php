@@ -2,10 +2,10 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\ServiceProvider;
-use Illuminate\Pagination\Paginator;
-use App\Services\Chatbot\CapabilityRegistry;
 use App\Services\Chatbot\Capabilities;
+use App\Services\Chatbot\CapabilityRegistry;
+use Illuminate\Pagination\Paginator;
+use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {

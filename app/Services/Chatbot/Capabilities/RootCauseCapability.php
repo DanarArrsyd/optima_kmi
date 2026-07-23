@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services\Chatbot\Capabilities;
 
 /** getRootCause — bahan RCA (penyebab & tindakan tercatat) untuk breakdown mesin/dies. */
@@ -19,9 +20,9 @@ class RootCauseCapability extends AbstractCapability
         return [
             'type' => 'object',
             'properties' => [
-                'target'     => ['type' => 'string', 'enum' => ['mesin', 'dies'], 'description' => 'Breakdown mesin atau dies.'],
-                'kode'       => ['type' => 'string', 'description' => 'Opsional kode/nama mesin (mis. A4, AMADA 80T) atau part/dies. Kosong=semua.'],
-                'problem'    => ['type' => 'string', 'description' => 'Opsional teks problem yang mau dianalisa (boleh sebagian). Kosong=problem paling sering.'],
+                'target' => ['type' => 'string', 'enum' => ['mesin', 'dies'], 'description' => 'Breakdown mesin atau dies.'],
+                'kode' => ['type' => 'string', 'description' => 'Opsional kode/nama mesin (mis. A4, AMADA 80T) atau part/dies. Kosong=semua.'],
+                'problem' => ['type' => 'string', 'description' => 'Opsional teks problem yang mau dianalisa (boleh sebagian). Kosong=problem paling sering.'],
                 'bulanMulai' => ['type' => 'string', 'description' => 'Opsional YYYY-MM, kosong=all-time'],
                 'bulanAkhir' => ['type' => 'string', 'description' => 'Opsional YYYY-MM inklusif'],
             ],

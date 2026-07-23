@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Maintenance;
 
 use App\Http\Controllers\Controller;
@@ -13,20 +14,21 @@ class MttrDiesController extends Controller
 
     public function index()
     {
-        return view('maintenance.mttr-dies', ['partList' => MasterPart::orderBy('part_no')->get(), 'customers' => MasterPart::whereNotNull('customer')->where('customer','!=','')->distinct()->orderBy('customer')->pluck('customer')]);
+        return view('maintenance.mttr-dies', ['partList' => MasterPart::orderBy('part_no')->get(), 'customers' => MasterPart::whereNotNull('customer')->where('customer', '!=', '')->distinct()->orderBy('customer')->pluck('customer')]);
     }
 
     public function data(Request $request)
     {
-        $from   = Carbon::parse($request->input('date_from', date('Y-01-01')));
-        $to     = Carbon::parse($request->input('date_to', date('Y-m-d')));
+        $from = Carbon::parse($request->input('date_from', date('Y-01-01')));
+        $to = Carbon::parse($request->input('date_to', date('Y-m-d')));
         $partId = (int) $request->input('part_id', 0) ?: null;
         $customer = trim((string) $request->input('customer', '')) ?: null;
-        $rows   = $this->svc->compute($from, $to, $partId, $customer);
+        $rows = $this->svc->compute($from, $to, $partId, $customer);
 
         $withData = collect($rows)->where('count', '>', 0);
+
         return response()->json([
-            'rows'    => $rows,
+            'rows' => $rows,
             'summary' => [
                 'avg_mttr' => round((float) $withData->avg('mttr_jam'), 2),
                 'total_bd' => (int) collect($rows)->sum('count'),

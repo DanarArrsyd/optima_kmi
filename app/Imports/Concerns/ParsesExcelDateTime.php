@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Imports\Concerns;
 
 use App\Support\SaneDate;
@@ -30,6 +31,7 @@ trait ParsesExcelDateTime
             if (is_numeric($raw)) {
                 return ExcelDate::excelToDateTimeObject((float) $raw)->format('Y-m-d');
             }
+
             return Carbon::parse(trim((string) $raw))->toDateString();
         } catch (\Throwable $e) {
             return null;
@@ -46,6 +48,7 @@ trait ParsesExcelDateTime
             if (is_numeric($raw)) {
                 return ExcelDate::excelToDateTimeObject((float) $raw)->format('H:i');
             }
+
             return Carbon::parse(trim((string) $raw))->format('H:i');
         } catch (\Throwable $e) {
             return null;

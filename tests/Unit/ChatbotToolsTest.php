@@ -1,4 +1,5 @@
 <?php
+
 namespace Tests\Unit;
 
 use App\Models\MasterKaryawan;
@@ -42,7 +43,7 @@ class ChatbotToolsTest extends TestCase
             'repair_time' => 2.0, 'total_downtime' => 3.0,
         ]);
 
-        $result = (new ChatbotTools())->getMtbfMttrDies('BT-091A-3', '2026-07');
+        $result = (new ChatbotTools)->getMtbfMttrDies('BT-091A-3', '2026-07');
 
         $this->assertArrayNotHasKey('error', $result);
         $this->assertSame(1, $result[0]['count']);
@@ -51,7 +52,7 @@ class ChatbotToolsTest extends TestCase
 
     public function test_get_mtbf_mttr_dies_returns_error_for_unknown_part(): void
     {
-        $result = (new ChatbotTools())->getMtbfMttrDies('NOT-EXIST', '2026-07');
+        $result = (new ChatbotTools)->getMtbfMttrDies('NOT-EXIST', '2026-07');
         $this->assertArrayHasKey('error', $result);
     }
 
@@ -72,7 +73,7 @@ class ChatbotToolsTest extends TestCase
             'repair_time' => 1.0, 'total_downtime' => 1.5,
         ]);
 
-        $result = (new ChatbotTools())->getMtbfMttrMesin('M-01', '2026-07');
+        $result = (new ChatbotTools)->getMtbfMttrMesin('M-01', '2026-07');
 
         $this->assertArrayNotHasKey('error', $result);
         $this->assertSame(1, $result['count']);
@@ -98,7 +99,7 @@ class ChatbotToolsTest extends TestCase
             'created_by' => $user->id,
         ]);
 
-        $result = (new ChatbotTools())->getRekapNg('BENDING', '2026-07');
+        $result = (new ChatbotTools)->getRekapNg('BENDING', '2026-07');
 
         $this->assertArrayNotHasKey('error', $result);
         $this->assertSame(10, $result['total_ng']);
@@ -134,7 +135,7 @@ class ChatbotToolsTest extends TestCase
             'created_by' => $user->id,
         ]);
 
-        $result = (new ChatbotTools())->bandingkanProduksi('2026-06', '2026-07');
+        $result = (new ChatbotTools)->bandingkanProduksi('2026-06', '2026-07');
 
         $this->assertSame(3000, $result['periode1']['total_qty_aktual']);
         $this->assertSame(4000, $result['periode2']['total_qty_aktual']);
@@ -173,7 +174,7 @@ class ChatbotToolsTest extends TestCase
             'repair_time' => 1.0, 'total_downtime' => 1.0,
         ]);
 
-        $result = (new ChatbotTools())->getTotalBreakdownDies('2026-06', '2026-07');
+        $result = (new ChatbotTools)->getTotalBreakdownDies('2026-06', '2026-07');
 
         $this->assertArrayNotHasKey('error', $result);
         $this->assertSame(2, $result['total_breakdown']);
@@ -200,8 +201,8 @@ class ChatbotToolsTest extends TestCase
         }
 
         // getTotalBreakdownDies all-time HARUS sama dengan total_kejadian getTopProblemDies (count mentah).
-        $total = (new ChatbotTools())->getTotalBreakdownDies();
-        $top   = (new ChatbotTools())->getTopProblemDies();
+        $total = (new ChatbotTools)->getTotalBreakdownDies();
+        $top = (new ChatbotTools)->getTopProblemDies();
 
         $this->assertSame(3, $total['total_breakdown']);
         $this->assertSame($top['total_kejadian'], $total['total_breakdown'], 'Total breakdown dies harus konsisten antar tool.');
@@ -209,13 +210,13 @@ class ChatbotToolsTest extends TestCase
 
     public function test_get_total_breakdown_dies_returns_error_for_invalid_month_format(): void
     {
-        $result = (new ChatbotTools())->getTotalBreakdownDies('bulan-salah', '2026-07');
+        $result = (new ChatbotTools)->getTotalBreakdownDies('bulan-salah', '2026-07');
         $this->assertArrayHasKey('error', $result);
     }
 
     public function test_get_total_breakdown_dies_returns_error_when_start_after_end(): void
     {
-        $result = (new ChatbotTools())->getTotalBreakdownDies('2026-07', '2026-06');
+        $result = (new ChatbotTools)->getTotalBreakdownDies('2026-07', '2026-06');
         $this->assertArrayHasKey('error', $result);
     }
 
@@ -249,7 +250,7 @@ class ChatbotToolsTest extends TestCase
             'repair_time' => 1.0, 'total_downtime' => 1.0,
         ]);
 
-        $result = (new ChatbotTools())->getTotalBreakdownMesin('2026-06', '2026-07');
+        $result = (new ChatbotTools)->getTotalBreakdownMesin('2026-06', '2026-07');
 
         $this->assertArrayNotHasKey('error', $result);
         $this->assertSame(2, $result['total_breakdown']);
@@ -288,7 +289,7 @@ class ChatbotToolsTest extends TestCase
             'repair_time' => 1.0, 'total_downtime' => 1.0,
         ]);
 
-        $result = (new ChatbotTools())->getProblemDies('2026-07', '2026-07', 'PD-01');
+        $result = (new ChatbotTools)->getProblemDies('2026-07', '2026-07', 'PD-01');
 
         $this->assertArrayNotHasKey('error', $result);
         $this->assertSame(1, $result['total_record']);
@@ -316,7 +317,7 @@ class ChatbotToolsTest extends TestCase
             'repair_time' => 1.0, 'total_downtime' => 1.0,
         ]);
 
-        $result = (new ChatbotTools())->getProblemDies('2026-07', '2026-07');
+        $result = (new ChatbotTools)->getProblemDies('2026-07', '2026-07');
 
         $this->assertArrayNotHasKey('error', $result);
         $this->assertSame(1, $result['total_record']);
@@ -324,13 +325,13 @@ class ChatbotToolsTest extends TestCase
 
     public function test_get_problem_dies_returns_error_for_unknown_part(): void
     {
-        $result = (new ChatbotTools())->getProblemDies('2026-07', '2026-07', 'NOT-EXIST');
+        $result = (new ChatbotTools)->getProblemDies('2026-07', '2026-07', 'NOT-EXIST');
         $this->assertArrayHasKey('error', $result);
     }
 
     public function test_get_problem_dies_returns_error_when_no_records(): void
     {
-        $result = (new ChatbotTools())->getProblemDies('2020-01', '2020-01');
+        $result = (new ChatbotTools)->getProblemDies('2020-01', '2020-01');
         $this->assertArrayHasKey('error', $result);
     }
 
@@ -353,7 +354,7 @@ class ChatbotToolsTest extends TestCase
             ]);
         }
 
-        $result = (new ChatbotTools())->getProblemDies('2026-07', '2026-07');
+        $result = (new ChatbotTools)->getProblemDies('2026-07', '2026-07');
 
         $this->assertArrayNotHasKey('error', $result);
         $this->assertSame(151, $result['total_record']);
@@ -387,7 +388,7 @@ class ChatbotToolsTest extends TestCase
             'repair_time' => 1.0, 'total_downtime' => 1.0,
         ]);
 
-        $result = (new ChatbotTools())->getProblemDies();
+        $result = (new ChatbotTools)->getProblemDies();
 
         $this->assertArrayNotHasKey('error', $result);
         $this->assertSame(2, $result['total_record']);
@@ -397,7 +398,7 @@ class ChatbotToolsTest extends TestCase
 
     public function test_get_problem_dies_with_only_one_period_arg_returns_error(): void
     {
-        $result = (new ChatbotTools())->getProblemDies('2026-07', null);
+        $result = (new ChatbotTools)->getProblemDies('2026-07', null);
         $this->assertArrayHasKey('error', $result);
         $this->assertSame('Kalau isi salah satu periode, isi juga yang satunya.', $result['error']);
     }
@@ -419,7 +420,7 @@ class ChatbotToolsTest extends TestCase
             'repair_time' => 1.0, 'total_downtime' => 1.0,
         ]);
 
-        $result = (new ChatbotTools())->getProblemDies('2026-07', '2026-07');
+        $result = (new ChatbotTools)->getProblemDies('2026-07', '2026-07');
 
         $this->assertArrayNotHasKey('error', $result);
         $this->assertSame('2026-07', $result['bulan_mulai']);
@@ -456,7 +457,7 @@ class ChatbotToolsTest extends TestCase
             'repair_time' => 1.0, 'total_downtime' => 1.0,
         ]);
 
-        $result = (new ChatbotTools())->getProblemMesin('2026-07', '2026-07', 'PM-01');
+        $result = (new ChatbotTools)->getProblemMesin('2026-07', '2026-07', 'PM-01');
 
         $this->assertArrayNotHasKey('error', $result);
         $this->assertSame(1, $result['total_record']);
@@ -468,13 +469,13 @@ class ChatbotToolsTest extends TestCase
 
     public function test_get_problem_mesin_returns_error_for_unknown_mesin(): void
     {
-        $result = (new ChatbotTools())->getProblemMesin('2026-07', '2026-07', 'NOT-EXIST');
+        $result = (new ChatbotTools)->getProblemMesin('2026-07', '2026-07', 'NOT-EXIST');
         $this->assertArrayHasKey('error', $result);
     }
 
     public function test_get_problem_mesin_returns_error_when_no_records(): void
     {
-        $result = (new ChatbotTools())->getProblemMesin('2020-01', '2020-01');
+        $result = (new ChatbotTools)->getProblemMesin('2020-01', '2020-01');
         $this->assertArrayHasKey('error', $result);
     }
 
@@ -494,7 +495,7 @@ class ChatbotToolsTest extends TestCase
             'repair_time' => 1.0, 'total_downtime' => 1.0,
         ]);
 
-        $result = (new ChatbotTools())->getProblemMesin();
+        $result = (new ChatbotTools)->getProblemMesin();
 
         $this->assertArrayNotHasKey('error', $result);
         $this->assertSame(1, $result['total_record']);
@@ -503,7 +504,7 @@ class ChatbotToolsTest extends TestCase
 
     public function test_get_problem_mesin_with_only_one_period_arg_returns_error(): void
     {
-        $result = (new ChatbotTools())->getProblemMesin(null, '2026-07');
+        $result = (new ChatbotTools)->getProblemMesin(null, '2026-07');
         $this->assertArrayHasKey('error', $result);
         $this->assertSame('Kalau isi salah satu periode, isi juga yang satunya.', $result['error']);
     }
@@ -540,7 +541,7 @@ class ChatbotToolsTest extends TestCase
             ]);
         }
 
-        $result = (new ChatbotTools())->getRankingBreakdownMesin('2026-07', '2026-07');
+        $result = (new ChatbotTools)->getRankingBreakdownMesin('2026-07', '2026-07');
 
         $this->assertArrayNotHasKey('error', $result);
         $this->assertSame('Press High', $result['ranking'][0]['mesin']);
@@ -556,7 +557,7 @@ class ChatbotToolsTest extends TestCase
             'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100,
         ]);
 
-        $result = (new ChatbotTools())->getRankingBreakdownMesin('2026-07', '2026-07');
+        $result = (new ChatbotTools)->getRankingBreakdownMesin('2026-07', '2026-07');
 
         $this->assertArrayHasKey('error', $result);
     }
@@ -577,7 +578,7 @@ class ChatbotToolsTest extends TestCase
             'repair_time' => 1.0, 'total_downtime' => 1.0,
         ]);
 
-        $result = (new ChatbotTools())->getRankingBreakdownMesin();
+        $result = (new ChatbotTools)->getRankingBreakdownMesin();
 
         $this->assertArrayNotHasKey('error', $result);
         $this->assertSame('semua periode', $result['bulan_mulai']);
@@ -586,7 +587,7 @@ class ChatbotToolsTest extends TestCase
 
     public function test_get_ranking_breakdown_mesin_with_only_one_period_arg_returns_error(): void
     {
-        $result = (new ChatbotTools())->getRankingBreakdownMesin('2026-07', null);
+        $result = (new ChatbotTools)->getRankingBreakdownMesin('2026-07', null);
         $this->assertArrayHasKey('error', $result);
         $this->assertSame('Kalau isi salah satu periode, isi juga yang satunya.', $result['error']);
     }
@@ -625,7 +626,7 @@ class ChatbotToolsTest extends TestCase
             ]);
         }
 
-        $result = (new ChatbotTools())->getRankingBreakdownDies('2026-07', '2026-07');
+        $result = (new ChatbotTools)->getRankingBreakdownDies('2026-07', '2026-07');
 
         $this->assertArrayNotHasKey('error', $result);
         $this->assertSame(2, $result['ranking'][0]['jumlah_breakdown']);
@@ -654,7 +655,7 @@ class ChatbotToolsTest extends TestCase
             'repair_time' => 1.0, 'total_downtime' => 1.0,
         ]);
 
-        $result = (new ChatbotTools())->getRankingBreakdownDies('2026-07', '2026-07');
+        $result = (new ChatbotTools)->getRankingBreakdownDies('2026-07', '2026-07');
 
         $this->assertArrayNotHasKey('error', $result);
         $top = $result['ranking'][0];
@@ -673,7 +674,7 @@ class ChatbotToolsTest extends TestCase
             'sph_standar_produksi' => 500, 'sph_standar_qc' => 250,
         ]);
 
-        $result = (new ChatbotTools())->getRankingBreakdownDies('2026-07', '2026-07');
+        $result = (new ChatbotTools)->getRankingBreakdownDies('2026-07', '2026-07');
 
         $this->assertArrayHasKey('error', $result);
     }
@@ -703,7 +704,7 @@ class ChatbotToolsTest extends TestCase
             ]);
         }
 
-        $result = (new ChatbotTools())->getTopProblemDies();
+        $result = (new ChatbotTools)->getTopProblemDies();
 
         // A: tindakan tersering untuk BURRY = grinding punch (4x), dari data — bukan karangan.
         $burry = collect($result['top_problem'])->firstWhere('problem', 'BURRY');
@@ -736,7 +737,7 @@ class ChatbotToolsTest extends TestCase
             ]);
         }
 
-        $result = (new ChatbotTools())->getTopProblemDies();
+        $result = (new ChatbotTools)->getTopProblemDies();
 
         $this->assertArrayHasKey('top_keyword', $result);
         $kw = collect($result['top_keyword'])->keyBy('keyword');
@@ -768,7 +769,7 @@ class ChatbotToolsTest extends TestCase
             'repair_time' => 1.0, 'total_downtime' => 1.0,
         ]);
 
-        $result = (new ChatbotTools())->getRankingBreakdownDies();
+        $result = (new ChatbotTools)->getRankingBreakdownDies();
 
         $this->assertArrayNotHasKey('error', $result);
         $this->assertSame('semua periode', $result['bulan_mulai']);
@@ -777,7 +778,7 @@ class ChatbotToolsTest extends TestCase
 
     public function test_get_ranking_breakdown_dies_with_only_one_period_arg_returns_error(): void
     {
-        $result = (new ChatbotTools())->getRankingBreakdownDies(null, '2026-07');
+        $result = (new ChatbotTools)->getRankingBreakdownDies(null, '2026-07');
         $this->assertArrayHasKey('error', $result);
         $this->assertSame('Kalau isi salah satu periode, isi juga yang satunya.', $result['error']);
     }
@@ -816,7 +817,7 @@ class ChatbotToolsTest extends TestCase
             'actual_menit' => 20, 'std_menit' => 15, 'over_menit' => 5, 'created_by' => $user->id,
         ]);
 
-        $result = (new ChatbotTools())->getRekapDandori('2026-07', '2026-07');
+        $result = (new ChatbotTools)->getRekapDandori('2026-07', '2026-07');
 
         $this->assertArrayNotHasKey('error', $result);
         $this->assertSame(2, $result['total_kejadian']);
@@ -861,7 +862,7 @@ class ChatbotToolsTest extends TestCase
             'actual_menit' => 60, 'std_menit' => 30, 'over_menit' => 30, 'created_by' => $user->id,
         ]);
 
-        $result = (new ChatbotTools())->getRekapDandori('2026-07', '2026-07', 'DD-02');
+        $result = (new ChatbotTools)->getRekapDandori('2026-07', '2026-07', 'DD-02');
 
         $this->assertArrayNotHasKey('error', $result);
         $this->assertSame(1, $result['total_kejadian']);
@@ -870,13 +871,13 @@ class ChatbotToolsTest extends TestCase
 
     public function test_get_rekap_dandori_returns_error_for_unknown_mesin(): void
     {
-        $result = (new ChatbotTools())->getRekapDandori('2026-07', '2026-07', 'NOT-EXIST');
+        $result = (new ChatbotTools)->getRekapDandori('2026-07', '2026-07', 'NOT-EXIST');
         $this->assertArrayHasKey('error', $result);
     }
 
     public function test_get_rekap_dandori_returns_empty_result_with_catatan_when_no_records(): void
     {
-        $result = (new ChatbotTools())->getRekapDandori('2020-01', '2020-01');
+        $result = (new ChatbotTools)->getRekapDandori('2020-01', '2020-01');
         $this->assertArrayHasKey('catatan', $result);
         $this->assertSame(0, $result['total_kejadian']);
         $this->assertSame([], $result['top_jenis_losstime']);
@@ -907,7 +908,7 @@ class ChatbotToolsTest extends TestCase
             'actual_menit' => 50, 'std_menit' => 30, 'over_menit' => 20, 'created_by' => $user->id,
         ]);
 
-        $result = (new ChatbotTools())->getRekapDandori();
+        $result = (new ChatbotTools)->getRekapDandori();
 
         $this->assertArrayNotHasKey('error', $result);
         $this->assertSame('semua periode', $result['bulan_mulai']);
@@ -916,7 +917,7 @@ class ChatbotToolsTest extends TestCase
 
     public function test_get_rekap_dandori_with_only_one_period_arg_returns_error(): void
     {
-        $result = (new ChatbotTools())->getRekapDandori('2026-07', null);
+        $result = (new ChatbotTools)->getRekapDandori('2026-07', null);
         $this->assertArrayHasKey('error', $result);
         $this->assertSame('Kalau isi salah satu periode, isi juga yang satunya.', $result['error']);
     }
@@ -947,7 +948,7 @@ class ChatbotToolsTest extends TestCase
             ]);
         }
 
-        $result = (new ChatbotTools())->getOperatorProduksi();
+        $result = (new ChatbotTools)->getOperatorProduksi();
 
         $this->assertArrayNotHasKey('error', $result);
         $this->assertSame('Andi', $result['ranking'][0]['operator']);
@@ -989,7 +990,7 @@ class ChatbotToolsTest extends TestCase
             'created_by' => $user->id,
         ]);
 
-        $result = (new ChatbotTools())->getTotalProduksi('2026-05', '2026-06');
+        $result = (new ChatbotTools)->getTotalProduksi('2026-05', '2026-06');
 
         $this->assertArrayNotHasKey('error', $result);
         $this->assertSame(7000, $result['total_qty_aktual']);
@@ -1000,13 +1001,13 @@ class ChatbotToolsTest extends TestCase
 
     public function test_get_total_produksi_returns_error_when_no_records(): void
     {
-        $result = (new ChatbotTools())->getTotalProduksi('2020-01', '2020-02');
+        $result = (new ChatbotTools)->getTotalProduksi('2020-01', '2020-02');
         $this->assertArrayHasKey('error', $result);
     }
 
     public function test_get_total_produksi_returns_error_for_invalid_month_format(): void
     {
-        $result = (new ChatbotTools())->getTotalProduksi('bulan-salah', '2026-07');
+        $result = (new ChatbotTools)->getTotalProduksi('bulan-salah', '2026-07');
         $this->assertArrayHasKey('error', $result);
     }
 
@@ -1033,7 +1034,7 @@ class ChatbotToolsTest extends TestCase
             'created_by' => $user->id,
         ]);
 
-        $result = (new ChatbotTools())->getTotalProduksi();
+        $result = (new ChatbotTools)->getTotalProduksi();
 
         $this->assertArrayNotHasKey('error', $result);
         $this->assertSame('semua periode', $result['bulan_mulai']);
@@ -1042,7 +1043,7 @@ class ChatbotToolsTest extends TestCase
 
     public function test_get_total_produksi_with_only_one_period_arg_returns_error(): void
     {
-        $result = (new ChatbotTools())->getTotalProduksi('2026-07', null);
+        $result = (new ChatbotTools)->getTotalProduksi('2026-07', null);
         $this->assertArrayHasKey('error', $result);
         $this->assertSame('Kalau isi salah satu periode, isi juga yang satunya.', $result['error']);
     }
@@ -1083,7 +1084,7 @@ class ChatbotToolsTest extends TestCase
             'repair_time' => 1.0, 'total_downtime' => 1.0,
         ]);
 
-        $result = (new ChatbotTools())->getTopProblemDies();
+        $result = (new ChatbotTools)->getTopProblemDies();
 
         $this->assertArrayNotHasKey('error', $result);
         $this->assertSame(3, $result['total_kejadian']);
@@ -1131,7 +1132,7 @@ class ChatbotToolsTest extends TestCase
             'repair_time' => 1.0, 'total_downtime' => 1.0,
         ]);
 
-        $result = (new ChatbotTools())->getTopProblemDies(null, null, 'TOP-D2');
+        $result = (new ChatbotTools)->getTopProblemDies(null, null, 'TOP-D2');
 
         $this->assertArrayNotHasKey('error', $result);
         $this->assertSame(1, $result['total_kejadian']);
@@ -1140,19 +1141,19 @@ class ChatbotToolsTest extends TestCase
 
     public function test_get_top_problem_dies_returns_error_for_unknown_part(): void
     {
-        $result = (new ChatbotTools())->getTopProblemDies(null, null, 'NOT-EXIST');
+        $result = (new ChatbotTools)->getTopProblemDies(null, null, 'NOT-EXIST');
         $this->assertArrayHasKey('error', $result);
     }
 
     public function test_get_top_problem_dies_returns_error_when_no_records(): void
     {
-        $result = (new ChatbotTools())->getTopProblemDies();
+        $result = (new ChatbotTools)->getTopProblemDies();
         $this->assertArrayHasKey('error', $result);
     }
 
     public function test_get_top_problem_dies_with_only_one_period_arg_returns_error(): void
     {
-        $result = (new ChatbotTools())->getTopProblemDies('2026-07', null);
+        $result = (new ChatbotTools)->getTopProblemDies('2026-07', null);
         $this->assertArrayHasKey('error', $result);
         $this->assertSame('Kalau isi salah satu periode, isi juga yang satunya.', $result['error']);
     }
@@ -1176,7 +1177,7 @@ class ChatbotToolsTest extends TestCase
             ]);
         }
 
-        $result = (new ChatbotTools())->getTopProblemDies();
+        $result = (new ChatbotTools)->getTopProblemDies();
 
         $this->assertArrayNotHasKey('error', $result);
         $this->assertCount(10, $result['top_problem']);
@@ -1217,7 +1218,7 @@ class ChatbotToolsTest extends TestCase
             'repair_time' => 1.0, 'total_downtime' => 1.0,
         ]);
 
-        $result = (new ChatbotTools())->getTopProblemMesin();
+        $result = (new ChatbotTools)->getTopProblemMesin();
 
         $this->assertArrayNotHasKey('error', $result);
         $this->assertSame(3, $result['total_kejadian']);
@@ -1258,7 +1259,7 @@ class ChatbotToolsTest extends TestCase
             'repair_time' => 1.0, 'total_downtime' => 1.0,
         ]);
 
-        $result = (new ChatbotTools())->getTopProblemMesin(null, null, 'TOP-M2');
+        $result = (new ChatbotTools)->getTopProblemMesin(null, null, 'TOP-M2');
 
         $this->assertArrayNotHasKey('error', $result);
         $this->assertSame(1, $result['total_kejadian']);
@@ -1267,26 +1268,26 @@ class ChatbotToolsTest extends TestCase
 
     public function test_get_top_problem_mesin_returns_error_for_unknown_mesin(): void
     {
-        $result = (new ChatbotTools())->getTopProblemMesin(null, null, 'NOT-EXIST');
+        $result = (new ChatbotTools)->getTopProblemMesin(null, null, 'NOT-EXIST');
         $this->assertArrayHasKey('error', $result);
     }
 
     public function test_get_top_problem_mesin_returns_error_when_no_records(): void
     {
-        $result = (new ChatbotTools())->getTopProblemMesin();
+        $result = (new ChatbotTools)->getTopProblemMesin();
         $this->assertArrayHasKey('error', $result);
     }
 
     public function test_get_top_problem_mesin_with_only_one_period_arg_returns_error(): void
     {
-        $result = (new ChatbotTools())->getTopProblemMesin('2026-07', null);
+        $result = (new ChatbotTools)->getTopProblemMesin('2026-07', null);
         $this->assertArrayHasKey('error', $result);
         $this->assertSame('Kalau isi salah satu periode, isi juga yang satunya.', $result['error']);
     }
 
     public function test_schema_definitions_exposes_only_essential_tools_uniquely(): void
     {
-        $names = collect((new ChatbotTools())->schemaDefinitions())->pluck('name');
+        $names = collect((new ChatbotTools)->schemaDefinitions())->pluck('name');
 
         // Free-tier: subset yang cover pertanyaan umum (chip) dipapar 1x panggil.
         $this->assertCount(15, $names);
@@ -1310,7 +1311,7 @@ class ChatbotToolsTest extends TestCase
      */
     public function test_every_schema_name_maps_to_a_public_invokable_method(): void
     {
-        $tools = new ChatbotTools();
+        $tools = new ChatbotTools;
 
         foreach ($tools->schemaDefinitions() as $schema) {
             $name = $schema['name'] ?? null;
@@ -1343,16 +1344,16 @@ class ChatbotToolsTest extends TestCase
      */
     public function test_every_schema_matches_its_method_signature(): void
     {
-        $tools = new ChatbotTools();
+        $tools = new ChatbotTools;
 
         foreach ($tools->schemaDefinitions() as $schema) {
-            $name       = $schema['name'];
+            $name = $schema['name'];
             $properties = $schema['parameters']['properties'] ?? [];
-            $required   = $schema['parameters']['required'] ?? [];
+            $required = $schema['parameters']['required'] ?? [];
 
-            $reflection    = new \ReflectionMethod($tools, $name);
-            $methodParams  = collect($reflection->getParameters());
-            $paramNames    = $methodParams->map(fn ($p) => $p->getName())->all();
+            $reflection = new \ReflectionMethod($tools, $name);
+            $methodParams = collect($reflection->getParameters());
+            $paramNames = $methodParams->map(fn ($p) => $p->getName())->all();
             $requiredNames = $methodParams
                 ->reject(fn ($p) => $p->isOptional())
                 ->map(fn ($p) => $p->getName())
@@ -1381,7 +1382,7 @@ class ChatbotToolsTest extends TestCase
 
     public function test_describe_schema_without_table_lists_business_tables(): void
     {
-        $result = (new ChatbotTools())->describeSchema();
+        $result = (new ChatbotTools)->describeSchema();
 
         $this->assertArrayHasKey('tables', $result);
         $names = array_column($result['tables'], 'table');
@@ -1393,7 +1394,7 @@ class ChatbotToolsTest extends TestCase
 
     public function test_describe_schema_with_table_returns_real_columns(): void
     {
-        $result = (new ChatbotTools())->describeSchema('master_mesin');
+        $result = (new ChatbotTools)->describeSchema('master_mesin');
 
         $this->assertArrayNotHasKey('error', $result);
         $this->assertSame('master_mesin', $result['table']);
@@ -1404,7 +1405,7 @@ class ChatbotToolsTest extends TestCase
 
     public function test_describe_schema_rejects_non_whitelisted_table(): void
     {
-        $result = (new ChatbotTools())->describeSchema('users');
+        $result = (new ChatbotTools)->describeSchema('users');
         $this->assertArrayHasKey('error', $result);
     }
 
@@ -1412,7 +1413,7 @@ class ChatbotToolsTest extends TestCase
     {
         Schema::shouldReceive('getColumnListing')->andThrow(new \RuntimeException('boom'));
 
-        $result = (new ChatbotTools())->describeSchema('master_mesin');
+        $result = (new ChatbotTools)->describeSchema('master_mesin');
 
         $this->assertArrayHasKey('error', $result);
     }
@@ -1424,7 +1425,7 @@ class ChatbotToolsTest extends TestCase
             'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100,
         ]);
 
-        $result = (new ChatbotTools())->queryDatabase('SELECT id_mesin, nama_mesin FROM master_mesin');
+        $result = (new ChatbotTools)->queryDatabase('SELECT id_mesin, nama_mesin FROM master_mesin');
 
         $this->assertArrayNotHasKey('error', $result);
         $this->assertSame(1, $result['row_count']);
@@ -1434,31 +1435,31 @@ class ChatbotToolsTest extends TestCase
 
     public function test_query_database_rejects_non_select(): void
     {
-        $result = (new ChatbotTools())->queryDatabase('UPDATE master_mesin SET nama_mesin = "x"');
+        $result = (new ChatbotTools)->queryDatabase('UPDATE master_mesin SET nama_mesin = "x"');
         $this->assertArrayHasKey('error', $result);
     }
 
     public function test_query_database_rejects_write_keyword_in_select(): void
     {
-        $result = (new ChatbotTools())->queryDatabase('SELECT * FROM master_mesin; DROP TABLE master_mesin');
+        $result = (new ChatbotTools)->queryDatabase('SELECT * FROM master_mesin; DROP TABLE master_mesin');
         $this->assertArrayHasKey('error', $result);
     }
 
     public function test_query_database_rejects_system_table(): void
     {
-        $result = (new ChatbotTools())->queryDatabase('SELECT * FROM users');
+        $result = (new ChatbotTools)->queryDatabase('SELECT * FROM users');
         $this->assertArrayHasKey('error', $result);
     }
 
     public function test_query_database_rejects_unknown_table(): void
     {
-        $result = (new ChatbotTools())->queryDatabase('SELECT * FROM nonexistent_table');
+        $result = (new ChatbotTools)->queryDatabase('SELECT * FROM nonexistent_table');
         $this->assertArrayHasKey('error', $result);
     }
 
     public function test_query_database_rejects_query_without_table(): void
     {
-        $result = (new ChatbotTools())->queryDatabase('SELECT 1');
+        $result = (new ChatbotTools)->queryDatabase('SELECT 1');
         $this->assertArrayHasKey('error', $result);
     }
 
@@ -1471,7 +1472,7 @@ class ChatbotToolsTest extends TestCase
             ]);
         }
 
-        $result = (new ChatbotTools())->queryDatabase('SELECT id_mesin FROM master_mesin');
+        $result = (new ChatbotTools)->queryDatabase('SELECT id_mesin FROM master_mesin');
 
         $this->assertSame(25, $result['row_count']);
         $this->assertTrue($result['truncated']);
@@ -1486,32 +1487,32 @@ class ChatbotToolsTest extends TestCase
             ]);
         }
 
-        $result = (new ChatbotTools())->queryDatabase('SELECT id_mesin FROM master_mesin LIMIT 500');
+        $result = (new ChatbotTools)->queryDatabase('SELECT id_mesin FROM master_mesin LIMIT 500');
 
         $this->assertLessThanOrEqual(200, $result['row_count']);
     }
 
     public function test_query_database_blocks_comma_joined_system_table(): void
     {
-        $result = (new ChatbotTools())->queryDatabase('SELECT * FROM master_mesin, users');
+        $result = (new ChatbotTools)->queryDatabase('SELECT * FROM master_mesin, users');
         $this->assertArrayHasKey('error', $result);
     }
 
     public function test_query_database_blocks_comment_separated_system_table(): void
     {
-        $result = (new ChatbotTools())->queryDatabase('SELECT * FROM master_mesin UNION SELECT * FROM/**/users');
+        $result = (new ChatbotTools)->queryDatabase('SELECT * FROM master_mesin UNION SELECT * FROM/**/users');
         $this->assertArrayHasKey('error', $result);
     }
 
     public function test_query_database_blocks_subquery_system_table(): void
     {
-        $result = (new ChatbotTools())->queryDatabase('SELECT (SELECT id FROM users LIMIT 1) AS x FROM master_mesin');
+        $result = (new ChatbotTools)->queryDatabase('SELECT (SELECT id FROM users LIMIT 1) AS x FROM master_mesin');
         $this->assertArrayHasKey('error', $result);
     }
 
     public function test_query_database_blocks_information_schema(): void
     {
-        $result = (new ChatbotTools())->queryDatabase('SELECT * FROM information_schema.tables');
+        $result = (new ChatbotTools)->queryDatabase('SELECT * FROM information_schema.tables');
         $this->assertArrayHasKey('error', $result);
     }
 
@@ -1523,7 +1524,7 @@ class ChatbotToolsTest extends TestCase
                 'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100,
             ]);
         }
-        $result = (new ChatbotTools())->queryDatabase('SELECT id_mesin FROM master_mesin LIMIT 0, 1000');
+        $result = (new ChatbotTools)->queryDatabase('SELECT id_mesin FROM master_mesin LIMIT 0, 1000');
         $this->assertLessThanOrEqual(200, $result['row_count']);
     }
 
@@ -1535,7 +1536,7 @@ class ChatbotToolsTest extends TestCase
                 'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100,
             ]);
         }
-        $result = (new ChatbotTools())->queryDatabase('SELECT id_mesin FROM master_mesin WHERE id_mesin IN (SELECT id_mesin FROM master_mesin LIMIT 300)');
+        $result = (new ChatbotTools)->queryDatabase('SELECT id_mesin FROM master_mesin WHERE id_mesin IN (SELECT id_mesin FROM master_mesin LIMIT 300)');
         $this->assertLessThanOrEqual(200, $result['row_count']);
     }
 
@@ -1548,7 +1549,7 @@ class ChatbotToolsTest extends TestCase
             'SELECT VERSION() AS v FROM master_mesin',
             'SELECT @@version AS v FROM master_mesin',
         ] as $sql) {
-            $result = (new ChatbotTools())->queryDatabase($sql);
+            $result = (new ChatbotTools)->queryDatabase($sql);
             $this->assertArrayHasKey('error', $result, "Should block: {$sql}");
         }
     }

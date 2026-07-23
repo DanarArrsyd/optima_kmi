@@ -1,4 +1,5 @@
 <?php
+
 namespace Tests\Feature\Master;
 
 use App\Imports\MesinImport;
@@ -37,7 +38,7 @@ class ImportOverwriteAuditTest extends TestCase
     {
         MasterPart::create(['part_no' => 'A-1', 'part_name' => 'Panel A', 'customer' => 'Toyota']);
 
-        (new PartImport())->collection(new Collection([
+        (new PartImport)->collection(new Collection([
             collect(['part_no', 'part_name']),
             collect(['A-1', 'Panel A']),
         ]));
@@ -49,7 +50,7 @@ class ImportOverwriteAuditTest extends TestCase
     {
         MasterPart::create(['part_no' => 'A-1', 'part_name' => 'Panel A', 'customer' => 'Toyota']);
 
-        (new PartImport())->collection(new Collection([
+        (new PartImport)->collection(new Collection([
             collect(['part_no', 'part_name', 'customer']),
             collect(['A-1', 'Panel A', 'Honda']),
         ]));
@@ -74,7 +75,7 @@ class ImportOverwriteAuditTest extends TestCase
     {
         $part = $this->seedPartProses();
 
-        (new PartImport())->collection(new Collection([
+        (new PartImport)->collection(new Collection([
             collect(['part_no', 'part_name', 'id_proses', 'nama_proses']),
             collect(['A-2', 'Panel B', '1', 'DRAW']),
         ]));
@@ -89,7 +90,7 @@ class ImportOverwriteAuditTest extends TestCase
     {
         $part = $this->seedPartProses();
 
-        (new PartImport())->collection(new Collection([
+        (new PartImport)->collection(new Collection([
             collect(['part_no', 'part_name', 'id_proses', 'nama_proses', 'sph_produksi', 'sph_qc']),
             collect(['A-2', 'Panel B', '1', 'DRAW', '800', '400']),
         ]));
@@ -113,7 +114,7 @@ class ImportOverwriteAuditTest extends TestCase
     {
         $this->seedMesin();
 
-        (new MesinImport())->collection(new Collection([[
+        (new MesinImport)->collection(new Collection([[
             'id_mesin' => 'M-1', 'nama_mesin' => 'Press M',
         ]]));
 
@@ -127,7 +128,7 @@ class ImportOverwriteAuditTest extends TestCase
     {
         $this->seedMesin();
 
-        (new MesinImport())->collection(new Collection([[
+        (new MesinImport)->collection(new Collection([[
             'id_mesin' => 'M-1', 'nama_mesin' => 'Press M Baru', 'line' => 'B',
             'tipe_mesin' => 'STAMPING', 'kapasitas_max_stroke' => 300,
         ]]));
@@ -142,7 +143,7 @@ class ImportOverwriteAuditTest extends TestCase
     /** Record BARU harus tetap tersimpan — line & tipe_mesin NOT NULL di master_mesin. */
     public function test_new_mesin_without_line_and_tipe_still_saves(): void
     {
-        (new MesinImport())->collection(new Collection([[
+        (new MesinImport)->collection(new Collection([[
             'id_mesin' => 'M-BARU', 'nama_mesin' => 'Press Baru',
         ]]));
 
@@ -154,7 +155,7 @@ class ImportOverwriteAuditTest extends TestCase
 
     public function test_new_part_proses_without_sph_defaults_to_zero(): void
     {
-        (new PartImport())->collection(new Collection([
+        (new PartImport)->collection(new Collection([
             collect(['part_no', 'part_name', 'id_proses', 'nama_proses']),
             collect(['B-1', 'Panel Baru', '1', 'DRAW']),
         ]));

@@ -1,4 +1,5 @@
 <?php
+
 namespace Tests\Unit;
 
 use App\Services\CerebrasChatbotService;
@@ -19,7 +20,7 @@ class CerebrasChatbotServiceTest extends TestCase
             ], 200),
         ]);
 
-        $reply = (new CerebrasChatbotService(new ChatbotTools()))->ask([], 'halo');
+        $reply = (new CerebrasChatbotService(new ChatbotTools))->ask([], 'halo');
 
         $this->assertSame('Halo dari Cerebras.', $reply);
     }
@@ -29,7 +30,7 @@ class CerebrasChatbotServiceTest extends TestCase
         config(['services.cerebras.key' => null]);
         Http::fake(); // any real call would fail the test
 
-        $reply = (new CerebrasChatbotService(new ChatbotTools()))->ask([], 'halo');
+        $reply = (new CerebrasChatbotService(new ChatbotTools))->ask([], 'halo');
 
         $this->assertNull($reply);
         Http::assertNothingSent();
@@ -53,12 +54,13 @@ class CerebrasChatbotServiceTest extends TestCase
                     ]]],
                 ], 200);
             }
+
             return Http::response([
                 'choices' => [['message' => ['role' => 'assistant', 'content' => 'Rekap NG sudah dihitung.']]],
             ], 200);
         });
 
-        $reply = (new CerebrasChatbotService(new ChatbotTools()))->ask([], 'rekap NG bending');
+        $reply = (new CerebrasChatbotService(new ChatbotTools))->ask([], 'rekap NG bending');
 
         $this->assertSame('Rekap NG sudah dihitung.', $reply);
     }

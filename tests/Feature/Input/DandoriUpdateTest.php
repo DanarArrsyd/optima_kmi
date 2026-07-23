@@ -1,4 +1,5 @@
 <?php
+
 namespace Tests\Feature\Input;
 
 use App\Models\MasterKaryawan;
@@ -42,13 +43,13 @@ class DandoriUpdateTest extends TestCase
         ]);
 
         $response = $this->actingAs($admin)->put(route('input.dandori.update', $dandori), [
-            'tanggal'        => '2026-07-06',
-            'id_shift'       => $shift->id,
-            'id_karyawan'    => $karyawan->id,
-            'id_mesin'       => $mesin->id,
+            'tanggal' => '2026-07-06',
+            'id_shift' => $shift->id,
+            'id_karyawan' => $karyawan->id,
+            'id_mesin' => $mesin->id,
             'id_part_proses' => $proses->id,
-            'id_losstime'    => $loss->id,
-            'actual_menit'   => 50,
+            'id_losstime' => $loss->id,
+            'actual_menit' => 50,
         ]);
 
         $response->assertSessionHasNoErrors();

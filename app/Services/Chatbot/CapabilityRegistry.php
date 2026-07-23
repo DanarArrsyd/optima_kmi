@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services\Chatbot;
 
 use App\Contracts\ChatCapability;
@@ -61,7 +62,7 @@ class CapabilityRegistry
         }
 
         ksort($args);
-        $key = 'chatbot_tool:' . $cap->name() . ':' . md5(json_encode($args));
+        $key = 'chatbot_tool:'.$cap->name().':'.md5(json_encode($args));
 
         return Cache::remember($key, $ttl, fn () => $cap->handle($args));
     }
@@ -70,7 +71,7 @@ class CapabilityRegistry
      * Subset capability yang boleh dipakai role tertentu. Capability tanpa
      * roles() (kosong) berlaku untuk semua. $userRoles kosong = tanpa filter role.
      *
-     * @param string[] $userRoles
+     * @param  string[]  $userRoles
      * @return array<string, ChatCapability>
      */
     public function forRoles(array $userRoles): array
@@ -81,6 +82,7 @@ class CapabilityRegistry
 
         return array_filter($this->byName, function (ChatCapability $cap) use ($userRoles) {
             $allowed = $cap->roles();
+
             return empty($allowed) || array_intersect($allowed, $userRoles) !== [];
         });
     }
@@ -90,13 +92,13 @@ class CapabilityRegistry
      * pertanyaan. Kalau tak ada yang cocok, balikin SEMUA (aman: biar model tetap
      * bisa jawab, cuma tak dapat penghematan). Capability tanpa keyword selalu ikut.
      *
-     * @param string[] $userRoles filter permission dulu sebelum keyword
+     * @param  string[]  $userRoles  filter permission dulu sebelum keyword
      * @return array<string, ChatCapability>
      */
     public function relevant(string $query, array $userRoles = []): array
     {
         $pool = $this->forRoles($userRoles);
-        $hay  = mb_strtolower($query);
+        $hay = mb_strtolower($query);
 
         $matched = array_filter($pool, function (ChatCapability $cap) use ($hay) {
             $kw = $cap->keywords();
@@ -108,12 +110,13 @@ class CapabilityRegistry
                     return true;
                 }
             }
+
             return false;
         });
 
         // Semua yang match cuma capability "general" tanpa keyword → tak ada sinyal
         // topik spesifik; balikin pool penuh supaya model tak kehilangan tool.
-        $hasSpecific = array_filter($matched, fn (ChatCapability $c) => !empty($c->keywords()));
+        $hasSpecific = array_filter($matched, fn (ChatCapability $c) => ! empty($c->keywords()));
 
         return $hasSpecific === [] ? $pool : $matched;
     }
@@ -122,7 +125,7 @@ class CapabilityRegistry
      * Schema function-calling siap kirim ke provider. Bentuk identik dengan
      * ToolSchemaCatalog::definitions() (list of {name, description, parameters}).
      *
-     * @param array<string, ChatCapability>|null $subset default = semua
+     * @param  array<string, ChatCapability>|null  $subset  default = semua
      * @return list<array{name:string, description:string, parameters:array}>
      */
     public function schemaDefinitions(?array $subset = null): array
@@ -130,9 +133,9 @@ class CapabilityRegistry
         $caps = $subset ?? $this->byName;
 
         return array_values(array_map(fn (ChatCapability $c) => [
-            'name'        => $c->name(),
+            'name' => $c->name(),
             'description' => $c->description(),
-            'parameters'  => $c->parameters(),
+            'parameters' => $c->parameters(),
         ], $caps));
     }
 
@@ -142,7 +145,7 @@ class CapabilityRegistry
      * dengan fallback aman ke semua bila tak ada keyword cocok). Kalau mati,
      * kirim semua tool yang boleh untuk role tsb.
      *
-     * @param string[] $roles
+     * @param  string[]  $roles
      */
     public function schemaForQuery(string $context, array $roles = []): array
     {
@@ -170,6 +173,6 @@ class CapabilityRegistry
             $caps
         );
 
-        return "Kapabilitas tersedia:\n" . implode("\n", $lines);
+        return "Kapabilitas tersedia:\n".implode("\n", $lines);
     }
 }

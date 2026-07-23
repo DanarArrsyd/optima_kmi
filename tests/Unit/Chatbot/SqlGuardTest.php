@@ -1,4 +1,5 @@
 <?php
+
 namespace Tests\Unit\Chatbot;
 
 use App\Services\Chatbot\SqlGuard;
@@ -13,7 +14,7 @@ class SqlGuardTest extends TestCase
 {
     private function guard(): SqlGuard
     {
-        return new SqlGuard();
+        return new SqlGuard;
     }
 
     public function test_allows_plain_select_on_business_table(): void

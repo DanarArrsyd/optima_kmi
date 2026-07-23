@@ -1,4 +1,5 @@
 <?php
+
 namespace Tests\Feature\Master;
 
 use App\Imports\MesinImport;
@@ -37,7 +38,7 @@ class MesinImportWipeTest extends TestCase
 
     private function importMesin(array $row): void
     {
-        (new MesinImport())->collection(new Collection([$row]));
+        (new MesinImport)->collection(new Collection([$row]));
     }
 
     private function baseRow(): array
@@ -96,7 +97,7 @@ class MesinImportWipeTest extends TestCase
         ]);
 
         // PartImport tidak pakai WithHeadingRow: baris pertama = header, tiap row = Collection.
-        (new PartImport())->collection(new Collection([
+        (new PartImport)->collection(new Collection([
             collect(['part_no', 'part_name', 'customer']),
             collect(['W-P1', 'Panel W', 'Toyota']),
         ]));

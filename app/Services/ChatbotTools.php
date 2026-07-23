@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services;
 
 use App\Models\MasterKaryawan;
@@ -14,6 +15,7 @@ use App\Services\Chatbot\BusinessTableCatalog;
 use App\Services\Chatbot\SqlGuard;
 use App\Services\Chatbot\ToolSchemaCatalog;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -32,12 +34,12 @@ class ChatbotTools
     private const ALL_TIME_FROM = '2000-01-01';
 
     public function __construct(
-        private MaintenanceDiesDashboardService $diesDashboard = new MaintenanceDiesDashboardService(),
-        private MaintenanceDashboardService $mesinDashboard = new MaintenanceDashboardService(),
-        private BusinessTableCatalog $tableCatalog = new BusinessTableCatalog(),
-        private SqlGuard $sqlGuard = new SqlGuard(),
-        private ToolSchemaCatalog $schemaCatalog = new ToolSchemaCatalog(),
-        private OeeService $oee = new OeeService(),
+        private MaintenanceDiesDashboardService $diesDashboard = new MaintenanceDiesDashboardService,
+        private MaintenanceDashboardService $mesinDashboard = new MaintenanceDashboardService,
+        private BusinessTableCatalog $tableCatalog = new BusinessTableCatalog,
+        private SqlGuard $sqlGuard = new SqlGuard,
+        private ToolSchemaCatalog $schemaCatalog = new ToolSchemaCatalog,
+        private OeeService $oee = new OeeService,
     ) {}
 
     /** MTBF/MTTR untuk sebuah part/dies (per proses), dalam 1 bulan. */
@@ -49,7 +51,7 @@ class ChatbotTools
         }
 
         [$from, $to] = $this->monthRange($bulan);
-        if (!$from) {
+        if (! $from) {
             return ['error' => "Format bulan \"{$bulan}\" tidak valid, gunakan format YYYY-MM."];
         }
 
@@ -59,10 +61,10 @@ class ChatbotTools
         }
 
         return array_map(fn ($r) => [
-            'nama_proses'      => $r['nama_proses'],
-            'count'            => $r['count'],
-            'mttr_jam'         => $r['mttr_jam'],
-            'mtbf_jam'         => $r['mtbf_jam'],
+            'nama_proses' => $r['nama_proses'],
+            'count' => $r['count'],
+            'mttr_jam' => $r['mttr_jam'],
+            'mtbf_jam' => $r['mtbf_jam'],
             'availability_pct' => $r['availability_pct'],
         ], $rows);
     }
@@ -76,7 +78,7 @@ class ChatbotTools
         }
 
         [$from, $to] = $this->monthRange($bulan);
-        if (!$from) {
+        if (! $from) {
             return ['error' => "Format bulan \"{$bulan}\" tidak valid, gunakan format YYYY-MM."];
         }
 
@@ -86,9 +88,9 @@ class ChatbotTools
         }
 
         return [
-            'count'            => $rows[0]['count'],
-            'mttr_jam'         => $rows[0]['mttr_jam'],
-            'mtbf_jam'         => $rows[0]['mtbf_jam'],
+            'count' => $rows[0]['count'],
+            'mttr_jam' => $rows[0]['mttr_jam'],
+            'mtbf_jam' => $rows[0]['mtbf_jam'],
             'availability_pct' => $rows[0]['availability_pct'],
         ];
     }
@@ -102,7 +104,7 @@ class ChatbotTools
         }
 
         [$from, $to] = $this->monthRange($bulan);
-        if (!$from) {
+        if (! $from) {
             return ['error' => "Format bulan \"{$bulan}\" tidak valid, gunakan format YYYY-MM."];
         }
 
@@ -118,32 +120,32 @@ class ChatbotTools
         $from = $to = null;
         if ($periode !== null) {
             [$from, $to] = $this->monthRange($periode);
-            if (!$from) {
+            if (! $from) {
                 return ['error' => "Format periode \"{$periode}\" tidak valid, gunakan format YYYY-MM."];
             }
         }
 
-        $q = TransaksiQc::whereHas('partProses', fn ($p) =>
-                $p->whereRaw('LOWER(TRIM(nama_proses)) = ?', [strtolower(trim($namaProses))])
-            )
+        $q = TransaksiQc::whereHas('partProses', fn ($p) => $p->whereRaw('LOWER(TRIM(nama_proses)) = ?', [strtolower(trim($namaProses))])
+        )
             ->when($from && $to, fn ($x) => $x->whereBetween('tgl_pengecekan', [$from->toDateString(), $to->toDateString()]));
 
         $totalOk = (int) $q->clone()->sum('qty_ok');
         $totalNg = (int) $q->clone()->sum('qty_ng');
-        $total   = $totalOk + $totalNg;
+        $total = $totalOk + $totalNg;
 
         if ($total === 0) {
             $periodeLabel = $periode ? " di periode {$periode}" : '';
+
             return ['error' => "Tidak ada data QC untuk proses \"{$namaProses}\"{$periodeLabel}."];
         }
 
         return [
-            'nama_proses'     => $namaProses,
-            'periode'         => $periode ?? 'semua data',
-            'total_ok'        => $totalOk,
-            'total_ng'        => $totalNg,
-            'total_inspeksi'  => $total,
-            'ng_rate_pct'     => round($totalNg / $total * 100, 2),
+            'nama_proses' => $namaProses,
+            'periode' => $periode ?? 'semua data',
+            'total_ok' => $totalOk,
+            'total_ng' => $totalNg,
+            'total_inspeksi' => $total,
+            'ng_rate_pct' => round($totalNg / $total * 100, 2),
         ];
     }
 
@@ -166,14 +168,14 @@ class ChatbotTools
         $rows = TransaksiQc::query()
             ->leftJoin('master_part_proses', function ($j) {
                 $j->on('transaksi_qc.id_part_proses', '=', 'master_part_proses.id')
-                  ->whereNull('master_part_proses.deleted_at');
+                    ->whereNull('master_part_proses.deleted_at');
             })
             ->leftJoin('master_part', function ($j) {
                 $j->on('master_part_proses.id_part', '=', 'master_part.id')
-                  ->whereNull('master_part.deleted_at');
+                    ->whereNull('master_part.deleted_at');
             })
             ->when($from && $to, fn ($q) => $q->whereBetween('transaksi_qc.tgl_pengecekan', [$from->toDateString(), $to->toDateString()]))
-            ->when($customer !== null, fn ($q) => $q->whereRaw('LOWER(TRIM(master_part.customer)) LIKE ?', ['%' . strtolower(trim($customer)) . '%']))
+            ->when($customer !== null, fn ($q) => $q->whereRaw('LOWER(TRIM(master_part.customer)) LIKE ?', ['%'.strtolower(trim($customer)).'%']))
             ->groupBy('master_part.customer')
             ->orderByRaw('SUM(transaksi_qc.qty_ng) DESC')
             ->get([
@@ -183,36 +185,37 @@ class ChatbotTools
             ]);
 
         if ($rows->isEmpty()) {
-            return ['error' => "Tidak ada data QC" . $this->filterLabel($customer, 'customer') . $this->periodeLabel($bulanMulai, $bulanAkhir) . "."];
+            return ['error' => 'Tidak ada data QC'.$this->filterLabel($customer, 'customer').$this->periodeLabel($bulanMulai, $bulanAkhir).'.'];
         }
 
         $ranking = $rows->map(function ($r) {
-            $ok      = (int) $r->total_ok;
-            $ng      = (int) $r->total_ng;
-            $inspek  = $ok + $ng;
+            $ok = (int) $r->total_ok;
+            $ng = (int) $r->total_ng;
+            $inspek = $ok + $ng;
+
             return [
-                'customer'       => $r->customer,
+                'customer' => $r->customer,
                 'total_inspeksi' => $inspek,
-                'total_ng'       => $ng,
-                'ng_rate_pct'    => $inspek > 0 ? round($ng / $inspek * 100, 2) : 0.0,
+                'total_ng' => $ng,
+                'ng_rate_pct' => $inspek > 0 ? round($ng / $inspek * 100, 2) : 0.0,
             ];
         })->take(20)->values()->toArray();
 
         return [
-            'bulan_mulai'    => $bulanMulai ?? 'semua periode',
-            'bulan_akhir'    => $bulanAkhir ?? 'semua periode',
-            'catatan'        => 'Diurut dari NG terbanyak. Untuk "kualitas terburuk", bandingkan ng_rate_pct — tapi perhatikan total_inspeksi (rate tinggi di volume kecil belum tentu masalah besar).',
-            'ranking'        => $ranking,
+            'bulan_mulai' => $bulanMulai ?? 'semua periode',
+            'bulan_akhir' => $bulanAkhir ?? 'semua periode',
+            'catatan' => 'Diurut dari NG terbanyak. Untuk "kualitas terburuk", bandingkan ng_rate_pct — tapi perhatikan total_inspeksi (rate tinggi di volume kecil belum tentu masalah besar).',
+            'ranking' => $ranking,
         ];
     }
 
     /** Metrik yang didukung getTrend => satuan tampil. */
     private const TREND_METRICS = [
-        'produksi'        => 'Pcs',
-        'ng'             => '% NG',
+        'produksi' => 'Pcs',
+        'ng' => '% NG',
         'breakdown_mesin' => 'kejadian',
-        'breakdown_dies'  => 'kejadian',
-        'dandori'         => 'menit over',
+        'breakdown_dies' => 'kejadian',
+        'dandori' => 'menit over',
     ];
 
     /**
@@ -223,13 +226,13 @@ class ChatbotTools
     public function getTrend(string $metric, ?string $bulanMulai = null, ?string $bulanAkhir = null): array
     {
         $metric = strtolower(trim($metric));
-        if (!isset(self::TREND_METRICS[$metric])) {
-            return ['error' => "Metrik \"{$metric}\" tak dikenal. Pilihan: " . implode(', ', array_keys(self::TREND_METRICS)) . "."];
+        if (! isset(self::TREND_METRICS[$metric])) {
+            return ['error' => "Metrik \"{$metric}\" tak dikenal. Pilihan: ".implode(', ', array_keys(self::TREND_METRICS)).'.'];
         }
 
         // Tentukan rentang bulan (start & end = awal bulan).
         if ($bulanMulai === null && $bulanAkhir === null) {
-            $end   = Carbon::now()->startOfMonth();
+            $end = Carbon::now()->startOfMonth();
             $start = $end->copy()->subMonthsNoOverflow(5);
         } else {
             [$from, $to, $error] = $this->monthSpanOptional($bulanMulai, $bulanAkhir);
@@ -237,7 +240,7 @@ class ChatbotTools
                 return ['error' => $error];
             }
             $start = $from->copy()->startOfMonth();
-            $end   = $to->copy()->startOfMonth();
+            $end = $to->copy()->startOfMonth();
         }
 
         // Susun daftar bulan (cap 24 untuk batasi jumlah query).
@@ -252,23 +255,23 @@ class ChatbotTools
         ], $months);
 
         $nilai = array_column($seri, 'nilai');
-        $awal  = $nilai[0];
+        $awal = $nilai[0];
         $akhir = end($nilai);
         $delta = round($akhir - $awal, 2);
 
         return [
-            'metric'      => $metric,
-            'satuan'      => self::TREND_METRICS[$metric],
+            'metric' => $metric,
+            'satuan' => self::TREND_METRICS[$metric],
             'bulan_mulai' => $months[0]->format('Y-m'),
             'bulan_akhir' => end($months)->format('Y-m'),
-            'seri'        => $seri,
-            'ringkasan'   => [
-                'awal'  => $awal,
+            'seri' => $seri,
+            'ringkasan' => [
+                'awal' => $awal,
                 'akhir' => $akhir,
                 'delta' => $delta,
-                'arah'  => $delta > 0 ? 'naik' : ($delta < 0 ? 'turun' : 'stabil'),
-                'min'   => min($nilai),
-                'max'   => max($nilai),
+                'arah' => $delta > 0 ? 'naik' : ($delta < 0 ? 'turun' : 'stabil'),
+                'min' => min($nilai),
+                'max' => max($nilai),
             ],
         ];
     }
@@ -277,18 +280,19 @@ class ChatbotTools
     private function trendValue(string $metric, Carbon $month): float|int
     {
         $from = $month->copy()->startOfMonth()->toDateString();
-        $to   = $month->copy()->endOfMonth()->toDateString();
+        $to = $month->copy()->endOfMonth()->toDateString();
 
         return match ($metric) {
-            'produksi'        => (int) TransaksiProduksi::whereBetween('tanggal_produksi', [$from, $to])->sum('qty_aktual'),
+            'produksi' => (int) TransaksiProduksi::whereBetween('tanggal_produksi', [$from, $to])->sum('qty_aktual'),
             'breakdown_mesin' => (int) TransaksiBreakdownMesin::whereBetween('tanggal_breakdown', [$from, $to])->count(),
-            'breakdown_dies'  => (int) TransaksiBreakdownDies::whereBetween('tanggal_breakdown', [$from, $to])->count(),
-            'dandori'         => (int) round((float) TransaksiDandoriRincian::whereBetween('tanggal', [$from, $to])->sum('over_menit')),
-            'ng'              => (function () use ($from, $to) {
-                $q  = TransaksiQc::whereBetween('tgl_pengecekan', [$from, $to]);
+            'breakdown_dies' => (int) TransaksiBreakdownDies::whereBetween('tanggal_breakdown', [$from, $to])->count(),
+            'dandori' => (int) round((float) TransaksiDandoriRincian::whereBetween('tanggal', [$from, $to])->sum('over_menit')),
+            'ng' => (function () use ($from, $to) {
+                $q = TransaksiQc::whereBetween('tgl_pengecekan', [$from, $to]);
                 $ok = (int) $q->clone()->sum('qty_ok');
                 $ng = (int) $q->clone()->sum('qty_ng');
-                $t  = $ok + $ng;
+                $t = $ok + $ng;
+
                 return $t > 0 ? round($ng / $t * 100, 2) : 0.0;
             })(),
         };
@@ -305,10 +309,10 @@ class ChatbotTools
         }
 
         return [
-            'periode1'            => $p1,
-            'periode2'            => $p2,
-            'delta_qty_aktual'    => $p2['total_qty_aktual'] - $p1['total_qty_aktual'],
-            'delta_avg_sph_aktual'=> $p2['avg_sph_aktual'] - $p1['avg_sph_aktual'],
+            'periode1' => $p1,
+            'periode2' => $p2,
+            'delta_qty_aktual' => $p2['total_qty_aktual'] - $p1['total_qty_aktual'],
+            'delta_avg_sph_aktual' => $p2['avg_sph_aktual'] - $p1['avg_sph_aktual'],
         ];
     }
 
@@ -324,9 +328,9 @@ class ChatbotTools
             ->when($from && $to, fn ($x) => $x->whereBetween('tanggal_breakdown', [$from->toDateString(), $to->toDateString()]));
 
         return [
-            'bulan_mulai'           => $bulanMulai ?? 'semua periode',
-            'bulan_akhir'           => $bulanAkhir ?? 'semua periode',
-            'total_breakdown'       => (int) $q->clone()->count(),
+            'bulan_mulai' => $bulanMulai ?? 'semua periode',
+            'bulan_akhir' => $bulanAkhir ?? 'semua periode',
+            'total_breakdown' => (int) $q->clone()->count(),
             'jumlah_dies_terdampak' => (int) $q->clone()->distinct('id_part_proses')->count('id_part_proses'),
         ];
     }
@@ -343,9 +347,9 @@ class ChatbotTools
             ->when($from && $to, fn ($x) => $x->whereBetween('tanggal_breakdown', [$from->toDateString(), $to->toDateString()]));
 
         return [
-            'bulan_mulai'            => $bulanMulai ?? 'semua periode',
-            'bulan_akhir'            => $bulanAkhir ?? 'semua periode',
-            'total_breakdown'        => (int) $q->clone()->count(),
+            'bulan_mulai' => $bulanMulai ?? 'semua periode',
+            'bulan_akhir' => $bulanAkhir ?? 'semua periode',
+            'total_breakdown' => (int) $q->clone()->count(),
             'jumlah_mesin_terdampak' => (int) $q->clone()->distinct('id_mesin')->count('id_mesin'),
         ];
     }
@@ -374,13 +378,13 @@ class ChatbotTools
 
         $total = $query->count();
         if ($total === 0) {
-            return ['error' => "Tidak ada data breakdown dies" . $this->filterLabel($partNo, 'part') . $this->periodeLabel($bulanMulai, $bulanAkhir) . "."];
+            return ['error' => 'Tidak ada data breakdown dies'.$this->filterLabel($partNo, 'part').$this->periodeLabel($bulanMulai, $bulanAkhir).'.'];
         }
 
         $rows = $query->limit(self::MAX_DETAIL_ROWS)->get()->map(fn ($r) => [
-            'tanggal'  => $r->tanggal_breakdown->format('Y-m-d'),
-            'part'     => $r->partProses?->part?->part_name ?? '—',
-            'problem'  => $r->problem_dies,
+            'tanggal' => $r->tanggal_breakdown->format('Y-m-d'),
+            'part' => $r->partProses?->part?->part_name ?? '—',
+            'problem' => $r->problem_dies,
             'penyebab' => $r->penyebab_breakdown,
             'tindakan' => $r->tindakan_perbaikan,
         ])->toArray();
@@ -412,13 +416,13 @@ class ChatbotTools
 
         $total = $query->count();
         if ($total === 0) {
-            return ['error' => "Tidak ada data breakdown mesin" . $this->filterLabel($idMesin, 'mesin') . $this->periodeLabel($bulanMulai, $bulanAkhir) . "."];
+            return ['error' => 'Tidak ada data breakdown mesin'.$this->filterLabel($idMesin, 'mesin').$this->periodeLabel($bulanMulai, $bulanAkhir).'.'];
         }
 
         $rows = $query->limit(self::MAX_DETAIL_ROWS)->get()->map(fn ($r) => [
-            'tanggal'  => $r->tanggal_breakdown->format('Y-m-d'),
-            'mesin'    => $r->mesin?->nama_mesin ?? '—',
-            'problem'  => $r->problem_mesin,
+            'tanggal' => $r->tanggal_breakdown->format('Y-m-d'),
+            'mesin' => $r->mesin?->nama_mesin ?? '—',
+            'problem' => $r->problem_mesin,
             'penyebab' => $r->penyebab_breakdown,
             'tindakan' => $r->tindakan_perbaikan,
         ])->toArray();
@@ -443,15 +447,15 @@ class ChatbotTools
             ->take(10);
 
         if ($rows->isEmpty()) {
-            return ['error' => "Tidak ada kejadian breakdown mesin" . $this->periodeLabel($bulanMulai, $bulanAkhir) . "."];
+            return ['error' => 'Tidak ada kejadian breakdown mesin'.$this->periodeLabel($bulanMulai, $bulanAkhir).'.'];
         }
 
         return [
             'bulan_mulai' => $bulanMulai ?? 'semua periode',
             'bulan_akhir' => $bulanAkhir ?? 'semua periode',
-            'ranking'     => $rows->map(fn ($r) => [
-                'mesin'            => $r['nama_mesin'],
-                'kode_mesin'       => $r['kode_mesin'],
+            'ranking' => $rows->map(fn ($r) => [
+                'mesin' => $r['nama_mesin'],
+                'kode_mesin' => $r['kode_mesin'],
                 'jumlah_breakdown' => $r['count'],
                 'availability_pct' => $r['availability_pct'],
             ])->toArray(),
@@ -475,7 +479,7 @@ class ChatbotTools
             ->take(10);
 
         if ($rows->isEmpty()) {
-            return ['error' => "Tidak ada kejadian breakdown dies" . $this->periodeLabel($bulanMulai, $bulanAkhir) . "."];
+            return ['error' => 'Tidak ada kejadian breakdown dies'.$this->periodeLabel($bulanMulai, $bulanAkhir).'.'];
         }
 
         return [
@@ -485,10 +489,10 @@ class ChatbotTools
             // dies & mesin bisa dipakai bareng: 'nama_mesin' = part_name, 'kode_mesin' = part_no.
             // Jangan tergoda "membetulkan" jadi $r['part_name'] — key itu tidak ada.
             // Kontrak mapping ini dikunci test_get_ranking_breakdown_dies_maps_part_fields.
-            'ranking'     => $rows->map(fn ($r) => [
-                'part'             => $r['nama_mesin'],
-                'part_no'          => $r['kode_mesin'],
-                'nama_proses'      => $r['nama_proses'],
+            'ranking' => $rows->map(fn ($r) => [
+                'part' => $r['nama_mesin'],
+                'part_no' => $r['kode_mesin'],
+                'nama_proses' => $r['nama_proses'],
                 'jumlah_breakdown' => $r['count'],
             ])->toArray(),
         ];
@@ -517,7 +521,7 @@ class ChatbotTools
         $groups = TransaksiDandoriRincian::query()
             ->leftJoin('master_losstime', function ($join) {
                 $join->on('transaksi_dandori_rincian.id_losstime', '=', 'master_losstime.id')
-                     ->whereNull('master_losstime.deleted_at');
+                    ->whereNull('master_losstime.deleted_at');
             })
             ->when($from && $to, fn ($q) => $q->whereBetween('transaksi_dandori_rincian.tanggal', [$from->toDateString(), $to->toDateString()]))
             ->when($mesinId !== null, fn ($q) => $q->where('transaksi_dandori_rincian.id_mesin', $mesinId))
@@ -532,24 +536,24 @@ class ChatbotTools
 
         if ($groups->isEmpty()) {
             return [
-                'total_kejadian'     => 0,
+                'total_kejadian' => 0,
                 'top_jenis_losstime' => [],
-                'catatan'            => "Belum ada data dandori" . $this->filterLabel($idMesin, 'mesin') . $this->periodeLabel($bulanMulai, $bulanAkhir) . " yang tercatat.",
+                'catatan' => 'Belum ada data dandori'.$this->filterLabel($idMesin, 'mesin').$this->periodeLabel($bulanMulai, $bulanAkhir).' yang tercatat.',
             ];
         }
 
         $topJenis = $groups->map(fn ($r) => [
-            'jenis_losstime'     => $r->jenis_losstime,
-            'jumlah_kejadian'    => (int) $r->jumlah_kejadian,
+            'jenis_losstime' => $r->jenis_losstime,
+            'jumlah_kejadian' => (int) $r->jumlah_kejadian,
             'total_actual_menit' => (int) $r->total_actual_menit,
-            'total_over_menit'   => (int) $r->total_over_menit,
+            'total_over_menit' => (int) $r->total_over_menit,
         ])->values();
 
         return [
-            'bulan_mulai'        => $bulanMulai ?? 'semua periode',
-            'bulan_akhir'        => $bulanAkhir ?? 'semua periode',
-            'total_kejadian'     => (int) $topJenis->sum('jumlah_kejadian'),
-            'total_over_menit'   => (int) $topJenis->sum('total_over_menit'),
+            'bulan_mulai' => $bulanMulai ?? 'semua periode',
+            'bulan_akhir' => $bulanAkhir ?? 'semua periode',
+            'total_kejadian' => (int) $topJenis->sum('jumlah_kejadian'),
+            'total_over_menit' => (int) $topJenis->sum('total_over_menit'),
             'top_jenis_losstime' => $topJenis->toArray(),
         ];
     }
@@ -569,15 +573,15 @@ class ChatbotTools
             ->get(['qty_aktual', 'jam_start', 'jam_finish']);
 
         if ($rows->isEmpty()) {
-            return ['error' => "Tidak ada data produksi" . $this->periodeLabel($bulanMulai, $bulanAkhir) . "."];
+            return ['error' => 'Tidak ada data produksi'.$this->periodeLabel($bulanMulai, $bulanAkhir).'.'];
         }
 
         return [
-            'bulan_mulai'      => $bulanMulai ?? 'semua periode',
-            'bulan_akhir'      => $bulanAkhir ?? 'semua periode',
-            'jumlah_lhp'       => $rows->count(),
+            'bulan_mulai' => $bulanMulai ?? 'semua periode',
+            'bulan_akhir' => $bulanAkhir ?? 'semua periode',
+            'jumlah_lhp' => $rows->count(),
             'total_qty_aktual' => (int) $rows->sum('qty_aktual'),
-            'avg_sph_aktual'   => (int) round($rows->avg(fn ($r) => $r->sph_aktual)),
+            'avg_sph_aktual' => (int) round($rows->avg(fn ($r) => $r->sph_aktual)),
         ];
     }
 
@@ -598,7 +602,7 @@ class ChatbotTools
             ->get(['id_karyawan', 'qty_aktual', 'jam_start', 'jam_finish']);
 
         if ($rows->isEmpty()) {
-            return ['error' => "Tidak ada data produksi" . $this->periodeLabel($bulanMulai, $bulanAkhir) . "."];
+            return ['error' => 'Tidak ada data produksi'.$this->periodeLabel($bulanMulai, $bulanAkhir).'.'];
         }
 
         $nama = MasterKaryawan::pluck('nama_karyawan', 'id');
@@ -606,10 +610,10 @@ class ChatbotTools
         $ranking = $rows
             ->groupBy('id_karyawan')
             ->map(fn ($g, $id) => [
-                'operator'         => $nama[$id] ?? 'Tidak diketahui',
+                'operator' => $nama[$id] ?? 'Tidak diketahui',
                 'total_qty_aktual' => (int) $g->sum('qty_aktual'),
-                'jumlah_lhp'       => $g->count(),
-                'avg_sph_aktual'   => (int) round($g->avg(fn ($r) => $r->sph_aktual)),
+                'jumlah_lhp' => $g->count(),
+                'avg_sph_aktual' => (int) round($g->avg(fn ($r) => $r->sph_aktual)),
             ])
             ->sortByDesc('total_qty_aktual')
             ->values()
@@ -619,8 +623,8 @@ class ChatbotTools
         return [
             'bulan_mulai' => $bulanMulai ?? 'semua periode',
             'bulan_akhir' => $bulanAkhir ?? 'semua periode',
-            'catatan'     => 'Daftar performa per operator: total_qty_aktual (produksi) & avg_sph_aktual (SPH rata-rata). Untuk "SPH terbaik/terendah", bandingkan avg_sph_aktual.',
-            'ranking'     => $ranking,
+            'catatan' => 'Daftar performa per operator: total_qty_aktual (produksi) & avg_sph_aktual (SPH rata-rata). Untuk "SPH terbaik/terendah", bandingkan avg_sph_aktual.',
+            'ranking' => $ranking,
         ];
     }
 
@@ -648,18 +652,18 @@ class ChatbotTools
             ->get(['problem_dies', 'penyebab_breakdown', 'tindakan_perbaikan', 'tanggal_breakdown']);
 
         if ($records->isEmpty()) {
-            return ['error' => "Tidak ada data breakdown dies" . $this->filterLabel($partNo, 'part') . $this->periodeLabel($bulanMulai, $bulanAkhir) . "."];
+            return ['error' => 'Tidak ada data breakdown dies'.$this->filterLabel($partNo, 'part').$this->periodeLabel($bulanMulai, $bulanAkhir).'.'];
         }
 
         $groups = $this->groupByFrequency($records, 'problem_dies', 'penyebab_breakdown', 'tindakan_perbaikan');
 
         return [
-            'bulan_mulai'    => $bulanMulai ?? 'semua periode',
-            'bulan_akhir'    => $bulanAkhir ?? 'semua periode',
+            'bulan_mulai' => $bulanMulai ?? 'semua periode',
+            'bulan_akhir' => $bulanAkhir ?? 'semua periode',
             'total_kejadian' => $records->count(),
-            'pareto'         => $this->paretoFocus($records, 'problem_dies'),
-            'top_keyword'    => $this->keywordFrequency($records, 'problem_dies'),
-            'top_problem'    => $groups->toArray(),
+            'pareto' => $this->paretoFocus($records, 'problem_dies'),
+            'top_keyword' => $this->keywordFrequency($records, 'problem_dies'),
+            'top_problem' => $groups->toArray(),
         ];
     }
 
@@ -687,18 +691,18 @@ class ChatbotTools
             ->get(['problem_mesin', 'penyebab_breakdown', 'tindakan_perbaikan', 'tanggal_breakdown']);
 
         if ($records->isEmpty()) {
-            return ['error' => "Tidak ada data breakdown mesin" . $this->filterLabel($idMesin, 'mesin') . $this->periodeLabel($bulanMulai, $bulanAkhir) . "."];
+            return ['error' => 'Tidak ada data breakdown mesin'.$this->filterLabel($idMesin, 'mesin').$this->periodeLabel($bulanMulai, $bulanAkhir).'.'];
         }
 
         $groups = $this->groupByFrequency($records, 'problem_mesin', 'penyebab_breakdown', 'tindakan_perbaikan');
 
         return [
-            'bulan_mulai'    => $bulanMulai ?? 'semua periode',
-            'bulan_akhir'    => $bulanAkhir ?? 'semua periode',
+            'bulan_mulai' => $bulanMulai ?? 'semua periode',
+            'bulan_akhir' => $bulanAkhir ?? 'semua periode',
             'total_kejadian' => $records->count(),
-            'pareto'         => $this->paretoFocus($records, 'problem_mesin'),
-            'top_keyword'    => $this->keywordFrequency($records, 'problem_mesin'),
-            'top_problem'    => $groups->toArray(),
+            'pareto' => $this->paretoFocus($records, 'problem_mesin'),
+            'top_keyword' => $this->keywordFrequency($records, 'problem_mesin'),
+            'top_problem' => $groups->toArray(),
         ];
     }
 
@@ -712,7 +716,7 @@ class ChatbotTools
     public function getRootCause(string $target, ?string $kode = null, ?string $problem = null, ?string $bulanMulai = null, ?string $bulanAkhir = null): array
     {
         $target = strtolower(trim($target));
-        if (!in_array($target, ['mesin', 'dies'], true)) {
+        if (! in_array($target, ['mesin', 'dies'], true)) {
             return ['error' => 'target harus "mesin" atau "dies".'];
         }
 
@@ -721,9 +725,9 @@ class ChatbotTools
             return ['error' => $error];
         }
 
-        $isMesin      = $target === 'mesin';
+        $isMesin = $target === 'mesin';
         $problemField = $isMesin ? 'problem_mesin' : 'problem_dies';
-        $fokusLabel   = $isMesin ? 'semua mesin' : 'semua dies';
+        $fokusLabel = $isMesin ? 'semua mesin' : 'semua dies';
 
         if ($isMesin) {
             $query = TransaksiBreakdownMesin::query();
@@ -754,13 +758,13 @@ class ChatbotTools
             ->get([$problemField, 'penyebab_breakdown', 'tindakan_perbaikan', 'tanggal_breakdown']);
 
         if ($records->isEmpty()) {
-            return ['error' => "Tidak ada data breakdown {$target}" . $this->filterLabel($kode, $target) . $this->periodeLabel($bulanMulai, $bulanAkhir) . "."];
+            return ['error' => "Tidak ada data breakdown {$target}".$this->filterLabel($kode, $target).$this->periodeLabel($bulanMulai, $bulanAkhir).'.'];
         }
 
         // Pilih problem fokus: yang diminta (cocok sebagian) atau yang paling sering.
         if ($problem !== null) {
             $needle = strtolower(trim($problem));
-            $focus  = $records->filter(fn ($r) => str_contains(strtolower((string) $r->{$problemField}), $needle));
+            $focus = $records->filter(fn ($r) => str_contains(strtolower((string) $r->{$problemField}), $needle));
             if ($focus->isEmpty()) {
                 return ['error' => "Problem \"{$problem}\" tak ditemukan di data breakdown {$target} untuk {$fokusLabel}."];
             }
@@ -776,22 +780,22 @@ class ChatbotTools
         $problemText = trim($focus->first()->{$problemField});
 
         return [
-            'target'                 => $target,
-            'fokus'                  => $fokusLabel,
-            'periode'                => ($bulanMulai && $bulanAkhir) ? "{$bulanMulai} s/d {$bulanAkhir}" : 'semua periode',
-            'problem_fokus'          => $problemText,
+            'target' => $target,
+            'fokus' => $fokusLabel,
+            'periode' => ($bulanMulai && $bulanAkhir) ? "{$bulanMulai} s/d {$bulanAkhir}" : 'semua periode',
+            'problem_fokus' => $problemText,
             'total_kejadian_problem' => $focus->count(),
-            'total_kejadian_semua'   => $records->count(),
-            'pct_dari_semua'         => round($focus->count() / $records->count() * 100, 2),
+            'total_kejadian_semua' => $records->count(),
+            'pct_dari_semua' => round($focus->count() / $records->count() * 100, 2),
             // Penyebab & tindakan TERCATAT (top 8, dengan frekuensi) — basis RCA.
-            'penyebab_tercatat'      => $this->topValues($focus, 'penyebab_breakdown', 8),
-            'tindakan_tercatat'      => $this->topValues($focus, 'tindakan_perbaikan', 8),
-            'contoh_kejadian'        => $focus->take(5)->map(fn ($r) => [
-                'tanggal'  => $r->tanggal_breakdown->format('Y-m-d'),
+            'penyebab_tercatat' => $this->topValues($focus, 'penyebab_breakdown', 8),
+            'tindakan_tercatat' => $this->topValues($focus, 'tindakan_perbaikan', 8),
+            'contoh_kejadian' => $focus->take(5)->map(fn ($r) => [
+                'tanggal' => $r->tanggal_breakdown->format('Y-m-d'),
                 'penyebab' => $r->penyebab_breakdown,
                 'tindakan' => $r->tindakan_perbaikan,
             ])->values()->toArray(),
-            'catatan'                => 'penyebab_tercatat & tindakan_tercatat = data lapangan yang benar-benar tercatat, BUKAN analisa 5-Why otomatis. Susun RCA dari sini; akar yang tak tercatat sebut sebagai hipotesis, jangan seolah fakta.',
+            'catatan' => 'penyebab_tercatat & tindakan_tercatat = data lapangan yang benar-benar tercatat, BUKAN analisa 5-Why otomatis. Susun RCA dari sini; akar yang tak tercatat sebut sebagai hipotesis, jangan seolah fakta.',
         ];
     }
 
@@ -808,7 +812,7 @@ class ChatbotTools
             ];
         }
 
-        if (!$this->tableCatalog->has($table)) {
+        if (! $this->tableCatalog->has($table)) {
             return ['error' => "Tabel \"{$table}\" tidak tersedia untuk ditelusuri."];
         }
 
@@ -822,9 +826,9 @@ class ChatbotTools
         }
 
         return [
-            'table'     => $table,
+            'table' => $table,
             'deskripsi' => $this->tableCatalog->describe($table),
-            'columns'   => $columns,
+            'columns' => $columns,
         ];
     }
 
@@ -846,7 +850,10 @@ class ChatbotTools
         } catch (\Throwable $e) {
             return ['error' => 'Query gagal dijalankan.'];
         } finally {
-            try { DB::rollBack(); } catch (\Throwable) {}
+            try {
+                DB::rollBack();
+            } catch (\Throwable) {
+            }
         }
 
         $rows = array_map(fn ($r) => (array) $r, $rows);
@@ -858,14 +865,14 @@ class ChatbotTools
         return [
             'row_count' => count($rows),
             'truncated' => $overCap || count($rows) >= SqlGuard::ROW_CAP,
-            'rows'      => $rows,
+            'rows' => $rows,
         ];
     }
 
     private function produksiSummary(string $periode): array
     {
         [$from, $to] = $this->monthRange($periode);
-        if (!$from) {
+        if (! $from) {
             return ['error' => "Format periode \"{$periode}\" tidak valid, gunakan format YYYY-MM."];
         }
 
@@ -874,9 +881,9 @@ class ChatbotTools
             ->get(['qty_aktual', 'jam_start', 'jam_finish']);
 
         return [
-            'periode'         => $periode,
-            'total_qty_aktual'=> (int) $rows->sum('qty_aktual'),
-            'avg_sph_aktual'  => $rows->count() > 0 ? (int) round($rows->avg(fn ($r) => $r->sph_aktual)) : 0,
+            'periode' => $periode,
+            'total_qty_aktual' => (int) $rows->sum('qty_aktual'),
+            'avg_sph_aktual' => $rows->count() > 0 ? (int) round($rows->avg(fn ($r) => $r->sph_aktual)) : 0,
         ];
     }
 
@@ -895,12 +902,14 @@ class ChatbotTools
 
         if ($year !== null && $month >= 1 && $month <= 12 && $year >= 2000 && $year <= 2100) {
             $from = Carbon::create($year, $month, 1)->startOfMonth();
+
             return [$from, $from->copy()->endOfMonth()];
         }
 
         // Fallback: parser umum Carbon (mis. nama bulan "Juli 2026").
         try {
             $from = Carbon::parse($bulan)->startOfMonth();
+
             return [$from, $from->copy()->endOfMonth()];
         } catch (\Throwable) {
             return [null, null];
@@ -909,10 +918,10 @@ class ChatbotTools
 
     private function monthSpan(string $bulanMulai, string $bulanAkhir): array
     {
-        [$from, ] = $this->monthRange($bulanMulai);
-        [, $to]   = $this->monthRange($bulanAkhir);
+        [$from] = $this->monthRange($bulanMulai);
+        [, $to] = $this->monthRange($bulanAkhir);
 
-        if (!$from || !$to) {
+        if (! $from || ! $to) {
             return [null, null, 'Format bulan tidak valid, gunakan format YYYY-MM.'];
         }
         if ($from->gt($to)) {
@@ -937,20 +946,20 @@ class ChatbotTools
     private function truncatedResult(int $total, array $rows, string $bulanMulaiLabel, string $bulanAkhirLabel, array $extra = []): array
     {
         $result = array_merge([
-            'bulan_mulai'  => $bulanMulaiLabel,
-            'bulan_akhir'  => $bulanAkhirLabel,
+            'bulan_mulai' => $bulanMulaiLabel,
+            'bulan_akhir' => $bulanAkhirLabel,
             'total_record' => $total,
-            'data'         => $rows,
+            'data' => $rows,
         ], $extra);
 
         if ($total > self::MAX_DETAIL_ROWS) {
-            $result['note'] = "Data dipotong ke " . self::MAX_DETAIL_ROWS . " record terbaru dari total {$total}. Persempit rentang bulan untuk detail lengkap.";
+            $result['note'] = 'Data dipotong ke '.self::MAX_DETAIL_ROWS." record terbaru dari total {$total}. Persempit rentang bulan untuk detail lengkap.";
         }
 
         return $result;
     }
 
-    private function groupByFrequency(\Illuminate\Support\Collection $records, string $problemField, string $penyebabField, string $tindakanField): \Illuminate\Support\Collection
+    private function groupByFrequency(Collection $records, string $problemField, string $penyebabField, string $tindakanField): Collection
     {
         $total = $records->count();
 
@@ -958,10 +967,11 @@ class ChatbotTools
             ->groupBy(fn ($r) => strtolower(trim($r->{$problemField})))
             ->map(function ($rows) use ($total, $problemField, $penyebabField, $tindakanField) {
                 $latest = $rows->first();
+
                 return [
-                    'problem'          => trim($latest->{$problemField}),
-                    'jumlah_kejadian'  => $rows->count(),
-                    'pct_dari_total'   => round($rows->count() / $total * 100, 2),
+                    'problem' => trim($latest->{$problemField}),
+                    'jumlah_kejadian' => $rows->count(),
+                    'pct_dari_total' => round($rows->count() / $total * 100, 2),
                     // Penyebab & tindakan TERSERING yang tercatat di data (basis rekomendasi).
                     'penyebab_teratas' => $this->topValues($rows, $penyebabField, 2),
                     'tindakan_teratas' => $this->topValues($rows, $tindakanField, 2),
@@ -973,7 +983,7 @@ class ChatbotTools
     }
 
     /** Nilai teks yang paling sering muncul di sebuah field (top $n, dengan frekuensi). */
-    private function topValues(\Illuminate\Support\Collection $rows, string $field, int $n): array
+    private function topValues(Collection $rows, string $field, int $n): array
     {
         return $rows
             ->map(fn ($r) => trim((string) $r->{$field}))
@@ -990,7 +1000,7 @@ class ChatbotTools
      * Ringkasan Pareto: berapa SEDIKIT problem teratas yang sudah menutup ~$threshold%
      * dari seluruh kejadian (dihitung atas SEMUA grup problem, bukan cuma top 10).
      */
-    private function paretoFocus(\Illuminate\Support\Collection $records, string $problemField, float $threshold = 80.0): array
+    private function paretoFocus(Collection $records, string $problemField, float $threshold = 80.0): array
     {
         $counts = $records
             ->groupBy(fn ($r) => strtolower(trim($r->{$problemField})))
@@ -1015,9 +1025,9 @@ class ChatbotTools
 
         return [
             'jumlah_problem_fokus' => $n,
-            'total_jenis_problem'  => $counts->count(),
-            'threshold_pct'        => $threshold,
-            'cakupan_pct'          => round($cum / $total * 100, 2),
+            'total_jenis_problem' => $counts->count(),
+            'threshold_pct' => $threshold,
+            'cakupan_pct' => round($cum / $total * 100, 2),
         ];
     }
 
@@ -1026,11 +1036,11 @@ class ChatbotTools
      * Untuk tiap event, ambil kata (huruf ≥3, buang filler), lalu hitung berapa event
      * yang problem-nya memuat kata itu. Contoh: semua varian "BURRY" → total event-nya.
      */
-    private function keywordFrequency(\Illuminate\Support\Collection $records, string $problemField): array
+    private function keywordFrequency(Collection $records, string $problemField): array
     {
         $stop = [
-            'HASIL','PART','PROSES','MENGALAMI','PADA','YANG','DAN','ATAU','DARI','UNTUK',
-            'DENGAN','TIDAK','ADA','ADALAH','KARENA','SAAT','AKAN','DIES','DIE','PCS','MESIN',
+            'HASIL', 'PART', 'PROSES', 'MENGALAMI', 'PADA', 'YANG', 'DAN', 'ATAU', 'DARI', 'UNTUK',
+            'DENGAN', 'TIDAK', 'ADA', 'ADALAH', 'KARENA', 'SAAT', 'AKAN', 'DIES', 'DIE', 'PCS', 'MESIN',
         ];
         $total = $records->count();
         $counts = [];
@@ -1049,11 +1059,12 @@ class ChatbotTools
         $out = [];
         foreach (array_slice($counts, 0, 10, true) as $kw => $c) {
             $out[] = [
-                'keyword'         => $kw,
+                'keyword' => $kw,
                 'jumlah_kejadian' => $c,
-                'pct_dari_total'  => $total > 0 ? round($c / $total * 100, 2) : 0,
+                'pct_dari_total' => $total > 0 ? round($c / $total * 100, 2) : 0,
             ];
         }
+
         return $out;
     }
 
@@ -1097,8 +1108,8 @@ class ChatbotTools
         }
 
         $matches = MasterPart::where(fn ($w) => $w
-                ->whereRaw('LOWER(part_no) LIKE ?', ["%{$q}%"])
-                ->orWhereRaw('LOWER(part_name) LIKE ?', ["%{$q}%"]))
+            ->whereRaw('LOWER(part_no) LIKE ?', ["%{$q}%"])
+            ->orWhereRaw('LOWER(part_name) LIKE ?', ["%{$q}%"]))
             ->orderBy('part_no')->limit(8)->get();
 
         if ($matches->count() === 1) {
@@ -1106,8 +1117,9 @@ class ChatbotTools
         }
 
         $kandidat = $matches->map(fn ($p) => ['part_no' => $p->part_no, 'nama' => $p->part_name])->toArray();
+
         return [
-            'error'    => $kandidat
+            'error' => $kandidat
                 ? "Part/dies \"{$partNo}\" tidak cocok persis — ada beberapa kemungkinan. Tanyakan user mana yang dimaksud."
                 : "Part/dies \"{$partNo}\" tidak ada di master data. Minta user cek ulang no/nama-nya.",
             'kandidat' => $kandidat,
@@ -1135,8 +1147,8 @@ class ChatbotTools
         }
 
         $matches = MasterMesin::where(fn ($w) => $w
-                ->whereRaw('LOWER(id_mesin) LIKE ?', ["%{$q}%"])
-                ->orWhereRaw('LOWER(nama_mesin) LIKE ?', ["%{$q}%"]))
+            ->whereRaw('LOWER(id_mesin) LIKE ?', ["%{$q}%"])
+            ->orWhereRaw('LOWER(nama_mesin) LIKE ?', ["%{$q}%"]))
             ->orderBy('id_mesin')->limit(8)->get();
 
         if ($matches->count() === 1) {
@@ -1144,8 +1156,9 @@ class ChatbotTools
         }
 
         $kandidat = $matches->map(fn ($m) => ['kode' => $m->id_mesin, 'nama' => $m->nama_mesin])->toArray();
+
         return [
-            'error'    => $kandidat
+            'error' => $kandidat
                 ? "Mesin \"{$idMesin}\" tidak cocok persis — ada beberapa kemungkinan. Tanyakan user mana yang dimaksud (sebut kode & nama)."
                 : "Mesin \"{$idMesin}\" tidak ada di master data. Minta user cek ulang kode/nama mesinnya.",
             'kandidat' => $kandidat,

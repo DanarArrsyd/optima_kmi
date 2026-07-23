@@ -1,18 +1,19 @@
 <?php
+
 namespace App\Http\Controllers\Maintenance;
 
+use App\Exports\BreakdownMesinExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreBreakdownMesinRequest;
 use App\Http\Requests\UpdateBreakdownMesinRequest;
-use App\Exports\BreakdownMesinExport;
 use App\Imports\BreakdownMesinImport;
 use App\Models\MasterMesin;
 use App\Models\TransaksiBreakdownMesin;
 use App\Services\BreakdownMesinService;
 use Illuminate\Http\Request;
-use Maatwebsite\Excel\Facades\Excel;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Facades\Excel;
 
 class BreakdownMesinController extends Controller
 {
@@ -34,13 +35,15 @@ class BreakdownMesinController extends Controller
         Excel::import($import, $request->file('file'));
 
         $msg = "{$import->imported} breakdown berhasil diimport"
-             . ($import->skipped ? ", {$import->skipped} baris dilewati." : ".");
+             .($import->skipped ? ", {$import->skipped} baris dilewati." : '.');
+
         return back()->with('import_success', $msg)->with('import_errors', $import->errors);
     }
 
     public function importTemplate()
     {
-        $export = new class implements FromArray, WithHeadings {
+        $export = new class implements FromArray, WithHeadings
+        {
             public function headings(): array
             {
                 return [
@@ -51,6 +54,7 @@ class BreakdownMesinController extends Controller
                     'Problem', 'Penyebab', 'Tindakan', 'PIC',
                 ];
             }
+
             public function array(): array
             {
                 return [
@@ -58,14 +62,15 @@ class BreakdownMesinController extends Controller
                 ];
             }
         };
+
         return Excel::download($export, 'template_breakdown_mesin.xlsx');
     }
 
     public function index(Request $request)
     {
         $dateFrom = $request->input('date_from', date('Y-m-01'));
-        $dateTo   = $request->input('date_to',   date('Y-m-d'));
-        $mesinId  = (int) $request->input('mesin_id', 0);
+        $dateTo = $request->input('date_to', date('Y-m-d'));
+        $mesinId = (int) $request->input('mesin_id', 0);
 
         $breakdowns = TransaksiBreakdownMesin::with('mesin')
             ->whereBetween('tanggal_breakdown', [$dateFrom, $dateTo])
@@ -75,19 +80,19 @@ class BreakdownMesinController extends Controller
 
         return view('maintenance.breakdown.index', [
             'breakdowns' => $breakdowns,
-            'mesinList'  => MasterMesin::orderBy('id_mesin')->get(),
-            'dateFrom'   => $dateFrom,
-            'dateTo'     => $dateTo,
-            'mesinId'    => $mesinId,
-            'nextNomor'  => $this->svc->nextNomorUrut(),
+            'mesinList' => MasterMesin::orderBy('id_mesin')->get(),
+            'dateFrom' => $dateFrom,
+            'dateTo' => $dateTo,
+            'mesinId' => $mesinId,
+            'nextNomor' => $this->svc->nextNomorUrut(),
         ]);
     }
 
     public function create()
     {
         return view('maintenance.breakdown.create', [
-            'mesinList'  => MasterMesin::orderBy('id_mesin')->get(),
-            'nextNomor'  => $this->svc->nextNomorUrut(),
+            'mesinList' => MasterMesin::orderBy('id_mesin')->get(),
+            'nextNomor' => $this->svc->nextNomorUrut(),
         ]);
     }
 
@@ -107,18 +112,18 @@ class BreakdownMesinController extends Controller
 
         $derived = $this->svc->computeDerived($data);
         TransaksiBreakdownMesin::create([
-            'no_lkm'                    => $noLkm,
-            'id_mesin'                  => $data['id_mesin'],
-            'tanggal_breakdown'         => $data['tanggal_breakdown'],
-            'jam_breakdown'             => $data['jam_breakdown'],
-            'tanggal_mulai_perbaikan'   => $data['tanggal_mulai_perbaikan'],
-            'jam_mulai_perbaikan'       => $data['jam_mulai_perbaikan'],
+            'no_lkm' => $noLkm,
+            'id_mesin' => $data['id_mesin'],
+            'tanggal_breakdown' => $data['tanggal_breakdown'],
+            'jam_breakdown' => $data['jam_breakdown'],
+            'tanggal_mulai_perbaikan' => $data['tanggal_mulai_perbaikan'],
+            'jam_mulai_perbaikan' => $data['jam_mulai_perbaikan'],
             'tanggal_selesai_perbaikan' => $data['tanggal_selesai_perbaikan'],
-            'jam_selesai_perbaikan'     => $data['jam_selesai_perbaikan'],
-            'problem_mesin'             => $data['problem_mesin'],
-            'penyebab_breakdown'        => $data['penyebab_breakdown'],
-            'tindakan_perbaikan'        => $data['tindakan_perbaikan'],
-            'pic_maintenance'           => $data['pic_maintenance'],
+            'jam_selesai_perbaikan' => $data['jam_selesai_perbaikan'],
+            'problem_mesin' => $data['problem_mesin'],
+            'penyebab_breakdown' => $data['penyebab_breakdown'],
+            'tindakan_perbaikan' => $data['tindakan_perbaikan'],
+            'pic_maintenance' => $data['pic_maintenance'],
             ...$derived,
         ]);
 
@@ -128,14 +133,14 @@ class BreakdownMesinController extends Controller
     public function edit(TransaksiBreakdownMesin $breakdown)
     {
         return view('maintenance.breakdown.edit', [
-            'b'         => $breakdown,
+            'b' => $breakdown,
             'mesinList' => MasterMesin::orderBy('id_mesin')->get(),
         ]);
     }
 
     public function update(UpdateBreakdownMesinRequest $request, TransaksiBreakdownMesin $breakdown)
     {
-        $data  = $request->validated();
+        $data = $request->validated();
         $noLkm = $this->svc->generateNoLkm((int) $data['nomor_urut'], $data['tanggal_breakdown']);
 
         $dupe = TransaksiBreakdownMesin::withTrashed()->where('no_lkm', $noLkm)->where('id', '!=', $breakdown->id)->exists();
@@ -145,18 +150,18 @@ class BreakdownMesinController extends Controller
 
         $derived = $this->svc->computeDerived($data);
         $breakdown->update([
-            'no_lkm'                    => $noLkm,
-            'id_mesin'                  => $data['id_mesin'],
-            'tanggal_breakdown'         => $data['tanggal_breakdown'],
-            'jam_breakdown'             => $data['jam_breakdown'],
-            'tanggal_mulai_perbaikan'   => $data['tanggal_mulai_perbaikan'],
-            'jam_mulai_perbaikan'       => $data['jam_mulai_perbaikan'],
+            'no_lkm' => $noLkm,
+            'id_mesin' => $data['id_mesin'],
+            'tanggal_breakdown' => $data['tanggal_breakdown'],
+            'jam_breakdown' => $data['jam_breakdown'],
+            'tanggal_mulai_perbaikan' => $data['tanggal_mulai_perbaikan'],
+            'jam_mulai_perbaikan' => $data['jam_mulai_perbaikan'],
             'tanggal_selesai_perbaikan' => $data['tanggal_selesai_perbaikan'],
-            'jam_selesai_perbaikan'     => $data['jam_selesai_perbaikan'],
-            'problem_mesin'             => $data['problem_mesin'],
-            'penyebab_breakdown'        => $data['penyebab_breakdown'],
-            'tindakan_perbaikan'        => $data['tindakan_perbaikan'],
-            'pic_maintenance'           => $data['pic_maintenance'],
+            'jam_selesai_perbaikan' => $data['jam_selesai_perbaikan'],
+            'problem_mesin' => $data['problem_mesin'],
+            'penyebab_breakdown' => $data['penyebab_breakdown'],
+            'tindakan_perbaikan' => $data['tindakan_perbaikan'],
+            'pic_maintenance' => $data['pic_maintenance'],
             ...$derived,
         ]);
 
@@ -166,6 +171,7 @@ class BreakdownMesinController extends Controller
     public function destroy(TransaksiBreakdownMesin $breakdown)
     {
         $breakdown->delete();
+
         return redirect()->route('maintenance.breakdown.index')->with('success', 'Breakdown dihapus.');
     }
 }

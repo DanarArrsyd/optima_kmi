@@ -1,4 +1,5 @@
 <?php
+
 namespace Tests\Unit;
 
 use App\Models\MasterKaryawan;
@@ -37,12 +38,12 @@ class TransaksiProduksiDurasiTest extends TestCase
 
     private function lhp(string $start, string $finish): TransaksiProduksi
     {
-        $part   = MasterPart::create(['part_no' => 'P-D', 'part_name' => 'X', 'customer' => 'Toyota']);
+        $part = MasterPart::create(['part_no' => 'P-D', 'part_name' => 'X', 'customer' => 'Toyota']);
         $proses = MasterPartProses::create(['id_part' => $part->id, 'id_proses' => 1, 'nama_proses' => 'BLANK', 'sph_standar_produksi' => 400, 'sph_standar_qc' => 200]);
-        $shift  = MasterShift::create(['nama_shift' => 'S', 'jam_start' => '08:00', 'jam_finish' => '16:00']);
-        $kar    = MasterKaryawan::create(['nik' => uniqid(), 'nama_karyawan' => 'A', 'departemen' => 'Produksi', 'is_aktif' => true]);
-        $mesin  = MasterMesin::create(['id_mesin' => 'M-D', 'nama_mesin' => 'Press', 'line' => '1', 'tipe_mesin' => 'BLANK', 'kapasitas_max_stroke' => 100]);
-        $user   = User::factory()->create();
+        $shift = MasterShift::create(['nama_shift' => 'S', 'jam_start' => '08:00', 'jam_finish' => '16:00']);
+        $kar = MasterKaryawan::create(['nik' => uniqid(), 'nama_karyawan' => 'A', 'departemen' => 'Produksi', 'is_aktif' => true]);
+        $mesin = MasterMesin::create(['id_mesin' => 'M-D', 'nama_mesin' => 'Press', 'line' => '1', 'tipe_mesin' => 'BLANK', 'kapasitas_max_stroke' => 100]);
+        $user = User::factory()->create();
 
         return TransaksiProduksi::create([
             'tanggal_produksi' => '2026-07-15', 'id_shift' => $shift->id, 'id_karyawan' => $kar->id,

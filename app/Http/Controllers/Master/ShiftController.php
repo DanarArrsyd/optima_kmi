@@ -1,20 +1,22 @@
 <?php
+
 namespace App\Http\Controllers\Master;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreMasterShiftRequest;
-use App\Models\MasterShift;
 use App\Imports\ShiftImport;
-use Maatwebsite\Excel\Facades\Excel;
+use App\Models\MasterShift;
+use Illuminate\Http\Request;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithHeadings;
-use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ShiftController extends Controller
 {
     public function index()
     {
         $shifts = MasterShift::with('istirahat')->orderBy('jam_start')->paginate(20);
+
         return view('master.shift.index', compact('shifts'));
     }
 
@@ -41,6 +43,7 @@ class ShiftController extends Controller
     public function edit(MasterShift $shift)
     {
         $shift->load('istirahat');
+
         return view('master.shift.edit', compact('shift'));
     }
 
@@ -62,6 +65,7 @@ class ShiftController extends Controller
     public function destroy(MasterShift $shift)
     {
         $shift->delete();
+
         return redirect()->route('master.shift.index')
             ->with('success', 'Shift berhasil dihapus.');
     }
@@ -73,13 +77,13 @@ class ShiftController extends Controller
 
         foreach (['senin_kamis', 'jumat', 'sabtu'] as $kel) {
             foreach ($request->input("istirahat.{$kel}", []) as $row) {
-                $start  = $row['jam_start']  ?? '';
+                $start = $row['jam_start'] ?? '';
                 $finish = $row['jam_finish'] ?? '';
                 if ($start && $finish) {
                     $shift->istirahat()->create([
                         'kelompok_hari' => $kel,
-                        'jam_start'     => $start,
-                        'jam_finish'    => $finish,
+                        'jam_start' => $start,
+                        'jam_finish' => $finish,
                     ]);
                 }
             }
@@ -91,17 +95,20 @@ class ShiftController extends Controller
         $request->validate(['file' => 'required|file|mimes:xlsx,xls,csv|max:5120']);
         $import = new ShiftImport;
         Excel::import($import, $request->file('file'));
+
         return redirect()->route('master.shift.index')
             ->with('success', "Import berhasil: {$import->imported} data diproses, {$import->skipped} baris dilewati.");
     }
 
     public function importTemplate()
     {
-        $export = new class implements FromArray, WithHeadings {
+        $export = new class implements FromArray, WithHeadings
+        {
             public function headings(): array
             {
                 return ['Nama Shift', 'Jam Start (Senin-Kamis)', 'Jam Finish (Senin-Kamis)'];
             }
+
             public function array(): array
             {
                 return [
@@ -111,6 +118,7 @@ class ShiftController extends Controller
                 ];
             }
         };
+
         return Excel::download($export, 'template_shift.xlsx');
     }
 }

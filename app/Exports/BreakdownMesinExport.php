@@ -1,7 +1,9 @@
 <?php
+
 namespace App\Exports;
 
 use App\Models\TransaksiBreakdownMesin;
+use Illuminate\Support\Enumerable;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 
@@ -9,8 +11,8 @@ class BreakdownMesinExport implements FromCollection, WithHeadings
 {
     public function __construct(
         private ?string $dateFrom = null,
-        private ?string $dateTo   = null,
-        private ?int $mesinId     = null,
+        private ?string $dateTo = null,
+        private ?int $mesinId = null,
     ) {}
 
     public function headings(): array
@@ -25,16 +27,22 @@ class BreakdownMesinExport implements FromCollection, WithHeadings
         ];
     }
 
-    public function collection(): \Illuminate\Support\Enumerable
+    public function collection(): Enumerable
     {
         $q = TransaksiBreakdownMesin::with('mesin');
-        if ($this->dateFrom) $q->whereDate('tanggal_breakdown', '>=', $this->dateFrom);
-        if ($this->dateTo)   $q->whereDate('tanggal_breakdown', '<=', $this->dateTo);
-        if ($this->mesinId)  $q->where('id_mesin', $this->mesinId);
+        if ($this->dateFrom) {
+            $q->whereDate('tanggal_breakdown', '>=', $this->dateFrom);
+        }
+        if ($this->dateTo) {
+            $q->whereDate('tanggal_breakdown', '<=', $this->dateTo);
+        }
+        if ($this->mesinId) {
+            $q->where('id_mesin', $this->mesinId);
+        }
 
         return $q->orderBy('tanggal_breakdown')->orderBy('id')->get()->map(fn ($b) => [
             $b->no_lkm,
-            $b->mesin?->id_mesin   ?? '',
+            $b->mesin?->id_mesin ?? '',
             $b->mesin?->nama_mesin ?? '',
             optional($b->tanggal_breakdown)->format('Y-m-d'),
             substr((string) $b->jam_breakdown, 0, 5),

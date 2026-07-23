@@ -1,5 +1,7 @@
 <?php
+
 namespace App\Http\Controllers\Vcb;
+
 use App\Http\Controllers\Controller;
 use App\Models\MasterKaryawan;
 use App\Models\MasterShift;
@@ -13,7 +15,7 @@ class VcbQualityController extends Controller
 
     public function index()
     {
-        $shifts   = MasterShift::orderBy('jam_start')->get();
+        $shifts = MasterShift::orderBy('jam_start')->get();
         $karyawan = MasterKaryawan::whereRaw('LOWER(departemen) = ?', ['qc'])
             ->orderBy('nama_karyawan')
             ->get();
@@ -24,52 +26,52 @@ class VcbQualityController extends Controller
     public function data(Request $request)
     {
         $dateFrom = Carbon::parse($request->input('date_from', today()->toDateString()));
-        $dateTo   = Carbon::parse($request->input('date_to', today()->toDateString()));
-        $shiftId  = $request->filled('shift_id') ? (int) $request->input('shift_id') : null;
+        $dateTo = Carbon::parse($request->input('date_to', today()->toDateString()));
+        $shiftId = $request->filled('shift_id') ? (int) $request->input('shift_id') : null;
 
-        $rows         = $this->dashboardService->getVcbQuality($dateFrom, $dateTo, $shiftId);
-        $labels       = array_column($rows, 'karyawan');
+        $rows = $this->dashboardService->getVcbQuality($dateFrom, $dateTo, $shiftId);
+        $labels = array_column($rows, 'karyawan');
         $achievements = array_column($rows, 'achievement_pct');
-        $colors       = array_map(fn($r) => $this->trafficHex($r['traffic_light']), $rows);
+        $colors = array_map(fn ($r) => $this->trafficHex($r['traffic_light']), $rows);
 
         return response()->json([
-            'labels'       => $labels,
+            'labels' => $labels,
             'achievements' => $achievements,
-            'colors'       => $colors,
-            'table'        => $rows,
+            'colors' => $colors,
+            'table' => $rows,
         ]);
     }
 
     public function operatorData(Request $request)
     {
-        $dateFrom      = Carbon::parse($request->input('date_from', today()->toDateString()));
-        $dateTo        = Carbon::parse($request->input('date_to', today()->toDateString()));
-        $karyawanQcId  = (int) $request->input('karyawan_id');
-        $shiftId       = $request->filled('shift_id') ? (int) $request->input('shift_id') : null;
+        $dateFrom = Carbon::parse($request->input('date_from', today()->toDateString()));
+        $dateTo = Carbon::parse($request->input('date_to', today()->toDateString()));
+        $karyawanQcId = (int) $request->input('karyawan_id');
+        $shiftId = $request->filled('shift_id') ? (int) $request->input('shift_id') : null;
 
-        if (!$karyawanQcId) {
+        if (! $karyawanQcId) {
             return response()->json(['error' => 'Pilih inspector terlebih dahulu.'], 422);
         }
 
-        $rows      = $this->dashboardService->getVcbQualityByDate($dateFrom, $dateTo, $karyawanQcId, $shiftId);
+        $rows = $this->dashboardService->getVcbQualityByDate($dateFrom, $dateTo, $karyawanQcId, $shiftId);
         $inspector = MasterKaryawan::find($karyawanQcId)?->nama_karyawan ?? '—';
 
         return response()->json([
-            'inspector'    => $inspector,
-            'labels'       => array_column($rows, 'tanggal'),
+            'inspector' => $inspector,
+            'labels' => array_column($rows, 'tanggal'),
             'achievements' => array_column($rows, 'achievement_pct'),
-            'colors'       => array_map(fn($r) => $this->trafficHex($r['traffic_light']), $rows),
-            'table'        => $rows,
+            'colors' => array_map(fn ($r) => $this->trafficHex($r['traffic_light']), $rows),
+            'table' => $rows,
         ]);
     }
 
     private function trafficHex(string $light): string
     {
-        return match($light) {
-            'info'    => '#1d4ed8',   // >100% = melebihi target (biru), bukan merah
+        return match ($light) {
+            'info' => '#1d4ed8',   // >100% = melebihi target (biru), bukan merah
             'success' => '#15803d',
             'warning' => '#a16207',
-            default   => '#b91c1c',
+            default => '#b91c1c',
         };
     }
 }

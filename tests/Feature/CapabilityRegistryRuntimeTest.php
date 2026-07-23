@@ -1,4 +1,5 @@
 <?php
+
 namespace Tests\Feature;
 
 use App\Contracts\ChatCapability;
@@ -15,17 +16,44 @@ class CapabilityRegistryRuntimeTest extends TestCase
     /** Capability mata-mata: hitung berapa kali handle() benar-benar jalan. */
     protected function makeCap(string $name, array &$calls, array $keywords = []): ChatCapability
     {
-        return new class ($name, $calls, $keywords) implements ChatCapability {
+        return new class($name, $calls, $keywords) implements ChatCapability
+        {
             public function __construct(private string $n, private array &$calls, private array $kw) {}
-            public function name(): string { return $this->n; }
-            public function description(): string { return "d {$this->n}"; }
-            public function parameters(): array { return ['type' => 'object', 'properties' => [], 'required' => []]; }
-            public function keywords(): array { return $this->kw; }
-            public function roles(): array { return []; }
-            public function examples(): array { return []; }
+
+            public function name(): string
+            {
+                return $this->n;
+            }
+
+            public function description(): string
+            {
+                return "d {$this->n}";
+            }
+
+            public function parameters(): array
+            {
+                return ['type' => 'object', 'properties' => [], 'required' => []];
+            }
+
+            public function keywords(): array
+            {
+                return $this->kw;
+            }
+
+            public function roles(): array
+            {
+                return [];
+            }
+
+            public function examples(): array
+            {
+                return [];
+            }
+
             public function handle(array $args): array
             {
                 $this->calls[] = $this->n;
+
                 return ['ran' => $this->n, 'args' => $args];
             }
         };
@@ -40,7 +68,7 @@ class CapabilityRegistryRuntimeTest extends TestCase
         $reg = new CapabilityRegistry([$this->makeCap('alpha', $calls)]);
         $cap = $reg->find('alpha');
 
-        $first  = $reg->run($cap, ['x' => 1]);
+        $first = $reg->run($cap, ['x' => 1]);
         $second = $reg->run($cap, ['x' => 1]);
 
         $this->assertSame(['ran' => 'alpha', 'args' => ['x' => 1]], $first);

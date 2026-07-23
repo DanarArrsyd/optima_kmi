@@ -1,18 +1,22 @@
 <?php
+
 namespace App\Http\Controllers\Master;
+
+use App\Exports\PartExport;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\StoreMasterPartRequest;
 use App\Http\Requests\StoreMasterPartProsesRequest;
+use App\Http\Requests\StoreMasterPartRequest;
+use App\Imports\PartImport;
 use App\Models\MasterPart;
 use App\Models\MasterPartProses;
-use App\Imports\PartImport;
 use App\Models\MasterPartProsesSphLog;
 use App\Services\SphRecommendationService;
-use App\Exports\PartExport;
-use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Database\QueryException;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithHeadings;
-use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
 
 class PartController extends Controller
 {
@@ -31,11 +35,11 @@ class PartController extends Controller
             ->select('master_part_proses.*');
 
         if ($search !== '') {
-            $like = '%' . $search . '%';
+            $like = '%'.$search.'%';
             $q->where(function ($sub) use ($like) {
-                $sub->where('master_part.part_no',   'like', $like)
+                $sub->where('master_part.part_no', 'like', $like)
                     ->orWhere('master_part.part_name', 'like', $like)
-                    ->orWhere('master_part.customer',  'like', $like)
+                    ->orWhere('master_part.customer', 'like', $like)
                     ->orWhere('master_part_proses.nama_proses', 'like', $like);
             });
         }
@@ -45,17 +49,17 @@ class PartController extends Controller
         $isAdmin = auth()->user()?->role === 'admin';
 
         $dismissedProd = session('sph_dismissed_produksi', []);
-        $dismissedQc   = session('sph_dismissed_qc', []);
+        $dismissedQc = session('sph_dismissed_qc', []);
 
         $recommendations = $isAdmin
-            ? $this->sphSvc->getAll()->filter(fn($r) => !in_array($r->id_part_proses, $dismissedProd))->values()
+            ? $this->sphSvc->getAll()->filter(fn ($r) => ! in_array($r->id_part_proses, $dismissedProd))->values()
             : collect();
         $recommendationsQc = $isAdmin
-            ? $this->sphSvc->getAllQc()->filter(fn($r) => !in_array($r->id_part_proses, $dismissedQc))->values()
+            ? $this->sphSvc->getAllQc()->filter(fn ($r) => ! in_array($r->id_part_proses, $dismissedQc))->values()
             : collect();
 
         $dismissedProdCount = count($dismissedProd);
-        $dismissedQcCount   = count($dismissedQc);
+        $dismissedQcCount = count($dismissedQc);
 
         $customerList = MasterPart::whereNotNull('customer')->where('customer', '!=', '')
             ->distinct()->orderBy('customer')->pluck('customer');
@@ -71,14 +75,14 @@ class PartController extends Controller
         );
     }
 
-    public function dismissSphRecommendation(\Illuminate\Http\Request $request): \Illuminate\Http\RedirectResponse
+    public function dismissSphRecommendation(Request $request): RedirectResponse
     {
-        $id   = (int) $request->input('id_part_proses');
+        $id = (int) $request->input('id_part_proses');
         $type = $request->input('type', 'produksi');
-        $key  = "sph_dismissed_{$type}";
+        $key = "sph_dismissed_{$type}";
 
         $dismissed = session($key, []);
-        if ($id && !in_array($id, $dismissed)) {
+        if ($id && ! in_array($id, $dismissed)) {
             $dismissed[] = $id;
             session([$key => $dismissed]);
         }
@@ -86,10 +90,11 @@ class PartController extends Controller
         return back();
     }
 
-    public function resetSphDismissed(\Illuminate\Http\Request $request): \Illuminate\Http\RedirectResponse
+    public function resetSphDismissed(Request $request): RedirectResponse
     {
         $type = $request->input('type', 'produksi');
         session()->forget("sph_dismissed_{$type}");
+
         return back();
     }
 
@@ -101,6 +106,7 @@ class PartController extends Controller
     public function store(StoreMasterPartRequest $request)
     {
         MasterPart::create($request->validated());
+
         return redirect()->route('master.part.index')->with('success', 'Part berhasil ditambahkan. Tambahkan proses di halaman edit.');
     }
 
@@ -112,7 +118,7 @@ class PartController extends Controller
         // section sehingga konten halaman kosong.
         try {
             $part->load(['proses.sphLog.upgradedBy', 'proses.sphQcLog.upgradedBy']);
-        } catch (\Illuminate\Database\QueryException) {
+        } catch (QueryException) {
             $part->load(['proses']);
             $part->proses->each(function ($p) {
                 $p->setRelation('sphLog', collect());
@@ -123,10 +129,10 @@ class PartController extends Controller
         $isAdmin = auth()->user()?->role === 'admin';
 
         try {
-            $recommendations   = $isAdmin ? $this->sphSvc->forPart($part->id)->keyBy('id_part_proses')   : collect();
+            $recommendations = $isAdmin ? $this->sphSvc->forPart($part->id)->keyBy('id_part_proses') : collect();
             $recommendationsQc = $isAdmin ? $this->sphSvc->forPartQc($part->id)->keyBy('id_part_proses') : collect();
-        } catch (\Illuminate\Database\QueryException) {
-            $recommendations   = collect();
+        } catch (QueryException) {
+            $recommendations = collect();
             $recommendationsQc = collect();
         }
 
@@ -136,24 +142,28 @@ class PartController extends Controller
     public function update(StoreMasterPartRequest $request, MasterPart $part)
     {
         $part->update($request->validated());
+
         return redirect()->route('master.part.edit', $part)->with('success', 'Part berhasil diupdate.');
     }
 
     public function destroy(MasterPart $part)
     {
         $part->delete();
+
         return redirect()->route('master.part.index')->with('success', 'Part berhasil dihapus.');
     }
 
     public function storeProses(StoreMasterPartProsesRequest $request, MasterPart $part)
     {
         $part->proses()->create($request->validated());
+
         return redirect()->route('master.part.edit', $part)->with('success', 'Proses berhasil ditambahkan.');
     }
 
     public function destroyProses(MasterPart $part, MasterPartProses $proses)
     {
         $proses->delete();
+
         return redirect()->route('master.part.edit', $part)->with('success', 'Proses berhasil dihapus.');
     }
 
@@ -185,15 +195,15 @@ class PartController extends Controller
         // 2. Simpan ke log audit
         try {
             MasterPartProsesSphLog::create([
-                'id_part_proses'   => $proses->id,
-                'type'             => 'produksi',
+                'id_part_proses' => $proses->id,
+                'type' => 'produksi',
                 'sph_standar_lama' => $oldSph,
                 'sph_standar_baru' => $newSph,
-                'upgraded_by'      => auth()->id(),
-                'catatan'          => $request->input('catatan'),
-                'upgraded_at'      => $now,
+                'upgraded_by' => auth()->id(),
+                'catatan' => $request->input('catatan'),
+                'upgraded_at' => $now,
             ]);
-        } catch (\Illuminate\Database\QueryException) {
+        } catch (QueryException) {
             // tabel log belum ada — upgrade tetap tersimpan, log dilewati
         }
 
@@ -219,21 +229,21 @@ class PartController extends Controller
         $now = now();
 
         $proses->update([
-            'sph_standar_qc'          => $newSph,
+            'sph_standar_qc' => $newSph,
             'sph_qc_last_upgraded_at' => $now,
         ]);
 
         try {
             MasterPartProsesSphLog::create([
-                'id_part_proses'   => $proses->id,
-                'type'             => 'qc',
+                'id_part_proses' => $proses->id,
+                'type' => 'qc',
                 'sph_standar_lama' => $oldSph,
                 'sph_standar_baru' => $newSph,
-                'upgraded_by'      => auth()->id(),
-                'catatan'          => $request->input('catatan'),
-                'upgraded_at'      => $now,
+                'upgraded_by' => auth()->id(),
+                'catatan' => $request->input('catatan'),
+                'upgraded_at' => $now,
             ]);
-        } catch (\Illuminate\Database\QueryException) {
+        } catch (QueryException) {
             // tabel log belum ada — upgrade tetap tersimpan, log dilewati
         }
 
@@ -246,13 +256,15 @@ class PartController extends Controller
         $request->validate(['file' => 'required|file|mimes:xlsx,xls,csv|max:5120']);
         $import = new PartImport;
         Excel::import($import, $request->file('file'));
+
         return redirect()->route('master.part.index')
             ->with('success', "Import berhasil: {$import->imported} baris diproses, {$import->skipped} baris dilewati.");
     }
 
     public function importTemplate()
     {
-        $export = new class implements FromArray, WithHeadings {
+        $export = new class implements FromArray, WithHeadings
+        {
             public function headings(): array
             {
                 return [
@@ -263,6 +275,7 @@ class PartController extends Controller
                     'Std Setting Dies Menit',
                 ];
             }
+
             public function array(): array
             {
                 return [
@@ -272,6 +285,7 @@ class PartController extends Controller
                 ];
             }
         };
+
         return Excel::download($export, 'template_part.xlsx');
     }
 }
