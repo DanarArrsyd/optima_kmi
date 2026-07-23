@@ -32,6 +32,7 @@ Path: `/Applications/XAMPP/xamppfiles/htdocs/optima/`
 ## Active Work
 | Task | Status |
 |------|--------|
-| **Dandori Migration** | 🔴 PENDING — lihat `memory/projects/dandori-migration.md` |
+| **Checksheet PDF Preventive Dies** | ✅ DONE — merged main (PR #34). Upload wajib checksheet PDF (max 2MB) saat input PREVENTIVE dies, disk private, serve via route role-gated, link di history. |
+| **Dandori Migration** | ✅ DONE — sejak Jun 2026, lihat `memory/projects/dandori-migration.md` |
 
 → Detail proyek: `memory/projects/`, context: `memory/context/`
