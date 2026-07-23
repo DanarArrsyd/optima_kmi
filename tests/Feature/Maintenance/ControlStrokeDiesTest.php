@@ -278,4 +278,63 @@ class ControlStrokeDiesTest extends TestCase
         $response->assertSessionHasErrors('checksheet');
         $this->assertDatabaseCount('dies_preventive_log', 0);
     }
+
+    public function test_admin_can_view_checksheet_file(): void
+    {
+        Storage::fake('local');
+        $f = $this->fixtures();
+
+        $path = Storage::disk('local')->putFileAs(
+            'checksheet/dies-preventive',
+            UploadedFile::fake()->create('checksheet.pdf', 100, 'application/pdf'),
+            'test.pdf'
+        );
+        $log = DiesPreventiveLog::create([
+            'id_part_proses' => $f['proses']->id, 'tanggal_preventive' => '2026-05-01',
+            'id_karyawan' => $f['karyawan']->id, 'stroke_at_preventive' => 30500,
+            'checksheet_path' => $path, 'created_by' => $f['admin']->id,
+        ]);
+
+        $response = $this->actingAs($f['admin'])->get(route('maintenance.control-stroke-dies.preventive.checksheet', $log));
+
+        $response->assertOk();
+    }
+
+    public function test_manager_cannot_view_checksheet_file(): void
+    {
+        Storage::fake('local');
+        $f       = $this->fixtures();
+        $manager = User::factory()->create(['role' => 'manager']);
+
+        $path = Storage::disk('local')->putFileAs(
+            'checksheet/dies-preventive',
+            UploadedFile::fake()->create('checksheet.pdf', 100, 'application/pdf'),
+            'test.pdf'
+        );
+        $log = DiesPreventiveLog::create([
+            'id_part_proses' => $f['proses']->id, 'tanggal_preventive' => '2026-05-01',
+            'id_karyawan' => $f['karyawan']->id, 'stroke_at_preventive' => 30500,
+            'checksheet_path' => $path, 'created_by' => $f['admin']->id,
+        ]);
+
+        $response = $this->actingAs($manager)->get(route('maintenance.control-stroke-dies.preventive.checksheet', $log));
+
+        $response->assertForbidden();
+    }
+
+    public function test_checksheet_file_returns_404_when_missing(): void
+    {
+        Storage::fake('local');
+        $f = $this->fixtures();
+
+        $log = DiesPreventiveLog::create([
+            'id_part_proses' => $f['proses']->id, 'tanggal_preventive' => '2026-05-01',
+            'id_karyawan' => $f['karyawan']->id, 'stroke_at_preventive' => 30500,
+            'checksheet_path' => null, 'created_by' => $f['admin']->id,
+        ]);
+
+        $response = $this->actingAs($f['admin'])->get(route('maintenance.control-stroke-dies.preventive.checksheet', $log));
+
+        $response->assertNotFound();
+    }
 }
