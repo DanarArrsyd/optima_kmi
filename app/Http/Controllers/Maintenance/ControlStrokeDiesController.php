@@ -7,6 +7,7 @@ use App\Models\MasterKaryawan;
 use App\Models\MasterPartProses;
 use App\Services\MaintenanceDiesDashboardService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class ControlStrokeDiesController extends Controller
 {
@@ -98,5 +99,16 @@ class ControlStrokeDiesController extends Controller
             "Preventive {$partNo} — {$partProses->nama_proses} tersimpan. Stroke direset dari "
             . number_format($currentStroke, 0, ',', '.') . ' ke 0.'
         );
+    }
+
+    public function showChecksheet(DiesPreventiveLog $diesPreventiveLog)
+    {
+        abort_if(!in_array(auth()->user()->role, ['admin', 'staff_maintenance']), 403);
+
+        if (!$diesPreventiveLog->checksheet_path || !Storage::disk('local')->exists($diesPreventiveLog->checksheet_path)) {
+            abort(404, 'Checksheet tidak ditemukan.');
+        }
+
+        return response()->file(Storage::disk('local')->path($diesPreventiveLog->checksheet_path));
     }
 }
