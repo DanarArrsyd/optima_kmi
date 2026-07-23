@@ -1,25 +1,30 @@
 <?php
+
 namespace App\Imports;
-use App\Support\SaneDate;
 
 use App\Models\MasterMesin;
+use App\Support\SaneDate;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
+use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
-use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
-use Illuminate\Support\Collection;
+use PhpOffice\PhpSpreadsheet\Shared\Date;
 
-class MesinImport implements ToCollection, WithHeadingRow, SkipsEmptyRows
+class MesinImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
 {
     public int $imported = 0;
-    public int $skipped  = 0;
+
+    public int $skipped = 0;
 
     public function collection(Collection $rows): void
     {
         foreach ($rows as $row) {
             $idMesin = trim((string) ($row['id_mesin'] ?? ''));
-            $nama    = trim((string) ($row['nama_mesin'] ?? ''));
+            $nama = trim((string) ($row['nama_mesin'] ?? ''));
             if ($idMesin === '' || $nama === '') {
                 $this->skipped++;
+
                 continue;
             }
             $record = MasterMesin::withTrashed()->firstOrNew(['id_mesin' => $idMesin]);
@@ -51,7 +56,7 @@ class MesinImport implements ToCollection, WithHeadingRow, SkipsEmptyRows
             if ($tanggalInstalasi !== null) {
                 $record->tanggal_instalasi = $tanggalInstalasi;
             }
-            $record->deleted_at          = null;
+            $record->deleted_at = null;
             $record->save();
             $this->imported++;
         }
@@ -72,8 +77,8 @@ class MesinImport implements ToCollection, WithHeadingRow, SkipsEmptyRows
         }
         try {
             $parsed = is_numeric($raw)
-                ? \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject((float) $raw)->format('Y-m-d')
-                : \Illuminate\Support\Carbon::parse(trim((string) $raw))->toDateString();
+                ? Date::excelToDateTimeObject((float) $raw)->format('Y-m-d')
+                : Carbon::parse(trim((string) $raw))->toDateString();
         } catch (\Throwable $e) {
             return null;
         }

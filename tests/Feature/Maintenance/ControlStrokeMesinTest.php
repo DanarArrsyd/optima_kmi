@@ -1,4 +1,5 @@
 <?php
+
 namespace Tests\Feature\Maintenance;
 
 use App\Models\MasterKaryawan;
@@ -18,15 +19,15 @@ class ControlStrokeMesinTest extends TestCase
 
     private function fixtures(): array
     {
-        $admin    = User::factory()->create(['role' => 'admin']);
-        $shift    = MasterShift::create(['nama_shift' => 'Shift 1', 'jam_start' => '08:00', 'jam_finish' => '16:00']);
+        $admin = User::factory()->create(['role' => 'admin']);
+        $shift = MasterShift::create(['nama_shift' => 'Shift 1', 'jam_start' => '08:00', 'jam_finish' => '16:00']);
         $karyawan = MasterKaryawan::create(['nik' => uniqid(), 'nama_karyawan' => 'Teknisi A', 'departemen' => 'Produksi', 'is_aktif' => true]);
-        $mesin    = MasterMesin::create([
+        $mesin = MasterMesin::create([
             'id_mesin' => 'CS-01', 'nama_mesin' => 'CS Mesin', 'line' => '1',
             'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100, 'tanggal_instalasi' => '2026-01-01',
         ]);
-        $part     = MasterPart::create(['part_no' => 'CS-P1', 'part_name' => 'CS Part', 'customer' => 'Toyota']);
-        $proses   = MasterPartProses::create(['id_part' => $part->id, 'id_proses' => 1, 'nama_proses' => 'PROGRESSIVE', 'sph_standar_produksi' => 500, 'sph_standar_qc' => 250]);
+        $part = MasterPart::create(['part_no' => 'CS-P1', 'part_name' => 'CS Part', 'customer' => 'Toyota']);
+        $proses = MasterPartProses::create(['id_part' => $part->id, 'id_proses' => 1, 'nama_proses' => 'PROGRESSIVE', 'sph_standar_produksi' => 500, 'sph_standar_qc' => 250]);
 
         return compact('admin', 'shift', 'karyawan', 'mesin', 'part', 'proses');
     }
@@ -90,7 +91,7 @@ class ControlStrokeMesinTest extends TestCase
 
     public function test_manager_cannot_view_preventive_form_page(): void
     {
-        $f       = $this->fixtures();
+        $f = $this->fixtures();
         $manager = User::factory()->create(['role' => 'manager']);
 
         $response = $this->actingAs($manager)->get(route('maintenance.control-stroke-mesin.preventive.create', $f['mesin']->id));
@@ -128,7 +129,7 @@ class ControlStrokeMesinTest extends TestCase
 
     public function test_manager_can_view_history_page(): void
     {
-        $f       = $this->fixtures();
+        $f = $this->fixtures();
         $manager = User::factory()->create(['role' => 'manager']);
 
         $response = $this->actingAs($manager)->get(route('maintenance.control-stroke-mesin.history', $f['mesin']->id));
@@ -144,8 +145,8 @@ class ControlStrokeMesinTest extends TestCase
 
         $response = $this->actingAs($f['admin'])->post(route('maintenance.control-stroke-mesin.preventive', $f['mesin']->id), [
             'tanggal_preventive' => '2026-06-15',
-            'id_karyawan'        => $f['karyawan']->id,
-            'catatan'            => 'Preventive rutin',
+            'id_karyawan' => $f['karyawan']->id,
+            'catatan' => 'Preventive rutin',
         ]);
 
         $response->assertRedirect(route('maintenance.control-stroke-mesin'));
@@ -161,12 +162,12 @@ class ControlStrokeMesinTest extends TestCase
 
     public function test_staff_maintenance_can_store_preventive(): void
     {
-        $f     = $this->fixtures();
+        $f = $this->fixtures();
         $staff = User::factory()->create(['role' => 'staff_maintenance']);
 
         $response = $this->actingAs($staff)->post(route('maintenance.control-stroke-mesin.preventive', $f['mesin']->id), [
             'tanggal_preventive' => '2026-06-15',
-            'id_karyawan'        => $f['karyawan']->id,
+            'id_karyawan' => $f['karyawan']->id,
         ]);
 
         $response->assertRedirect(route('maintenance.control-stroke-mesin'));
@@ -175,12 +176,12 @@ class ControlStrokeMesinTest extends TestCase
 
     public function test_manager_cannot_store_preventive(): void
     {
-        $f       = $this->fixtures();
+        $f = $this->fixtures();
         $manager = User::factory()->create(['role' => 'manager']);
 
         $response = $this->actingAs($manager)->post(route('maintenance.control-stroke-mesin.preventive', $f['mesin']->id), [
             'tanggal_preventive' => '2026-06-15',
-            'id_karyawan'        => $f['karyawan']->id,
+            'id_karyawan' => $f['karyawan']->id,
         ]);
 
         $response->assertForbidden();
@@ -193,7 +194,7 @@ class ControlStrokeMesinTest extends TestCase
 
         $response = $this->actingAs($f['admin'])->post(route('maintenance.control-stroke-mesin.preventive', $f['mesin']->id), [
             'tanggal_preventive' => now()->addDay()->toDateString(),
-            'id_karyawan'        => $f['karyawan']->id,
+            'id_karyawan' => $f['karyawan']->id,
         ]);
 
         $response->assertSessionHasErrors('tanggal_preventive');
@@ -206,7 +207,7 @@ class ControlStrokeMesinTest extends TestCase
 
         $response = $this->actingAs($f['admin'])->post(route('maintenance.control-stroke-mesin.preventive', $f['mesin']->id), [
             'tanggal_preventive' => '2026-06-15',
-            'id_karyawan'        => 999999,
+            'id_karyawan' => 999999,
         ]);
 
         $response->assertSessionHasErrors('id_karyawan');

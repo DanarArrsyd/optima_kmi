@@ -1,65 +1,77 @@
 <?php
+
 namespace App\Exports;
 
 use App\Models\TransaksiQc;
+use Illuminate\Support\Enumerable;
 use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\WithColumnWidths;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithStyles;
-use Maatwebsite\Excel\Concerns\WithColumnWidths;
-use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class LhpQcExport implements FromCollection, WithHeadings, WithStyles, WithColumnWidths
+class LhpQcExport implements FromCollection, WithColumnWidths, WithHeadings, WithStyles
 {
     public function __construct(
-        private ?string $dateFrom   = null,
-        private ?string $dateTo     = null,
-        private ?string $customer   = null,
-        private ?string $partName   = null,
+        private ?string $dateFrom = null,
+        private ?string $dateTo = null,
+        private ?string $customer = null,
+        private ?string $partName = null,
         private ?string $namaProses = null,
     ) {}
 
-    public function collection(): \Illuminate\Support\Enumerable
+    public function collection(): Enumerable
     {
         $q = TransaksiQc::with([
-                'karyawanQc', 'partProses.part', 'shift', 'jenisNg',
-            ]);
+            'karyawanQc', 'partProses.part', 'shift', 'jenisNg',
+        ]);
 
-        if ($this->dateFrom)   $q->whereDate('tgl_pengecekan', '>=', $this->dateFrom);
-        if ($this->dateTo)     $q->whereDate('tgl_pengecekan', '<=', $this->dateTo);
-        if ($this->customer)   $q->whereHas('partProses.part', fn($q) => $q->where('customer',   'like', "%{$this->customer}%"));
-        if ($this->partName)   $q->whereHas('partProses.part', fn($q) => $q->where('part_name',  'like', "%{$this->partName}%"));
-        if ($this->namaProses) $q->whereHas('partProses',       fn($q) => $q->where('nama_proses','like', "%{$this->namaProses}%"));
+        if ($this->dateFrom) {
+            $q->whereDate('tgl_pengecekan', '>=', $this->dateFrom);
+        }
+        if ($this->dateTo) {
+            $q->whereDate('tgl_pengecekan', '<=', $this->dateTo);
+        }
+        if ($this->customer) {
+            $q->whereHas('partProses.part', fn ($q) => $q->where('customer', 'like', "%{$this->customer}%"));
+        }
+        if ($this->partName) {
+            $q->whereHas('partProses.part', fn ($q) => $q->where('part_name', 'like', "%{$this->partName}%"));
+        }
+        if ($this->namaProses) {
+            $q->whereHas('partProses', fn ($q) => $q->where('nama_proses', 'like', "%{$this->namaProses}%"));
+        }
 
         return $q->orderBy('tgl_pengecekan')->orderBy('id')->get()->map(function ($t) {
-            $pp     = $t->partProses;
-            $part   = $pp?->part;
+            $pp = $t->partProses;
+            $part = $pp?->part;
             $sphStd = $pp?->sph_standar_qc ?? 0;
             $sphAct = $t->sph_aktual;
-            $total  = $t->qty_ok + ($t->qty_ng ?? 0);
-            $pct    = $sphStd > 0 ? round($sphAct / $sphStd * 100, 1) : '';
+            $total = $t->qty_ok + ($t->qty_ng ?? 0);
+            $pct = $sphStd > 0 ? round($sphAct / $sphStd * 100, 1) : '';
 
             return [
                 $t->tgl_pengecekan,
                 $t->tgl_produksi_part,
-                $t->shift?->nama_shift         ?? '',
+                $t->shift?->nama_shift ?? '',
                 $t->karyawanQc?->nama_karyawan ?? '',
-                $part?->customer               ?? '',
-                $part?->part_no                ?? '',
-                $part?->part_name              ?? '',
-                $pp?->id_proses                ?? '',
-                $pp?->nama_proses              ?? '',
-                substr($t->jam_start,  0, 5),
+                $part?->customer ?? '',
+                $part?->part_no ?? '',
+                $part?->part_name ?? '',
+                $pp?->id_proses ?? '',
+                $pp?->nama_proses ?? '',
+                substr($t->jam_start, 0, 5),
                 substr($t->jam_finish, 0, 5),
                 $t->qty_ok,
                 $t->qty_ng ?? 0,
                 $total,
-                $t->jenisNg?->kode             ?? '',
+                $t->jenisNg?->kode ?? '',
                 $sphStd,
                 $sphAct,
                 round($t->waktu_kerja_jam, 2),
                 round($t->actual_cycle_time, 2),
-                $pct !== '' ? $pct . '%' : '',
+                $pct !== '' ? $pct.'%' : '',
             ];
         });
     }
@@ -88,8 +100,8 @@ class LhpQcExport implements FromCollection, WithHeadings, WithStyles, WithColum
     {
         return [
             1 => [
-                'font'    => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF']],
-                'fill'    => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF111827']],
+                'font' => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF']],
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF111827']],
                 'alignment' => ['wrapText' => true],
             ],
         ];

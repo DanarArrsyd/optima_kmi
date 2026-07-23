@@ -1,4 +1,5 @@
 <?php
+
 namespace Tests\Feature\Input;
 
 use App\Imports\DandoriImport;
@@ -50,14 +51,14 @@ class DandoriImportDateTest extends TestCase
     private function row(string $tanggal): array
     {
         return [
-            'tanggal'        => $tanggal,
-            'nama_shift'     => 'Shift 1',
-            'nama_operator'  => 'Operator Impor',
-            'id_mesin'       => 'IM-01',
-            'part_no'        => 'IM-P1',
-            'id_proses'      => '1',
+            'tanggal' => $tanggal,
+            'nama_shift' => 'Shift 1',
+            'nama_operator' => 'Operator Impor',
+            'id_mesin' => 'IM-01',
+            'part_no' => 'IM-P1',
+            'id_proses' => '1',
             'kode_loss_time' => '9',
-            'actual_menit'   => 40,
+            'actual_menit' => 40,
         ];
     }
 
@@ -66,7 +67,7 @@ class DandoriImportDateTest extends TestCase
         $ctx = $this->seedMasters();
         $this->actingAs($ctx['admin']);
 
-        $import = new DandoriImport();
+        $import = new DandoriImport;
         $import->collection(new Collection([$this->row('0026-06-21')]));
 
         $this->assertSame(0, $import->importedCount);
@@ -80,7 +81,7 @@ class DandoriImportDateTest extends TestCase
         $ctx = $this->seedMasters();
         $this->actingAs($ctx['admin']);
 
-        $import = new DandoriImport();
+        $import = new DandoriImport;
         $import->collection(new Collection([$this->row('2026-06-21')]));
 
         $this->assertSame([], $import->errors);

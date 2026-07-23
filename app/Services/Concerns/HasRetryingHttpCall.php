@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services\Concerns;
 
 use Illuminate\Support\Facades\Log;
@@ -29,6 +30,7 @@ trait HasRetryingHttpCall
                     }
                     if ($wait > 0 && $wait <= self::MAX_RATE_LIMIT_WAIT) {
                         usleep((int) (($wait + 0.3) * 1_000_000));
+
                         continue;
                     }
                 }
@@ -36,20 +38,24 @@ trait HasRetryingHttpCall
                 // Retry error transien server.
                 if ($attempt === 1 && in_array($response->status(), [500, 502, 503], true)) {
                     usleep(900_000);
+
                     continue;
                 }
 
                 Log::warning("{$providerName} API non-2xx response", [
                     'status' => $response->status(),
-                    'body'   => Str::limit($response->body(), 500),
+                    'body' => Str::limit($response->body(), 500),
                 ]);
+
                 return null;
             } catch (\Throwable $e) {
                 if ($attempt === 1) {
                     usleep(900_000);
+
                     continue;
                 }
                 Log::warning("{$providerName} API call failed", ['message' => $e->getMessage()]);
+
                 return null;
             }
         }

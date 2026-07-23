@@ -1,4 +1,5 @@
 <?php
+
 namespace Tests\Unit;
 
 use App\Models\MasterKaryawan;
@@ -21,7 +22,7 @@ class OeeServiceTest extends TestCase
     /** @return array{mesin: MasterMesin, proses: MasterPartProses} */
     private function scaffold(int $sph = 400, ?string $install = '2026-01-01'): array
     {
-        $part   = MasterPart::create(['part_no' => 'PT-OEE', 'part_name' => 'X', 'customer' => 'Toyota']);
+        $part = MasterPart::create(['part_no' => 'PT-OEE', 'part_name' => 'X', 'customer' => 'Toyota']);
         $proses = MasterPartProses::create([
             'id_part' => $part->id, 'id_proses' => 1, 'nama_proses' => 'BLANKING',
             'sph_standar_produksi' => $sph, 'sph_standar_qc' => 200,
@@ -30,14 +31,15 @@ class OeeServiceTest extends TestCase
             'id_mesin' => 'M-OEE', 'nama_mesin' => 'Press', 'line' => '1',
             'tipe_mesin' => 'BLANKING', 'kapasitas_max_stroke' => 100, 'tanggal_instalasi' => $install,
         ]);
+
         return ['mesin' => $mesin, 'proses' => $proses];
     }
 
     private function lhp(int $mesinId, int $prosesId, int $qty, int $ng, string $tgl = '2026-07-15'): void
     {
         $shift = MasterShift::firstOrCreate(['nama_shift' => 'S1'], ['jam_start' => '08:00', 'jam_finish' => '16:00']);
-        $kar   = MasterKaryawan::firstOrCreate(['nik' => 'K-OEE'], ['nama_karyawan' => 'A', 'departemen' => 'Produksi', 'is_aktif' => true]);
-        $user  = User::factory()->create();
+        $kar = MasterKaryawan::firstOrCreate(['nik' => 'K-OEE'], ['nama_karyawan' => 'A', 'departemen' => 'Produksi', 'is_aktif' => true]);
+        $user = User::factory()->create();
         TransaksiProduksi::create([
             'tanggal_produksi' => $tgl, 'id_shift' => $shift->id, 'id_karyawan' => $kar->id,
             'id_mesin' => $mesinId, 'id_part_proses' => $prosesId,
@@ -49,6 +51,7 @@ class OeeServiceTest extends TestCase
     private function july(): array
     {
         $from = Carbon::create(2026, 7, 1)->startOfMonth();
+
         return [$from, $from->copy()->endOfMonth()];
     }
 
@@ -60,7 +63,7 @@ class OeeServiceTest extends TestCase
         $this->lhp($mesin->id, $proses->id, qty: 3200, ng: 200);
 
         [$from, $to] = $this->july();
-        $r = (new OeeService())->computeMesin($mesin->id, $from, $to);
+        $r = (new OeeService)->computeMesin($mesin->id, $from, $to);
 
         $this->assertSame(100.0, $r['performance_pct']);
         $this->assertSame(93.75, $r['quality_pct']);
@@ -75,7 +78,7 @@ class OeeServiceTest extends TestCase
         $this->lhp($mesin->id, $proses->id, qty: 3200, ng: 200);
 
         [$from, $to] = $this->july();
-        $r = (new OeeService())->computeMesin($mesin->id, $from, $to);
+        $r = (new OeeService)->computeMesin($mesin->id, $from, $to);
 
         $this->assertNotNull($r['availability_pct'], 'Instalasi diset → availability harus terhitung.');
         $expected = round($r['availability_pct'] / 100 * $r['performance_pct'] / 100 * $r['quality_pct'] / 100 * 100, 2);
@@ -88,7 +91,7 @@ class OeeServiceTest extends TestCase
         $this->lhp($mesin->id, $proses->id, qty: 1000, ng: 0);
 
         [$from, $to] = $this->july();
-        $r = (new OeeService())->computeMesin($mesin->id, $from, $to);
+        $r = (new OeeService)->computeMesin($mesin->id, $from, $to);
 
         $this->assertNull($r['availability_pct']);
         $this->assertNull($r['oee_pct']);
@@ -102,7 +105,7 @@ class OeeServiceTest extends TestCase
         $this->lhp($mesin->id, $proses->id, qty: 1000, ng: 50);
 
         [$from, $to] = $this->july();
-        $r = (new OeeService())->computeMesin($mesin->id, $from, $to);
+        $r = (new OeeService)->computeMesin($mesin->id, $from, $to);
 
         $this->assertNull($r['performance_pct']);
         $this->assertSame(95.0, $r['quality_pct']); // quality tetap terhitung
@@ -114,7 +117,7 @@ class OeeServiceTest extends TestCase
         ['mesin' => $mesin] = $this->scaffold();
 
         [$from, $to] = $this->july();
-        $r = (new OeeService())->computeMesin($mesin->id, $from, $to);
+        $r = (new OeeService)->computeMesin($mesin->id, $from, $to);
 
         $this->assertSame(0, $r['jumlah_lhp']);
         $this->assertNull($r['performance_pct']);
@@ -126,7 +129,7 @@ class OeeServiceTest extends TestCase
         ['mesin' => $mesin, 'proses' => $proses] = $this->scaffold();
         $this->lhp($mesin->id, $proses->id, qty: 3200, ng: 0);
 
-        $r = (new ChatbotTools())->getOeeMesin('m-oee', '2026-07'); // case-insensitive kode
+        $r = (new ChatbotTools)->getOeeMesin('m-oee', '2026-07'); // case-insensitive kode
 
         $this->assertSame('Press', $r['mesin']);
         $this->assertSame('2026-07', $r['periode']);
@@ -135,7 +138,7 @@ class OeeServiceTest extends TestCase
 
     public function test_chatbot_tools_errors_on_unknown_machine(): void
     {
-        $r = (new ChatbotTools())->getOeeMesin('GHOST', '2026-07');
+        $r = (new ChatbotTools)->getOeeMesin('GHOST', '2026-07');
         $this->assertArrayHasKey('error', $r);
         $this->assertSame([], $r['kandidat'], 'Benar-benar tak ada → kandidat kosong.');
     }
@@ -144,12 +147,12 @@ class OeeServiceTest extends TestCase
     {
         // Kode A4, nama AMADA 80T — user sebut NAMA, harus tetap ketemu.
         $mesin = MasterMesin::create(['id_mesin' => 'A4', 'nama_mesin' => 'AMADA 80T', 'line' => 'A', 'tipe_mesin' => 'STAMPING', 'kapasitas_max_stroke' => 100, 'tanggal_instalasi' => '2026-01-01']);
-        $part  = MasterPart::create(['part_no' => 'PA', 'part_name' => 'X', 'customer' => 'Toyota']);
-        $pr    = MasterPartProses::create(['id_part' => $part->id, 'id_proses' => 1, 'nama_proses' => 'BLANK', 'sph_standar_produksi' => 400, 'sph_standar_qc' => 200]);
+        $part = MasterPart::create(['part_no' => 'PA', 'part_name' => 'X', 'customer' => 'Toyota']);
+        $pr = MasterPartProses::create(['id_part' => $part->id, 'id_proses' => 1, 'nama_proses' => 'BLANK', 'sph_standar_produksi' => 400, 'sph_standar_qc' => 200]);
         $this->lhp($mesin->id, $pr->id, qty: 3200, ng: 0);
 
-        $byName    = (new ChatbotTools())->getOeeMesin('AMADA 80T', '2026-07');
-        $byPartial = (new ChatbotTools())->getOeeMesin('amada', '2026-07');
+        $byName = (new ChatbotTools)->getOeeMesin('AMADA 80T', '2026-07');
+        $byPartial = (new ChatbotTools)->getOeeMesin('amada', '2026-07');
 
         $this->assertSame('A4', $byName['kode_mesin']);
         $this->assertSame('A4', $byPartial['kode_mesin'], 'Partial unik juga resolve.');
@@ -160,7 +163,7 @@ class OeeServiceTest extends TestCase
         MasterMesin::create(['id_mesin' => 'A4', 'nama_mesin' => 'AMADA 80T', 'line' => 'A', 'tipe_mesin' => 'STAMPING', 'kapasitas_max_stroke' => 100]);
         MasterMesin::create(['id_mesin' => 'P3', 'nama_mesin' => 'AMADA 150T', 'line' => 'P', 'tipe_mesin' => 'STAMPING', 'kapasitas_max_stroke' => 100]);
 
-        $r = (new ChatbotTools())->getOeeMesin('amada', '2026-07');
+        $r = (new ChatbotTools)->getOeeMesin('amada', '2026-07');
 
         $this->assertArrayHasKey('error', $r);
         $this->assertCount(2, $r['kandidat']);
@@ -173,7 +176,7 @@ class OeeServiceTest extends TestCase
         $this->lhp($mesin->id, $proses->id, qty: 3200, ng: 200); // teoretis 3200, perf 100, qual 93.75
 
         [$from, $to] = $this->july();
-        $r = (new OeeService())->computeMesin($mesin->id, $from, $to);
+        $r = (new OeeService)->computeMesin($mesin->id, $from, $to);
 
         $this->assertSame(3200, $r['output_teoretis']);
         $this->assertStringContainsString('3200 ÷ 3200', $r['metodologi']['performance']);

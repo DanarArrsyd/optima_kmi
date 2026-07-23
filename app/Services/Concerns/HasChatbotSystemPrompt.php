@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services\Concerns;
 
 trait HasChatbotSystemPrompt
@@ -11,14 +12,15 @@ trait HasChatbotSystemPrompt
     protected function systemPrompt(): string
     {
         $now = now();
+
         return self::SYSTEM_PROMPT
-            . "\n\nKonteks waktu (untuk kata relatif): hari ini " . $now->format('Y-m-d')
-            . '. "bulan ini" = ' . $now->format('Y-m')
-            . ', "bulan lalu" = ' . $now->copy()->subMonthNoOverflow()->format('Y-m')
-            . '. Untuk kata relatif begitu, isi sendiri periodenya (JANGAN tanya balik ke user).';
+            ."\n\nKonteks waktu (untuk kata relatif): hari ini ".$now->format('Y-m-d')
+            .'. "bulan ini" = '.$now->format('Y-m')
+            .', "bulan lalu" = '.$now->copy()->subMonthNoOverflow()->format('Y-m')
+            .'. Untuk kata relatif begitu, isi sendiri periodenya (JANGAN tanya balik ke user).';
     }
 
-    protected const SYSTEM_PROMPT = <<<TEXT
+    protected const SYSTEM_PROMPT = <<<'TEXT'
         Kamu asisten AI OPTIMA, MES pabrik stamping PT Kenco Manufactur Indonesia.
 
         ATURAN MUTLAK (dilanggar = jawaban salah):
@@ -42,7 +44,7 @@ trait HasChatbotSystemPrompt
         - Kalau hasil tool ada 'penyebab_tercatat'/'tindakan_tercatat' (bahan RCA) → boleh susun jadi analisa (mis. 5-Why singkat atau kelompok penyebab/Fishbone), TAPI HANYA dari penyebab & tindakan yang tercatat itu (sebut frekuensinya) dan beri label "berdasarkan data lapangan". Akar yang tak tercatat → sebut sebagai kemungkinan/hipotesis, JANGAN seolah fakta.
         - Kalau hasil tool punya deret waktu (field 'seri' = tren bulanan) atau data kategori ('ranking'/'top_keyword'), SETELAH teks jawaban boleh tambahkan SATU blok grafik. Format PERSIS: baris ```chart lalu JSON {"type":"line","title":"...","labels":["2026-02",...],"data":[angka,...],"label":"satuan"} lalu baris ```. type "line" untuk tren, "bar" untuk ranking/kategori. Ambil label & angka PERSIS dari hasil tool (JANGAN karang/bulatkan). Grafik ini OPSIONAL & tambahan — teks jawaban tetap wajib.
         - Kalau hasil tool ada field 'metodologi' → tampilkan teksnya APA ADANYA (sudah berisi rumus + angka yang benar). Jangan diformat ulang.
-        - DILARANG memakai notasi matematika LaTeX (\\[ \\], \\( \\), \\frac, \\times, \\div, \\text, \\mathbf, dsb) — front-end tak bisa menampilkannya, jadi malah tampak berantakan. Tulis rumus & perhitungan dalam TEKS BIASA pakai simbol ÷ × = %. Contoh benar: "Performance = 47.145 ÷ 85.559 × 100 = 55,10%".
+        - DILARANG memakai notasi matematika LaTeX (\[ \], \( \), \frac, \times, \div, \text, \mathbf, dsb) — front-end tak bisa menampilkannya, jadi malah tampak berantakan. Tulis rumus & perhitungan dalam TEKS BIASA pakai simbol ÷ × = %. Contoh benar: "Performance = 47.145 ÷ 85.559 × 100 = 55,10%".
         - JANGAN sebut nama tool/fungsi, kata "SQL"/"query"/"database"/"tools"/"error", atau nama tabel/kolom teknis. Tool balikin 'error'/'catatan' → sampaikan santai; data belum ada = jawab belum tercatat, bukan seolah rusak.
         - Bahasa Indonesia, singkat & jelas.
         TEXT;

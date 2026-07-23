@@ -1,4 +1,5 @@
 <?php
+
 namespace Tests\Unit;
 
 use App\Models\MasterMesin;
@@ -22,7 +23,7 @@ class RootCauseTest extends TestCase
     private function bdMesin(int $mesinId, string $problem, string $penyebab, string $tindakan, string $tgl = '2026-07-10'): void
     {
         TransaksiBreakdownMesin::create([
-            'no_lkm' => 'LKM-' . uniqid(), 'id_mesin' => $mesinId,
+            'no_lkm' => 'LKM-'.uniqid(), 'id_mesin' => $mesinId,
             'tanggal_breakdown' => $tgl, 'jam_breakdown' => '08:00',
             'tanggal_mulai_perbaikan' => $tgl, 'jam_mulai_perbaikan' => '09:00',
             'tanggal_selesai_perbaikan' => $tgl, 'jam_selesai_perbaikan' => '10:00',
@@ -41,7 +42,7 @@ class RootCauseTest extends TestCase
         $this->bdMesin($m->id, 'OVERHEAT', 'Fan mati', 'Ganti fan');
         $this->bdMesin($m->id, 'BUNYI', 'Baut kendor', 'Kencangkan');
 
-        $r = (new ChatbotTools())->getRootCause('mesin', 'A4');
+        $r = (new ChatbotTools)->getRootCause('mesin', 'A4');
 
         $this->assertSame('OVERHEAT', $r['problem_fokus']);
         $this->assertSame(3, $r['total_kejadian_problem']);
@@ -59,7 +60,7 @@ class RootCauseTest extends TestCase
         $m = $this->mesin('A4', 'AMADA 80T');
         $this->bdMesin($m->id, 'OVERHEAT', 'Oli kurang', 'Tambah oli');
 
-        $r = (new ChatbotTools())->getRootCause('mesin', 'AMADA 80T'); // pakai nama
+        $r = (new ChatbotTools)->getRootCause('mesin', 'AMADA 80T'); // pakai nama
         $this->assertSame('AMADA 80T', $r['fokus']);
         $this->assertSame('OVERHEAT', $r['problem_fokus']);
     }
@@ -71,7 +72,7 @@ class RootCauseTest extends TestCase
         $this->bdMesin($m->id, 'OVERHEAT', 'Oli kurang', 'Tambah oli');
         $this->bdMesin($m->id, 'BUNYI KASAR', 'Bearing aus', 'Ganti bearing');
 
-        $r = (new ChatbotTools())->getRootCause('mesin', 'A4', 'bunyi');
+        $r = (new ChatbotTools)->getRootCause('mesin', 'A4', 'bunyi');
         $this->assertSame('BUNYI KASAR', $r['problem_fokus']);
         $this->assertSame(1, $r['total_kejadian_problem']);
     }
@@ -79,9 +80,9 @@ class RootCauseTest extends TestCase
     public function test_dies_target(): void
     {
         $part = MasterPart::create(['part_no' => 'PT-D1', 'part_name' => 'Bracket', 'customer' => 'Toyota']);
-        $pr   = MasterPartProses::create(['id_part' => $part->id, 'id_proses' => 1, 'nama_proses' => 'BLANK', 'sph_standar_produksi' => 400, 'sph_standar_qc' => 200]);
+        $pr = MasterPartProses::create(['id_part' => $part->id, 'id_proses' => 1, 'nama_proses' => 'BLANK', 'sph_standar_produksi' => 400, 'sph_standar_qc' => 200]);
         TransaksiBreakdownDies::create([
-            'no_lkd' => 'LKD-' . uniqid(), 'id_part_proses' => $pr->id,
+            'no_lkd' => 'LKD-'.uniqid(), 'id_part_proses' => $pr->id,
             'tanggal_breakdown' => '2026-07-10', 'jam_breakdown' => '08:00',
             'tanggal_mulai_perbaikan' => '2026-07-10', 'jam_mulai_perbaikan' => '09:00',
             'tanggal_selesai_perbaikan' => '2026-07-10', 'jam_selesai_perbaikan' => '11:00',
@@ -90,21 +91,21 @@ class RootCauseTest extends TestCase
             'repair_time' => 1, 'total_downtime' => 1,
         ]);
 
-        $r = (new ChatbotTools())->getRootCause('dies', 'PT-D1');
+        $r = (new ChatbotTools)->getRootCause('dies', 'PT-D1');
         $this->assertSame('CRACK', $r['problem_fokus']);
         $this->assertSame('Fatigue', $r['penyebab_tercatat'][0]['teks']);
     }
 
     public function test_invalid_target_errors(): void
     {
-        $r = (new ChatbotTools())->getRootCause('operator');
+        $r = (new ChatbotTools)->getRootCause('operator');
         $this->assertArrayHasKey('error', $r);
     }
 
     public function test_no_data_errors(): void
     {
         $this->mesin();
-        $r = (new ChatbotTools())->getRootCause('mesin', 'A4');
+        $r = (new ChatbotTools)->getRootCause('mesin', 'A4');
         $this->assertArrayHasKey('error', $r);
     }
 }

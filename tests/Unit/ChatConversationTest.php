@@ -1,8 +1,8 @@
 <?php
+
 namespace Tests\Unit;
 
 use App\Models\ChatConversation;
-use App\Models\ChatMessage;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;

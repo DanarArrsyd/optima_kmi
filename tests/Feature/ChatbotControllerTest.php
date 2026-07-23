@@ -1,4 +1,5 @@
 <?php
+
 namespace Tests\Feature;
 
 use App\Models\User;
@@ -43,6 +44,7 @@ class ChatbotControllerTest extends TestCase
         $captured = null;
         Http::fake(function ($request) use (&$captured) {
             $captured = $request->data()['messages'];
+
             return Http::response([
                 'choices' => [['message' => ['role' => 'assistant', 'content' => 'oke']]],
             ], 200);

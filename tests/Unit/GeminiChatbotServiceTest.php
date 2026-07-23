@@ -1,4 +1,5 @@
 <?php
+
 namespace Tests\Unit;
 
 use App\Services\ChatbotTools;
@@ -21,7 +22,7 @@ class GeminiChatbotServiceTest extends TestCase
             ], 200),
         ]);
 
-        $reply = (new GeminiChatbotService(new ChatbotTools()))->ask([], 'halo');
+        $reply = (new GeminiChatbotService(new ChatbotTools))->ask([], 'halo');
 
         $this->assertSame('Halo, ada yang bisa gw bantu?', $reply);
     }
@@ -40,6 +41,7 @@ class GeminiChatbotServiceTest extends TestCase
                     ]],
                 ], 200);
             }
+
             return Http::response([
                 'candidates' => [[
                     'content' => ['role' => 'model', 'parts' => [['text' => 'NG di proses BENDING bulan itu 0.']]],
@@ -47,7 +49,7 @@ class GeminiChatbotServiceTest extends TestCase
             ], 200);
         });
 
-        $reply = (new GeminiChatbotService(new ChatbotTools()))->ask([], 'berapa NG bending bulan lalu?');
+        $reply = (new GeminiChatbotService(new ChatbotTools))->ask([], 'berapa NG bending bulan lalu?');
 
         $this->assertSame('NG di proses BENDING bulan itu 0.', $reply);
         Http::assertSentCount(2);
@@ -57,7 +59,7 @@ class GeminiChatbotServiceTest extends TestCase
     {
         Http::fake(['generativelanguage.googleapis.com/*' => Http::response([], 500)]);
 
-        $reply = (new GeminiChatbotService(new ChatbotTools()))->ask([], 'halo');
+        $reply = (new GeminiChatbotService(new ChatbotTools))->ask([], 'halo');
 
         $this->assertNull($reply);
     }
@@ -72,7 +74,7 @@ class GeminiChatbotServiceTest extends TestCase
             ]],
         ], 200)]);
 
-        $reply = (new GeminiChatbotService(new ChatbotTools()))->ask([], 'halo');
+        $reply = (new GeminiChatbotService(new ChatbotTools))->ask([], 'halo');
 
         $this->assertNull($reply);
     }
@@ -87,7 +89,7 @@ class GeminiChatbotServiceTest extends TestCase
             ]],
         ], 200)]);
 
-        $reply = (new GeminiChatbotService(new ChatbotTools()))->ask([], 'berapa MTBF dies itu?');
+        $reply = (new GeminiChatbotService(new ChatbotTools))->ask([], 'berapa MTBF dies itu?');
 
         $this->assertNull($reply);
     }
@@ -102,7 +104,7 @@ class GeminiChatbotServiceTest extends TestCase
                 return Http::response([
                     'candidates' => [[
                         'content' => ['role' => 'model', 'parts' => [[
-                            'functionCall' => ['name' => 'getTopProblemDies', 'args' => new \stdClass()],
+                            'functionCall' => ['name' => 'getTopProblemDies', 'args' => new \stdClass],
                         ]]],
                     ]],
                 ], 200);
@@ -117,7 +119,7 @@ class GeminiChatbotServiceTest extends TestCase
             ], 200);
         });
 
-        $reply = (new GeminiChatbotService(new ChatbotTools()))->ask([], 'problem dies apa yang paling sering muncul?');
+        $reply = (new GeminiChatbotService(new ChatbotTools))->ask([], 'problem dies apa yang paling sering muncul?');
 
         $this->assertSame('Problem paling sering: motor overheat.', $reply);
         $this->assertNotNull($capturedBody);
@@ -129,6 +131,7 @@ class GeminiChatbotServiceTest extends TestCase
         $captured = null;
         Http::fake(function ($request) use (&$captured) {
             $captured = $request->data()['contents'];
+
             return Http::response([
                 'candidates' => [['content' => ['role' => 'model', 'parts' => [['text' => 'oke']]]]],
             ], 200);
@@ -139,7 +142,7 @@ class GeminiChatbotServiceTest extends TestCase
             ['role' => 'assistant', 'content' => 'jawaban pertama'],
         ];
 
-        (new GeminiChatbotService(new ChatbotTools()))->ask($history, 'kedua');
+        (new GeminiChatbotService(new ChatbotTools))->ask($history, 'kedua');
 
         $this->assertSame('user', $captured[0]['role']);
         $this->assertSame('pertama', $captured[0]['parts'][0]['text']);

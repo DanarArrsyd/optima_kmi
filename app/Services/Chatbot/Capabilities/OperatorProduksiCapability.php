@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services\Chatbot\Capabilities;
 
 /** getOperatorProduksi — performa per operator: total qty + rata-rata SPH tiap operator. */

@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services\Chatbot;
 
 /**
@@ -15,7 +16,7 @@ class SqlGuard
      *  200 baris mentah membengkakkan token per request sampai kena rate limit provider. */
     public const ROW_CAP = 25;
 
-    public function __construct(private BusinessTableCatalog $catalog = new BusinessTableCatalog()) {}
+    public function __construct(private BusinessTableCatalog $catalog = new BusinessTableCatalog) {}
 
     /**
      * @return array{error?: string, sql?: string}
@@ -28,7 +29,7 @@ class SqlGuard
         $stripped = trim(preg_replace('/#[^\n]*/', ' ', $stripped));
 
         // 1. Harus SELECT/WITH.
-        if (!preg_match('/^(select|with)\b/i', $stripped)) {
+        if (! preg_match('/^(select|with)\b/i', $stripped)) {
             return ['error' => 'Hanya query baca (SELECT) yang diizinkan.'];
         }
 
@@ -85,7 +86,7 @@ class SqlGuard
             return ['error' => 'Query harus menyebut tabel bisnis yang valid.'];
         }
         foreach ($referenced as $tbl) {
-            if (!$this->catalog->has($tbl)) {
+            if (! $this->catalog->has($tbl)) {
                 return ['error' => "Tabel \"{$tbl}\" tidak tersedia untuk ditelusuri."];
             }
         }
@@ -94,16 +95,16 @@ class SqlGuard
         //    ada LIMIT top-level (append kalau query tak diakhiri LIMIT — mis. LIMIT cuma di subquery).
         $capped = preg_replace_callback(
             '/\blimit\s+(\d+)\s*,\s*(\d+)/i',
-            fn ($x) => 'LIMIT ' . $x[1] . ', ' . min((int) $x[2], self::ROW_CAP),
+            fn ($x) => 'LIMIT '.$x[1].', '.min((int) $x[2], self::ROW_CAP),
             $stripped
         );
         $capped = preg_replace_callback(
             '/\blimit\s+(\d+)(?!\s*,)/i',
-            fn ($x) => 'LIMIT ' . min((int) $x[1], self::ROW_CAP),
+            fn ($x) => 'LIMIT '.min((int) $x[1], self::ROW_CAP),
             $capped
         );
-        if (!preg_match('/\blimit\s+\d+(\s*,\s*\d+)?\s*;?\s*$/i', $capped)) {
-            $capped = rtrim($capped, "; \n\t") . ' LIMIT ' . self::ROW_CAP;
+        if (! preg_match('/\blimit\s+\d+(\s*,\s*\d+)?\s*;?\s*$/i', $capped)) {
+            $capped = rtrim($capped, "; \n\t").' LIMIT '.self::ROW_CAP;
         }
 
         return ['sql' => $capped];

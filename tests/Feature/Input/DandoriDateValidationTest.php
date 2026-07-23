@@ -1,4 +1,5 @@
 <?php
+
 namespace Tests\Feature\Input;
 
 use App\Models\MasterKaryawan;
@@ -56,12 +57,12 @@ class DandoriDateValidationTest extends TestCase
     private function storePayload(string $tanggal): array
     {
         return [
-            'tanggal'        => $tanggal,
-            'id_shift'       => $this->ctx['shift']->id,
-            'id_karyawan'    => $this->ctx['karyawan']->id,
-            'id_mesin'       => $this->ctx['mesin']->id,
+            'tanggal' => $tanggal,
+            'id_shift' => $this->ctx['shift']->id,
+            'id_karyawan' => $this->ctx['karyawan']->id,
+            'id_mesin' => $this->ctx['mesin']->id,
             'id_part_proses' => $this->ctx['proses']->id,
-            'rincian'        => [
+            'rincian' => [
                 ['id_losstime' => $this->ctx['loss']->id, 'actual_menit' => 40],
             ],
         ];
@@ -93,13 +94,13 @@ class DandoriDateValidationTest extends TestCase
 
         $this->actingAs($this->ctx['admin'])
             ->put(route('input.dandori.update', $record), [
-                'tanggal'        => '0026-06-21',
-                'id_shift'       => $this->ctx['shift']->id,
-                'id_karyawan'    => $this->ctx['karyawan']->id,
-                'id_mesin'       => $this->ctx['mesin']->id,
+                'tanggal' => '0026-06-21',
+                'id_shift' => $this->ctx['shift']->id,
+                'id_karyawan' => $this->ctx['karyawan']->id,
+                'id_mesin' => $this->ctx['mesin']->id,
                 'id_part_proses' => $this->ctx['proses']->id,
-                'id_losstime'    => $this->ctx['loss']->id,
-                'actual_menit'   => 50,
+                'id_losstime' => $this->ctx['loss']->id,
+                'actual_menit' => 50,
             ])
             ->assertSessionHasErrors('tanggal');
 

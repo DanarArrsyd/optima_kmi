@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services\Concerns;
 
 use Illuminate\Support\Facades\Log;
@@ -21,16 +22,16 @@ trait LogsTokenUsage
         int $completionTokens,
         int $cacheHitTokens = 0,
     ): void {
-        if (!config('chatbot.log_token_usage', true) || $promptTokens <= 0) {
+        if (! config('chatbot.log_token_usage', true) || $promptTokens <= 0) {
             return;
         }
 
         Log::info('chatbot.usage', [
-            'provider'          => $provider,
-            'prompt_tokens'     => $promptTokens,
+            'provider' => $provider,
+            'prompt_tokens' => $promptTokens,
             'completion_tokens' => $completionTokens,
-            'cache_hit_tokens'  => $cacheHitTokens,
-            'cache_hit_pct'     => round($cacheHitTokens / $promptTokens * 100, 1),
+            'cache_hit_tokens' => $cacheHitTokens,
+            'cache_hit_pct' => round($cacheHitTokens / $promptTokens * 100, 1),
         ]);
     }
 
@@ -41,7 +42,7 @@ trait LogsTokenUsage
     protected function logOpenAiUsage(string $provider, ?array $response): void
     {
         $usage = $response['usage'] ?? null;
-        if (!is_array($usage)) {
+        if (! is_array($usage)) {
             return;
         }
 
@@ -57,7 +58,7 @@ trait LogsTokenUsage
     protected function logGeminiUsage(string $provider, ?array $response): void
     {
         $usage = $response['usageMetadata'] ?? null;
-        if (!is_array($usage)) {
+        if (! is_array($usage)) {
             return;
         }
 

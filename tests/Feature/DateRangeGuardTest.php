@@ -1,4 +1,5 @@
 <?php
+
 namespace Tests\Feature;
 
 use App\Http\Requests\StoreBreakdownDiesRequest;
@@ -14,6 +15,7 @@ use App\Http\Requests\UpdateProduksiRequest;
 use App\Http\Requests\UpdateQcRequest;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Validator;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
@@ -39,21 +41,21 @@ class DateRangeGuardTest extends TestCase
     public static function dateFields(): array
     {
         return [
-            'produksi store'          => [StoreProduksiRequest::class,        'tanggal_produksi',          '2024-05-10', []],
-            'produksi update'         => [UpdateProduksiRequest::class,       'tanggal_produksi',          '2024-05-10', []],
-            'qc store cek'            => [StoreQcRequest::class,              'tgl_pengecekan',            '2024-05-10', []],
-            'qc store part'           => [StoreQcRequest::class,              'tgl_produksi_part',         '2024-05-10', []],
-            'qc update cek'           => [UpdateQcRequest::class,             'tgl_pengecekan',            '2024-05-10', []],
-            'qc update part'          => [UpdateQcRequest::class,             'tgl_produksi_part',         '2024-05-10', []],
-            'dandori store'           => [StoreDandoriRequest::class,         'tanggal',                   '2024-05-10', []],
-            'bd mesin store'          => [StoreBreakdownMesinRequest::class,  'tanggal_breakdown',         '2024-05-10', []],
-            'bd mesin store mulai'    => [StoreBreakdownMesinRequest::class,  'tanggal_mulai_perbaikan',   '2024-05-10', ['tanggal_breakdown' => '2024-05-09']],
-            'bd mesin store selesai'  => [StoreBreakdownMesinRequest::class,  'tanggal_selesai_perbaikan', '2024-05-10', ['tanggal_mulai_perbaikan' => '2024-05-09']],
-            'bd mesin update'         => [UpdateBreakdownMesinRequest::class, 'tanggal_breakdown',         '2024-05-10', []],
-            'bd dies store'           => [StoreBreakdownDiesRequest::class,   'tanggal_breakdown',         '2024-05-10', []],
-            'bd dies update'          => [UpdateBreakdownDiesRequest::class,  'tanggal_breakdown',         '2024-05-10', []],
-            'master mesin instalasi'  => [StoreMasterMesinRequest::class,     'tanggal_instalasi',         '2015-03-10', []],
-            'master part instalasi'   => [StoreMasterPartRequest::class,      'tanggal_instalasi',         '2015-03-10', []],
+            'produksi store' => [StoreProduksiRequest::class,        'tanggal_produksi',          '2024-05-10', []],
+            'produksi update' => [UpdateProduksiRequest::class,       'tanggal_produksi',          '2024-05-10', []],
+            'qc store cek' => [StoreQcRequest::class,              'tgl_pengecekan',            '2024-05-10', []],
+            'qc store part' => [StoreQcRequest::class,              'tgl_produksi_part',         '2024-05-10', []],
+            'qc update cek' => [UpdateQcRequest::class,             'tgl_pengecekan',            '2024-05-10', []],
+            'qc update part' => [UpdateQcRequest::class,             'tgl_produksi_part',         '2024-05-10', []],
+            'dandori store' => [StoreDandoriRequest::class,         'tanggal',                   '2024-05-10', []],
+            'bd mesin store' => [StoreBreakdownMesinRequest::class,  'tanggal_breakdown',         '2024-05-10', []],
+            'bd mesin store mulai' => [StoreBreakdownMesinRequest::class,  'tanggal_mulai_perbaikan',   '2024-05-10', ['tanggal_breakdown' => '2024-05-09']],
+            'bd mesin store selesai' => [StoreBreakdownMesinRequest::class,  'tanggal_selesai_perbaikan', '2024-05-10', ['tanggal_mulai_perbaikan' => '2024-05-09']],
+            'bd mesin update' => [UpdateBreakdownMesinRequest::class, 'tanggal_breakdown',         '2024-05-10', []],
+            'bd dies store' => [StoreBreakdownDiesRequest::class,   'tanggal_breakdown',         '2024-05-10', []],
+            'bd dies update' => [UpdateBreakdownDiesRequest::class,  'tanggal_breakdown',         '2024-05-10', []],
+            'master mesin instalasi' => [StoreMasterMesinRequest::class,     'tanggal_instalasi',         '2015-03-10', []],
+            'master part instalasi' => [StoreMasterPartRequest::class,      'tanggal_instalasi',         '2015-03-10', []],
         ];
     }
 
@@ -61,8 +63,8 @@ class DateRangeGuardTest extends TestCase
     private function validate(string $requestClass, string $field, string $value, array $context): \Illuminate\Validation\Validator
     {
         /** @var FormRequest $request */
-        $request = new $requestClass();
-        $rules   = $request->rules();
+        $request = new $requestClass;
+        $rules = $request->rules();
 
         $this->assertArrayHasKey($field, $rules, "{$requestClass} tidak lagi punya field {$field}.");
 
@@ -72,7 +74,7 @@ class DateRangeGuardTest extends TestCase
         );
     }
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('dateFields')]
+    #[DataProvider('dateFields')]
     public function test_rejects_year_typo(string $requestClass, string $field, string $validPast, array $context): void
     {
         $this->assertTrue(
@@ -81,7 +83,7 @@ class DateRangeGuardTest extends TestCase
         );
     }
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('dateFields')]
+    #[DataProvider('dateFields')]
     public function test_rejects_absurd_future_year(string $requestClass, string $field, string $validPast, array $context): void
     {
         $this->assertTrue(
@@ -90,7 +92,7 @@ class DateRangeGuardTest extends TestCase
         );
     }
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('dateFields')]
+    #[DataProvider('dateFields')]
     public function test_still_accepts_a_legitimate_past_date(string $requestClass, string $field, string $validPast, array $context): void
     {
         $this->assertFalse(
@@ -99,7 +101,7 @@ class DateRangeGuardTest extends TestCase
         );
     }
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('dateFields')]
+    #[DataProvider('dateFields')]
     public function test_still_accepts_tomorrow_for_wib_utc_skew(string $requestClass, string $field, string $validPast, array $context): void
     {
         $this->assertFalse(

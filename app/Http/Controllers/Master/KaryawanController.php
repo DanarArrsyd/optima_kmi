@@ -1,13 +1,16 @@
 <?php
+
 namespace App\Http\Controllers\Master;
+
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreMasterKaryawanRequest;
-use App\Models\MasterKaryawan;
 use App\Imports\KaryawanImport;
-use Maatwebsite\Excel\Facades\Excel;
+use App\Models\MasterKaryawan;
+use Illuminate\Database\QueryException;
+use Illuminate\Http\Request;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithHeadings;
-use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
 
 class KaryawanController extends Controller
 {
@@ -25,9 +28,9 @@ class KaryawanController extends Controller
 
         try {
             $karyawan = $q->paginate(20)->withQueryString();
-        } catch (\Illuminate\Database\QueryException) {
+        } catch (QueryException) {
             // Kolom is_aktif belum ada — fallback tanpa filter
-            $filter   = 'semua';
+            $filter = 'semua';
             $karyawan = MasterKaryawan::orderBy('nama_karyawan')->paginate(20)->withQueryString();
         }
 
@@ -37,10 +40,11 @@ class KaryawanController extends Controller
     public function toggleAktif(MasterKaryawan $karyawan)
     {
         try {
-            $karyawan->update(['is_aktif' => !$karyawan->is_aktif]);
+            $karyawan->update(['is_aktif' => ! $karyawan->is_aktif]);
             $status = $karyawan->is_aktif ? 'diaktifkan kembali' : 'dinonaktifkan';
+
             return redirect()->back()->with('success', "Karyawan {$karyawan->nama_karyawan} berhasil {$status}.");
-        } catch (\Illuminate\Database\QueryException) {
+        } catch (QueryException) {
             return redirect()->back()->with('error', 'Fitur ini memerlukan update database. Jalankan SQL ALTER TABLE di phpMyAdmin terlebih dahulu.');
         }
     }
@@ -53,6 +57,7 @@ class KaryawanController extends Controller
     public function store(StoreMasterKaryawanRequest $request)
     {
         MasterKaryawan::create($request->validated());
+
         return redirect()->route('master.karyawan.index')->with('success', 'Karyawan berhasil ditambahkan.');
     }
 
@@ -64,12 +69,14 @@ class KaryawanController extends Controller
     public function update(StoreMasterKaryawanRequest $request, MasterKaryawan $karyawan)
     {
         $karyawan->update($request->validated());
+
         return redirect()->route('master.karyawan.index')->with('success', 'Karyawan berhasil diupdate.');
     }
 
     public function destroy(MasterKaryawan $karyawan)
     {
         $karyawan->delete();
+
         return redirect()->route('master.karyawan.index')->with('success', 'Karyawan berhasil dihapus.');
     }
 
@@ -78,17 +85,20 @@ class KaryawanController extends Controller
         $request->validate(['file' => 'required|file|mimes:xlsx,xls,csv|max:5120']);
         $import = new KaryawanImport;
         Excel::import($import, $request->file('file'));
+
         return redirect()->route('master.karyawan.index')
             ->with('success', "Import berhasil: {$import->imported} data diproses, {$import->skipped} baris dilewati.");
     }
 
     public function importTemplate()
     {
-        $export = new class implements FromArray, WithHeadings {
+        $export = new class implements FromArray, WithHeadings
+        {
             public function headings(): array
             {
                 return ['NIK', 'Nama Karyawan', 'Departemen'];
             }
+
             public function array(): array
             {
                 return [
@@ -97,6 +107,7 @@ class KaryawanController extends Controller
                 ];
             }
         };
+
         return Excel::download($export, 'template_karyawan.xlsx');
     }
 }

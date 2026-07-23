@@ -1,4 +1,5 @@
 <?php
+
 namespace Tests\Unit;
 
 use App\Models\MasterKaryawan;
@@ -19,11 +20,11 @@ class MaintenanceDashboardServiceCurrentCycleTest extends TestCase
 
     private function fixtures(): array
     {
-        $user     = User::factory()->create(['role' => 'admin']);
-        $shift    = MasterShift::create(['nama_shift' => 'Shift 1', 'jam_start' => '08:00', 'jam_finish' => '16:00']);
+        $user = User::factory()->create(['role' => 'admin']);
+        $shift = MasterShift::create(['nama_shift' => 'Shift 1', 'jam_start' => '08:00', 'jam_finish' => '16:00']);
         $karyawan = MasterKaryawan::create(['nik' => uniqid(), 'nama_karyawan' => 'Teknisi A', 'departemen' => 'Produksi', 'is_aktif' => true]);
-        $part     = MasterPart::create(['part_no' => 'CC-P'.uniqid(), 'part_name' => 'CC Part', 'customer' => 'Toyota']);
-        $proses   = MasterPartProses::create([
+        $part = MasterPart::create(['part_no' => 'CC-P'.uniqid(), 'part_name' => 'CC Part', 'customer' => 'Toyota']);
+        $proses = MasterPartProses::create([
             'id_part' => $part->id, 'id_proses' => 1, 'nama_proses' => 'PROGRESSIVE',
             'sph_standar_produksi' => 500, 'sph_standar_qc' => 250,
         ]);
@@ -67,7 +68,7 @@ class MaintenanceDashboardServiceCurrentCycleTest extends TestCase
         $this->produksi($f, $m, '2026-02-01', 100);
         $this->produksi($f, $m, '2026-03-01', 50);
 
-        $svc = new MaintenanceDashboardService();
+        $svc = new MaintenanceDashboardService;
         $this->assertSame(150, $svc->currentStrokeFor($m->fresh()));
     }
 
@@ -78,7 +79,7 @@ class MaintenanceDashboardServiceCurrentCycleTest extends TestCase
         $this->produksi($f, $m, '2020-01-01', 40);
         $this->produksi($f, $m, '2026-01-01', 60);
 
-        $svc = new MaintenanceDashboardService();
+        $svc = new MaintenanceDashboardService;
         $this->assertSame(100, $svc->currentStrokeFor($m->fresh()));
     }
 
@@ -91,7 +92,7 @@ class MaintenanceDashboardServiceCurrentCycleTest extends TestCase
         $this->produksi($f, $m, '2026-04-01', 500);
         $this->produksi($f, $m, '2026-05-01', 300);
 
-        $svc = new MaintenanceDashboardService();
+        $svc = new MaintenanceDashboardService;
         $this->assertSame(800, $svc->currentStrokeFor($m->fresh()));
     }
 
@@ -103,7 +104,7 @@ class MaintenanceDashboardServiceCurrentCycleTest extends TestCase
         $this->produksi($f, $m, '2026-03-01', 9999); // TEPAT di tanggal preventive — sudah masuk snapshot lama
         $this->produksi($f, $m, '2026-04-01', 500);  // setelah preventive — masuk siklus baru
 
-        $svc = new MaintenanceDashboardService();
+        $svc = new MaintenanceDashboardService;
         // Perbandingan sengaja strict `>`: produksi di tanggal preventive TIDAK ikut siklus baru.
         $this->assertSame(500, $svc->currentStrokeFor($m->fresh()));
     }
@@ -117,7 +118,7 @@ class MaintenanceDashboardServiceCurrentCycleTest extends TestCase
         $this->produksi($f, $m, '2026-03-01', 5000); // di antara dua preventive, dikecualikan
         $this->produksi($f, $m, '2026-05-01', 700);  // setelah yang terakhir, dihitung
 
-        $svc = new MaintenanceDashboardService();
+        $svc = new MaintenanceDashboardService;
         $this->assertSame(700, $svc->currentStrokeFor($m->fresh()));
     }
 
@@ -139,7 +140,7 @@ class MaintenanceDashboardServiceCurrentCycleTest extends TestCase
         $over = $this->mesin('2026-01-01');
         $this->produksi($f, $over, '2026-02-01', 310000); // 103.3% -> overdue
 
-        $svc  = new MaintenanceDashboardService();
+        $svc = new MaintenanceDashboardService;
         $rows = collect($svc->computeCurrentCycle())->keyBy('id_mesin');
 
         $this->assertSame('ok', $rows[$ok->id]['status']);
@@ -161,7 +162,7 @@ class MaintenanceDashboardServiceCurrentCycleTest extends TestCase
         $warn = $this->mesin('2026-01-01');
         $this->produksi($f, $warn, '2026-02-01', 250000);
 
-        $svc  = new MaintenanceDashboardService();
+        $svc = new MaintenanceDashboardService;
         $rows = $svc->computeCurrentCycle();
 
         $this->assertSame('overdue', $rows[0]['status']);
@@ -174,7 +175,7 @@ class MaintenanceDashboardServiceCurrentCycleTest extends TestCase
         $this->fixtures();
         $m = $this->mesin('2026-01-01'); // tidak ada TransaksiProduksi sama sekali
 
-        $svc  = new MaintenanceDashboardService();
+        $svc = new MaintenanceDashboardService;
         $rows = collect($svc->computeCurrentCycle())->keyBy('id_mesin');
 
         $this->assertArrayHasKey($m->id, $rows);
@@ -190,7 +191,7 @@ class MaintenanceDashboardServiceCurrentCycleTest extends TestCase
         $this->produksi($f, $m, '2026-02-01', 300000);
         $this->preventive($f, $m, '2026-03-01', 300000);
 
-        $svc  = new MaintenanceDashboardService();
+        $svc = new MaintenanceDashboardService;
         $rows = collect($svc->computeCurrentCycle())->keyBy('id_mesin');
 
         $this->assertSame(0, $rows[$m->id]['current_stroke']);
@@ -200,13 +201,13 @@ class MaintenanceDashboardServiceCurrentCycleTest extends TestCase
 
     public function test_mesin_id_filter_narrows_to_single_mesin(): void
     {
-        $f  = $this->fixtures();
+        $f = $this->fixtures();
         $m1 = $this->mesin('2026-01-01');
         $m2 = $this->mesin('2026-01-01');
         $this->produksi($f, $m1, '2026-02-01', 100);
         $this->produksi($f, $m2, '2026-02-01', 999);
 
-        $svc  = new MaintenanceDashboardService();
+        $svc = new MaintenanceDashboardService;
         $rows = $svc->computeCurrentCycle($m1->id);
 
         $this->assertCount(1, $rows);
@@ -215,13 +216,13 @@ class MaintenanceDashboardServiceCurrentCycleTest extends TestCase
 
     public function test_tipe_mesin_filter_narrows_result(): void
     {
-        $f  = $this->fixtures();
+        $f = $this->fixtures();
         $m1 = $this->mesin('2026-01-01', 'PROGRESSIVE');
         $m2 = $this->mesin('2026-01-01', 'STAMPING');
         $this->produksi($f, $m1, '2026-02-01', 100);
         $this->produksi($f, $m2, '2026-02-01', 200);
 
-        $svc  = new MaintenanceDashboardService();
+        $svc = new MaintenanceDashboardService;
         $rows = $svc->computeCurrentCycle(null, 'STAMPING');
 
         $this->assertCount(1, $rows);
@@ -244,12 +245,11 @@ class MaintenanceDashboardServiceCurrentCycleTest extends TestCase
 
         \DB::flushQueryLog();
         \DB::enableQueryLog();
-        (new MaintenanceDashboardService())->computeCurrentCycle();
+        (new MaintenanceDashboardService)->computeCurrentCycle();
         $queries = \DB::getQueryLog();
         \DB::disableQueryLog();
 
-        $maxPreventiveQueries = collect($queries)->filter(fn ($q) =>
-            str_contains(strtolower($q['query']), 'max(')
+        $maxPreventiveQueries = collect($queries)->filter(fn ($q) => str_contains(strtolower($q['query']), 'max(')
             && str_contains($q['query'], 'tanggal_preventive')
         )->count();
 

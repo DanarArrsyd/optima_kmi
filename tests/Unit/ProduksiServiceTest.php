@@ -1,4 +1,5 @@
 <?php
+
 namespace Tests\Unit;
 
 use App\Services\ProduksiService;
@@ -15,7 +16,7 @@ class ProduksiServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->svc = new ProduksiService();
+        $this->svc = new ProduksiService;
     }
 
     public function test_duration_seconds_same_day(): void

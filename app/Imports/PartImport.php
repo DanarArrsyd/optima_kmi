@@ -1,17 +1,21 @@
 <?php
+
 namespace App\Imports;
-use App\Support\SaneDate;
 
 use App\Models\MasterPart;
 use App\Models\MasterPartProses;
-use Maatwebsite\Excel\Concerns\ToCollection;
-use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
+use App\Support\SaneDate;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
+use Maatwebsite\Excel\Concerns\ToCollection;
+use PhpOffice\PhpSpreadsheet\Shared\Date;
 
-class PartImport implements ToCollection, SkipsEmptyRows
+class PartImport implements SkipsEmptyRows, ToCollection
 {
     public int $imported = 0;
-    public int $skipped  = 0;
+
+    public int $skipped = 0;
 
     /** Normalize header string → snake_case key */
     private function normalizeKey(string $raw): string
@@ -24,8 +28,11 @@ class PartImport implements ToCollection, SkipsEmptyRows
     {
         foreach ($keys as $key) {
             $val = trim((string) ($row[$key] ?? ''));
-            if ($val !== '') return $val;
+            if ($val !== '') {
+                return $val;
+            }
         }
+
         return '';
     }
 
@@ -43,8 +50,8 @@ class PartImport implements ToCollection, SkipsEmptyRows
         }
         try {
             $parsed = is_numeric($raw)
-                ? \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject((float) $raw)->format('Y-m-d')
-                : \Illuminate\Support\Carbon::parse(trim($raw))->toDateString();
+                ? Date::excelToDateTimeObject((float) $raw)->format('Y-m-d')
+                : Carbon::parse(trim($raw))->toDateString();
         } catch (\Throwable $e) {
             return null;
         }
@@ -54,31 +61,34 @@ class PartImport implements ToCollection, SkipsEmptyRows
 
     public function collection(Collection $rows): void
     {
-        if ($rows->isEmpty()) return;
+        if ($rows->isEmpty()) {
+            return;
+        }
 
         // Baris pertama = header, normalize semua key-nya
         $rawHeaders = $rows->first()->toArray();
-        $headers    = array_map(fn($h) => $this->normalizeKey((string) $h), $rawHeaders);
-        $dataRows   = $rows->skip(1);
+        $headers = array_map(fn ($h) => $this->normalizeKey((string) $h), $rawHeaders);
+        $dataRows = $rows->skip(1);
 
         foreach ($dataRows as $rawRow) {
             // Map kolom by normalized header
             $row = collect(array_combine($headers, $rawRow->toArray()));
 
-            $partNo   = $this->get($row, ['part_no', 'part_number', 'no_part', 'partno']);
+            $partNo = $this->get($row, ['part_no', 'part_number', 'no_part', 'partno']);
             $partName = $this->get($row, ['part_name', 'nama_part', 'name', 'partname']);
 
             if ($partNo === '' || $partName === '') {
                 $this->skipped++;
+
                 continue;
             }
 
             /* Cari by part_no + part_name (unique bersama setelah constraint part_no saja dihapus).
              * Update customer jika sudah ada, restore jika soft-deleted. */
             $part = MasterPart::withTrashed()
-                        ->where('part_no', $partNo)
-                        ->where('part_name', $partName)
-                        ->first()
+                ->where('part_no', $partNo)
+                ->where('part_name', $partName)
+                ->first()
                     ?? new MasterPart(['part_no' => $partNo, 'part_name' => $partName]);
             // Kolom hilang / sel kosong tidak boleh menimpa nilai lama — record lama dimuat
             // ulang di sini. Record baru tetap diisi (customer nullable, '' aman).
@@ -99,22 +109,23 @@ class PartImport implements ToCollection, SkipsEmptyRows
             $part->save();
 
             /* Import the Proses row if id_proses + nama_proses present */
-            $idProses   = $this->get($row, ['id_proses', 'proses_id', 'id_process', 'no_proses']);
+            $idProses = $this->get($row, ['id_proses', 'proses_id', 'id_process', 'no_proses']);
             $namaProses = $this->get($row, ['nama_proses', 'process_name', 'nama_process', 'proses']);
 
             if ($idProses === '' || $namaProses === '') {
                 $this->imported++;
+
                 continue;
             }
 
             $proses = MasterPartProses::withTrashed()->firstOrNew([
-                'id_part'   => $part->id,
+                'id_part' => $part->id,
                 'id_proses' => (int) $idProses,
             ]);
 
             $sphProd = $this->get($row, ['sph_produksi', 'sph_prod', 'sph_production', 'sph']);
-            $sphQc   = $this->get($row, ['sph_qc', 'sph_quality', 'sph_q']);
-            $trial   = $this->get($row, ['std_trial_qc_menit', 'trial_qc', 'trial_menit', 'std_trial']);
+            $sphQc = $this->get($row, ['sph_qc', 'sph_quality', 'sph_q']);
+            $trial = $this->get($row, ['std_trial_qc_menit', 'trial_qc', 'trial_menit', 'std_trial']);
             $setting = $this->get($row, ['std_setting_dies_menit', 'setting_dies', 'setting_menit', 'std_setting']);
 
             $proses->nama_proses = $namaProses;
@@ -124,9 +135,9 @@ class PartImport implements ToCollection, SkipsEmptyRows
             // part-nya cuma diam-diam hilang dari statistik achievement dan target_qty-nya
             // jadi 0. Record baru tetap dapat 0 seperti sebelumnya (default kolom).
             foreach ([
-                'sph_standar_produksi'   => [$sphProd, 'float'],
-                'sph_standar_qc'         => [$sphQc,   'float'],
-                'std_trial_qc_menit'     => [$trial,   'int'],
+                'sph_standar_produksi' => [$sphProd, 'float'],
+                'sph_standar_qc' => [$sphQc,   'float'],
+                'std_trial_qc_menit' => [$trial,   'int'],
                 'std_setting_dies_menit' => [$setting, 'int'],
             ] as $kolom => [$raw, $tipe]) {
                 if (is_numeric($raw)) {
@@ -136,7 +147,7 @@ class PartImport implements ToCollection, SkipsEmptyRows
                 }
             }
 
-            $proses->deleted_at             = null;
+            $proses->deleted_at = null;
             $proses->save();
 
             $this->imported++;

@@ -1,9 +1,10 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class TransaksiBreakdownMesin extends Model
 {
@@ -22,11 +23,11 @@ class TransaksiBreakdownMesin extends Model
     ];
 
     protected $casts = [
-        'tanggal_breakdown'         => 'date',
-        'tanggal_mulai_perbaikan'   => 'date',
+        'tanggal_breakdown' => 'date',
+        'tanggal_mulai_perbaikan' => 'date',
         'tanggal_selesai_perbaikan' => 'date',
-        'repair_time'               => 'decimal:2',
-        'total_downtime'            => 'decimal:2',
+        'repair_time' => 'decimal:2',
+        'total_downtime' => 'decimal:2',
     ];
 
     public function mesin(): BelongsTo

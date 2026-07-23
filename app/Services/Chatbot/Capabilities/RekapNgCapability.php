@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services\Chatbot\Capabilities;
 
 /** getRekapNg — total & rate NG per nama proses, periode opsional. */
@@ -20,7 +21,7 @@ class RekapNgCapability extends AbstractCapability
             'type' => 'object',
             'properties' => [
                 'namaProses' => ['type' => 'string', 'description' => 'Nama proses, mis. BENDING'],
-                'periode'    => ['type' => 'string', 'description' => 'Opsional YYYY-MM, kosong=semua'],
+                'periode' => ['type' => 'string', 'description' => 'Opsional YYYY-MM, kosong=semua'],
             ],
             'required' => ['namaProses'],
         ];

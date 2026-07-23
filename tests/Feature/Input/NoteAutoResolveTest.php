@@ -1,15 +1,19 @@
 <?php
+
 namespace Tests\Feature\Input;
 
-use App\Models\AppNotification;
 use App\Models\MasterKaryawan;
+use App\Models\MasterLosstime;
 use App\Models\MasterMesin;
 use App\Models\MasterPart;
 use App\Models\MasterPartProses;
 use App\Models\MasterShift;
+use App\Models\TransaksiDandoriRincian;
 use App\Models\TransaksiProduksi;
+use App\Models\TransaksiQc;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 /**
@@ -55,22 +59,22 @@ class NoteAutoResolveTest extends TestCase
     {
         return TransaksiProduksi::create([
             'tanggal_produksi' => '2026-07-10',
-            'id_shift'         => $this->ctx['shift']->id,
-            'id_karyawan'      => $this->ctx['karyawan']->id,
-            'id_mesin'         => $this->ctx['mesin']->id,
-            'id_part_proses'   => $this->ctx['proses']->id,
-            'jam_start'        => '08:00',
-            'jam_finish'       => '16:00',
-            'qty_aktual'       => 100,
+            'id_shift' => $this->ctx['shift']->id,
+            'id_karyawan' => $this->ctx['karyawan']->id,
+            'id_mesin' => $this->ctx['mesin']->id,
+            'id_part_proses' => $this->ctx['proses']->id,
+            'jam_start' => '08:00',
+            'jam_finish' => '16:00',
+            'qty_aktual' => 100,
             'actual_cycle_time' => 10,
-            'created_by'       => $this->ctx['admin']->id,
+            'created_by' => $this->ctx['admin']->id,
         ] + $noteFields);
     }
 
     private function withOpenNote(): TransaksiProduksi
     {
         return $this->record([
-            'staff_note'    => 'Qty aktual kayaknya kelebihan, tolong dicek pak',
+            'staff_note' => 'Qty aktual kayaknya kelebihan, tolong dicek pak',
             'staff_note_at' => now(),
             'staff_note_by' => $this->ctx['staff']->id,
         ]);
@@ -80,17 +84,17 @@ class NoteAutoResolveTest extends TestCase
     {
         return [
             'tanggal_produksi' => '2026-07-10',
-            'id_shift'         => $this->ctx['shift']->id,
-            'id_karyawan'      => $this->ctx['karyawan']->id,
-            'id_mesin'         => $this->ctx['mesin']->id,
-            'id_part_proses'   => $this->ctx['proses']->id,
-            'jam_start'        => '08:00',
-            'jam_finish'       => '16:00',
-            'qty_aktual'       => 90,
+            'id_shift' => $this->ctx['shift']->id,
+            'id_karyawan' => $this->ctx['karyawan']->id,
+            'id_mesin' => $this->ctx['mesin']->id,
+            'id_part_proses' => $this->ctx['proses']->id,
+            'jam_start' => '08:00',
+            'jam_finish' => '16:00',
+            'qty_aktual' => 90,
         ] + $extra;
     }
 
-    private function update(TransaksiProduksi $r, array $extra = []): \Illuminate\Testing\TestResponse
+    private function update(TransaksiProduksi $r, array $extra = []): TestResponse
     {
         return $this->actingAs($this->ctx['admin'])
             ->put(route('input.produksi.update', $r), $this->payload($extra));
@@ -115,10 +119,10 @@ class NoteAutoResolveTest extends TestCase
         $this->update($r, ['resolve_note' => 1]);
 
         $this->assertDatabaseHas('app_notifications', [
-            'type'            => 'note_resolved',
-            'user_id'         => $this->ctx['staff']->id,
+            'type' => 'note_resolved',
+            'user_id' => $this->ctx['staff']->id,
             'notifiable_type' => 'produksi',
-            'notifiable_id'   => $r->id,
+            'notifiable_id' => $r->id,
         ]);
     }
 
@@ -151,9 +155,9 @@ class NoteAutoResolveTest extends TestCase
     {
         $other = User::factory()->create(['role' => 'admin']);
         $r = $this->record([
-            'staff_note'             => 'Sudah ditangani',
-            'staff_note_at'          => now()->subDay(),
-            'staff_note_by'          => $this->ctx['staff']->id,
+            'staff_note' => 'Sudah ditangani',
+            'staff_note_at' => now()->subDay(),
+            'staff_note_by' => $this->ctx['staff']->id,
             'staff_note_resolved_at' => '2026-07-11 03:00:00',
             'staff_note_resolved_by' => $other->id,
         ]);
@@ -197,34 +201,34 @@ class NoteAutoResolveTest extends TestCase
         $inspector = MasterKaryawan::create([
             'nik' => uniqid(), 'nama_karyawan' => 'Inspector N', 'departemen' => 'QC', 'is_aktif' => true,
         ]);
-        $qc = \App\Models\TransaksiQc::create([
-            'tgl_pengecekan'    => '2026-07-10',
+        $qc = TransaksiQc::create([
+            'tgl_pengecekan' => '2026-07-10',
             'tgl_produksi_part' => '2026-07-09',
-            'id_shift'          => $this->ctx['shift']->id,
-            'id_karyawan_qc'    => $inspector->id,
-            'id_part_proses'    => $this->ctx['proses']->id,
-            'jam_start'         => '08:00',
-            'jam_finish'        => '16:00',
-            'qty_ok'            => 100,
-            'qty_ng'            => 0,
+            'id_shift' => $this->ctx['shift']->id,
+            'id_karyawan_qc' => $inspector->id,
+            'id_part_proses' => $this->ctx['proses']->id,
+            'jam_start' => '08:00',
+            'jam_finish' => '16:00',
+            'qty_ok' => 100,
+            'qty_ng' => 0,
             'actual_cycle_time' => 10,
-            'created_by'        => $this->ctx['admin']->id,
-            'staff_note'        => 'Tolong dicek qty NG-nya',
-            'staff_note_at'     => now(),
-            'staff_note_by'     => $this->ctx['staff']->id,
+            'created_by' => $this->ctx['admin']->id,
+            'staff_note' => 'Tolong dicek qty NG-nya',
+            'staff_note_at' => now(),
+            'staff_note_by' => $this->ctx['staff']->id,
         ]);
 
         $this->actingAs($this->ctx['admin'])->put(route('input.qc.update', $qc), [
-            'tgl_pengecekan'    => '2026-07-10',
+            'tgl_pengecekan' => '2026-07-10',
             'tgl_produksi_part' => '2026-07-09',
-            'id_shift'          => $this->ctx['shift']->id,
-            'id_karyawan_qc'    => $inspector->id,
-            'id_part_proses'    => $this->ctx['proses']->id,
-            'jam_start'         => '08:00',
-            'jam_finish'        => '16:00',
-            'qty_ok'            => 95,
-            'qty_ng'            => 0,
-            'resolve_note'      => 1,
+            'id_shift' => $this->ctx['shift']->id,
+            'id_karyawan_qc' => $inspector->id,
+            'id_part_proses' => $this->ctx['proses']->id,
+            'jam_start' => '08:00',
+            'jam_finish' => '16:00',
+            'qty_ok' => 95,
+            'qty_ng' => 0,
+            'resolve_note' => 1,
         ])->assertSessionHasNoErrors();
 
         $this->assertNotNull($qc->fresh()->staff_note_resolved_at);
@@ -233,33 +237,33 @@ class NoteAutoResolveTest extends TestCase
 
     public function test_dandori_update_resolves_note_when_box_checked(): void
     {
-        $loss = \App\Models\MasterLosstime::create([
+        $loss = MasterLosstime::create([
             'kode' => 'LS-N', 'jenis_losstime' => 'Setting Dies',
             'std_menit_default' => 10, 'std_menit_progressive' => 15,
         ]);
-        $d = \App\Models\TransaksiDandoriRincian::create([
-            'tanggal'        => '2026-07-10',
-            'id_shift'       => $this->ctx['shift']->id,
-            'id_karyawan'    => $this->ctx['karyawan']->id,
-            'id_mesin'       => $this->ctx['mesin']->id,
+        $d = TransaksiDandoriRincian::create([
+            'tanggal' => '2026-07-10',
+            'id_shift' => $this->ctx['shift']->id,
+            'id_karyawan' => $this->ctx['karyawan']->id,
+            'id_mesin' => $this->ctx['mesin']->id,
             'id_part_proses' => $this->ctx['proses']->id,
-            'id_losstime'    => $loss->id,
-            'actual_menit'   => 40, 'std_menit' => 15, 'over_menit' => 25,
-            'created_by'     => $this->ctx['admin']->id,
-            'staff_note'     => 'Menit-nya kelamaan, tolong dicek',
-            'staff_note_at'  => now(),
-            'staff_note_by'  => $this->ctx['staff']->id,
+            'id_losstime' => $loss->id,
+            'actual_menit' => 40, 'std_menit' => 15, 'over_menit' => 25,
+            'created_by' => $this->ctx['admin']->id,
+            'staff_note' => 'Menit-nya kelamaan, tolong dicek',
+            'staff_note_at' => now(),
+            'staff_note_by' => $this->ctx['staff']->id,
         ]);
 
         $this->actingAs($this->ctx['admin'])->put(route('input.dandori.update', $d), [
-            'tanggal'        => '2026-07-10',
-            'id_shift'       => $this->ctx['shift']->id,
-            'id_karyawan'    => $this->ctx['karyawan']->id,
-            'id_mesin'       => $this->ctx['mesin']->id,
+            'tanggal' => '2026-07-10',
+            'id_shift' => $this->ctx['shift']->id,
+            'id_karyawan' => $this->ctx['karyawan']->id,
+            'id_mesin' => $this->ctx['mesin']->id,
             'id_part_proses' => $this->ctx['proses']->id,
-            'id_losstime'    => $loss->id,
-            'actual_menit'   => 30,
-            'resolve_note'   => 1,
+            'id_losstime' => $loss->id,
+            'actual_menit' => 30,
+            'resolve_note' => 1,
         ])->assertSessionHasNoErrors();
 
         $this->assertNotNull($d->fresh()->staff_note_resolved_at);

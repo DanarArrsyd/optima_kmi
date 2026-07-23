@@ -1,11 +1,12 @@
 <?php
+
 namespace App\Http\Controllers\Input;
 
 use App\Exports\DandoriImportTemplate;
+use App\Exports\LhpDandoriExport;
 use App\Http\Controllers\Concerns\ResolvesStaffNote;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreDandoriRequest;
-use App\Exports\LhpDandoriExport;
 use App\Imports\DandoriImport;
 use App\Models\MasterKaryawan;
 use App\Models\MasterLosstime;
@@ -27,33 +28,32 @@ class DandoriController extends Controller
     public function index(Request $request)
     {
         $dateFrom = $request->input('date_from', date('Y-m-01'));
-        $dateTo   = $request->input('date_to',   date('Y-m-d'));
-        $search   = trim((string) $request->input('q', ''));
+        $dateTo = $request->input('date_to', date('Y-m-d'));
+        $search = trim((string) $request->input('q', ''));
 
         $q = TransaksiDandoriRincian::with([
-                'shift', 'karyawan', 'mesin', 'partProses.part', 'losstime', 'noteResolvedBy',
-            ])
+            'shift', 'karyawan', 'mesin', 'partProses.part', 'losstime', 'noteResolvedBy',
+        ])
             ->whereDate('tanggal', '>=', $dateFrom)
             ->whereDate('tanggal', '<=', $dateTo);
 
         if ($search !== '') {
-            $like = '%' . $search . '%';
+            $like = '%'.$search.'%';
             $q->where(function ($sub) use ($like) {
-                $sub->whereHas('karyawan',       fn($k) => $k->where('nama_karyawan', 'like', $like))
-                    ->orWhereHas('mesin',         fn($m) => $m->where('id_mesin', 'like', $like)->orWhere('nama_mesin', 'like', $like))
-                    ->orWhereHas('shift',         fn($s) => $s->where('nama_shift', 'like', $like))
-                    ->orWhereHas('losstime',      fn($l) => $l->where('kode', 'like', $like)->orWhere('jenis_losstime', 'like', $like))
-                    ->orWhereHas('partProses',    fn($pp) => $pp->where('nama_proses', 'like', $like))
-                    ->orWhereHas('partProses.part', fn($p) =>
-                        $p->where('part_no',   'like', $like)
-                          ->orWhere('part_name', 'like', $like)
-                          ->orWhere('customer',  'like', $like)
+                $sub->whereHas('karyawan', fn ($k) => $k->where('nama_karyawan', 'like', $like))
+                    ->orWhereHas('mesin', fn ($m) => $m->where('id_mesin', 'like', $like)->orWhere('nama_mesin', 'like', $like))
+                    ->orWhereHas('shift', fn ($s) => $s->where('nama_shift', 'like', $like))
+                    ->orWhereHas('losstime', fn ($l) => $l->where('kode', 'like', $like)->orWhere('jenis_losstime', 'like', $like))
+                    ->orWhereHas('partProses', fn ($pp) => $pp->where('nama_proses', 'like', $like))
+                    ->orWhereHas('partProses.part', fn ($p) => $p->where('part_no', 'like', $like)
+                        ->orWhere('part_name', 'like', $like)
+                        ->orWhere('customer', 'like', $like)
                     );
             });
         }
 
         $highlightId = (int) $request->input('highlight_id', 0);
-        if ($highlightId && !$request->has('page')) {
+        if ($highlightId && ! $request->has('page')) {
             $target = TransaksiDandoriRincian::find($highlightId);
             if ($target) {
                 $tgl = $target->tanggal->format('Y-m-d');
@@ -62,19 +62,19 @@ class DandoriController extends Controller
                         $sub->whereDate('tanggal', '>', $tgl)
                             ->orWhere(function ($s) use ($target, $tgl) {
                                 $s->whereDate('tanggal', $tgl)
-                                  ->where(function ($s2) use ($target) {
-                                      $s2->where('id_mesin', '<', $target->id_mesin)
-                                         ->orWhere(function ($s3) use ($target) {
-                                             $s3->where('id_mesin', $target->id_mesin)
-                                                ->where(function ($s4) use ($target) {
-                                                    $s4->where('id_part_proses', '<', $target->id_part_proses)
-                                                       ->orWhere(function ($s5) use ($target) {
-                                                           $s5->where('id_part_proses', $target->id_part_proses)
-                                                              ->where('id', '<', $target->id);
-                                                       });
-                                                });
-                                         });
-                                  });
+                                    ->where(function ($s2) use ($target) {
+                                        $s2->where('id_mesin', '<', $target->id_mesin)
+                                            ->orWhere(function ($s3) use ($target) {
+                                                $s3->where('id_mesin', $target->id_mesin)
+                                                    ->where(function ($s4) use ($target) {
+                                                        $s4->where('id_part_proses', '<', $target->id_part_proses)
+                                                            ->orWhere(function ($s5) use ($target) {
+                                                                $s5->where('id_part_proses', $target->id_part_proses)
+                                                                    ->where('id', '<', $target->id);
+                                                            });
+                                                    });
+                                            });
+                                    });
                             });
                     })
                     ->count();
@@ -92,10 +92,10 @@ class DandoriController extends Controller
             ->paginate(50)
             ->withQueryString();
 
-        $shifts    = MasterShift::orderBy('jam_start')->get();
-        $karyawan  = MasterKaryawan::where('departemen', 'Produksi')->aktif()->orderBy('nama_karyawan')->get();
-        $mesin     = MasterMesin::orderBy('line')->orderBy('id_mesin')->get();
-        $parts     = MasterPart::with('proses')->orderBy('part_name')->get();
+        $shifts = MasterShift::orderBy('jam_start')->get();
+        $karyawan = MasterKaryawan::where('departemen', 'Produksi')->aktif()->orderBy('nama_karyawan')->get();
+        $mesin = MasterMesin::orderBy('line')->orderBy('id_mesin')->get();
+        $parts = MasterPart::with('proses')->orderBy('part_name')->get();
         $losstimes = MasterLosstime::orderBy('kode')->get();
 
         $myLastRecord = TransaksiDandoriRincian::with(['karyawan', 'mesin', 'partProses.part'])
@@ -111,10 +111,10 @@ class DandoriController extends Controller
 
     public function create()
     {
-        $shifts    = MasterShift::orderBy('jam_start')->get();
-        $karyawan  = MasterKaryawan::where('departemen', 'Produksi')->aktif()->orderBy('nama_karyawan')->get();
-        $mesin     = MasterMesin::orderBy('line')->orderBy('id_mesin')->get();
-        $parts     = MasterPart::with('proses')->orderBy('part_name')->get();
+        $shifts = MasterShift::orderBy('jam_start')->get();
+        $karyawan = MasterKaryawan::where('departemen', 'Produksi')->aktif()->orderBy('nama_karyawan')->get();
+        $mesin = MasterMesin::orderBy('line')->orderBy('id_mesin')->get();
+        $parts = MasterPart::with('proses')->orderBy('part_name')->get();
         $losstimes = MasterLosstime::orderBy('kode')->get();
 
         return view('input.dandori.create', compact('shifts', 'karyawan', 'mesin', 'parts', 'losstimes'));
@@ -124,34 +124,35 @@ class DandoriController extends Controller
     {
         $v = $request->validated();
 
-        $partProses    = MasterPartProses::findOrFail($v['id_part_proses']);
+        $partProses = MasterPartProses::findOrFail($v['id_part_proses']);
         $isProgressive = strtoupper(trim($partProses->nama_proses)) === 'PROGRESSIVE';
 
         $losstimeIds = collect($v['rincian'])->pluck('id_losstime')->unique();
         $losstimeMap = MasterLosstime::whereIn('id', $losstimeIds)->get()->keyBy('id');
 
         foreach ($v['rincian'] as $item) {
-            $losstime   = $losstimeMap->get($item['id_losstime']);
-            $stdMenit   = $isProgressive
+            $losstime = $losstimeMap->get($item['id_losstime']);
+            $stdMenit = $isProgressive
                 ? ($losstime->std_menit_progressive ?? $losstime->std_menit_default ?? 0)
                 : ($losstime->std_menit_default ?? 0);
             $actualMenit = (float) $item['actual_menit'];
 
             TransaksiDandoriRincian::create([
-                'tanggal'        => $v['tanggal'],
-                'id_shift'       => $v['id_shift'],
-                'id_karyawan'    => $v['id_karyawan'],
-                'id_mesin'       => $v['id_mesin'],
+                'tanggal' => $v['tanggal'],
+                'id_shift' => $v['id_shift'],
+                'id_karyawan' => $v['id_karyawan'],
+                'id_mesin' => $v['id_mesin'],
                 'id_part_proses' => $v['id_part_proses'],
-                'id_losstime'    => $item['id_losstime'],
-                'actual_menit'   => $actualMenit,
-                'std_menit'      => $stdMenit,
-                'over_menit'     => max(0, $actualMenit - $stdMenit),
-                'created_by'     => auth()->id(),
+                'id_losstime' => $item['id_losstime'],
+                'actual_menit' => $actualMenit,
+                'std_menit' => $stdMenit,
+                'over_menit' => max(0, $actualMenit - $stdMenit),
+                'created_by' => auth()->id(),
             ]);
         }
 
         $count = count($v['rincian']);
+
         return redirect()->route('input.dandori.index')
             ->with('success', "{$count} baris data Dandori berhasil disimpan.");
     }
@@ -159,11 +160,12 @@ class DandoriController extends Controller
     public function edit(TransaksiDandoriRincian $dandori)
     {
         $dandori->load(['shift', 'karyawan', 'mesin', 'partProses.part', 'losstime']);
-        $shifts    = MasterShift::orderBy('jam_start')->get();
-        $karyawan  = MasterKaryawan::where('departemen', 'Produksi')->aktif()->orderBy('nama_karyawan')->get();
-        $mesin     = MasterMesin::orderBy('line')->orderBy('id_mesin')->get();
-        $parts     = MasterPart::with('proses')->orderBy('part_name')->get();
+        $shifts = MasterShift::orderBy('jam_start')->get();
+        $karyawan = MasterKaryawan::where('departemen', 'Produksi')->aktif()->orderBy('nama_karyawan')->get();
+        $mesin = MasterMesin::orderBy('line')->orderBy('id_mesin')->get();
+        $parts = MasterPart::with('proses')->orderBy('part_name')->get();
         $losstimes = MasterLosstime::orderBy('kode')->get();
+
         return view('input.dandori.edit', compact('dandori', 'shifts', 'karyawan', 'mesin', 'parts', 'losstimes'));
     }
 
@@ -171,30 +173,30 @@ class DandoriController extends Controller
     {
         $validated = $request->validate([
             // Batas atas `tomorrow`, bukan `today`: app timezone UTC, pabrik WIB (UTC+7).
-            'tanggal'        => 'required|date|after_or_equal:2020-01-01|before_or_equal:tomorrow',
-            'id_shift'       => 'required|exists:master_shift,id',
-            'id_karyawan'    => 'required|exists:master_karyawan,id',
-            'id_mesin'       => 'required|exists:master_mesin,id',
+            'tanggal' => 'required|date|after_or_equal:2020-01-01|before_or_equal:tomorrow',
+            'id_shift' => 'required|exists:master_shift,id',
+            'id_karyawan' => 'required|exists:master_karyawan,id',
+            'id_mesin' => 'required|exists:master_mesin,id',
             'id_part_proses' => 'required|exists:master_part_proses,id',
-            'id_losstime'    => 'required|exists:master_losstime,id',
-            'actual_menit'   => 'required|numeric|min:0',
+            'id_losstime' => 'required|exists:master_losstime,id',
+            'actual_menit' => 'required|numeric|min:0',
         ], [
-            'tanggal.after_or_equal'  => 'Tanggal tidak masuk akal — periksa tahunnya (contoh salah ketik: 0026 untuk 2026).',
+            'tanggal.after_or_equal' => 'Tanggal tidak masuk akal — periksa tahunnya (contoh salah ketik: 0026 untuk 2026).',
             'tanggal.before_or_equal' => 'Tanggal tidak boleh di masa depan.',
         ]);
 
-        $partProses    = MasterPartProses::findOrFail($validated['id_part_proses']);
-        $losstime      = MasterLosstime::findOrFail($validated['id_losstime']);
+        $partProses = MasterPartProses::findOrFail($validated['id_part_proses']);
+        $losstime = MasterLosstime::findOrFail($validated['id_losstime']);
         $isProgressive = strtoupper(trim($partProses->nama_proses)) === 'PROGRESSIVE';
 
-        $stdMenit    = $isProgressive
+        $stdMenit = $isProgressive
             ? ($losstime->std_menit_progressive ?? $losstime->std_menit_default ?? 0)
             : ($losstime->std_menit_default ?? 0);
         $actualMenit = (float) $validated['actual_menit'];
 
         $dandori->update([
             ...$validated,
-            'std_menit'  => $stdMenit,
+            'std_menit' => $stdMenit,
             'over_menit' => max(0, $actualMenit - $stdMenit),
         ]);
 
@@ -206,21 +208,24 @@ class DandoriController extends Controller
         return redirect()->route('input.dandori.index')->with('success', 'Data Dandori berhasil diupdate.');
     }
 
-    public function note(\Illuminate\Http\Request $request)
+    public function note(Request $request)
     {
         $request->validate(['staff_note' => 'nullable|string|max:1000', 'record_id' => 'required|integer']);
         $dandori = TransaksiDandoriRincian::find($request->input('record_id'));
-        if (!$dandori) return back()->with('error', 'Data tidak ditemukan.');
+        if (! $dandori) {
+            return back()->with('error', 'Data tidak ditemukan.');
+        }
         if ($dandori->staff_note_resolved_at) {
             return back()->with('error', 'Note sudah di-feedback admin, tidak dapat diubah.');
         }
         try {
             $dandori->update([
-                'staff_note'    => $request->input('staff_note') ?: null,
+                'staff_note' => $request->input('staff_note') ?: null,
                 'staff_note_at' => $request->input('staff_note') ? now() : null,
                 'staff_note_by' => $request->input('staff_note') ? auth()->id() : null,
             ]);
-        } catch (\Throwable) { /* kolom belum ada di hosting */ }
+        } catch (\Throwable) { /* kolom belum ada di hosting */
+        }
         if ($request->input('staff_note')) {
             try {
                 $dandori->refresh();
@@ -228,30 +233,37 @@ class DandoriController extends Controller
                     $dandori, 'dandori',
                     $dandori->tanggal->format('Y-m-d')
                 );
-            } catch (\Throwable) { /* notification failure must not break main flow */ }
+            } catch (\Throwable) { /* notification failure must not break main flow */
+            }
         }
         $msg = $request->input('staff_note') ? 'Note berhasil dikirim ke admin.' : 'Note berhasil dihapus.';
+
         return redirect()->route('input.dandori.index')->with('success', $msg);
     }
 
-    public function resolveNote(\Illuminate\Http\Request $request)
+    public function resolveNote(Request $request)
     {
         $request->validate(['record_id' => 'required|integer']);
         $dandori = TransaksiDandoriRincian::find($request->input('record_id'));
-        if (!$dandori) return back()->with('error', 'Data tidak ditemukan.');
+        if (! $dandori) {
+            return back()->with('error', 'Data tidak ditemukan.');
+        }
         try {
             $dandori->update([
                 'staff_note_resolved_at' => now(),
                 'staff_note_resolved_by' => auth()->id(),
             ]);
-        } catch (\Throwable) {}
+        } catch (\Throwable) {
+        }
         $dandori->refresh();
         try {
             $this->notifSvc->insertNoteResolved(
                 $dandori, 'dandori',
                 $dandori->tanggal->format('Y-m-d')
             );
-        } catch (\Throwable) { /* notification failure must not break main flow */ }
+        } catch (\Throwable) { /* notification failure must not break main flow */
+        }
+
         return redirect()->route('input.dandori.index')->with('success', 'Note ditandai sudah ditangani.');
     }
 
@@ -261,6 +273,7 @@ class DandoriController extends Controller
             abort(403);
         }
         $dandori->delete();
+
         return redirect()->route('input.dandori.index')->with('success', 'Baris data berhasil dihapus.');
     }
 
@@ -270,11 +283,11 @@ class DandoriController extends Controller
             'file' => 'required|file|mimes:xlsx,xls,csv|max:10240',
         ], [
             'file.required' => 'Pilih file Excel terlebih dahulu.',
-            'file.mimes'    => 'File harus berformat .xlsx, .xls, atau .csv.',
-            'file.max'      => 'Ukuran file maksimal 10 MB.',
+            'file.mimes' => 'File harus berformat .xlsx, .xls, atau .csv.',
+            'file.max' => 'Ukuran file maksimal 10 MB.',
         ]);
 
-        $import = new DandoriImport();
+        $import = new DandoriImport;
         Excel::import($import, $request->file('file'));
 
         $msg = "{$import->importedCount} baris data Dandori berhasil diimport.";
@@ -286,14 +299,15 @@ class DandoriController extends Controller
 
     public function export(Request $request)
     {
-        $dateFrom   = $request->input('date_from');
-        $dateTo     = $request->input('date_to');
-        $customer   = $request->input('customer')    ?: null;
-        $partName   = $request->input('part_name')   ?: null;
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
+        $customer = $request->input('customer') ?: null;
+        $partName = $request->input('part_name') ?: null;
         $namaProses = $request->input('nama_proses') ?: null;
 
-        $filename = 'Dandori_' . now()->format('Ymd_His') . '.xlsx';
-        return \Maatwebsite\Excel\Facades\Excel::download(
+        $filename = 'Dandori_'.now()->format('Ymd_His').'.xlsx';
+
+        return Excel::download(
             new LhpDandoriExport($dateFrom, $dateTo, $customer, $partName, $namaProses),
             $filename
         );
@@ -301,7 +315,7 @@ class DandoriController extends Controller
 
     public function importTemplate()
     {
-        return Excel::download(new DandoriImportTemplate(), 'template-import-dandori.xlsx');
+        return Excel::download(new DandoriImportTemplate, 'template-import-dandori.xlsx');
     }
 
     /** AJAX: proses list for a part (for form JS) */

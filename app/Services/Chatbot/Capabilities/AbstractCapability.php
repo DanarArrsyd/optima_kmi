@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services\Chatbot\Capabilities;
 
 use App\Contracts\ChatCapability;
@@ -14,7 +15,7 @@ use App\Services\ChatbotTools;
  */
 abstract class AbstractCapability implements ChatCapability
 {
-    public function __construct(protected ChatbotTools $tools = new ChatbotTools()) {}
+    public function __construct(protected ChatbotTools $tools = new ChatbotTools) {}
 
     /** @return string[] */
     public function keywords(): array

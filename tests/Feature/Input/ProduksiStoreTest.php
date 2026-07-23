@@ -1,4 +1,5 @@
 <?php
+
 namespace Tests\Feature\Input;
 
 use App\Models\MasterKaryawan;
@@ -17,11 +18,12 @@ class ProduksiStoreTest extends TestCase
 
     private function refs(): array
     {
-        $shift    = MasterShift::create(['nama_shift' => 'S1', 'jam_start' => '08:00', 'jam_finish' => '16:00']);
+        $shift = MasterShift::create(['nama_shift' => 'S1', 'jam_start' => '08:00', 'jam_finish' => '16:00']);
         $karyawan = MasterKaryawan::create(['nik' => uniqid(), 'nama_karyawan' => 'Op A', 'departemen' => 'Produksi', 'is_aktif' => true]);
-        $mesin    = MasterMesin::create(['id_mesin' => 'M-'.uniqid(), 'nama_mesin' => 'Press 1', 'line' => '1', 'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100]);
-        $part     = MasterPart::create(['part_no' => 'P-'.uniqid(), 'part_name' => 'Part', 'customer' => 'Toyota']);
-        $proses   = MasterPartProses::create(['id_part' => $part->id, 'id_proses' => 1, 'nama_proses' => 'PROGRESSIVE', 'sph_standar_produksi' => 500, 'sph_standar_qc' => 250]);
+        $mesin = MasterMesin::create(['id_mesin' => 'M-'.uniqid(), 'nama_mesin' => 'Press 1', 'line' => '1', 'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100]);
+        $part = MasterPart::create(['part_no' => 'P-'.uniqid(), 'part_name' => 'Part', 'customer' => 'Toyota']);
+        $proses = MasterPartProses::create(['id_part' => $part->id, 'id_proses' => 1, 'nama_proses' => 'PROGRESSIVE', 'sph_standar_produksi' => 500, 'sph_standar_qc' => 250]);
+
         return compact('shift', 'karyawan', 'mesin', 'proses');
     }
 
@@ -29,20 +31,20 @@ class ProduksiStoreTest extends TestCase
     {
         return array_merge([
             'tanggal_produksi' => '2026-07-01',
-            'id_shift'         => $r['shift']->id,
-            'id_karyawan'      => $r['karyawan']->id,
-            'id_mesin'         => $r['mesin']->id,
-            'id_part_proses'   => $r['proses']->id,
-            'jam_start'        => '08:00',
-            'jam_finish'       => '16:00',
-            'qty_aktual'       => 4000,
+            'id_shift' => $r['shift']->id,
+            'id_karyawan' => $r['karyawan']->id,
+            'id_mesin' => $r['mesin']->id,
+            'id_part_proses' => $r['proses']->id,
+            'jam_start' => '08:00',
+            'jam_finish' => '16:00',
+            'qty_aktual' => 4000,
         ], $override);
     }
 
     public function test_staff_produksi_can_store_and_cycle_time_is_computed(): void
     {
         $user = User::factory()->create(['role' => 'staff_produksi']);
-        $r    = $this->refs();
+        $r = $this->refs();
 
         $this->actingAs($user)
             ->post(route('input.produksi.store'), $this->payload($r))
@@ -60,7 +62,7 @@ class ProduksiStoreTest extends TestCase
     public function test_store_validation_rejects_missing_qty(): void
     {
         $user = User::factory()->create(['role' => 'staff_produksi']);
-        $r    = $this->refs();
+        $r = $this->refs();
 
         $this->actingAs($user)
             ->post(route('input.produksi.store'), $this->payload($r, ['qty_aktual' => null]))
@@ -72,7 +74,7 @@ class ProduksiStoreTest extends TestCase
     public function test_store_forbidden_for_qc_role(): void
     {
         $user = User::factory()->create(['role' => 'staff_qc']);
-        $r    = $this->refs();
+        $r = $this->refs();
 
         $this->actingAs($user)
             ->post(route('input.produksi.store'), $this->payload($r))
@@ -83,7 +85,7 @@ class ProduksiStoreTest extends TestCase
     {
         $owner = User::factory()->create(['role' => 'staff_produksi']);
         $other = User::factory()->create(['role' => 'staff_produksi']);
-        $r     = $this->refs();
+        $r = $this->refs();
         $this->actingAs($owner)->post(route('input.produksi.store'), $this->payload($r));
         $row = TransaksiProduksi::first();
 
@@ -94,7 +96,7 @@ class ProduksiStoreTest extends TestCase
     public function test_owner_can_delete_own_record(): void
     {
         $owner = User::factory()->create(['role' => 'staff_produksi']);
-        $r     = $this->refs();
+        $r = $this->refs();
         $this->actingAs($owner)->post(route('input.produksi.store'), $this->payload($r));
         $row = TransaksiProduksi::first();
 
@@ -106,7 +108,7 @@ class ProduksiStoreTest extends TestCase
     {
         $owner = User::factory()->create(['role' => 'staff_produksi']);
         $admin = User::factory()->create(['role' => 'admin']);
-        $r     = $this->refs();
+        $r = $this->refs();
         $this->actingAs($owner)->post(route('input.produksi.store'), $this->payload($r));
         $row = TransaksiProduksi::first();
 

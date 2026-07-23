@@ -1,4 +1,5 @@
 <?php
+
 namespace Tests\Feature\Master;
 
 use App\Models\MasterMesin;
@@ -24,6 +25,7 @@ class MesinUpdateTest extends TestCase
     private function renderedInstalasi(string $html): string
     {
         preg_match('/name="tanggal_instalasi"[^>]*value="([^"]*)"/', $html, $m);
+
         return $m[1] ?? '';
     }
 
@@ -46,12 +48,12 @@ class MesinUpdateTest extends TestCase
         $html = $this->actingAs($admin)->get(route('master.mesin.edit', $mesin))->getContent();
 
         $response = $this->actingAs($admin)->put(route('master.mesin.update', $mesin), [
-            'id_mesin'             => 'MU-01',
-            'nama_mesin'           => 'Press 80T (renamed)',
-            'line'                 => '1',
-            'tipe_mesin'           => 'PROGRESSIVE',
+            'id_mesin' => 'MU-01',
+            'nama_mesin' => 'Press 80T (renamed)',
+            'line' => '1',
+            'tipe_mesin' => 'PROGRESSIVE',
             'kapasitas_max_stroke' => 800,
-            'tanggal_instalasi'    => $this->renderedInstalasi($html),
+            'tanggal_instalasi' => $this->renderedInstalasi($html),
         ]);
 
         $response->assertRedirect(route('master.mesin.index'));
@@ -71,12 +73,12 @@ class MesinUpdateTest extends TestCase
         $mesin = $this->mesin();
 
         $this->actingAs($admin)->put(route('master.mesin.update', $mesin), [
-            'id_mesin'             => 'MU-01',
-            'nama_mesin'           => 'Press 80T',
-            'line'                 => '1',
-            'tipe_mesin'           => 'PROGRESSIVE',
+            'id_mesin' => 'MU-01',
+            'nama_mesin' => 'Press 80T',
+            'line' => '1',
+            'tipe_mesin' => 'PROGRESSIVE',
             'kapasitas_max_stroke' => 800,
-            'tanggal_instalasi'    => '',
+            'tanggal_instalasi' => '',
         ]);
 
         $this->assertNull($mesin->refresh()->tanggal_instalasi);
