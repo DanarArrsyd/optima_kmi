@@ -13,7 +13,7 @@ class DiesPreventiveLog extends Model
 
     protected $fillable = [
         'id_part_proses', 'tanggal_preventive', 'id_karyawan',
-        'stroke_at_preventive', 'catatan', 'created_by',
+        'stroke_at_preventive', 'catatan', 'checksheet_path', 'created_by',
     ];
 
     protected $casts = [

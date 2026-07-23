@@ -10,6 +10,8 @@ use App\Models\MasterShift;
 use App\Models\TransaksiProduksi;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class ControlStrokeDiesTest extends TestCase
@@ -134,6 +136,7 @@ class ControlStrokeDiesTest extends TestCase
 
     public function test_admin_can_store_preventive_and_it_resets_the_running_cycle(): void
     {
+        Storage::fake('local');
         $f = $this->fixtures();
         $this->produksi($f, '2026-06-01', 30500);
 
@@ -141,6 +144,7 @@ class ControlStrokeDiesTest extends TestCase
             'tanggal_preventive' => '2026-06-15',
             'id_karyawan'        => $f['karyawan']->id,
             'catatan'            => 'Preventive rutin',
+            'checksheet'         => UploadedFile::fake()->create('checksheet.pdf', 100, 'application/pdf'),
         ]);
 
         $response->assertRedirect(route('maintenance.control-stroke-dies'));
@@ -154,14 +158,38 @@ class ControlStrokeDiesTest extends TestCase
         $dataResponse->assertJsonFragment(['current_stroke' => 0, 'status' => 'ok']);
     }
 
+    public function test_store_preventive_saves_checksheet_pdf(): void
+    {
+        Storage::fake('local');
+        $f = $this->fixtures();
+        $this->produksi($f, '2026-06-01', 30500);
+
+        $file = UploadedFile::fake()->create('checksheet.pdf', 100, 'application/pdf');
+
+        $response = $this->actingAs($f['admin'])->post(route('maintenance.control-stroke-dies.preventive', $f['proses']->id), [
+            'tanggal_preventive' => '2026-06-15',
+            'id_karyawan'        => $f['karyawan']->id,
+            'catatan'            => 'Preventive rutin',
+            'checksheet'         => $file,
+        ]);
+
+        $response->assertRedirect(route('maintenance.control-stroke-dies'));
+
+        $log = DiesPreventiveLog::first();
+        $this->assertNotNull($log->checksheet_path);
+        Storage::disk('local')->assertExists($log->checksheet_path);
+    }
+
     public function test_staff_maintenance_can_store_preventive(): void
     {
+        Storage::fake('local');
         $f     = $this->fixtures();
         $staff = User::factory()->create(['role' => 'staff_maintenance']);
 
         $response = $this->actingAs($staff)->post(route('maintenance.control-stroke-dies.preventive', $f['proses']->id), [
             'tanggal_preventive' => '2026-06-15',
             'id_karyawan'        => $f['karyawan']->id,
+            'checksheet'         => UploadedFile::fake()->create('checksheet.pdf', 100, 'application/pdf'),
         ]);
 
         $response->assertRedirect(route('maintenance.control-stroke-dies'));
@@ -205,6 +233,49 @@ class ControlStrokeDiesTest extends TestCase
         ]);
 
         $response->assertSessionHasErrors('id_karyawan');
+        $this->assertDatabaseCount('dies_preventive_log', 0);
+    }
+
+    public function test_store_preventive_rejects_missing_checksheet(): void
+    {
+        $f = $this->fixtures();
+
+        $response = $this->actingAs($f['admin'])->post(route('maintenance.control-stroke-dies.preventive', $f['proses']->id), [
+            'tanggal_preventive' => '2026-06-15',
+            'id_karyawan'        => $f['karyawan']->id,
+        ]);
+
+        $response->assertSessionHasErrors('checksheet');
+        $this->assertDatabaseCount('dies_preventive_log', 0);
+    }
+
+    public function test_store_preventive_rejects_non_pdf_checksheet(): void
+    {
+        Storage::fake('local');
+        $f = $this->fixtures();
+
+        $response = $this->actingAs($f['admin'])->post(route('maintenance.control-stroke-dies.preventive', $f['proses']->id), [
+            'tanggal_preventive' => '2026-06-15',
+            'id_karyawan'        => $f['karyawan']->id,
+            'checksheet'         => UploadedFile::fake()->create('checksheet.jpg', 100, 'image/jpeg'),
+        ]);
+
+        $response->assertSessionHasErrors('checksheet');
+        $this->assertDatabaseCount('dies_preventive_log', 0);
+    }
+
+    public function test_store_preventive_rejects_oversized_checksheet(): void
+    {
+        Storage::fake('local');
+        $f = $this->fixtures();
+
+        $response = $this->actingAs($f['admin'])->post(route('maintenance.control-stroke-dies.preventive', $f['proses']->id), [
+            'tanggal_preventive' => '2026-06-15',
+            'id_karyawan'        => $f['karyawan']->id,
+            'checksheet'         => UploadedFile::fake()->create('checksheet.pdf', 2049, 'application/pdf'),
+        ]);
+
+        $response->assertSessionHasErrors('checksheet');
         $this->assertDatabaseCount('dies_preventive_log', 0);
     }
 }
