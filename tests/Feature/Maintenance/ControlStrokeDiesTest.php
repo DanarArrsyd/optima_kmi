@@ -64,6 +64,17 @@ class ControlStrokeDiesTest extends TestCase
         $response->assertViewHas('karyawanList');
     }
 
+    public function test_preventive_form_page_has_checksheet_file_input(): void
+    {
+        $f = $this->fixtures();
+
+        $response = $this->actingAs($f['admin'])->get(route('maintenance.control-stroke-dies.preventive.create', $f['proses']->id));
+
+        $response->assertOk();
+        $response->assertSee('enctype="multipart/form-data"', false);
+        $response->assertSee('name="checksheet"', false);
+    }
+
     public function test_manager_cannot_view_preventive_form_page(): void
     {
         $f       = $this->fixtures();
