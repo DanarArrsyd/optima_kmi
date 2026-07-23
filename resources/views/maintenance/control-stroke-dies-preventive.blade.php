@@ -39,7 +39,7 @@
                   <strong>{{ number_format($currentStroke, 0, ',', '.') }}</strong> ke <strong>0</strong>.</span>
         </div>
 
-        <form method="POST" action="{{ route('maintenance.control-stroke-dies.preventive', $partProses) }}">
+        <form method="POST" action="{{ route('maintenance.control-stroke-dies.preventive', $partProses) }}" enctype="multipart/form-data">
             @csrf
             <div class="row g-3">
                 <div class="col-md-6">
@@ -74,6 +74,14 @@
                               class="form-control @error('catatan') is-invalid @enderror"
                               placeholder="Opsional — mis. ganti pisau, cek clearance">{{ old('catatan') }}</textarea>
                     @error('catatan')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label">Checksheet Preventive (PDF) <span class="text-danger">*</span></label>
+                    <input type="file" name="checksheet" accept="application/pdf"
+                           class="form-control @error('checksheet') is-invalid @enderror">
+                    @error('checksheet')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    <div class="form-text">Maks. 2 MB, format PDF.</div>
                 </div>
             </div>
 
