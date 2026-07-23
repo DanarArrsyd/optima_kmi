@@ -134,6 +134,44 @@ class ControlStrokeDiesTest extends TestCase
         $response->assertDontSee('12000'); // log dies lain tidak ikut terbawa
     }
 
+    public function test_history_shows_checksheet_link_when_present(): void
+    {
+        Storage::fake('local');
+        $f = $this->fixtures();
+
+        $path = Storage::disk('local')->putFileAs(
+            'checksheet/dies-preventive',
+            UploadedFile::fake()->create('checksheet.pdf', 100, 'application/pdf'),
+            'test.pdf'
+        );
+        $log = DiesPreventiveLog::create([
+            'id_part_proses' => $f['proses']->id, 'tanggal_preventive' => '2026-05-01',
+            'id_karyawan' => $f['karyawan']->id, 'stroke_at_preventive' => 30500,
+            'checksheet_path' => $path, 'created_by' => $f['admin']->id,
+        ]);
+
+        $response = $this->actingAs($f['admin'])->get(route('maintenance.control-stroke-dies.history', $f['proses']->id));
+
+        $response->assertOk();
+        $response->assertSee(route('maintenance.control-stroke-dies.preventive.checksheet', $log), false);
+        $response->assertSee('Lihat PDF');
+    }
+
+    public function test_history_shows_dash_when_checksheet_missing(): void
+    {
+        $f = $this->fixtures();
+        DiesPreventiveLog::create([
+            'id_part_proses' => $f['proses']->id, 'tanggal_preventive' => '2026-05-01',
+            'id_karyawan' => $f['karyawan']->id, 'stroke_at_preventive' => 30500,
+            'checksheet_path' => null, 'created_by' => $f['admin']->id,
+        ]);
+
+        $response = $this->actingAs($f['admin'])->get(route('maintenance.control-stroke-dies.history', $f['proses']->id));
+
+        $response->assertOk();
+        $response->assertDontSee('Lihat PDF');
+    }
+
     public function test_manager_can_view_history_page(): void
     {
         $f       = $this->fixtures();
