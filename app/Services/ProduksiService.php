@@ -1,15 +1,17 @@
 <?php
+
 namespace App\Services;
 
 class ProduksiService
 {
     public function calculateDurationSeconds(string $jamStart, string $jamFinish): int
     {
-        $startSec  = $this->timeToSeconds($jamStart);
+        $startSec = $this->timeToSeconds($jamStart);
         $finishSec = $this->timeToSeconds($jamFinish);
         if ($finishSec >= $startSec) {
             return $finishSec - $startSec;
         }
+
         return (86400 - $startSec) + $finishSec;
     }
 
@@ -23,6 +25,7 @@ class ProduksiService
         if ($qtyAktual === 0) {
             return 0.0;
         }
+
         return round($this->calculateDurationSeconds($jamStart, $jamFinish) / $qtyAktual, 2);
     }
 
@@ -34,6 +37,7 @@ class ProduksiService
     private function timeToSeconds(string $time): int
     {
         $parts = explode(':', $time);
-        return ((int)($parts[0] ?? 0)) * 3600 + ((int)($parts[1] ?? 0)) * 60 + ((int)($parts[2] ?? 0));
+
+        return ((int) ($parts[0] ?? 0)) * 3600 + ((int) ($parts[1] ?? 0)) * 60 + ((int) ($parts[2] ?? 0));
     }
 }

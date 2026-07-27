@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Concerns;
 
 use Illuminate\Http\Request;
@@ -18,8 +19,8 @@ use Illuminate\Http\Request;
 trait ResolvesStaffNote
 {
     /**
-     * @param object $record Punya kolom staff_note* (transaksi produksi/qc/dandori).
-     * @param string $tanggal Y-m-d, untuk deep-link di notifikasi.
+     * @param  object  $record  Punya kolom staff_note* (transaksi produksi/qc/dandori).
+     * @param  string  $tanggal  Y-m-d, untuk deep-link di notifikasi.
      */
     protected function resolveStaffNoteIfRequested(
         Request $request,

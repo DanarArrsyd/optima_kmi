@@ -17,7 +17,8 @@ trait ResolvesMaintenanceRange
     private function resolveRange(Request $request): array
     {
         if ($request->filled('bulan')) {
-            $m = Carbon::parse($request->input('bulan') . '-01');
+            $m = Carbon::parse($request->input('bulan').'-01');
+
             return [$m->copy()->startOfMonth(), $m->copy()->endOfMonth()];
         }
 

@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Exports;
 
 use App\Models\MasterKaryawan;
@@ -21,14 +22,14 @@ class DandoriImportTemplate implements WithMultipleSheets
     public function sheets(): array
     {
         return [
-            'Data'      => new DandoriTemplateDataSheet(),
-            'Referensi' => new DandoriTemplateReferensiSheet(),
+            'Data' => new DandoriTemplateDataSheet,
+            'Referensi' => new DandoriTemplateReferensiSheet,
         ];
     }
 }
 
 /* ── Sheet 1: Data template ──────────────────────────────────────── */
-class DandoriTemplateDataSheet implements FromArray, WithHeadings, WithStyles, WithColumnWidths
+class DandoriTemplateDataSheet implements FromArray, WithColumnWidths, WithHeadings, WithStyles
 {
     public function headings(): array
     {
@@ -72,25 +73,25 @@ class DandoriTemplateDataSheet implements FromArray, WithHeadings, WithStyles, W
 
         /* Header row 1 */
         $sheet->getStyle("A1:{$lastCol}1")->applyFromArray([
-            'font'      => ['bold' => true, 'size' => 10, 'color' => ['argb' => 'FFFFFFFF']],
-            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF1F2937']],
+            'font' => ['bold' => true, 'size' => 10, 'color' => ['argb' => 'FFFFFFFF']],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF1F2937']],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
-            'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FF374151']]],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FF374151']]],
         ]);
         $sheet->getRowDimension(1)->setRowHeight(22);
 
         /* Petunjuk row 2 */
         $sheet->getStyle("A2:{$lastCol}2")->applyFromArray([
-            'font'      => ['italic' => true, 'size' => 8, 'color' => ['argb' => 'FF6B7280']],
-            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFF3F4F6']],
+            'font' => ['italic' => true, 'size' => 8, 'color' => ['argb' => 'FF6B7280']],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFF3F4F6']],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT, 'wrapText' => true],
         ]);
         $sheet->getRowDimension(2)->setRowHeight(30);
 
         /* Contoh data rows 3-5 */
         $sheet->getStyle("A3:{$lastCol}5")->applyFromArray([
-            'font'    => ['italic' => true, 'size' => 10, 'color' => ['argb' => 'FF9CA3AF']],
-            'fill'    => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFFAFAFA']],
+            'font' => ['italic' => true, 'size' => 10, 'color' => ['argb' => 'FF9CA3AF']],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFFAFAFA']],
             'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FFE5E7EB']]],
         ]);
 
@@ -101,7 +102,7 @@ class DandoriTemplateDataSheet implements FromArray, WithHeadings, WithStyles, W
 
         /* Area data kosong rows 6–500 */
         $sheet->getStyle("A6:{$lastCol}500")->applyFromArray([
-            'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FFE5E7EB']]],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FFE5E7EB']]],
             'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
         ]);
 
@@ -127,7 +128,7 @@ class DandoriTemplateDataSheet implements FromArray, WithHeadings, WithStyles, W
 }
 
 /* ── Sheet 2: Referensi ──────────────────────────────────────────── */
-class DandoriTemplateReferensiSheet implements FromArray, WithStyles, WithColumnWidths
+class DandoriTemplateReferensiSheet implements FromArray, WithColumnWidths, WithStyles
 {
     public function array(): array
     {
@@ -186,7 +187,7 @@ class DandoriTemplateReferensiSheet implements FromArray, WithStyles, WithColumn
             $rows[] = [
                 $lt->kode,
                 $lt->jenis_losstime,
-                $lt->std_menit_default   ?? '—',
+                $lt->std_menit_default ?? '—',
                 $lt->std_menit_progressive ?? '—',
                 '',
             ];

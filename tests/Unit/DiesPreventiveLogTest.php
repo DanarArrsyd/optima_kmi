@@ -1,4 +1,5 @@
 <?php
+
 namespace Tests\Unit;
 
 use App\Models\DiesPreventiveLog;
@@ -15,10 +16,10 @@ class DiesPreventiveLogTest extends TestCase
 
     private function fixtures(): array
     {
-        $user     = User::factory()->create(['role' => 'admin']);
+        $user = User::factory()->create(['role' => 'admin']);
         $karyawan = MasterKaryawan::create(['nik' => uniqid(), 'nama_karyawan' => 'Teknisi A', 'departemen' => 'Produksi', 'is_aktif' => true]);
-        $part     = MasterPart::create(['part_no' => 'DPL-P1', 'part_name' => 'DPL Part', 'customer' => 'Toyota']);
-        $proses   = MasterPartProses::create([
+        $part = MasterPart::create(['part_no' => 'DPL-P1', 'part_name' => 'DPL Part', 'customer' => 'Toyota']);
+        $proses = MasterPartProses::create([
             'id_part' => $part->id, 'id_proses' => 1, 'nama_proses' => 'PROGRESSIVE',
             'sph_standar_produksi' => 500, 'sph_standar_qc' => 250,
         ]);
@@ -31,12 +32,12 @@ class DiesPreventiveLogTest extends TestCase
         $f = $this->fixtures();
 
         $log = DiesPreventiveLog::create([
-            'id_part_proses'       => $f['proses']->id,
-            'tanggal_preventive'   => '2026-07-01',
-            'id_karyawan'          => $f['karyawan']->id,
+            'id_part_proses' => $f['proses']->id,
+            'tanggal_preventive' => '2026-07-01',
+            'id_karyawan' => $f['karyawan']->id,
             'stroke_at_preventive' => 30450,
-            'catatan'              => 'Ganti pisau potong',
-            'created_by'           => $f['user']->id,
+            'catatan' => 'Ganti pisau potong',
+            'created_by' => $f['user']->id,
         ]);
 
         $this->assertSame('2026-07-01', $log->fresh()->tanggal_preventive->format('Y-m-d'));

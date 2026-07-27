@@ -14,35 +14,35 @@ class AppNotificationTest extends TestCase
     private function makeUser(string $suffix = ''): User
     {
         return User::create([
-            'name'     => 'User' . $suffix,
-            'email'    => 'user' . $suffix . '@test.com',
+            'name' => 'User'.$suffix,
+            'email' => 'user'.$suffix.'@test.com',
             'password' => bcrypt('password'),
-            'role'     => 'staff_produksi',
+            'role' => 'staff_produksi',
         ]);
     }
 
     private function makeNotif(int $userId, int $actorId, ?string $readAt = null): AppNotification
     {
         return AppNotification::create([
-            'type'            => 'breakdown_created',
-            'user_id'         => $userId,
-            'actor_id'        => $actorId,
+            'type' => 'breakdown_created',
+            'user_id' => $userId,
+            'actor_id' => $actorId,
             'notifiable_type' => 'breakdown_mesin',
-            'notifiable_id'   => 1,
-            'data'            => ['message' => 'Test breakdown'],
-            'read_at'         => $readAt,
+            'notifiable_id' => 1,
+            'data' => ['message' => 'Test breakdown'],
+            'read_at' => $readAt,
         ]);
     }
 
     public function test_can_create_notification(): void
     {
-        $user  = $this->makeUser('a');
+        $user = $this->makeUser('a');
         $actor = $this->makeUser('b');
 
         $notif = $this->makeNotif($user->id, $actor->id);
 
         $this->assertDatabaseHas('app_notifications', [
-            'type'    => 'breakdown_created',
+            'type' => 'breakdown_created',
             'user_id' => $user->id,
         ]);
         $this->assertIsArray($notif->data);
@@ -51,7 +51,7 @@ class AppNotificationTest extends TestCase
 
     public function test_scope_unread_excludes_read_notifications(): void
     {
-        $user  = $this->makeUser('c');
+        $user = $this->makeUser('c');
         $actor = $this->makeUser('d');
 
         $this->makeNotif($user->id, $actor->id);                        // unread
@@ -78,7 +78,7 @@ class AppNotificationTest extends TestCase
 
     public function test_actor_and_recipient_relations(): void
     {
-        $user  = $this->makeUser('h');
+        $user = $this->makeUser('h');
         $actor = $this->makeUser('i');
 
         $notif = $this->makeNotif($user->id, $actor->id);

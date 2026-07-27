@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -6,8 +7,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class MasterPartProsesSphLog extends Model
 {
-    protected $table      = 'master_part_proses_sph_log';
-    public    $timestamps = false;               // kolom manual: upgraded_at
+    protected $table = 'master_part_proses_sph_log';
+
+    public $timestamps = false;               // kolom manual: upgraded_at
 
     protected $fillable = [
         'id_part_proses',

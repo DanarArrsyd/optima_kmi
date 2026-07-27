@@ -1,4 +1,5 @@
 <?php
+
 namespace Tests\Unit;
 
 use App\Models\MasterKaryawan;
@@ -27,17 +28,18 @@ class DashboardServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->svc = new DashboardService();
+        $this->svc = new DashboardService;
     }
 
     private function base(): array
     {
-        $user     = User::factory()->create();
-        $shift    = MasterShift::create(['nama_shift' => 'S1', 'jam_start' => '08:00', 'jam_finish' => '16:00']);
+        $user = User::factory()->create();
+        $shift = MasterShift::create(['nama_shift' => 'S1', 'jam_start' => '08:00', 'jam_finish' => '16:00']);
         $karyawan = MasterKaryawan::create(['nik' => uniqid(), 'nama_karyawan' => 'Operator A', 'departemen' => 'Produksi', 'is_aktif' => true]);
-        $mesin    = MasterMesin::create(['id_mesin' => 'M-'.uniqid(), 'nama_mesin' => 'Press 1', 'line' => '1', 'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100]);
-        $part     = MasterPart::create(['part_no' => 'P-'.uniqid(), 'part_name' => 'Part', 'customer' => 'Toyota']);
-        $proses   = MasterPartProses::create(['id_part' => $part->id, 'id_proses' => 1, 'nama_proses' => 'PROGRESSIVE', 'sph_standar_produksi' => 500, 'sph_standar_qc' => 250]);
+        $mesin = MasterMesin::create(['id_mesin' => 'M-'.uniqid(), 'nama_mesin' => 'Press 1', 'line' => '1', 'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100]);
+        $part = MasterPart::create(['part_no' => 'P-'.uniqid(), 'part_name' => 'Part', 'customer' => 'Toyota']);
+        $proses = MasterPartProses::create(['id_part' => $part->id, 'id_proses' => 1, 'nama_proses' => 'PROGRESSIVE', 'sph_standar_produksi' => 500, 'sph_standar_qc' => 250]);
+
         return compact('user', 'shift', 'karyawan', 'mesin', 'proses');
     }
 

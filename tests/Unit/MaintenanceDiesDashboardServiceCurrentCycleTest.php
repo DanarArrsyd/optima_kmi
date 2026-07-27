@@ -1,4 +1,5 @@
 <?php
+
 namespace Tests\Unit;
 
 use App\Models\DiesPreventiveLog;
@@ -19,10 +20,10 @@ class MaintenanceDiesDashboardServiceCurrentCycleTest extends TestCase
 
     private function fixtures(): array
     {
-        $user     = User::factory()->create(['role' => 'admin']);
-        $shift    = MasterShift::create(['nama_shift' => 'Shift 1', 'jam_start' => '08:00', 'jam_finish' => '16:00']);
+        $user = User::factory()->create(['role' => 'admin']);
+        $shift = MasterShift::create(['nama_shift' => 'Shift 1', 'jam_start' => '08:00', 'jam_finish' => '16:00']);
         $karyawan = MasterKaryawan::create(['nik' => uniqid(), 'nama_karyawan' => 'Teknisi A', 'departemen' => 'Produksi', 'is_aktif' => true]);
-        $mesin    = MasterMesin::create(['id_mesin' => 'CC'.uniqid(), 'nama_mesin' => 'CC Mesin', 'line' => '1', 'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100]);
+        $mesin = MasterMesin::create(['id_mesin' => 'CC'.uniqid(), 'nama_mesin' => 'CC Mesin', 'line' => '1', 'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100]);
 
         return compact('user', 'shift', 'karyawan', 'mesin');
     }
@@ -33,6 +34,7 @@ class MaintenanceDiesDashboardServiceCurrentCycleTest extends TestCase
             'part_no' => 'CC-P'.uniqid(), 'part_name' => 'CC Part', 'customer' => $customer,
             'tanggal_instalasi' => $instalasi,
         ]);
+
         return MasterPartProses::create([
             'id_part' => $part->id, 'id_proses' => 1, 'nama_proses' => 'PROGRESSIVE',
             'sph_standar_produksi' => 500, 'sph_standar_qc' => 250,
@@ -60,50 +62,50 @@ class MaintenanceDiesDashboardServiceCurrentCycleTest extends TestCase
 
     public function test_current_stroke_falls_back_to_tanggal_instalasi_when_never_preventived(): void
     {
-        $f  = $this->fixtures();
+        $f = $this->fixtures();
         $pr = $this->partProses('2026-01-01');
         $this->produksi($f, $pr, '2025-12-01', 999); // before instalasi, must not count
         $this->produksi($f, $pr, '2026-02-01', 100);
         $this->produksi($f, $pr, '2026-03-01', 50);
 
-        $svc = new MaintenanceDiesDashboardService();
+        $svc = new MaintenanceDiesDashboardService;
         $this->assertSame(150, $svc->currentStrokeFor($pr->fresh()));
     }
 
     public function test_current_stroke_is_all_time_when_no_preventive_and_no_instalasi(): void
     {
-        $f  = $this->fixtures();
+        $f = $this->fixtures();
         $pr = $this->partProses(null);
         $this->produksi($f, $pr, '2020-01-01', 40);
         $this->produksi($f, $pr, '2026-01-01', 60);
 
-        $svc = new MaintenanceDiesDashboardService();
+        $svc = new MaintenanceDiesDashboardService;
         $this->assertSame(100, $svc->currentStrokeFor($pr->fresh()));
     }
 
     public function test_current_stroke_only_counts_transactions_after_latest_preventive(): void
     {
-        $f  = $this->fixtures();
+        $f = $this->fixtures();
         $pr = $this->partProses('2026-01-01');
         $this->produksi($f, $pr, '2026-02-01', 30000); // pre-preventive, excluded
         $this->preventive($f, $pr, '2026-03-01', 30000);
         $this->produksi($f, $pr, '2026-04-01', 500);
         $this->produksi($f, $pr, '2026-05-01', 300);
 
-        $svc = new MaintenanceDiesDashboardService();
+        $svc = new MaintenanceDiesDashboardService;
         $this->assertSame(800, $svc->currentStrokeFor($pr->fresh()));
     }
 
     public function test_current_stroke_uses_latest_preventive_not_earliest(): void
     {
-        $f  = $this->fixtures();
+        $f = $this->fixtures();
         $pr = $this->partProses('2026-01-01');
         $this->preventive($f, $pr, '2026-02-01', 10000);
         $this->preventive($f, $pr, '2026-04-01', 20000);
         $this->produksi($f, $pr, '2026-03-01', 5000);  // between the two preventives, excluded
         $this->produksi($f, $pr, '2026-05-01', 700);   // after the latest, included
 
-        $svc = new MaintenanceDiesDashboardService();
+        $svc = new MaintenanceDiesDashboardService;
         $this->assertSame(700, $svc->currentStrokeFor($pr->fresh()));
     }
 
@@ -120,7 +122,7 @@ class MaintenanceDiesDashboardServiceCurrentCycleTest extends TestCase
         $over = $this->partProses('2026-01-01');
         $this->produksi($f, $over, '2026-02-01', 31000); // 103.3% -> overdue
 
-        $svc  = new MaintenanceDiesDashboardService();
+        $svc = new MaintenanceDiesDashboardService;
         $rows = collect($svc->computeCurrentCycle())->keyBy('id_part_proses');
 
         $this->assertSame('ok', $rows[$ok->id]['status']);
@@ -142,7 +144,7 @@ class MaintenanceDiesDashboardServiceCurrentCycleTest extends TestCase
         $warn = $this->partProses('2026-01-01');
         $this->produksi($f, $warn, '2026-02-01', 25000);
 
-        $svc  = new MaintenanceDiesDashboardService();
+        $svc = new MaintenanceDiesDashboardService;
         $rows = $svc->computeCurrentCycle();
 
         $this->assertSame('overdue', $rows[0]['status']);
@@ -155,18 +157,18 @@ class MaintenanceDiesDashboardServiceCurrentCycleTest extends TestCase
         $this->fixtures();
         $this->partProses('2026-01-01'); // no TransaksiProduksi created for it
 
-        $svc = new MaintenanceDiesDashboardService();
+        $svc = new MaintenanceDiesDashboardService;
         $this->assertCount(0, $svc->computeCurrentCycle());
     }
 
     public function test_dies_with_zero_current_stroke_after_reset_still_appears(): void
     {
-        $f  = $this->fixtures();
+        $f = $this->fixtures();
         $pr = $this->partProses('2026-01-01');
         $this->produksi($f, $pr, '2026-02-01', 30000);
         $this->preventive($f, $pr, '2026-03-01', 30000); // reset — no transactions after this
 
-        $svc  = new MaintenanceDiesDashboardService();
+        $svc = new MaintenanceDiesDashboardService;
         $rows = collect($svc->computeCurrentCycle())->keyBy('id_part_proses');
 
         $this->assertArrayHasKey($pr->id, $rows);
@@ -177,13 +179,13 @@ class MaintenanceDiesDashboardServiceCurrentCycleTest extends TestCase
 
     public function test_customer_filter_narrows_result(): void
     {
-        $f    = $this->fixtures();
-        $toy  = $this->partProses('2026-01-01', 'Toyota');
+        $f = $this->fixtures();
+        $toy = $this->partProses('2026-01-01', 'Toyota');
         $honda = $this->partProses('2026-01-01', 'Honda');
         $this->produksi($f, $toy, '2026-02-01', 100);
         $this->produksi($f, $honda, '2026-02-01', 200);
 
-        $svc  = new MaintenanceDiesDashboardService();
+        $svc = new MaintenanceDiesDashboardService;
         $rows = $svc->computeCurrentCycle(null, 'Honda');
 
         $this->assertCount(1, $rows);
@@ -205,12 +207,11 @@ class MaintenanceDiesDashboardServiceCurrentCycleTest extends TestCase
 
         \DB::flushQueryLog();
         \DB::enableQueryLog();
-        (new MaintenanceDiesDashboardService())->computeCurrentCycle();
+        (new MaintenanceDiesDashboardService)->computeCurrentCycle();
         $queries = \DB::getQueryLog();
         \DB::disableQueryLog();
 
-        $maxPreventiveQueries = collect($queries)->filter(fn ($q) =>
-            str_contains(strtolower($q['query']), 'max(')
+        $maxPreventiveQueries = collect($queries)->filter(fn ($q) => str_contains(strtolower($q['query']), 'max(')
             && str_contains($q['query'], 'tanggal_preventive')
         )->count();
 

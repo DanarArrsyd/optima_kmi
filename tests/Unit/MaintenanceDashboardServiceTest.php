@@ -1,4 +1,5 @@
 <?php
+
 namespace Tests\Unit;
 
 use App\Models\MasterMesin;
@@ -36,7 +37,7 @@ class MaintenanceDashboardServiceTest extends TestCase
             ]);
         }
 
-        $rows = (new MaintenanceDashboardService())->compute(
+        $rows = (new MaintenanceDashboardService)->compute(
             Carbon::parse('2026-01-01'), Carbon::parse('2026-06-30')
         );
 
@@ -50,8 +51,8 @@ class MaintenanceDashboardServiceTest extends TestCase
 
         // availability == (operating - sum_downtime) / operating * 100, computed from the same window
         $row = $rows[0];
-        $operating = \Illuminate\Support\Carbon::parse('2026-01-01')
-            ->diffInRealHours(\Illuminate\Support\Carbon::parse('2026-06-30')->endOfDay(), false);
+        $operating = Carbon::parse('2026-01-01')
+            ->diffInRealHours(Carbon::parse('2026-06-30')->endOfDay(), false);
         $expectedAvail = ($operating - $row['sum_downtime']) / $operating * 100;
         $this->assertEqualsWithDelta($expectedAvail, $row['availability_pct'], 0.5);
     }
@@ -69,7 +70,7 @@ class MaintenanceDashboardServiceTest extends TestCase
             'repair_time' => 1.0, 'total_downtime' => 2.0,
         ]);
 
-        $rows = (new MaintenanceDashboardService())->compute(
+        $rows = (new MaintenanceDashboardService)->compute(
             Carbon::parse('2026-01-01'), Carbon::parse('2026-06-30')
         );
 
@@ -93,7 +94,7 @@ class MaintenanceDashboardServiceTest extends TestCase
             'repair_time' => 1.0, 'total_downtime' => 2.0,
         ]);
 
-        $rows = (new MaintenanceDashboardService())->compute(
+        $rows = (new MaintenanceDashboardService)->compute(
             Carbon::parse('2026-05-01'), Carbon::parse('2026-05-31')
         );
 

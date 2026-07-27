@@ -35,6 +35,7 @@ Path: `/Applications/XAMPP/xamppfiles/htdocs/optima/`
 | Task | Status |
 |------|--------|
 | **Akun Guest Read-Only** | ✅ DONE — role `guest`, route default-deny + middleware `DenyGuestWrite`. Akun dibuat admin di Master > Users. |
-| **Dandori Migration** | ✅ DONE sejak Jun 2026 (data prod sudah termigrasi) |
+| **Checksheet PDF Preventive Dies** | ✅ DONE — merged main (PR #34). Upload wajib checksheet PDF (max 2MB) saat input PREVENTIVE dies, disk private, serve via route role-gated, link di history. |
+| **Dandori Migration** | ✅ DONE — sejak Jun 2026, lihat `memory/projects/dandori-migration.md` |
 
 → Detail proyek: `memory/projects/`, context: `memory/context/`

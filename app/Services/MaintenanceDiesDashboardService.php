@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services;
 
 use App\Models\DiesPreventiveLog;
@@ -43,25 +44,25 @@ class MaintenanceDiesDashboardService
 
         $rows = [];
         foreach ($partProsesList as $pr) {
-            $p            = $pr->part;
-            $group        = $stats->get($pr->id) ?? collect();
-            $count        = $group->count();
-            $sumRepair    = round((float) $group->sum('repair_time'), 2);
-            $sumDowntime  = round((float) $group->sum('total_downtime'), 2);
-            $mttr         = $count > 0 ? round($sumRepair / $count, 2) : 0.0;
+            $p = $pr->part;
+            $group = $stats->get($pr->id) ?? collect();
+            $count = $group->count();
+            $sumRepair = round((float) $group->sum('repair_time'), 2);
+            $sumDowntime = round((float) $group->sum('total_downtime'), 2);
+            $mttr = $count > 0 ? round($sumRepair / $count, 2) : 0.0;
 
-            $instalasi    = $hasInstalasi ? $p?->tanggal_instalasi : null;
+            $instalasi = $hasInstalasi ? $p?->tanggal_instalasi : null;
             $mtbfJam = $mtbfHari = $availPct = null;
             $instalasiSet = false;
 
             if ($instalasi) {
-                $instalasiSet  = true;
-                $windowStart   = Carbon::parse($instalasi)->max($from->copy()->startOfDay());
+                $instalasiSet = true;
+                $windowStart = Carbon::parse($instalasi)->max($from->copy()->startOfDay());
                 $operatingHours = max(0.0, $windowStart->diffInRealHours($to->copy()->endOfDay(), false));
-                $uptime         = max(0.0, $operatingHours - $sumDowntime);
-                $mtbfJam        = $count > 0 ? round($uptime / $count, 2) : round($uptime, 2);
-                $mtbfHari       = round($mtbfJam / 24, 2);
-                $availPct       = $operatingHours > 0 ? round($uptime / $operatingHours * 100, 2) : 100.0;
+                $uptime = max(0.0, $operatingHours - $sumDowntime);
+                $mtbfJam = $count > 0 ? round($uptime / $count, 2) : round($uptime, 2);
+                $mtbfHari = round($mtbfJam / 24, 2);
+                $availPct = $operatingHours > 0 ? round($uptime / $operatingHours * 100, 2) : 100.0;
             }
 
             // Cuma tampilkan dies+proses yang punya breakdown atau instalasi diset (hindari list ribuan baris)
@@ -70,18 +71,18 @@ class MaintenanceDiesDashboardService
             }
 
             $rows[] = [
-                'id_mesin'         => $pr->id,
-                'kode_mesin'       => $p?->part_no,
-                'nama_mesin'       => $p?->part_name,
-                'nama_proses'      => $pr->nama_proses,
-                'count'            => $count,
-                'sum_repair'       => $sumRepair,
-                'sum_downtime'     => $sumDowntime,
-                'mttr_jam'         => $mttr,
-                'mtbf_jam'         => $mtbfJam,
-                'mtbf_hari'        => $mtbfHari,
+                'id_mesin' => $pr->id,
+                'kode_mesin' => $p?->part_no,
+                'nama_mesin' => $p?->part_name,
+                'nama_proses' => $pr->nama_proses,
+                'count' => $count,
+                'sum_repair' => $sumRepair,
+                'sum_downtime' => $sumDowntime,
+                'mttr_jam' => $mttr,
+                'mtbf_jam' => $mtbfJam,
+                'mtbf_hari' => $mtbfHari,
                 'availability_pct' => $availPct,
-                'instalasi_set'    => $instalasiSet,
+                'instalasi_set' => $instalasiSet,
             ];
         }
 
@@ -104,7 +105,7 @@ class MaintenanceDiesDashboardService
         $lastPreventive = $pr->relationLoaded('preventiveLogs')
             ? optional($pr->preventiveLogs->max('tanggal_preventive'))->toDateString()
             : DiesPreventiveLog::where('id_part_proses', $pr->id)->max('tanggal_preventive');
-        $cycleStart     = $lastPreventive ?? $pr->part?->tanggal_instalasi;
+        $cycleStart = $lastPreventive ?? $pr->part?->tanggal_instalasi;
 
         // DEFENSIF: kolom durasi_menit bisa belum ada di hosting (migrasi telat).
         // Kalau belum, jangan sentuh kolomnya — cukup SUM stroke, running time 0.
@@ -135,31 +136,32 @@ class MaintenanceDiesDashboardService
 
         $rows = [];
         foreach ($partProsesList as $pr) {
-            $totals        = $this->cycleTotalsFor($pr);
+            $totals = $this->cycleTotalsFor($pr);
             $currentStroke = $totals['stroke'];
-            $pct           = round($currentStroke / self::STROKE_THRESHOLD * 100, 1);
-            $status        = $pct >= 100 ? 'overdue' : ($pct >= 80 ? 'warning' : 'ok');
-            $lastLog       = $pr->preventiveLogs->first();
+            $pct = round($currentStroke / self::STROKE_THRESHOLD * 100, 1);
+            $status = $pct >= 100 ? 'overdue' : ($pct >= 80 ? 'warning' : 'ok');
+            $lastLog = $pr->preventiveLogs->first();
 
             $rows[] = [
-                'id_part_proses'        => $pr->id,
-                'kode_mesin'            => $pr->part?->part_no,
-                'nama_mesin'            => $pr->part?->part_name,
-                'nama_proses'           => $pr->nama_proses,
-                'customer'              => $pr->part?->customer,
-                'current_stroke'        => $currentStroke,
-                'running_time_menit'    => $totals['durasi_menit'],
-                'threshold'             => self::STROKE_THRESHOLD,
-                'pct'                   => $pct,
-                'status'                => $status,
-                'last_preventive_date'  => $lastLog?->tanggal_preventive?->format('Y-m-d'),
-                'last_preventive_pic'   => $lastLog?->karyawan?->nama_karyawan,
+                'id_part_proses' => $pr->id,
+                'kode_mesin' => $pr->part?->part_no,
+                'nama_mesin' => $pr->part?->part_name,
+                'nama_proses' => $pr->nama_proses,
+                'customer' => $pr->part?->customer,
+                'current_stroke' => $currentStroke,
+                'running_time_menit' => $totals['durasi_menit'],
+                'threshold' => self::STROKE_THRESHOLD,
+                'pct' => $pct,
+                'status' => $status,
+                'last_preventive_date' => $lastLog?->tanggal_preventive?->format('Y-m-d'),
+                'last_preventive_pic' => $lastLog?->karyawan?->nama_karyawan,
             ];
         }
 
         $statusOrder = ['overdue' => 0, 'warning' => 1, 'ok' => 2];
         usort($rows, function ($a, $b) use ($statusOrder) {
             $byStatus = $statusOrder[$a['status']] <=> $statusOrder[$b['status']];
+
             return $byStatus !== 0 ? $byStatus : $b['pct'] <=> $a['pct'];
         });
 

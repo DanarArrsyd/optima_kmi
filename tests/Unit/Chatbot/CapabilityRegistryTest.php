@@ -1,4 +1,5 @@
 <?php
+
 namespace Tests\Unit\Chatbot;
 
 use App\Contracts\ChatCapability;
@@ -17,19 +18,48 @@ class CapabilityRegistryTest extends TestCase
         array $keywords = [],
         array $roles = [],
     ): ChatCapability {
-        return new class ($name, $keywords, $roles) implements ChatCapability {
+        return new class($name, $keywords, $roles) implements ChatCapability
+        {
             public function __construct(
                 private string $n,
                 private array $kw,
                 private array $r,
             ) {}
-            public function name(): string { return $this->n; }
-            public function description(): string { return "desc {$this->n}"; }
-            public function parameters(): array { return ['type' => 'object', 'properties' => [], 'required' => []]; }
-            public function keywords(): array { return $this->kw; }
-            public function roles(): array { return $this->r; }
-            public function examples(): array { return ["contoh {$this->n}"]; }
-            public function handle(array $args): array { return ['ok' => $this->n]; }
+
+            public function name(): string
+            {
+                return $this->n;
+            }
+
+            public function description(): string
+            {
+                return "desc {$this->n}";
+            }
+
+            public function parameters(): array
+            {
+                return ['type' => 'object', 'properties' => [], 'required' => []];
+            }
+
+            public function keywords(): array
+            {
+                return $this->kw;
+            }
+
+            public function roles(): array
+            {
+                return $this->r;
+            }
+
+            public function examples(): array
+            {
+                return ["contoh {$this->n}"];
+            }
+
+            public function handle(array $args): array
+            {
+                return ['ok' => $this->n];
+            }
         };
     }
 

@@ -1,8 +1,17 @@
 <?php
+
 namespace Tests\Feature;
 
+use App\Models\DiesPreventiveLog;
+use App\Models\MasterKaryawan;
+use App\Models\MasterMesin;
+use App\Models\MasterPart;
+use App\Models\MasterPartProses;
+use App\Models\MasterShift;
+use App\Models\TransaksiProduksi;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
@@ -136,13 +145,13 @@ class AuthorizationTest extends TestCase
         ];
     }
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('guestAllowedRoutes')]
+    #[DataProvider('guestAllowedRoutes')]
     public function test_guest_can_view_allowed_routes(string $routeName, array $query = []): void
     {
         $this->actingAs($this->user('guest'))->get(route($routeName, $query))->assertOk();
     }
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('guestBlockedRoutes')]
+    #[DataProvider('guestBlockedRoutes')]
     public function test_guest_cannot_view_blocked_routes(string $routeName): void
     {
         $this->actingAs($this->user('guest'))->get(route($routeName))->assertForbidden();
@@ -159,20 +168,20 @@ class AuthorizationTest extends TestCase
      */
     private function seedMasterData(): array
     {
-        $mesin = \App\Models\MasterMesin::create([
+        $mesin = MasterMesin::create([
             'id_mesin' => 'M-TEST-1', 'nama_mesin' => 'Mesin Test', 'line' => 'A',
             'tipe_mesin' => 'STAMPING',
         ]);
-        $part = \App\Models\MasterPart::create([
+        $part = MasterPart::create([
             'part_no' => 'PART-TEST-1', 'part_name' => 'Part Test',
         ]);
-        $partProses = \App\Models\MasterPartProses::create([
+        $partProses = MasterPartProses::create([
             'id_part' => $part->id, 'id_proses' => 'P1', 'nama_proses' => 'Proses Test',
         ]);
-        $karyawan = \App\Models\MasterKaryawan::create([
+        $karyawan = MasterKaryawan::create([
             'nik' => 'NIK-TEST-1', 'nama_karyawan' => 'Karyawan Test', 'departemen' => 'Produksi',
         ]);
-        $shift = \App\Models\MasterShift::create([
+        $shift = MasterShift::create([
             'nama_shift' => 'Shift Test', 'jam_start' => '07:00', 'jam_finish' => '15:00',
         ]);
 
@@ -183,14 +192,14 @@ class AuthorizationTest extends TestCase
     {
         $guest = $this->user('guest');
         $admin = $this->user('admin');
-        $data  = $this->seedMasterData();
+        $data = $this->seedMasterData();
 
-        $diesLog = \App\Models\DiesPreventiveLog::create([
-            'id_part_proses'       => $data['partProses']->id,
-            'tanggal_preventive'   => now()->toDateString(),
-            'id_karyawan'          => $data['karyawan']->id,
+        $diesLog = DiesPreventiveLog::create([
+            'id_part_proses' => $data['partProses']->id,
+            'tanggal_preventive' => now()->toDateString(),
+            'id_karyawan' => $data['karyawan']->id,
             'stroke_at_preventive' => 100,
-            'created_by'           => $admin->id,
+            'created_by' => $admin->id,
         ]);
 
         $this->actingAs($guest)
@@ -240,7 +249,7 @@ class AuthorizationTest extends TestCase
     public function test_guest_can_view_control_stroke_history_routes(): void
     {
         $guest = $this->user('guest');
-        $data  = $this->seedMasterData();
+        $data = $this->seedMasterData();
 
         $this->actingAs($guest)
             ->get(route('maintenance.control-stroke-mesin.history', ['mesin' => $data['mesin']->id]))
@@ -282,7 +291,7 @@ class AuthorizationTest extends TestCase
 
             // Route di luar grup 'auth' (mis. GET / redirect, login/register) tidak
             // relevan — guest yang dimaksud di sini adalah role 'guest' yang sudah login.
-            if (!in_array('auth', $middleware, true)) {
+            if (! in_array('auth', $middleware, true)) {
                 continue;
             }
 
@@ -313,18 +322,18 @@ class AuthorizationTest extends TestCase
     {
         $guest = $this->user('guest');
         $admin = $this->user('admin');
-        $data  = $this->seedMasterData();
+        $data = $this->seedMasterData();
 
-        $produksi = \App\Models\TransaksiProduksi::create([
+        $produksi = TransaksiProduksi::create([
             'tanggal_produksi' => now()->toDateString(),
-            'id_shift'         => $data['shift']->id,
-            'id_karyawan'      => $data['karyawan']->id,
-            'id_mesin'         => $data['mesin']->id,
-            'id_part_proses'   => $data['partProses']->id,
-            'jam_start'        => '07:00',
-            'jam_finish'       => '08:00',
-            'qty_aktual'       => 10,
-            'created_by'       => $admin->id,
+            'id_shift' => $data['shift']->id,
+            'id_karyawan' => $data['karyawan']->id,
+            'id_mesin' => $data['mesin']->id,
+            'id_part_proses' => $data['partProses']->id,
+            'jam_start' => '07:00',
+            'jam_finish' => '08:00',
+            'qty_aktual' => 10,
+            'created_by' => $admin->id,
         ]);
 
         $this->actingAs($guest)->post(route('input.produksi.note'), [

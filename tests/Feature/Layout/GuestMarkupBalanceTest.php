@@ -4,6 +4,7 @@ namespace Tests\Feature\Layout;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
@@ -24,14 +25,14 @@ class GuestMarkupBalanceTest extends TestCase
         ];
     }
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('lhpPages')]
+    #[DataProvider('lhpPages')]
     public function test_div_tags_are_balanced_for_both_roles(string $routeName, string $staffRole): void
     {
         foreach (['guest', $staffRole] as $role) {
             $html = $this->actingAs(User::factory()->create(['role' => $role]))
                 ->get(route($routeName))->assertOk()->getContent();
 
-            $open  = preg_match_all('/<div\b/i', $html);
+            $open = preg_match_all('/<div\b/i', $html);
             $close = preg_match_all('/<\/div>/i', $html);
 
             $this->assertSame($close, $open, "Div tidak seimbang di {$routeName} untuk role {$role}");

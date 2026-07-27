@@ -1,4 +1,5 @@
 <?php
+
 namespace Tests\Feature;
 
 use App\Services\Chatbot\CapabilityRegistry;
@@ -20,12 +21,13 @@ class ChatbotCapabilityParityTest extends TestCase
             $out[$d['name']] = $d;
         }
         ksort($out);
+
         return $out;
     }
 
     public function test_registry_is_superset_of_legacy_catalog_with_identical_schema(): void
     {
-        $legacy   = $this->byName((new ToolSchemaCatalog())->definitions());
+        $legacy = $this->byName((new ToolSchemaCatalog)->definitions());
         $registry = $this->byName(app(CapabilityRegistry::class)->schemaDefinitions());
 
         foreach ($legacy as $name => $def) {
@@ -58,7 +60,7 @@ class ChatbotCapabilityParityTest extends TestCase
     {
         $registry = app(CapabilityRegistry::class);
 
-        foreach ((new ToolSchemaCatalog())->definitions() as $def) {
+        foreach ((new ToolSchemaCatalog)->definitions() as $def) {
             $this->assertNotNull(
                 $registry->find($def['name']),
                 "Tool {$def['name']} tak punya capability — dispatch bakal bolong.",

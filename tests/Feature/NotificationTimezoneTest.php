@@ -1,4 +1,5 @@
 <?php
+
 namespace Tests\Feature;
 
 use App\Models\AppNotification;
@@ -26,13 +27,13 @@ class NotificationTimezoneTest extends TestCase
     private function notifFor(User $user, string $utcCreatedAt): AppNotification
     {
         return AppNotification::create([
-            'user_id'         => $user->id,
-            'actor_id'        => User::factory()->create(['role' => 'staff_produksi'])->id,
-            'type'            => 'note_submitted',
+            'user_id' => $user->id,
+            'actor_id' => User::factory()->create(['role' => 'staff_produksi'])->id,
+            'type' => 'note_submitted',
             'notifiable_type' => 'produksi',
-            'notifiable_id'   => 1,
-            'data'            => ['nama_actor' => 'Gerrard Richardo', 'tanggal' => '2026-07-15'],
-            'created_at'      => $utcCreatedAt,
+            'notifiable_id' => 1,
+            'data' => ['nama_actor' => 'Gerrard Richardo', 'tanggal' => '2026-07-15'],
+            'created_at' => $utcCreatedAt,
         ]);
     }
 
@@ -65,7 +66,7 @@ class NotificationTimezoneTest extends TestCase
     public function test_stored_timestamp_stays_utc(): void
     {
         $user = User::factory()->create(['role' => 'admin']);
-        $n    = $this->notifFor($user, '2026-07-15 07:32:00');
+        $n = $this->notifFor($user, '2026-07-15 07:32:00');
 
         $this->actingAs($user)->getJson('/notifications/poll')->assertOk();
 

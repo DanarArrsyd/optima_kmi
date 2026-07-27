@@ -26,13 +26,13 @@ class NotificationController extends Controller
             ->orderByDesc('created_at')
             ->limit(15)
             ->get()
-            ->map(fn($n) => [
-                'id'         => $n->id,
-                'type'       => $n->type,
-                'text'       => $this->buildText($n),
-                'url'        => $this->buildUrl($n),
+            ->map(fn ($n) => [
+                'id' => $n->id,
+                'type' => $n->type,
+                'text' => $this->buildText($n),
+                'url' => $this->buildUrl($n),
                 'created_at' => $n->created_at->timezone(self::DISPLAY_TZ)->format('d M H:i'),
-                'read_at'    => $n->read_at,
+                'read_at' => $n->read_at,
             ]);
 
         $count = AppNotification::forUser($userId)->unread()->count();
@@ -61,13 +61,13 @@ class NotificationController extends Controller
 
     private function buildText(AppNotification $n): string
     {
-        $map   = ['produksi' => 'LHP Produksi', 'qc' => 'LHP Quality', 'dandori' => 'Dandori'];
+        $map = ['produksi' => 'LHP Produksi', 'qc' => 'LHP Quality', 'dandori' => 'Dandori'];
         $label = $map[$n->notifiable_type] ?? ucfirst($n->notifiable_type);
 
         return match ($n->type) {
-            'note_submitted' => ($n->data['nama_actor'] ?? 'Staff') . ' mengirim note di ' . $label,
-            'note_resolved'  => 'Note kamu di ' . $label . ' sudah di-feedback admin',
-            default          => 'Notifikasi baru',
+            'note_submitted' => ($n->data['nama_actor'] ?? 'Staff').' mengirim note di '.$label,
+            'note_resolved' => 'Note kamu di '.$label.' sudah di-feedback admin',
+            default => 'Notifikasi baru',
         };
     }
 
@@ -75,13 +75,14 @@ class NotificationController extends Controller
     {
         $paths = [
             'produksi' => '/input/produksi',
-            'qc'       => '/input/qc',
-            'dandori'  => '/input/dandori',
+            'qc' => '/input/qc',
+            'dandori' => '/input/dandori',
         ];
         $path = $paths[$n->notifiable_type] ?? '/';
-        $tgl  = $n->data['tanggal'] ?? null;
+        $tgl = $n->data['tanggal'] ?? null;
 
-        $base = $tgl ? $path . '?date_from=' . $tgl . '&date_to=' . $tgl : $path;
-        return $base . ($tgl ? '&' : '?') . 'highlight_id=' . $n->notifiable_id;
+        $base = $tgl ? $path.'?date_from='.$tgl.'&date_to='.$tgl : $path;
+
+        return $base.($tgl ? '&' : '?').'highlight_id='.$n->notifiable_id;
     }
 }

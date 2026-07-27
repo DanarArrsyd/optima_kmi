@@ -1,8 +1,9 @@
 <?php
+
 namespace App\Services;
 
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Menganalisis data LHP Produksi & LHP Quality dan mengidentifikasi kombinasi
@@ -26,7 +27,7 @@ class SphRecommendationService
         return $this->produksiQuery()
             ->orderByDesc('exceed_count')
             ->get()
-            ->map(fn($r) => $this->enrichProduksi($r))
+            ->map(fn ($r) => $this->enrichProduksi($r))
             ->filter()
             ->values();
     }
@@ -37,7 +38,7 @@ class SphRecommendationService
         return $this->produksiQuery()
             ->where('pp.id_part', $idPart)
             ->get()
-            ->map(fn($r) => $this->enrichProduksi($r))
+            ->map(fn ($r) => $this->enrichProduksi($r))
             ->filter()
             ->values();
     }
@@ -52,7 +53,7 @@ class SphRecommendationService
         return $this->qcQuery()
             ->orderByDesc('exceed_count')
             ->get()
-            ->map(fn($r) => $this->enrichQc($r))
+            ->map(fn ($r) => $this->enrichQc($r))
             ->filter()
             ->values();
     }
@@ -63,7 +64,7 @@ class SphRecommendationService
         return $this->qcQuery()
             ->where('pp.id_part', $idPart)
             ->get()
-            ->map(fn($r) => $this->enrichQc($r))
+            ->map(fn ($r) => $this->enrichQc($r))
             ->filter()
             ->values();
     }
@@ -133,7 +134,7 @@ class SphRecommendationService
             /* Isolasi data lama: hanya scan setelah tanggal upgrade terakhir */
             ->where(function ($q) {
                 $q->whereNull('pp.sph_last_upgraded_at')
-                  ->orWhereRaw('lhp.tanggal_produksi >= DATE(pp.sph_last_upgraded_at)');
+                    ->orWhereRaw('lhp.tanggal_produksi >= DATE(pp.sph_last_upgraded_at)');
             })
             ->select(
                 'pp.id                    as id_part_proses',
@@ -176,7 +177,7 @@ class SphRecommendationService
             /* Isolasi data lama: hanya scan setelah tanggal upgrade terakhir QC */
             ->where(function ($q) {
                 $q->whereNull('pp.sph_qc_last_upgraded_at')
-                  ->orWhereRaw('qc.tgl_pengecekan >= DATE(pp.sph_qc_last_upgraded_at)');
+                    ->orWhereRaw('qc.tgl_pengecekan >= DATE(pp.sph_qc_last_upgraded_at)');
             })
             ->select(
                 'pp.id                       as id_part_proses',
@@ -221,26 +222,30 @@ class SphRecommendationService
      */
     private function enrich(object $row, string $stdKey): ?object
     {
-        if (!$row->avg_all_sph) return null;
+        if (! $row->avg_all_sph) {
+            return null;
+        }
 
         // Rekomendasi = rata-rata SEMUA sesi SPH aktual, bulatkan ke 10 terdekat
         $recommended = (int) (round((float) $row->avg_all_sph / 10) * 10);
-        $current     = (int) $row->sph_standar;
+        $current = (int) $row->sph_standar;
 
-        if ($recommended <= $current) return null;
+        if ($recommended <= $current) {
+            return null;
+        }
 
         $row->recommended_sph = $recommended;
-        $row->max_sph         = (int) round((float) $row->max_sph);
-        $row->avg_all_sph     = (int) round((float) $row->avg_all_sph);
-        $row->avg_exceed_sph  = $row->avg_exceed_sph ? (int) round((float) $row->avg_exceed_sph) : 0;
-        $row->exceed_count    = (int) $row->exceed_count;
-        $row->total_sessions  = (int) $row->total_sessions;
-        $row->sph_standar     = $current;
+        $row->max_sph = (int) round((float) $row->max_sph);
+        $row->avg_all_sph = (int) round((float) $row->avg_all_sph);
+        $row->avg_exceed_sph = $row->avg_exceed_sph ? (int) round((float) $row->avg_exceed_sph) : 0;
+        $row->exceed_count = (int) $row->exceed_count;
+        $row->total_sessions = (int) $row->total_sessions;
+        $row->sph_standar = $current;
 
         // Buat alias yang sama dipakai view (backward compat produksi)
-        $row->$stdKey         = $current;
+        $row->$stdKey = $current;
 
-        $row->exceed_pct  = $row->total_sessions > 0
+        $row->exceed_pct = $row->total_sessions > 0
             ? (int) round($row->exceed_count / $row->total_sessions * 100)
             : 0;
 

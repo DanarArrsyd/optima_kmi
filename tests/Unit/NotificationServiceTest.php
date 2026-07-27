@@ -16,18 +16,18 @@ class NotificationServiceTest extends TestCase
     private function makeUser(string $role, string $name = 'Test User'): User
     {
         return User::create([
-            'name'     => $name,
-            'email'    => uniqid() . '@test.com',
+            'name' => $name,
+            'email' => uniqid().'@test.com',
             'password' => bcrypt('password'),
-            'role'     => $role,
+            'role' => $role,
         ]);
     }
 
     private function fakeRecord(int $id, string $note, int $noteBy): object
     {
-        return (object)[
-            'id'            => $id,
-            'staff_note'    => $note,
+        return (object) [
+            'id' => $id,
+            'staff_note' => $note,
             'staff_note_by' => $noteBy,
         ];
     }
@@ -42,7 +42,7 @@ class NotificationServiceTest extends TestCase
         Auth::login($staff);
 
         $record = $this->fakeRecord(99, 'ada masalah', $staff->id);
-        (new NotificationService())->insertNoteSubmitted($record, 'produksi', '2026-06-27');
+        (new NotificationService)->insertNoteSubmitted($record, 'produksi', '2026-06-27');
 
         $this->assertSame(2, AppNotification::count());
         $this->assertTrue(AppNotification::where('user_id', $admin1->id)->exists());
@@ -66,7 +66,7 @@ class NotificationServiceTest extends TestCase
         Auth::login($staff);
 
         $record = $this->fakeRecord(1, '', $staff->id);
-        (new NotificationService())->insertNoteSubmitted($record, 'produksi', '2026-06-27');
+        (new NotificationService)->insertNoteSubmitted($record, 'produksi', '2026-06-27');
 
         $this->assertSame(0, AppNotification::count());
     }
@@ -78,7 +78,7 @@ class NotificationServiceTest extends TestCase
         Auth::login($admin);
 
         $record = $this->fakeRecord(55, 'masalah', $staff->id);
-        (new NotificationService())->insertNoteResolved($record, 'qc', '2026-06-26');
+        (new NotificationService)->insertNoteResolved($record, 'qc', '2026-06-26');
 
         $this->assertSame(1, AppNotification::count());
         $notif = AppNotification::first();

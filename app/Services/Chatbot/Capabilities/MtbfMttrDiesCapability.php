@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services\Chatbot\Capabilities;
 
 /** getMtbfMttrDies — MTBF/MTTR part/dies per proses, satu bulan. */
@@ -20,7 +21,7 @@ class MtbfMttrDiesCapability extends AbstractCapability
             'type' => 'object',
             'properties' => [
                 'partNo' => ['type' => 'string', 'description' => 'No part/dies, mis. BT-091A-3'],
-                'bulan'  => ['type' => 'string', 'description' => 'YYYY-MM'],
+                'bulan' => ['type' => 'string', 'description' => 'YYYY-MM'],
             ],
             'required' => ['partNo', 'bulan'],
         ];

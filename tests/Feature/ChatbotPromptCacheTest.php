@@ -1,4 +1,5 @@
 <?php
+
 namespace Tests\Feature;
 
 use App\Services\Concerns\HasChatbotSystemPrompt;
@@ -17,9 +18,14 @@ class ChatbotPromptCacheTest extends TestCase
 {
     private function promptObject(): object
     {
-        return new class {
+        return new class
+        {
             use HasChatbotSystemPrompt;
-            public function build(): string { return $this->systemPrompt(); }
+
+            public function build(): string
+            {
+                return $this->systemPrompt();
+            }
         };
     }
 
@@ -48,9 +54,14 @@ class ChatbotPromptCacheTest extends TestCase
         config(['chatbot.log_token_usage' => true]);
         Log::spy();
 
-        $logger = new class {
+        $logger = new class
+        {
             use LogsTokenUsage;
-            public function run(array $r): void { $this->logOpenAiUsage('DeepSeek', $r); }
+
+            public function run(array $r): void
+            {
+                $this->logOpenAiUsage('DeepSeek', $r);
+            }
         };
 
         $logger->run(['usage' => [
@@ -72,9 +83,14 @@ class ChatbotPromptCacheTest extends TestCase
         config(['chatbot.log_token_usage' => false]);
         Log::spy();
 
-        $logger = new class {
+        $logger = new class
+        {
             use LogsTokenUsage;
-            public function run(array $r): void { $this->logOpenAiUsage('DeepSeek', $r); }
+
+            public function run(array $r): void
+            {
+                $this->logOpenAiUsage('DeepSeek', $r);
+            }
         };
 
         $logger->run(['usage' => ['prompt_tokens' => 500, 'completion_tokens' => 50]]);

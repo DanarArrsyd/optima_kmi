@@ -1,6 +1,6 @@
 <?php
+
 namespace App\Imports;
-use App\Support\SaneDate;
 
 use App\Models\MasterKaryawan;
 use App\Models\MasterLosstime;
@@ -9,18 +9,25 @@ use App\Models\MasterPart;
 use App\Models\MasterPartProses;
 use App\Models\MasterShift;
 use App\Models\TransaksiDandoriRincian;
+use App\Support\SaneDate;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithStartRow;
+use PhpOffice\PhpSpreadsheet\Shared\Date;
 
 class DandoriImport implements ToCollection, WithHeadingRow, WithStartRow
 {
-    public int   $importedCount = 0;
-    public array $errors        = [];
+    public int $importedCount = 0;
+
+    public array $errors = [];
 
     /** Mulai baca data dari row 3 — skip row 2 (petunjuk) */
-    public function startRow(): int { return 3; }
+    public function startRow(): int
+    {
+        return 3;
+    }
 
     public function collection(Collection $rows): void
     {
@@ -36,70 +43,78 @@ class DandoriImport implements ToCollection, WithHeadingRow, WithStartRow
             try {
                 /* ── Tanggal ───────────────────────────── */
                 $tanggal = $this->parseDate($row['tanggal']);
-                if (!$tanggal) {
+                if (! $tanggal) {
                     $this->errors[] = "Baris {$rowNum}: Format tanggal tidak valid (gunakan YYYY-MM-DD atau DD/MM/YYYY).";
+
                     continue;
                 }
                 // Tahun 4-digit apa pun lolos parseDate — "0026" (salah ketik "2026") tersimpan
                 // diam-diam lalu hilang dari laporan VCB yang memfilter per rentang tanggal.
                 // Batas atas besok, bukan hari ini: app timezone UTC, pabrik WIB (UTC+7).
-                if (!SaneDate::isSane($tanggal)) {
+                if (! SaneDate::isSane($tanggal)) {
                     $this->errors[] = "Baris {$rowNum}: Tanggal \"{$tanggal}\" di luar rentang wajar — periksa tahunnya.";
+
                     continue;
                 }
 
                 /* ── Shift ─────────────────────────────── */
                 $namaShift = trim((string) ($row['nama_shift'] ?? ''));
                 $shift = MasterShift::whereRaw('LOWER(TRIM(nama_shift)) = ?', [strtolower($namaShift)])->first();
-                if (!$shift) {
+                if (! $shift) {
                     $this->errors[] = "Baris {$rowNum}: Shift \"{$namaShift}\" tidak ditemukan di master Shift.";
+
                     continue;
                 }
 
                 /* ── Operator ──────────────────────────── */
-                $namaOp   = trim((string) ($row['nama_operator'] ?? ''));
+                $namaOp = trim((string) ($row['nama_operator'] ?? ''));
                 $karyawan = MasterKaryawan::where('departemen', 'Produksi')
                     ->whereRaw('LOWER(TRIM(nama_karyawan)) = ?', [strtolower($namaOp)])
                     ->first();
-                if (!$karyawan) {
+                if (! $karyawan) {
                     $this->errors[] = "Baris {$rowNum}: Operator \"{$namaOp}\" tidak ditemukan (periksa departemen = Produksi).";
+
                     continue;
                 }
 
                 /* ── Mesin ─────────────────────────────── */
                 $idMesin = trim((string) ($row['id_mesin'] ?? ''));
-                $mesin   = MasterMesin::whereRaw('LOWER(TRIM(id_mesin)) = ?', [strtolower($idMesin)])->first();
-                if (!$mesin) {
+                $mesin = MasterMesin::whereRaw('LOWER(TRIM(id_mesin)) = ?', [strtolower($idMesin)])->first();
+                if (! $mesin) {
                     $this->errors[] = "Baris {$rowNum}: Mesin \"{$idMesin}\" tidak ditemukan di master Mesin.";
+
                     continue;
                 }
 
                 /* ── Part ──────────────────────────────── */
                 $partNo = trim((string) ($row['part_no'] ?? ''));
-                $part   = MasterPart::whereRaw('LOWER(TRIM(part_no)) = ?', [strtolower($partNo)])->first();
-                if (!$part) {
+                $part = MasterPart::whereRaw('LOWER(TRIM(part_no)) = ?', [strtolower($partNo)])->first();
+                if (! $part) {
                     $this->errors[] = "Baris {$rowNum}: Part No \"{$partNo}\" tidak ditemukan di master Part.";
+
                     continue;
                 }
 
                 /* ── Proses ────────────────────────────── */
-                $idProses   = trim((string) ($row['id_proses'] ?? ''));
+                $idProses = trim((string) ($row['id_proses'] ?? ''));
                 $partProses = MasterPartProses::where('id_part', $part->id)
                     ->where('id_proses', $idProses)
                     ->first();
-                if (!$partProses) {
+                if (! $partProses) {
                     $this->errors[] = "Baris {$rowNum}: Proses \"{$idProses}\" untuk Part No \"{$partNo}\" tidak ditemukan.";
+
                     continue;
                 }
 
                 $isProgressive = strtoupper(trim($partProses->nama_proses)) === 'PROGRESSIVE';
 
                 /* ── Loss Time — cari by kode dulu, fallback by nama jenis ── */
-                $kodeLt   = trim((string) ($row['kode_loss_time'] ?? ''));
+                $kodeLt = trim((string) ($row['kode_loss_time'] ?? ''));
                 $losstime = MasterLosstime::whereRaw('LOWER(TRIM(kode)) = ?', [strtolower($kodeLt)])->first()
                          ?? MasterLosstime::whereRaw('LOWER(TRIM(jenis_losstime)) = ?', [strtolower($kodeLt)])->first();
-                if (!$losstime) {
+                if (! $losstime) {
                     $this->errors[] = "Baris {$rowNum}: Kode loss time \"{$kodeLt}\" tidak ditemukan di master Loss Time (coba pakai kode singkat, contoh: SD).";
+
                     continue;
                 }
 
@@ -107,6 +122,7 @@ class DandoriImport implements ToCollection, WithHeadingRow, WithStartRow
                 $actualMenit = (float) ($row['actual_menit'] ?? 0);
                 if ($actualMenit < 0) {
                     $this->errors[] = "Baris {$rowNum}: Actual Menit tidak boleh negatif.";
+
                     continue;
                 }
 
@@ -119,18 +135,18 @@ class DandoriImport implements ToCollection, WithHeadingRow, WithStartRow
 
                 /* ── Simpan (upsert by natural key — aman re-import) ── */
                 $record = TransaksiDandoriRincian::withTrashed()->firstOrNew([
-                    'tanggal'        => $tanggal,
-                    'id_shift'       => $shift->id,
-                    'id_karyawan'    => $karyawan->id,
-                    'id_mesin'       => $mesin->id,
+                    'tanggal' => $tanggal,
+                    'id_shift' => $shift->id,
+                    'id_karyawan' => $karyawan->id,
+                    'id_mesin' => $mesin->id,
                     'id_part_proses' => $partProses->id,
-                    'id_losstime'    => $losstime->id,
+                    'id_losstime' => $losstime->id,
                 ]);
                 $record->actual_menit = $actualMenit;
-                $record->std_menit    = $stdMenit;
-                $record->over_menit   = $overMenit;
-                $record->deleted_at   = null;
-                if (!$record->exists) {
+                $record->std_menit = $stdMenit;
+                $record->over_menit = $overMenit;
+                $record->deleted_at = null;
+                if (! $record->exists) {
                     $record->created_by = auth()->id();
                 }
                 $record->save();
@@ -138,7 +154,7 @@ class DandoriImport implements ToCollection, WithHeadingRow, WithStartRow
                 $this->importedCount++;
 
             } catch (\Throwable $e) {
-                $this->errors[] = "Baris {$rowNum}: Error tidak terduga — " . $e->getMessage();
+                $this->errors[] = "Baris {$rowNum}: Error tidak terduga — ".$e->getMessage();
             }
         }
     }
@@ -147,16 +163,19 @@ class DandoriImport implements ToCollection, WithHeadingRow, WithStartRow
 
     private function parseDate(mixed $value): ?string
     {
-        if ($value === null || trim((string) $value) === '') return null;
+        if ($value === null || trim((string) $value) === '') {
+            return null;
+        }
 
         if (is_numeric($value)) {
             try {
-                return \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject((float) $value)
+                return Date::excelToDateTimeObject((float) $value)
                     ->format('Y-m-d');
-            } catch (\Throwable) {}
+            } catch (\Throwable) {
+            }
         }
 
-        if ($value instanceof \Carbon\Carbon || $value instanceof \DateTime) {
+        if ($value instanceof Carbon || $value instanceof \DateTime) {
             return $value->format('Y-m-d');
         }
 

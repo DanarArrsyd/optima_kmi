@@ -1,13 +1,17 @@
 <?php
+
 namespace App\Models;
+
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class MasterShift extends Model
 {
     use SoftDeletes;
+
     protected $table = 'master_shift';
+
     protected $fillable = [
         'nama_shift',
         'jam_start', 'jam_finish',
@@ -27,11 +31,13 @@ class MasterShift extends Model
         return $this->hasMany(MasterShiftIstirahat::class, 'id_shift')
             ->where('kelompok_hari', 'senin_kamis')->orderBy('jam_start');
     }
+
     public function istirahatJumat(): HasMany
     {
         return $this->hasMany(MasterShiftIstirahat::class, 'id_shift')
             ->where('kelompok_hari', 'jumat')->orderBy('jam_start');
     }
+
     public function istirahatSabtu(): HasMany
     {
         return $this->hasMany(MasterShiftIstirahat::class, 'id_shift')
@@ -42,10 +48,12 @@ class MasterShift extends Model
     {
         return $this->hasMany(TransaksiProduksi::class, 'id_shift');
     }
+
     public function transaksiQc(): HasMany
     {
         return $this->hasMany(TransaksiQc::class, 'id_shift');
     }
+
     public function transaksiDandori(): HasMany
     {
         return $this->hasMany(TransaksiDandoriRincian::class, 'id_shift');

@@ -1,9 +1,10 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class TransaksiDandoriRincian extends Model
 {
@@ -27,12 +28,12 @@ class TransaksiDandoriRincian extends Model
     ];
 
     protected $casts = [
-        'staff_note_at'          => 'datetime',
+        'staff_note_at' => 'datetime',
         'staff_note_resolved_at' => 'datetime',
-        'tanggal'      => 'date',
+        'tanggal' => 'date',
         'actual_menit' => 'decimal:2',
-        'std_menit'    => 'decimal:2',
-        'over_menit'   => 'decimal:2',
+        'std_menit' => 'decimal:2',
+        'over_menit' => 'decimal:2',
     ];
 
     public function shift(): BelongsTo

@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services;
 
 use App\Contracts\ChatbotProviderInterface;
@@ -32,8 +33,8 @@ class GeminiChatbotService implements ChatbotProviderInterface
         $contents[] = ['role' => 'user', 'parts' => [['text' => $userMessage]]];
 
         // Subset schema dihitung sekali dari konteks percakapan (hemat token).
-        $past   = implode(' ', array_map(fn ($m) => (string) ($m['content'] ?? ''), $history));
-        $schema = $this->registry()->schemaForQuery($userMessage . ' ' . $past);
+        $past = implode(' ', array_map(fn ($m) => (string) ($m['content'] ?? ''), $history));
+        $schema = $this->registry()->schemaForQuery($userMessage.' '.$past);
 
         for ($i = 0; $i < self::MAX_ITERATIONS; $i++) {
             $response = $this->callGemini($contents, $schema);
@@ -61,7 +62,7 @@ class GeminiChatbotService implements ChatbotProviderInterface
 
                 $capability = $this->registry()->find($name);
                 // Fallback method_exists jaga-jaga tool callable yang belum jadi capability.
-                if ($capability === null && !method_exists($this->tools, $name)) {
+                if ($capability === null && ! method_exists($this->tools, $name)) {
                     return null;
                 }
 
@@ -69,6 +70,7 @@ class GeminiChatbotService implements ChatbotProviderInterface
                     $result = $capability ? $this->registry()->run($capability, $args) : $this->tools->{$name}(...$args);
                 } catch (\Throwable $e) {
                     Log::warning('Chatbot tool dispatch failed', ['provider' => 'gemini', 'name' => $name, 'message' => $e->getMessage()]);
+
                     return null;
                 }
 
@@ -82,6 +84,7 @@ class GeminiChatbotService implements ChatbotProviderInterface
                 $contents[] = ['role' => 'function', 'parts' => [[
                     'functionResponse' => ['name' => $name, 'response' => $result],
                 ]]];
+
                 continue;
             }
 
@@ -94,7 +97,7 @@ class GeminiChatbotService implements ChatbotProviderInterface
     private function buildHistory(array $history): array
     {
         return array_map(fn ($m) => [
-            'role'  => ($m['role'] ?? 'user') === 'assistant' ? 'model' : 'user',
+            'role' => ($m['role'] ?? 'user') === 'assistant' ? 'model' : 'user',
             'parts' => [['text' => $m['content'] ?? '']],
         ], $history);
     }
@@ -102,12 +105,12 @@ class GeminiChatbotService implements ChatbotProviderInterface
     private function callGemini(array $contents, array $schema): ?array
     {
         $model = config('services.gemini.model');
-        $key   = config('services.gemini.key');
-        $url   = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$key}";
-        $body  = [
+        $key = config('services.gemini.key');
+        $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$key}";
+        $body = [
             'system_instruction' => ['parts' => [['text' => $this->systemPrompt()]]],
-            'contents'           => $contents,
-            'tools'              => [['functionDeclarations' => $schema]],
+            'contents' => $contents,
+            'tools' => [['functionDeclarations' => $schema]],
         ];
 
         return $this->withRetry(fn () => Http::timeout(15)->post($url, $body), 'Gemini');
