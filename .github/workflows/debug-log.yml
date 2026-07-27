@@ -89,6 +89,30 @@ jobs:
               }
             "'
 
+      # Daftar LENGKAP status migrasi di prod (mode `migstatus` sengaja di-grep sempit).
+      # Read-only. Dipakai buat menyusun baseline gerbang CI cakupan migrasi.
+      - name: Migrate status (semua)
+        if: ${{ github.event.inputs.mode == 'migstatusall' }}
+        run: |
+          ssh -p "${{ secrets.SSH_PORT }}" -i ~/.ssh/deploy_key \
+            "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" \
+            "cd ${{ env.REMOTE_PATH }} && ${{ env.REMOTE_PHP }} artisan migrate:status"
+
+      # Probe: apakah objek schema dari migrasi ber-status "Pending" benar-benar
+      # tidak ada, atau cuma tak tercatat (schema drift)? Read-only.
+      - name: Cek objek schema migrasi Pending
+        if: ${{ github.event.inputs.mode == 'driftcheck' }}
+        run: |
+          ssh -p "${{ secrets.SSH_PORT }}" -i ~/.ssh/deploy_key \
+            "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" \
+            'cd ${{ env.REMOTE_PATH }} && ${{ env.REMOTE_PHP }} artisan tinker --execute="
+              \$S = Illuminate\\Support\\Facades\\Schema::class;
+              foreach ([\"app_notifications\", \"chat_conversations\", \"chat_messages\", \"dies_preventive_log\"] as \$t) {
+                echo sprintf(\"table %-22s : %s\", \$t, \$S::hasTable(\$t) ? \"ADA\" : \"TIDAK ADA\") . PHP_EOL;
+              }
+              echo sprintf(\"col   %-22s : %s\", \"checksheet_path\", \$S::hasColumn(\"dies_preventive_log\", \"checksheet_path\") ? \"ADA\" : \"TIDAK ADA\") . PHP_EOL;
+            "'
+
       - name: Max batch number
         if: ${{ github.event.inputs.mode == 'maxbatch' }}
         run: |

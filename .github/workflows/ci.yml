@@ -56,5 +56,10 @@ jobs:
           done < <(find app bootstrap config database routes -name '*.php' -print0)
           exit $err
 
+      # Gerbang cakupan migrasi. Ditaruh SEBELUM test suite karena gagalnya murni
+      # soal konfigurasi deploy — tak perlu menunggu ~470 test buat tahu.
+      - name: Cakupan migrasi (deploy gate)
+        run: ./scripts/check-migration-coverage.sh
+
       - name: Test suite
         run: php artisan test

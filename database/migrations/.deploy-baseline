@@ -1,0 +1,54 @@
+# Baseline cakupan migrasi — JANGAN diedit tanpa membaca ini.
+#
+# Migrasi di daftar ini SENGAJA tidak dijalankan lewat deploy. Semuanya berasal dari
+# era sebelum deploy otomatis, dan schema-nya sudah ada di prod — entah karena
+# `migrate` pernah jalan (status "Ran") atau karena diterapkan manual lewat SQL
+# sehingga schema-nya ada tapi tak tercatat di tabel `migrations` (schema drift).
+#
+# Status di bawah diverifikasi langsung ke prod 2026-07-27 lewat
+# `debug-log.yml` mode `migstatusall` + `driftcheck` — bukan asumsi.
+#
+# ATURAN: migrasi BARU tidak boleh masuk ke sini. Migrasi baru wajib didaftarkan
+# sebagai `--path=` di .github/workflows/deploy.yml supaya benar-benar dijalankan.
+# Gerbangnya: scripts/check-migration-coverage.sh (dipanggil dari ci.yml).
+
+0001_01_01_000000_create_users_table.php
+0001_01_01_000001_create_cache_table.php
+0001_01_01_000002_create_jobs_table.php
+2026_05_23_060626_create_activity_log_table.php
+2026_05_23_061139_create_master_shift_table.php
+2026_05_23_061141_create_master_karyawan_table.php
+2026_05_23_061144_create_master_mesin_table.php
+2026_05_23_061144_create_master_part_table.php
+2026_05_23_061145_create_master_losstime_table.php
+2026_05_23_061146_create_master_part_proses_table.php
+2026_05_23_061149_add_role_to_users_table.php
+2026_05_23_061149_create_transaksi_produksi_table.php
+2026_05_23_061149_create_transaksi_qc_table.php
+2026_05_23_061150_create_transaksi_dandori_table.php
+2026_05_23_061152_create_transaksi_dandori_rincian_table.php
+2026_05_23_083949_add_soft_deletes_to_master_shift_table.php
+2026_05_23_135439_add_date_indexes_to_transaksi_tables.php
+2026_05_23_215000_add_customer_to_master_part_table.php
+2026_05_24_000001_create_master_jenis_ng_table.php
+2026_05_24_000002_add_ng_fields_to_transaksi_tables.php
+2026_05_24_100000_restructure_transaksi_dandori_rincian.php
+2026_05_24_150350_add_sph_upgrade_tracking_to_master_part_proses.php
+2026_05_24_150934_add_sph_qc_upgrade_tracking.php
+2026_05_24_200000_upgrade_master_part_proses_columns.php
+2026_05_25_093832_add_day_schedules_and_istirahat_to_shift.php
+2026_06_08_034559_remove_unique_from_nik_master_karyawan.php
+2026_06_10_000001_add_is_aktif_to_master_karyawan.php
+2026_06_10_100000_drop_unique_part_no_master_part.php
+2026_06_12_050021_add_anomaly_review_to_transaksi_produksi.php
+2026_06_14_000001_add_staff_note_to_transaksi_tables.php
+2026_06_15_000001_add_staff_note_resolved_to_transaksi_tables.php
+2026_06_26_100000_add_tanggal_instalasi_to_master_mesin.php
+2026_06_26_100100_create_transaksi_breakdown_mesin_table.php
+2026_06_26_110000_add_tanggal_instalasi_to_master_part.php
+2026_06_26_110100_create_transaksi_breakdown_dies_table.php
+2026_06_27_000000_create_app_notifications_table.php
+2026_07_02_104959_add_id_part_proses_to_transaksi_breakdown_dies_table.php
+2026_07_02_110000_add_maintenance_to_master_karyawan_departemen_enum.php
+2026_07_08_120000_create_chat_conversations_table.php
+2026_07_08_120100_create_chat_messages_table.php
