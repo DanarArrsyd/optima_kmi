@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\Models\TransaksiProduksi;
+use App\Services\NgDetailService;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateProduksiRequest extends FormRequest
@@ -26,15 +28,50 @@ class UpdateProduksiRequest extends FormRequest
             'jam_finish' => 'required|date_format:H:i',
             'qty_aktual' => 'required|integer|min:1',
             'ada_ng' => 'nullable|boolean',
-            'qty_ng' => 'nullable|integer|min:1|required_if:ada_ng,1',
-            'id_jenis_ng' => 'nullable|exists:master_jenis_ng,id|required_if:ada_ng,1',
+            'ng' => 'array',
+            'ng.*.id_jenis_ng' => 'required|integer|exists:master_jenis_ng,id|distinct',
+            'ng.*.qty' => 'required|integer|min:1',
         ];
     }
 
-    protected function prepareForValidation(): void
+    public function withValidator($validator): void
     {
-        if (! $this->boolean('ada_ng')) {
-            $this->merge(['qty_ng' => null, 'id_jenis_ng' => null]);
-        }
+        $validator->after(function ($validator) {
+            $produksi = $this->route('produksi');
+
+            if (! $produksi instanceof TransaksiProduksi) {
+                return;
+            }
+
+            /* Tabel detail belum ada di jendela antara rsync dan migrate. */
+            if (! NgDetailService::available()) {
+                return;
+            }
+
+            /*
+             * Baris gaya lama: qty_ng terisi tapi nol baris detail — data yang
+             * di-skip migrasi karena id_jenis_ng NULL. Menyimpannya dengan ng
+             * kosong akan menulis qty_ng = 0 dan menghapus angka NG yang pernah
+             * tercatat, tanpa error. Paksa klasifikasi dulu.
+             */
+            $legacy = (int) $produksi->qty_ng > 0 && $produksi->ngDetails()->count() === 0;
+
+            if ($legacy && empty($this->input('ng'))) {
+                $validator->errors()->add(
+                    'ng',
+                    'Baris ini punya '.(int) $produksi->qty_ng.' NG dari data lama yang belum diklasifikasi. '
+                    .'Pilih jenis NG-nya sebelum menyimpan.'
+                );
+            }
+        });
+    }
+
+    public function messages(): array
+    {
+        return [
+            'ng.*.id_jenis_ng.distinct' => 'Jenis NG yang sama tidak boleh diisi dua kali dalam satu sesi.',
+            'ng.*.id_jenis_ng.required' => 'Pilih jenis NG untuk setiap baris.',
+            'ng.*.qty.min' => 'Qty NG minimal 1.',
+        ];
     }
 }

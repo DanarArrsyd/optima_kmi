@@ -23,16 +23,27 @@ class StoreProduksiRequest extends FormRequest
             'jam_finish' => 'required|date_format:H:i',
             'qty_aktual' => 'required|integer|min:1',
             'ada_ng' => 'nullable|boolean',
-            'qty_ng' => 'nullable|integer|min:1|required_if:ada_ng,1',
-            'id_jenis_ng' => 'nullable|exists:master_jenis_ng,id|required_if:ada_ng,1',
+            'ng' => 'array|required_if:ada_ng,1',
+            'ng.*.id_jenis_ng' => 'required|integer|exists:master_jenis_ng,id|distinct',
+            'ng.*.qty' => 'required|integer|min:1',
         ];
     }
 
     protected function prepareForValidation(): void
     {
-        /* Kalau ada_ng tidak dicentang, clear qty_ng dan id_jenis_ng */
+        /* Kalau ada_ng tidak dicentang, buang seluruh baris NG. */
         if (! $this->boolean('ada_ng')) {
-            $this->merge(['qty_ng' => null, 'id_jenis_ng' => null]);
+            $this->merge(['ng' => []]);
         }
+    }
+
+    public function messages(): array
+    {
+        return [
+            'ng.required_if' => 'Centang "ada NG" berarti minimal satu jenis NG harus diisi.',
+            'ng.*.id_jenis_ng.distinct' => 'Jenis NG yang sama tidak boleh diisi dua kali dalam satu sesi.',
+            'ng.*.id_jenis_ng.required' => 'Pilih jenis NG untuk setiap baris.',
+            'ng.*.qty.min' => 'Qty NG minimal 1.',
+        ];
     }
 }
