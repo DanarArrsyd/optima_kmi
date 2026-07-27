@@ -39,7 +39,7 @@ if (empty($existingNg) && (int) $produksi->qty_ng > 0) {
     $existingNg = [['id_jenis_ng' => '', 'qty' => (int) $produksi->qty_ng]];
 }
 
-$initNgRows   = $useOld ? old('ng', $existingNg) : $existingNg;
+$initNgRows   = $useOld ? (old('ng') ?: $existingNg) : $existingNg;
 $initAdaNg    = ! empty($initNgRows) ? '1' : '0';
 
 $initProsesListPhp = $initPart

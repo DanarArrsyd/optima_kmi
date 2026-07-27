@@ -138,6 +138,46 @@ class NgMultiJenisProduksiTest extends TestCase
         $this->assertSame(4, (int) $trx->qty_ng);
     }
 
+    public function test_update_tanpa_field_ng_tidak_boleh_menghapus_detail(): void
+    {
+        // Simulasi checkbox "ada_ng" survive kegagalan Alpine (checked attribute
+        // dirender server, browser tetap mengirim ada_ng=1) tapi baris ng[] tidak
+        // pernah ter-render (hidup di dalam x-for Alpine), jadi field `ng` sama
+        // sekali tidak ada di body POST.
+        $this->actingAs($this->admin)->post(route('input.produksi.store'), [
+            ...$this->base,
+            'ada_ng' => 1,
+            'ng' => [
+                ['id_jenis_ng' => $this->dented->id, 'qty' => 5],
+                ['id_jenis_ng' => $this->crack->id, 'qty' => 2],
+            ],
+        ]);
+
+        $trx = TransaksiProduksi::latest('id')->first();
+        $this->assertSame(7, (int) $trx->qty_ng);
+
+        $payload = $this->base;
+        $payload['ada_ng'] = 1;
+        // catatan: sengaja TIDAK menyertakan key 'ng' sama sekali.
+
+        $response = $this->actingAs($this->admin)->put(route('input.produksi.update', $trx), $payload);
+
+        $trx->refresh();
+
+        $response->assertSessionHasErrorsIn('updateProduksi', 'ng');
+        $this->assertSame(7, (int) $trx->qty_ng);
+        $this->assertCount(2, $trx->ngDetails);
+    }
+
+    public function test_drawer_index_tidak_lagi_pakai_field_qty_ng_legacy(): void
+    {
+        $response = $this->actingAs($this->admin)->get(route('input.produksi.index'));
+
+        $response->assertOk();
+        $response->assertDontSee('name="qty_ng"', false);
+        $response->assertSee('ng[${i}][id_jenis_ng]', false);
+    }
+
     public function test_baris_legacy_tanpa_detail_tidak_boleh_disimpan_tanpa_klasifikasi(): void
     {
         // Baris gaya lama: qty_ng terisi, nol baris detail — meniru data yang
