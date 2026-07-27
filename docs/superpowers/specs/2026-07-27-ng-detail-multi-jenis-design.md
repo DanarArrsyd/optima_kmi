@@ -33,6 +33,23 @@ Membuat satu sesi produksi atau pengecekan bisa mencatat **beberapa jenis NG bes
 
 ---
 
+## Pekerjaan pendahuluan: rapikan `master_jenis_ng`
+
+Dikerjakan **sebelum** tabel detail terisi, bukan sesudah.
+
+Pareto hanya sebagus daftar jenisnya. Bila master berisi "Dented", "dented", dan "Penyok" sebagai tiga baris terpisah, Pareto memecah satu masalah menjadi tiga dan tidak satu pun naik ke puncak — kebalikan dari gunanya Pareto.
+
+Dua hal:
+
+1. **Deduplikasi & normalisasi** nama jenis NG yang ada sekarang.
+2. **Tambah kolom `kategori`** di `master_jenis_ng` (mis. dimensi / visual / material / proses). Pareto per jenis untuk tim lapangan, roll-up per kategori untuk manajemen.
+
+Biayanya nol sekarang karena tabel detail masih kosong. Setelah ribuan baris detail menunjuk ke jenis yang ternyata perlu digabung, penggabungan itu jadi migrasi data tersendiri dengan risiko sendiri.
+
+Kolom `kategori` nullable dan tidak dipakai Tahap 1 — hanya disiapkan agar Tahap 2 tidak perlu migrasi tambahan.
+
+---
+
 ## Keputusan & alasannya
 
 ### Dua tabel detail terpisah, bukan polymorphic
@@ -114,6 +131,16 @@ Total NG ditampilkan read-only, dihitung live di Alpine — operator melihat ang
 
 Memuat seluruh baris detail yang ada, bukan hanya satu jenis dominan.
 
+**Baris lama tanpa detail wajib ditangani khusus — ini lubang kehilangan data kalau dilewat.**
+
+Perilaku hari ini: form edit prefill dari `qty_ng` induk (`edit.blade.php:25`) — `ada_ng` tercentang bila `qty_ng > 0`, dan `required_if:ada_ng,1` memaksa operator mengisi jenis NG sebelum bisa menyimpan. Artinya setiap baris lama tanpa jenis yang dibuka dan disimpan **terpaksa diperbaiki**.
+
+Bila form baru merender baris NG semata-mata dari tabel detail, baris lama yang di-skip migrasi punya nol detail → form menampilkan nol baris NG → operator menyimpan → `qty_ng` di-set 0. Angka NG yang tadinya tercatat hilang tanpa error dan tanpa konfirmasi. Ini regresi dari perilaku yang ada sekarang, dan pola yang sama dengan insiden `tanggal_instalasi`: satu kolom terhapus senyap dari jalur yang tidak diduga.
+
+**Aturan:** bila baris detail kosong **dan** `qty_ng > 0`, form merender **satu baris NG dengan qty terisi dari `qty_ng` dan jenis kosong**, wajib diklasifikasi sebelum simpan. Perilaku pemaksaan hari ini dipertahankan, dan setiap edit baris lama menjadi momen perbaikan data — data historis membaik sendiri lewat pemakaian normal, tanpa proyek pembersihan terpisah.
+
+`NgDetailService` juga tidak boleh menulis `qty_ng = 0` bila input detail kosong sementara `qty_ng` induk sebelumnya > 0; kondisi itu harus ditolak di lapisan validasi, bukan diam-diam diterima.
+
 ### Validasi
 
 | Aturan | Alasan |
@@ -149,6 +176,20 @@ Keputusan: baris seperti ini **tidak** dimigrasi. Tidak ada baris master jenis N
 
 Data historis akan tetap satu-jenis-per-sesi selamanya. Tahap 2 memberi label eksplisit bahwa data sebelum tanggal rilis hanya menyimpan jenis dominan, agar tren tidak salah dibaca.
 
+### Penanda generasi data
+
+Setelah rilis, tabel berisi tiga generasi baris yang bercampur: lama-belum-termigrasi, lama-termigrasi, dan baru. Tahap 2 harus bisa membedakannya, jika tidak Pareto mencampur data yang tidak sebanding.
+
+Tidak diperlukan kolom penanda baru. Diskriminatornya sudah tersedia dari struktur:
+
+```
+qty_ng > 0  AND  nol baris detail   ⟹  baris lama, jenis NG tidak pernah tercatat
+```
+
+Baris baru selalu memenuhi `qty_ng = SUM(detail)`, sehingga kondisi di atas mustahil muncul pada data pasca-rilis. Inilah yang membuat residual "Tanpa jenis" di Tahap 2 bisa dihitung akurat saat query.
+
+Konsekuensi yang harus dijaga sepanjang implementasi: **invarian `qty_ng = SUM(detail)` untuk setiap baris yang pernah disimpan setelah rilis**. Begitu invarian ini bocor, diskriminator di atas ikut rusak dan Tahap 2 kehilangan pijakan.
+
 ---
 
 ## Import & Export
@@ -182,6 +223,9 @@ Tidak ada permukaan baru yang perlu di-review dari sisi akses.
 | Hapus lalu tambah jenis yang sama dalam satu sesi → berhasil | mengunci keputusan "tanpa SoftDeletes"; test ini gagal bila SoftDeletes dipasang |
 | Import Excel satu jenis → satu baris detail, `qty_ng` benar | jalur import bertemu service yang sama |
 | Migrasi data lama: baris ber-jenis ikut, baris tanpa jenis di-skip | mengunci keputusan migrasi |
+| Edit baris lama (`qty_ng > 0`, nol detail) → form memaksa klasifikasi, `qty_ng` **tidak** menjadi 0 | mengunci lubang kehilangan data di jalur edit |
+| Simpan dengan detail kosong sementara `qty_ng` sebelumnya > 0 → ditolak validasi | invarian tidak boleh bocor lewat jalur mana pun |
+| Invarian `qty_ng = SUM(detail)` pada setiap baris pasca-rilis | pijakan diskriminator generasi untuk Tahap 2 |
 | `qty_ng` tetap terbaca benar oleh `DashboardService` & `OeeService` | 16 pembaca lama tidak rusak |
 
 Test suite berjalan di SQLite in-memory. Perhatian khusus: `UNIQUE` dan perilaku FK berbeda antara SQLite dan MySQL — pastikan test menegakkan constraint, bukan hanya validasi aplikasi.
@@ -206,12 +250,14 @@ Semua pembacaan tabel detail dibungkus `Schema::hasTable(...)` — kode dan skem
 
 ## Urutan implementasi
 
-1. Migrasi tabel + model + trait bersama
-2. `NgDetailService` + test unit
-3. Form Produksi (create, edit, request, controller) + test feature
-4. Form Quality (create, edit, request, controller) + test feature
-5. Import & Export
-6. Migrasi data lama + test
-7. Daftarkan ketiga migrasi di `deploy.yml`
+0. Probe read-only ke prod (`docs/probes/ng-data-audit.sql`) — ukur sebaran data lama sebelum apa pun disentuh
+1. Rapikan `master_jenis_ng`: deduplikasi nama + tambah kolom `kategori`
+2. Migrasi tabel detail + model + trait bersama
+3. `NgDetailService` + test unit
+4. Form Produksi (create, edit, request, controller) + test feature — termasuk penanganan baris lama tanpa detail
+5. Form Quality (create, edit, request, controller) + test feature
+6. Import & Export
+7. Migrasi data lama + test
+8. Daftarkan **semua** migrasi (tabel detail, kolom `kategori`, migrasi data) di `deploy.yml`
 
 Setiap langkah menjaga suite tetap hijau. `qty_ng` tidak boleh pernah salah di titik mana pun — 16 pembaca bergantung padanya sepanjang perjalanan.
