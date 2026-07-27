@@ -31,11 +31,51 @@ Path: `/Applications/XAMPP/xamppfiles/htdocs/optima/`
 - DashboardService pattern: semua logika VCB di `app/Services/DashboardService.php`
 - VCB Produksi & Quality: dua mode — Mode 1 (semua operator/inspector summary) + Mode 2 (per orang drill-down per tanggal)
 
+## Deploy & Migrasi
+
+**Merge ke `main` = deploy otomatis** (GitHub Actions: lint → test → rsync-over-SSH →
+composer di server → migrate → sync secret). Jangan pernah kasih instruksi upload manual.
+
+### 🔴 Aturan wajib: migrasi baru harus didaftarkan di `deploy.yml`
+
+Step "Migrate (targeted)" hanya menjalankan migrasi yang di-hardcode per `--path` (DB prod
+schema-drift, blanket `migrate` meledak di migrasi lama). **Tiap bikin migrasi baru, tambah
+barisnya di `.github/workflows/deploy.yml` pada PR yang sama.**
+
+Lupa = **gagal senyap**: deploy tetap hijau dan mencetak `Nothing to migrate`, padahal kode
+sudah live di prod tanpa kolom/tabelnya. Sudah tiga kali kejadian (`durasi_menit`, enum role
+`guest`, `checksheet_path` — yang terakhir merusak produksi 4 hari tanpa ada yang lapor).
+
+Dijaga `scripts/check-migration-coverage.sh` (jalan di CI sebelum test suite). Jalankan
+lokal sebelum bikin PR. Migrasi lama yang schema-nya sudah ada di prod tercatat di
+`database/migrations/.deploy-baseline` — **migrasi baru tidak boleh ditaruh di sana.**
+
+Fitur yang memakai kolom baru tetap wajib guard `Schema::hasColumn` — kode dan schema tidak
+dijamin tiba bersamaan.
+
+## Perintah
+
+```bash
+php artisan test                          # 471 test, SQLite in-memory (tidak butuh DB lokal)
+./scripts/check-migration-coverage.sh     # gerbang cakupan migrasi
+vendor/bin/pint app tests                 # format (scope Pint = app/ + tests/ saja)
+```
+
 ## Active Work
 | Task | Status |
 |------|--------|
 | **Akun Guest Read-Only** | ✅ DONE — role `guest`, route default-deny + middleware `DenyGuestWrite`. Akun dibuat admin di Master > Users. |
+| **Gerbang cakupan migrasi** | ✅ DONE (PR #39) — CI menolak migrasi yang tak terdaftar di `deploy.yml`. |
 | **Checksheet PDF Preventive Dies** | ✅ DONE — merged main (PR #34). Upload wajib checksheet PDF (max 2MB) saat input PREVENTIVE dies, disk private, serve via route role-gated, link di history. |
 | **Dandori Migration** | ✅ DONE — sejak Jun 2026, lihat `memory/projects/dandori-migration.md` |
+
+## Catatan operasional
+
+- **Jangan usulkan "coba input satu data di prod" untuk verifikasi.** Input PREVENTIVE
+  (dies & mesin) mereset siklus stroke ke 0 dan tidak bisa ditarik balik. Verifikasi lewat
+  test suite + probe read-only ke schema.
+- **Fitur rusak bisa lewat berhari-hari tanpa keluhan** — laporan user bukan alat deteksi.
+- App berjalan **UTC**, pabrik **WIB**. Jangan set `APP_TIMEZONE` (memundurkan riwayat
+  secara senyap); konversi di lapisan tampilan.
 
 → Detail proyek: `memory/projects/`, context: `memory/context/`
