@@ -901,6 +901,12 @@
             </div>
         </div>
 
+        @if($u->isGuest())
+        <div class="topbar-item" style="border:1px solid #4b5563;padding:2px 8px;font-size:0.72rem;letter-spacing:0.04em;color:#e5e7eb">
+            MODE TAMU &mdash; READ ONLY
+        </div>
+        @endif
+
         <form method="POST" action="{{ route('logout') }}" style="margin:0">
             @csrf
             <button type="submit" class="topbar-logout" title="Logout">
@@ -930,10 +936,10 @@
     </div>
     @endif
 
-    @if(in_array($role, ['admin', 'staff_produksi', 'staff_qc', 'staff_maintenance', 'manager']))
+    @if(in_array($role, ['admin', 'staff_produksi', 'staff_qc', 'staff_maintenance', 'manager', 'guest']))
     <div class="nav-section">
         <span class="nav-section-label">Input Data</span>
-        @if(in_array($role, ['admin', 'staff_produksi']))
+        @if(in_array($role, ['admin', 'staff_produksi', 'guest']))
         <a href="{{ route('input.produksi.index') }}"
            class="nav-item-link {{ str_starts_with($uri, 'input/produksi') ? 'active' : '' }}"
            data-tip="LHP Produksi">
@@ -947,7 +953,7 @@
             <span class="nav-text">Dandori</span>
         </a>
         @endif
-        @if(in_array($role, ['admin', 'staff_qc']))
+        @if(in_array($role, ['admin', 'staff_qc', 'guest']))
         <a href="{{ route('input.qc.index') }}"
            class="nav-item-link {{ str_starts_with($uri, 'input/qc') ? 'active' : '' }}"
            data-tip="LHP Quality">
@@ -981,7 +987,7 @@
     </div>
     @endif
 
-    @if(in_array($role, ['admin', 'staff_produksi', 'staff_qc', 'staff_maintenance', 'manager']))
+    @if(in_array($role, ['admin', 'staff_produksi', 'staff_qc', 'staff_maintenance', 'manager', 'guest']))
     @php
         $vcbActive = match(true) {
             str_starts_with($uri, 'vcb/produksi'),
@@ -1002,7 +1008,7 @@
         <span class="nav-section-label">Dashboard</span>
 
         {{-- ── PRODUKSI ── --}}
-        @if(in_array($role, ['admin', 'staff_produksi', 'manager']))
+        @if(in_array($role, ['admin', 'staff_produksi', 'manager', 'guest']))
         <button type="button" class="nav-group-header {{ $vcbActive==='produksi' ? 'has-active' : '' }}"
                 :class="{ 'open': isOpen('produksi') }" @click="toggle('produksi')">
             <i class="bi bi-box-seam"></i><span class="nav-text">Produksi</span>
@@ -1022,7 +1028,7 @@
         @endif
 
         {{-- ── QUALITY ── --}}
-        @if(in_array($role, ['admin', 'staff_qc', 'manager']))
+        @if(in_array($role, ['admin', 'staff_qc', 'manager', 'guest']))
         <button type="button" class="nav-group-header {{ $vcbActive==='quality' ? 'has-active' : '' }}"
                 :class="{ 'open': isOpen('quality') }" @click="toggle('quality')">
             <i class="bi bi-shield-check"></i><span class="nav-text">Quality</span>
@@ -1036,7 +1042,7 @@
         @endif
 
         {{-- ── MTC MESIN ── --}}
-        @if(in_array($role, ['admin', 'staff_maintenance', 'manager']))
+        @if(in_array($role, ['admin', 'staff_maintenance', 'manager', 'guest']))
         <button type="button" class="nav-group-header {{ $vcbActive==='mtcmesin' ? 'has-active' : '' }}"
                 :class="{ 'open': isOpen('mtcmesin') }" @click="toggle('mtcmesin')">
             <i class="bi bi-tools"></i><span class="nav-text">MTC Mesin</span>
@@ -1059,7 +1065,7 @@
         @endif
 
         {{-- ── MTC DIES ── --}}
-        @if(in_array($role, ['admin', 'staff_maintenance', 'manager']))
+        @if(in_array($role, ['admin', 'staff_maintenance', 'manager', 'guest']))
         <button type="button" class="nav-group-header {{ $vcbActive==='mtcdies' ? 'has-active' : '' }}"
                 :class="{ 'open': isOpen('mtcdies') }" @click="toggle('mtcdies')">
             <i class="bi bi-hammer"></i><span class="nav-text">MTC Dies</span>

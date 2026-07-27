@@ -154,9 +154,11 @@
                 <button type="submit" class="btn btn-secondary btn-sm">
                     <i class="bi bi-search me-1"></i>Search
                 </button>
+                @if(! auth()->user()->isGuest())
                 <a id="oneExportBtn" href="#" class="btn btn-outline-secondary btn-sm">
                     <i class="bi bi-file-earmark-excel me-1"></i>Export
                 </a>
+                @endif
             </div>
         </form>
     </div>
@@ -646,7 +648,9 @@ async function loadOneOperator() {
         karyawan_id: karyawanId,
         shift_id:    document.getElementById('one_shift_id').value,
     });
-    document.getElementById('oneExportBtn').href = `/export/produksi?${params}&format=excel`;
+    // Tombol export tidak dirender untuk role guest.
+    const exportBtn = document.getElementById('oneExportBtn');
+    if (exportBtn) exportBtn.href = `/export/produksi?${params}&format=excel`;
 
     try {
         const res  = await fetch(`{{ route('vcb.produksi.operator-data') }}?${params}`);

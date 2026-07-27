@@ -22,6 +22,7 @@ $oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->n
 {{-- ══ SATU ALPINE SCOPE — mengontrol drawer sekaligus konten halaman ══ --}}
 <div x-data="{ drawerOpen: {{ $errors->any() ? 'true' : 'false' }}, filterOpen: {{ $filterActive ? 'true' : 'false' }} }">
 
+@if(! auth()->user()->isGuest())
 {{-- ── DRAWER BACKDROP ──────────────────────────────────────────── --}}
 <div x-show="drawerOpen"
      x-cloak
@@ -254,15 +255,18 @@ $oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->n
     </div>{{-- /drawer body --}}
     </div>{{-- /inner flex container --}}
 </div>{{-- /drawer panel --}}
+@endif
 
 {{-- ══ KONTEN HALAMAN ══════════════════════════════════════════ --}}
 
 <div class="page-header">
     <h1 class="page-title"><i class="bi bi-clipboard-data"></i>Input LHP Produksi</h1>
     <div class="action-btns">
+        @if(! auth()->user()->isGuest())
         <button class="btn btn-primary btn-sm" @click="drawerOpen = true">
             <i class="bi bi-plus-lg me-1"></i>Input Baru
         </button>
+        @endif
         <button type="button" @click="filterOpen = !filterOpen"
                 :class="filterOpen ? 'btn-secondary' : 'btn-outline-secondary'"
                 class="btn btn-sm" style="position:relative">
@@ -271,6 +275,7 @@ $oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->n
             <span style="position:absolute;top:-5px;right:-5px;width:8px;height:8px;background:#ef4444;border-radius:50%;border:1.5px solid #fff"></span>
             @endif
         </button>
+        @if(! auth()->user()->isGuest())
         <button class="btn btn-outline-success btn-sm"
                 onclick="document.getElementById('import-produksi-panel').classList.toggle('d-none')">
             <i class="bi bi-file-earmark-arrow-up me-1"></i>Import Excel
@@ -279,9 +284,11 @@ $oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->n
                 onclick="document.getElementById('exportProduksiPanel').classList.toggle('d-none')">
             <i class="bi bi-file-earmark-excel me-1"></i>Export Excel
         </button>
+        @endif
     </div>
 </div>
 
+@if(! auth()->user()->isGuest())
 {{-- Export Panel --}}
 <x-export-modal
     panelId="exportProduksiPanel"
@@ -319,6 +326,7 @@ $oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->n
         </form>
     </div>
 </div>
+@endif
 
 @if(session('success'))
     <div class="alert alert-success alert-dismissible fade show mb-3">
@@ -785,7 +793,7 @@ foreach ($transaksi as $_t) {
                             </button>
                             @endif
                         </div>
-                        @else
+                        @elseif(! auth()->user()->isGuest())
                         @php $staffResolvedAt = $t->staff_note_resolved_at?->toIso8601String() ?? ''; @endphp
                         <button type="button"
                                 onclick="openNoteDrawer('produksi',{{ $t->id }},{{ \Illuminate\Support\Js::from($note ?? '') }},false,'','','{{ $staffResolvedAt }}','')"

@@ -173,9 +173,11 @@
     <h1 class="page-title">
         <i class="bi bi-clock-history"></i>VCB Dandori — Loss Time Analysis
     </h1>
+    @if(! auth()->user()->isGuest())
     <a :href="exportUrl" class="btn btn-success btn-sm" style="text-decoration:none">
         <i class="bi bi-file-earmark-excel me-1"></i>Export Excel
     </a>
+    @endif
 </div>
 
 <div class="vcbd-wrap">

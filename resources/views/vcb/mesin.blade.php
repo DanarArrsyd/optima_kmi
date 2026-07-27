@@ -32,11 +32,13 @@
             <div class="col-md-2">
                 <button type="submit" class="btn btn-primary btn-sm w-100"><i class="bi bi-search me-1"></i>Tampilkan</button>
             </div>
+            @if(! auth()->user()->isGuest())
             <div class="col-md-2">
                 <a id="exportExcel" href="#" class="btn btn-success btn-sm w-100">
                     <i class="bi bi-file-earmark-excel me-1"></i>Export Excel
                 </a>
             </div>
+            @endif
         </form>
     </div>
 </div>
@@ -72,7 +74,9 @@ async function loadData() {
         date_to:   document.getElementById('date_to').value,
         shift_id:  document.getElementById('shift_id').value,
     });
-    document.getElementById('exportExcel').href = `/export/produksi?${params}&group=mesin&format=excel`;
+    // Tombol export tidak dirender untuk role guest.
+    const exportBtn = document.getElementById('exportExcel');
+    if (exportBtn) exportBtn.href = `/export/produksi?${params}&group=mesin&format=excel`;
 
     const res  = await fetch(`{{ route('vcb.mesin.data') }}?${params}`);
     const data = await res.json();
