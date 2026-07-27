@@ -132,6 +132,12 @@ jobs:
       # di migration lama yang perubahannya sudah diterapkan manual. Jadi jalankan
       # HANYA migration yang memang perlu diterapkan, per --path. Tambah baris baru
       # di sini tiap ada migration yang harus jalan di prod.
+      #
+      # ⚠️ LUPA menambah baris di sini GAGALNYA SENYAP: step ini tetap hijau dan
+      # mencetak "Nothing to migrate", padahal kodenya sudah live di prod tanpa
+      # kolom/enum yang dibutuhkan. Itu persis yang terjadi pada migration enum
+      # role 'guest' (PR #37) — fitur terpasang tapi DB prod menolak nilai barunya.
+      # Setiap menambah migration, tambahkan --path-nya DI SINI dalam PR yang sama.
       - name: Migrate (targeted) di server
         run: |
           ssh -p "${{ secrets.SSH_PORT }}" -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
@@ -141,7 +147,8 @@ jobs:
               --path=database/migrations/2026_07_15_000001_create_dies_preventive_log_table.php \
               --path=database/migrations/2026_07_15_000002_add_staff_maintenance_to_users_role_enum.php \
               --path=database/migrations/2026_07_15_000003_create_mesin_preventive_log_table.php \
-              --path=database/migrations/2026_07_17_014834_add_durasi_menit_to_transaksi_produksi.php"
+              --path=database/migrations/2026_07_17_014834_add_durasi_menit_to_transaksi_produksi.php \
+              --path=database/migrations/2026_07_27_000001_add_guest_to_users_role_enum.php"
 
       # Inject secret runtime (mis. CEREBRAS_API_KEY) ke .env server dari GitHub
       # Secrets — .env tidak pernah di-commit. No-op kalau secret belum diisi.
