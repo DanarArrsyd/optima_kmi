@@ -95,6 +95,11 @@
 
 @push('scripts')
 <script>
+/* Cegah stored XSS: data master (nama mesin, part, proses) bisa memuat markup. */
+function escHtml(str) {
+    if (str === null || str === undefined) return "";
+    return String(str).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c]));
+}
 const taCustomer = @json($customers->map(fn($c) => ['v' => $c, 't' => $c]));
 const taPart = @json($partList->map(fn($m) => ['v' => $m->id, 't' => $m->part_no.' – '.$m->part_name]));
 
@@ -156,10 +161,10 @@ async function loadData() {
     }
     tbody.innerHTML = rows.map(r => {
         if (!r.instalasi_set) {
-            return `<tr class="text-muted"><td>${r.kode_mesin}</td><td>${r.nama_mesin}</td><td>${r.nama_proses}</td><td class="text-end">${r.count}</td>
+            return `<tr class="text-muted"><td>${escHtml(r.kode_mesin)}</td><td>${escHtml(r.nama_mesin)}</td><td>${escHtml(r.nama_proses)}</td><td class="text-end">${r.count}</td>
                 <td class="text-end">${Number(r.sum_downtime).toLocaleString()}</td><td class="text-end"><em>instalasi belum diset</em></td></tr>`;
         }
-        return `<tr><td>${r.kode_mesin}</td><td>${r.nama_mesin}</td><td>${r.nama_proses}</td><td class="text-end">${r.count}</td>
+        return `<tr><td>${escHtml(r.kode_mesin)}</td><td>${escHtml(r.nama_mesin)}</td><td>${escHtml(r.nama_proses)}</td><td class="text-end">${r.count}</td>
             <td class="text-end">${Number(r.sum_downtime).toLocaleString()}</td>
             <td class="text-end"><strong>${r.availability_pct}%</strong></td></tr>`;
     }).join('');

@@ -159,6 +159,11 @@
 </div>
 
 <script>
+/* Cegah stored XSS: label proses berasal dari data master. */
+function escHtml(str) {
+    if (str === null || str === undefined) return "";
+    return String(str).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c]));
+}
 function loadProses(partId) {
     const sel = document.getElementById('editPartSelect');
     const opt = sel.options[sel.selectedIndex];
@@ -166,7 +171,8 @@ function loadProses(partId) {
     const proseSel = document.getElementById('editProsesSelect');
     proseSel.innerHTML = '<option value="">— Pilih Proses —</option>';
     prosesData.forEach(p => {
-        proseSel.innerHTML += `<option value="${p.id}">${p.label}</option>`;
+        // p.label berasal dari master_part_proses — escape agar markup tak dieksekusi.
+        proseSel.innerHTML += `<option value="${Number(p.id)}">${escHtml(p.label)}</option>`;
     });
 }
 </script>

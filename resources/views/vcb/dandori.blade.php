@@ -383,6 +383,11 @@
 
 @push('scripts')
 <script>
+/* Cegah stored XSS: data master (nama mesin, part, proses, karyawan) bisa memuat markup. */
+function escHtml(str) {
+    if (str === null || str === undefined) return "";
+    return String(str).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c]));
+}
 let chartMain = null, chartWeek = null, chartMonth = null;
 
 /* Plugin inline: gambar nilai di atas tiap bar. Sebelumnya pakai plugin CDN
@@ -586,8 +591,8 @@ function vcbDandori() {
                 const pct = (item.over / max * 100).toFixed(1);
                 return `<tr>
                     <td style="text-align:center;color:#6b7280">${i + 1}</td>
-                    <td style="font-weight:700;letter-spacing:.3px">${item.kode}</td>
-                    <td>${item.jenis}</td>
+                    <td style="font-weight:700;letter-spacing:.3px">${escHtml(item.kode)}</td>
+                    <td>${escHtml(item.jenis)}</td>
                     <td style="text-align:right;font-weight:700;color:#1a3a4a">${this.fmt(item.over)}</td>
                     <td style="padding:6px 10px">
                         <div style="display:flex;align-items:center;gap:8px">

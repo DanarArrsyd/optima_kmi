@@ -19,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // routes/auth.php — mis. password.update — ikut tercakup.
         $middleware->web(append: [
             \App\Http\Middleware\DenyGuestWrite::class,
+            \App\Http\Middleware\SecurityHeaders::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
