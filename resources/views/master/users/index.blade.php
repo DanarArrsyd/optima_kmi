@@ -94,6 +94,7 @@
                         <option value="staff_qc"          {{ old('role') === 'staff_qc'          ? 'selected' : '' }}>Staff QC</option>
                         <option value="staff_maintenance" {{ old('role') === 'staff_maintenance' ? 'selected' : '' }}>Staff Maintenance</option>
                         <option value="manager"           {{ old('role') === 'manager'           ? 'selected' : '' }}>Manager</option>
+                        <option value="guest"             {{ old('role') === 'guest'             ? 'selected' : '' }}>Guest (Read-Only)</option>
                     </select>
                     @error('role')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
