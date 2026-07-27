@@ -64,6 +64,7 @@ class NgMultiJenisProduksiTest extends TestCase
         $response = $this->actingAs($this->admin)->post(route('input.produksi.store'), [
             ...$this->base,
             'ada_ng' => 1,
+            'ng_count' => 2,
             'ng' => [
                 ['id_jenis_ng' => $this->dented->id, 'qty' => 5],
                 ['id_jenis_ng' => $this->crack->id, 'qty' => 2],
@@ -82,6 +83,7 @@ class NgMultiJenisProduksiTest extends TestCase
         $response = $this->actingAs($this->admin)->post(route('input.produksi.store'), [
             ...$this->base,
             'ada_ng' => 1,
+            'ng_count' => 2,
             'ng' => [
                 ['id_jenis_ng' => $this->dented->id, 'qty' => 5],
                 ['id_jenis_ng' => $this->dented->id, 'qty' => 2],
@@ -97,6 +99,7 @@ class NgMultiJenisProduksiTest extends TestCase
         $response = $this->actingAs($this->admin)->post(route('input.produksi.store'), [
             ...$this->base,
             'ada_ng' => 1,
+            'ng_count' => 0,
             'ng' => [],
         ]);
 
@@ -105,7 +108,10 @@ class NgMultiJenisProduksiTest extends TestCase
 
     public function test_tanpa_ng_menyimpan_qty_ng_nol(): void
     {
-        $this->actingAs($this->admin)->post(route('input.produksi.store'), $this->base);
+        $this->actingAs($this->admin)->post(route('input.produksi.store'), [
+            ...$this->base,
+            'ng_count' => 0,
+        ]);
 
         $trx = TransaksiProduksi::latest('id')->first();
         $this->assertCount(0, $trx->ngDetails);
@@ -117,6 +123,7 @@ class NgMultiJenisProduksiTest extends TestCase
         $this->actingAs($this->admin)->post(route('input.produksi.store'), [
             ...$this->base,
             'ada_ng' => 1,
+            'ng_count' => 2,
             'ng' => [
                 ['id_jenis_ng' => $this->dented->id, 'qty' => 5],
                 ['id_jenis_ng' => $this->crack->id, 'qty' => 2],
@@ -128,6 +135,7 @@ class NgMultiJenisProduksiTest extends TestCase
         $this->actingAs($this->admin)->put(route('input.produksi.update', $trx), [
             ...$this->base,
             'ada_ng' => 1,
+            'ng_count' => 1,
             'ng' => [
                 ['id_jenis_ng' => $this->crack->id, 'qty' => 4],
             ],
@@ -147,6 +155,7 @@ class NgMultiJenisProduksiTest extends TestCase
         $this->actingAs($this->admin)->post(route('input.produksi.store'), [
             ...$this->base,
             'ada_ng' => 1,
+            'ng_count' => 2,
             'ng' => [
                 ['id_jenis_ng' => $this->dented->id, 'qty' => 5],
                 ['id_jenis_ng' => $this->crack->id, 'qty' => 2],
@@ -158,7 +167,9 @@ class NgMultiJenisProduksiTest extends TestCase
 
         $payload = $this->base;
         $payload['ada_ng'] = 1;
-        // catatan: sengaja TIDAK menyertakan key 'ng' sama sekali.
+        // catatan: sengaja TIDAK menyertakan key 'ng' maupun 'ng_count' sama
+        // sekali — meniru kegagalan Alpine total (komponen tidak pernah boot,
+        // hidden input ng_count juga tidak pernah dievaluasi/terkirim).
 
         $response = $this->actingAs($this->admin)->put(route('input.produksi.update', $trx), $payload);
 
@@ -166,6 +177,41 @@ class NgMultiJenisProduksiTest extends TestCase
 
         $response->assertSessionHasErrorsIn('updateProduksi', 'ng');
         $this->assertSame(7, (int) $trx->qty_ng);
+        $this->assertCount(2, $trx->ngDetails);
+    }
+
+    public function test_update_ng_count_klaim_dua_baris_padahal_ng_hilang_dan_detail_sudah_ada_ditolak(): void
+    {
+        // Baris ini SUDAH punya 2 baris detail (bukan baris legacy) — guard
+        // legacy di UpdateProduksiRequest hanya menyala saat
+        // ngDetails()->count() === 0, jadi tidak menjangkau kasus ini.
+        $this->actingAs($this->admin)->post(route('input.produksi.store'), [
+            ...$this->base,
+            'ng_count' => 2,
+            'ada_ng' => 1,
+            'ng' => [
+                ['id_jenis_ng' => $this->dented->id, 'qty' => 5],
+                ['id_jenis_ng' => $this->crack->id, 'qty' => 2],
+            ],
+        ]);
+
+        $trx = TransaksiProduksi::latest('id')->first();
+        $this->assertSame(7, (int) $trx->qty_ng);
+        $this->assertCount(2, $trx->ngDetails);
+
+        // ng_count=2 adalah integer valid (lolos required|integer|min:0), ada_ng
+        // masih tercentang, tapi ng[] sama sekali tidak ikut terkirim — body
+        // terpotong / request gagal sebagian setelah Alpine sempat menghitung
+        // 2 baris.
+        $response = $this->actingAs($this->admin)->put(route('input.produksi.update', $trx), [
+            ...$this->base,
+            'ada_ng' => 1,
+            'ng_count' => 2,
+        ]);
+
+        $response->assertSessionHasErrorsIn('updateProduksi', 'ng_count');
+        $trx->refresh();
+        $this->assertSame(7, (int) $trx->qty_ng, 'qty_ng tidak boleh ter-nol oleh ng_count yang tidak cocok dengan ng[] yang terkirim.');
         $this->assertCount(2, $trx->ngDetails);
     }
 

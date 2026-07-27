@@ -28,6 +28,7 @@ class UpdateProduksiRequest extends FormRequest
             'jam_finish' => 'required|date_format:H:i',
             'qty_aktual' => 'required|integer|min:1',
             'ada_ng' => 'nullable|boolean',
+            'ng_count' => 'required|integer|min:0',
             'ng' => 'array|required_if:ada_ng,1',
             'ng.*.id_jenis_ng' => 'required|integer|exists:master_jenis_ng,id|distinct',
             'ng.*.qty' => 'required|integer|min:1',
@@ -45,6 +46,35 @@ class UpdateProduksiRequest extends FormRequest
     public function withValidator($validator): void
     {
         $validator->after(function ($validator) {
+            /*
+             * ng_count membuktikan Alpine hidup, bukan bahwa baris ng[] benar-benar
+             * sampai. Payload ng_count=2 dengan ng[] hilang lolos aturan di atas lalu
+             * sync([]) menghapus detail NG dan menulis qty_ng = 0 tanpa error —
+             * termasuk pada baris yang sudah punya detail (guard legacy di bawah
+             * tidak menjangkau kasus ini karena hanya berlaku saat ngDetails()
+             * masih kosong).
+             *
+             * Hanya dicocokkan saat ada_ng dicentang: partial ng-rows selalu
+             * dirender (disembunyikan lewat x-show, bukan dihapus dari DOM), jadi
+             * ng_count bisa membawa sisa hitungan baris lama dari sebelum checkbox
+             * dilepas. Saat ada_ng dilepas, prepareForValidation() sengaja
+             * mengosongkan ng — itu perilaku aplikasi yang disengaja (user bilang
+             * "tidak ada NG"), bukan indikasi request terpotong, jadi tidak boleh
+             * ditolak oleh pencocokan ini.
+             */
+            if ($this->boolean('ada_ng')) {
+                $ngCount = (int) $this->input('ng_count', 0);
+                $submitted = is_array($this->input('ng')) ? count($this->input('ng')) : 0;
+
+                if ($ngCount !== $submitted) {
+                    $validator->errors()->add(
+                        'ng_count',
+                        "Jumlah baris NG yang tercatat ({$ngCount}) tidak sama dengan yang terkirim ({$submitted}). "
+                        .'Coba simpan ulang.'
+                    );
+                }
+            }
+
             $produksi = $this->route('produksi');
 
             if (! $produksi instanceof TransaksiProduksi) {

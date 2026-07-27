@@ -188,6 +188,38 @@ class NgMultiJenisQcTest extends TestCase
         $this->assertCount(2, $trx->ngDetails);
     }
 
+    public function test_update_ng_count_klaim_dua_baris_padahal_ng_hilang_dan_detail_sudah_ada_ditolak(): void
+    {
+        // Baris ini SUDAH punya 2 baris detail (bukan baris legacy) — guard
+        // legacy di UpdateQcRequest hanya menyala saat ngDetails()->count() === 0,
+        // jadi tidak menjangkau kasus ini.
+        $this->actingAs($this->admin)->post(route('input.qc.store'), [
+            ...$this->base,
+            'ng_count' => 2,
+            'ng' => [
+                ['id_jenis_ng' => $this->dented->id, 'qty' => 6],
+                ['id_jenis_ng' => $this->crack->id, 'qty' => 4],
+            ],
+        ]);
+
+        $trx = TransaksiQc::latest('id')->first();
+        $this->assertSame(10, (int) $trx->qty_ng);
+        $this->assertCount(2, $trx->ngDetails);
+
+        // ng_count=2 adalah integer valid (lolos required|integer|min:0) tapi
+        // ng[] sama sekali tidak ikut terkirim — body terpotong / request gagal
+        // sebagian setelah Alpine sempat menghitung 2 baris.
+        $response = $this->actingAs($this->admin)->put(route('input.qc.update', $trx), [
+            ...$this->base,
+            'ng_count' => 2,
+        ]);
+
+        $response->assertSessionHasErrorsIn('updateQc', 'ng_count');
+        $trx->refresh();
+        $this->assertSame(10, (int) $trx->qty_ng, 'qty_ng tidak boleh ter-nol oleh ng_count yang tidak cocok dengan ng[] yang terkirim.');
+        $this->assertCount(2, $trx->ngDetails);
+    }
+
     public function test_drawer_index_tidak_lagi_pakai_field_qty_ng_legacy(): void
     {
         $response = $this->actingAs($this->admin)->get(route('input.qc.index'));

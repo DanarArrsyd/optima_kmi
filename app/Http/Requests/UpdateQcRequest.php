@@ -43,6 +43,25 @@ class UpdateQcRequest extends FormRequest
                 $validator->errors()->add('qty_ok', 'Total qty check (OK + NG) harus lebih dari 0.');
             }
 
+            /*
+             * ng_count membuktikan Alpine hidup, bukan bahwa baris ng[] benar-benar
+             * sampai. Payload ng_count=2 dengan ng[] hilang (body terpotong, request
+             * gagal sebagian) lolos validasi di atas lalu sync([]) menghapus semua
+             * detail NG dan menulis qty_ng = 0 tanpa error — termasuk pada baris
+             * yang sudah punya detail (guard legacy di bawah tidak menjangkau kasus
+             * ini karena hanya berlaku saat ngDetails() masih kosong).
+             */
+            $ngCount = (int) $this->input('ng_count', 0);
+            $submitted = is_array($this->input('ng')) ? count($this->input('ng')) : 0;
+
+            if ($ngCount !== $submitted) {
+                $validator->errors()->add(
+                    'ng_count',
+                    "Jumlah baris NG yang tercatat ({$ngCount}) tidak sama dengan yang terkirim ({$submitted}). "
+                    .'Coba simpan ulang.'
+                );
+            }
+
             $qc = $this->route('qc');
 
             if (! $qc instanceof TransaksiQc) {
