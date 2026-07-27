@@ -4,8 +4,10 @@ namespace App\Providers;
 
 use App\Services\Chatbot\Capabilities;
 use App\Services\Chatbot\CapabilityRegistry;
+use App\Support\SafeExcelValueBinder;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\ServiceProvider;
+use PhpOffice\PhpSpreadsheet\Cell\Cell;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -49,5 +51,9 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Paginator::useBootstrapFive();
+
+        // Semua export Excel: string yang diawali "=" dsb ditulis sebagai teks,
+        // bukan formula. Lihat SafeExcelValueBinder.
+        Cell::setValueBinder(new SafeExcelValueBinder);
     }
 }

@@ -213,6 +213,11 @@
 
 @push('scripts')
 <script>
+/* Cegah stored XSS: data master (nama mesin, part, proses, karyawan) bisa memuat markup. */
+function escHtml(str) {
+    if (str === null || str === undefined) return "";
+    return String(str).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c]));
+}
 /* ═══════════════════════════════════════════════════════════
    OPTIMA — VCB Quality Controller
 ═══════════════════════════════════════════════════════════ */
@@ -388,10 +393,10 @@ function renderAllTable(table) {
         const rowBg      = i % 2 === 1 ? 'background:#f9fafb' : '';
 
         return `<tr style="${rowBg};cursor:pointer" onclick="switchMode('one', ${row.id_karyawan_qc ?? ''})"
-                    title="Klik untuk detail ${row.karyawan}">
+                    title="Klik untuk detail ${escHtml(row.karyawan)}">
             <td style="text-align:center;color:#9ca3af;font-size:11px">${i+1}</td>
             <td style="font-weight:600;color:#111827">
-                ${row.karyawan}
+                ${escHtml(row.karyawan)}
                 <i class="bi bi-box-arrow-in-right" style="font-size:10px;color:#9ca3af;margin-left:4px"></i>
             </td>
             <td style="text-align:center;color:#6b7280">${sessions}</td>
@@ -556,11 +561,11 @@ function buildOneRows(table) {
             html += `
             <tr class="day-rows-${di}" style="display:${expanded?'table-row':'none'};background:${bg}">
                 <td style="padding:6px 10px;padding-left:22px;color:#9ca3af;font-size:11px">↳</td>
-                <td style="padding:6px 10px;font-size:11px;color:#6b7280">${s.customer}</td>
-                <td style="padding:6px 10px;font-size:11.5px">${s.part_no}</td>
-                <td style="padding:6px 10px;font-size:11.5px">${s.part_name}</td>
-                <td style="padding:6px 10px;text-align:center;font-weight:600">${s.id_proses}</td>
-                <td style="padding:6px 10px;font-size:11.5px">${s.nama_proses}</td>
+                <td style="padding:6px 10px;font-size:11px;color:#6b7280">${escHtml(s.customer)}</td>
+                <td style="padding:6px 10px;font-size:11.5px">${escHtml(s.part_no)}</td>
+                <td style="padding:6px 10px;font-size:11.5px">${escHtml(s.part_name)}</td>
+                <td style="padding:6px 10px;text-align:center;font-weight:600">${escHtml(s.id_proses)}</td>
+                <td style="padding:6px 10px;font-size:11.5px">${escHtml(s.nama_proses)}</td>
                 <td style="padding:6px 10px;text-align:right;color:#6b7280">${s.waktu_kerja}j</td>
                 <td style="padding:6px 10px;text-align:right;font-weight:600;color:#15803d">${n(s.qty_ok)}</td>
                 <td style="padding:6px 10px;text-align:right;font-weight:600;color:#b91c1c">${n(s.qty_ng)}</td>

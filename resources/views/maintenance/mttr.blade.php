@@ -97,6 +97,11 @@
 
 @push('scripts')
 <script>
+/* Cegah stored XSS: data master (nama mesin, part, proses) bisa memuat markup. */
+function escHtml(str) {
+    if (str === null || str === undefined) return "";
+    return String(str).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c]));
+}
 const taMesin = @json($mesinList->map(fn($m) => ['v' => $m->id, 't' => $m->id_mesin.' – '.$m->nama_mesin]));
 
 function taField(items, initText = '', initVal = null) {
@@ -150,7 +155,7 @@ async function loadData() {
         return;
     }
     tbody.innerHTML = rows.map(r => `<tr>
-        <td>${r.kode_mesin}</td><td>${r.nama_mesin}</td>
+        <td>${escHtml(r.kode_mesin)}</td><td>${escHtml(r.nama_mesin)}</td>
         <td class="text-end">${r.count}</td>
         <td class="text-end">${Number(r.sum_repair).toLocaleString()}</td>
         <td class="text-end"><strong>${r.mttr_jam}</strong></td>

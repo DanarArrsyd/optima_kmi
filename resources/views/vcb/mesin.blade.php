@@ -66,6 +66,11 @@
 
 @push('scripts')
 <script>
+/* Cegah stored XSS: data master (nama mesin, part, proses, karyawan) bisa memuat markup. */
+function escHtml(str) {
+    if (str === null || str === undefined) return "";
+    return String(str).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c]));
+}
 let vcbChart = null;
 
 async function loadData() {
@@ -95,8 +100,8 @@ async function loadData() {
     }
     tbody.innerHTML = data.table.map(row => {
         const badge = row.traffic_light === 'success' ? 'bg-success' : row.traffic_light === 'warning' ? 'bg-warning text-dark' : 'bg-danger';
-        return `<tr class="table-${row.traffic_light}">
-            <td>${row.mesin}</td><td>${row.id_mesin}</td><td>${row.line}</td><td>${row.tipe_mesin}</td>
+        return `<tr class="table-${escHtml(row.traffic_light)}">
+            <td>${escHtml(row.mesin)}</td><td>${escHtml(row.id_mesin)}</td><td>${escHtml(row.line)}</td><td>${escHtml(row.tipe_mesin)}</td>
             <td>${Number(row.total_target_qty).toLocaleString()}</td>
             <td>${Number(row.total_qty_aktual).toLocaleString()}</td>
             <td>${row.total_duration_hours}</td>
