@@ -49,4 +49,13 @@ class User extends Authenticatable
     {
         return in_array($this->role, (array) $roles);
     }
+
+    /**
+     * Akun tamu read-only. Dipakai DenyGuestWrite dan Blade untuk menyembunyikan aksi tulis.
+     * Jangan pakai direktif @guest bawaan Laravel — itu artinya "belum login".
+     */
+    public function isGuest(): bool
+    {
+        return $this->role === 'guest';
+    }
 }

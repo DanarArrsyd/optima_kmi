@@ -37,6 +37,7 @@ Route::middleware('auth')->group(function () {
             $role === 'staff_maintenance' => '/maintenance/mttr',
             in_array($role, ['admin', 'staff_produksi', 'manager']) => '/vcb/produksi',
             $role === 'staff_qc' => '/vcb/quality',
+            $role === 'guest' => '/vcb/produksi',
             default => '/vcb/produksi',
         });
     })->name('dashboard');
@@ -79,14 +80,20 @@ Route::middleware('auth')->group(function () {
         Route::patch('part/{part}/proses/{proses}/upgrade-qc-sph', [PartController::class, 'upgradeQcSph'])->name('part.proses.upgrade-qc-sph');
     });
 
-    // --- INPUT PRODUKSI (admin, staff_produksi) ---
+    // --- INPUT PRODUKSI: daftar (read-only, guest boleh) ---
+    Route::middleware('role:admin,staff_produksi,guest')->prefix('input')->name('input.')->group(function () {
+        Route::get('produksi', [ProduksiController::class, 'index'])->name('produksi.index');
+        Route::get('dandori',  [DandoriController::class, 'index'])->name('dandori.index');
+    });
+
+    // --- INPUT PRODUKSI: tulis & export (guest TIDAK boleh) ---
     Route::middleware('role:admin,staff_produksi')->prefix('input')->name('input.')->group(function () {
-        Route::resource('produksi', ProduksiController::class)->only(['index', 'create', 'store', 'destroy']);
+        Route::resource('produksi', ProduksiController::class)->only(['create', 'store', 'destroy']);
         Route::post('produksi/import', [ProduksiController::class, 'import'])->name('produksi.import');
         Route::get('produksi/import-template', [ProduksiController::class, 'importTemplate'])->name('produksi.import-template');
         Route::get('produksi/export', [ProduksiController::class, 'export'])->name('produksi.export');
         Route::post('produksi-note', [ProduksiController::class, 'note'])->name('produksi.note');
-        Route::resource('dandori', DandoriController::class)->only(['index', 'create', 'store', 'destroy']);
+        Route::resource('dandori', DandoriController::class)->only(['create', 'store', 'destroy']);
         Route::post('dandori/import',          [DandoriController::class, 'import'])->name('dandori.import');
         Route::get('dandori/import-template',  [DandoriController::class, 'importTemplate'])->name('dandori.import-template');
         Route::get('dandori/export',           [DandoriController::class, 'export'])->name('dandori.export');
@@ -114,17 +121,22 @@ Route::middleware('auth')->group(function () {
         Route::post('dandori-note-resolve', [DandoriController::class, 'resolveNote'])->name('dandori.note-resolve');
     });
 
-    // --- INPUT QC (admin, staff_qc) ---
+    // --- INPUT QC: daftar (read-only, guest boleh) ---
+    Route::middleware('role:admin,staff_qc,guest')->prefix('input')->name('input.')->group(function () {
+        Route::get('qc', [QcController::class, 'index'])->name('qc.index');
+    });
+
+    // --- INPUT QC: tulis & export (guest TIDAK boleh) ---
     Route::middleware('role:admin,staff_qc')->prefix('input')->name('input.')->group(function () {
-        Route::resource('qc', QcController::class)->only(['index', 'create', 'store', 'destroy']);
+        Route::resource('qc', QcController::class)->only(['create', 'store', 'destroy']);
         Route::post('qc/import', [QcController::class, 'import'])->name('qc.import');
         Route::get('qc/import-template', [QcController::class, 'importTemplate'])->name('qc.import-template');
         Route::get('qc/export', [QcController::class, 'export'])->name('qc.export');
         Route::post('qc-note', [QcController::class, 'note'])->name('qc.note');
     });
 
-    // --- VCB PRODUKSI & MESIN (admin, staff_produksi, manager) ---
-    Route::middleware('role:admin,staff_produksi,manager')->prefix('vcb')->name('vcb.')->group(function () {
+    // --- VCB PRODUKSI, MESIN, DANDORI — read-only, guest boleh ---
+    Route::middleware('role:admin,staff_produksi,manager,guest')->prefix('vcb')->name('vcb.')->group(function () {
         Route::get('produksi', [VcbProduksiController::class, 'index'])->name('produksi');
         Route::get('produksi/data', [VcbProduksiController::class, 'data'])->name('produksi.data');
         Route::get('produksi/operator-data', [VcbProduksiController::class, 'operatorData'])->name('produksi.operator-data');
@@ -132,23 +144,44 @@ Route::middleware('auth')->group(function () {
         Route::get('mesin/data', [VcbMesinController::class, 'data'])->name('mesin.data');
         Route::get('dandori', [VcbDandoriController::class, 'index'])->name('dandori');
         Route::get('dandori/data', [VcbDandoriController::class, 'data'])->name('dandori.data');
+    });
+
+    // --- VCB DANDORI EXPORT — guest TIDAK boleh ---
+    Route::middleware('role:admin,staff_produksi,manager')->prefix('vcb')->name('vcb.')->group(function () {
         Route::get('dandori/export', [VcbDandoriController::class, 'export'])->name('dandori.export');
     });
 
-    // --- VCB QUALITY (admin, staff_qc, manager) ---
-    Route::middleware('role:admin,staff_qc,manager')->prefix('vcb')->name('vcb.')->group(function () {
+    // --- VCB QUALITY — read-only, guest boleh ---
+    Route::middleware('role:admin,staff_qc,manager,guest')->prefix('vcb')->name('vcb.')->group(function () {
         Route::get('quality', [VcbQualityController::class, 'index'])->name('quality');
         Route::get('quality/data', [VcbQualityController::class, 'data'])->name('quality.data');
         Route::get('quality/operator-data', [VcbQualityController::class, 'operatorData'])->name('quality.operator-data');
     });
 
-    // --- MAINTENANCE MESIN (admin, staff_maintenance, manager) ---
+    // --- MAINTENANCE: breakdown, import/export, input preventive (guest TIDAK boleh) ---
     Route::middleware('role:admin,staff_maintenance,manager')->prefix('maintenance')->name('maintenance.')->group(function () {
         Route::get('breakdown/last-no-lkm', [BreakdownMesinController::class, 'lastNoLkm'])->name('breakdown.last-no-lkm');
         Route::get('breakdown/export', [BreakdownMesinController::class, 'export'])->name('breakdown.export');
         Route::post('breakdown/import', [BreakdownMesinController::class, 'import'])->name('breakdown.import');
         Route::get('breakdown/import-template', [BreakdownMesinController::class, 'importTemplate'])->name('breakdown.import-template');
         Route::resource('breakdown', BreakdownMesinController::class)->only(['index', 'create', 'store']);
+
+        Route::get('breakdown-dies/last-no-lkd', [BreakdownDiesController::class, 'lastNoLkd'])->name('breakdown-dies.last-no-lkd');
+        Route::get('breakdown-dies/export', [BreakdownDiesController::class, 'export'])->name('breakdown-dies.export');
+        Route::post('breakdown-dies/import', [BreakdownDiesController::class, 'import'])->name('breakdown-dies.import');
+        Route::get('breakdown-dies/import-template', [BreakdownDiesController::class, 'importTemplate'])->name('breakdown-dies.import-template');
+        Route::resource('breakdown-dies', BreakdownDiesController::class)->only(['index', 'store'])->parameters(['breakdown-dies' => 'breakdownDy']);
+
+        Route::get('availability/control-stroke-mesin/{mesin}/preventive', [ControlStrokeMesinController::class, 'createPreventive'])->name('control-stroke-mesin.preventive.create');
+        Route::post('availability/control-stroke-mesin/{mesin}/preventive', [ControlStrokeMesinController::class, 'storePreventive'])->name('control-stroke-mesin.preventive');
+
+        Route::get('availability/control-stroke-dies/{partProses}/preventive', [ControlStrokeDiesController::class, 'createPreventive'])->name('control-stroke-dies.preventive.create');
+        Route::post('availability/control-stroke-dies/{partProses}/preventive', [ControlStrokeDiesController::class, 'storePreventive'])->name('control-stroke-dies.preventive');
+        Route::get('availability/control-stroke-dies/preventive/{diesPreventiveLog}/checksheet', [ControlStrokeDiesController::class, 'showChecksheet'])->name('control-stroke-dies.preventive.checksheet');
+    });
+
+    // --- MAINTENANCE: analitik read-only (guest boleh) ---
+    Route::middleware('role:admin,staff_maintenance,manager,guest')->prefix('maintenance')->name('maintenance.')->group(function () {
         Route::get('mttr',          [MttrController::class, 'index'])->name('mttr');
         Route::get('mttr/data',     [MttrController::class, 'data'])->name('mttr.data');
         Route::get('mtbf',          [MtbfController::class, 'index'])->name('mtbf');
@@ -156,12 +189,6 @@ Route::middleware('auth')->group(function () {
         Route::get('availability',      [AvailabilityController::class, 'index'])->name('availability');
         Route::get('availability/data', [AvailabilityController::class, 'data'])->name('availability.data');
 
-        // ── MTC DIES ──
-        Route::get('breakdown-dies/last-no-lkd', [BreakdownDiesController::class, 'lastNoLkd'])->name('breakdown-dies.last-no-lkd');
-        Route::get('breakdown-dies/export', [BreakdownDiesController::class, 'export'])->name('breakdown-dies.export');
-        Route::post('breakdown-dies/import', [BreakdownDiesController::class, 'import'])->name('breakdown-dies.import');
-        Route::get('breakdown-dies/import-template', [BreakdownDiesController::class, 'importTemplate'])->name('breakdown-dies.import-template');
-        Route::resource('breakdown-dies', BreakdownDiesController::class)->only(['index', 'store'])->parameters(['breakdown-dies' => 'breakdownDy']);
         Route::get('mttr-dies',          [MttrDiesController::class, 'index'])->name('mttr-dies');
         Route::get('mttr-dies/data',     [MttrDiesController::class, 'data'])->name('mttr-dies.data');
         Route::get('mtbf-dies',          [MtbfDiesController::class, 'index'])->name('mtbf-dies');
@@ -169,18 +196,13 @@ Route::middleware('auth')->group(function () {
         Route::get('availability-dies',      [AvailabilityDiesController::class, 'index'])->name('availability-dies');
         Route::get('availability-dies/data', [AvailabilityDiesController::class, 'data'])->name('availability-dies.data');
 
-        Route::get('availability/control-stroke-mesin',      [ControlStrokeMesinController::class, 'index'])->name('control-stroke-mesin');
-        Route::get('availability/control-stroke-mesin/data',  [ControlStrokeMesinController::class, 'data'])->name('control-stroke-mesin.data');
+        Route::get('availability/control-stroke-mesin',       [ControlStrokeMesinController::class, 'index'])->name('control-stroke-mesin');
+        Route::get('availability/control-stroke-mesin/data',   [ControlStrokeMesinController::class, 'data'])->name('control-stroke-mesin.data');
         Route::get('availability/control-stroke-mesin/{mesin}/history', [ControlStrokeMesinController::class, 'history'])->name('control-stroke-mesin.history');
-        Route::get('availability/control-stroke-mesin/{mesin}/preventive', [ControlStrokeMesinController::class, 'createPreventive'])->name('control-stroke-mesin.preventive.create');
-        Route::post('availability/control-stroke-mesin/{mesin}/preventive', [ControlStrokeMesinController::class, 'storePreventive'])->name('control-stroke-mesin.preventive');
 
-        Route::get('availability/control-stroke-dies',       [ControlStrokeDiesController::class, 'index'])->name('control-stroke-dies');
-        Route::get('availability/control-stroke-dies/data',   [ControlStrokeDiesController::class, 'data'])->name('control-stroke-dies.data');
+        Route::get('availability/control-stroke-dies',        [ControlStrokeDiesController::class, 'index'])->name('control-stroke-dies');
+        Route::get('availability/control-stroke-dies/data',    [ControlStrokeDiesController::class, 'data'])->name('control-stroke-dies.data');
         Route::get('availability/control-stroke-dies/{partProses}/history', [ControlStrokeDiesController::class, 'history'])->name('control-stroke-dies.history');
-        Route::get('availability/control-stroke-dies/{partProses}/preventive', [ControlStrokeDiesController::class, 'createPreventive'])->name('control-stroke-dies.preventive.create');
-        Route::post('availability/control-stroke-dies/{partProses}/preventive', [ControlStrokeDiesController::class, 'storePreventive'])->name('control-stroke-dies.preventive');
-        Route::get('availability/control-stroke-dies/preventive/{diesPreventiveLog}/checksheet', [ControlStrokeDiesController::class, 'showChecksheet'])->name('control-stroke-dies.preventive.checksheet');
     });
 
     // --- NOTIFICATIONS (all authenticated users) ---

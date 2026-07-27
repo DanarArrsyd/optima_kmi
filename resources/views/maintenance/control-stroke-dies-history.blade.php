@@ -88,7 +88,7 @@
                         <td class="text-end" style="white-space:nowrap">{{ number_format($log->stroke_at_preventive, 0, ',', '.') }}</td>
                         <td>{{ $log->catatan ?? '—' }}</td>
                         <td style="white-space:nowrap">
-                            @if($log->checksheet_path)
+                            @if($log->checksheet_path && ! auth()->user()->isGuest())
                                 <a href="{{ route('maintenance.control-stroke-dies.preventive.checksheet', $log) }}" target="_blank" rel="noopener">
                                     <i class="bi bi-file-earmark-pdf"></i> Lihat PDF
                                 </a>

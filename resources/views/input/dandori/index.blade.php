@@ -17,6 +17,7 @@ $oldMesinTxt = $oldMesinObj ? "{$oldMesinObj->id_mesin} - {$oldMesinObj->nama_me
 {{-- ══ SATU ALPINE SCOPE — mengontrol drawer sekaligus konten halaman ══ --}}
 <div x-data="{ drawerOpen: {{ $errors->any() ? 'true' : 'false' }}, filterOpen: {{ ($search ?? '') !== '' ? 'true' : 'false' }} }">
 
+@if(! auth()->user()->isGuest())
 {{-- ── DRAWER BACKDROP ──────────────────────────────────────────── --}}
 <div x-show="drawerOpen"
      x-cloak
@@ -322,6 +323,7 @@ $oldMesinTxt = $oldMesinObj ? "{$oldMesinObj->id_mesin} - {$oldMesinObj->nama_me
 
     </div>{{-- /inner flex container --}}
 </div>{{-- /drawer panel --}}
+@endif
 
 {{-- ══ KONTEN HALAMAN ══════════════════════════════════════════ --}}
 
@@ -334,9 +336,11 @@ $oldMesinTxt = $oldMesinObj ? "{$oldMesinObj->id_mesin} - {$oldMesinObj->nama_me
             <i class="bi bi-file-earmark-arrow-up me-1"></i>Import Excel
         </button>
         @endif
+        @if(! auth()->user()->isGuest())
         <button class="btn btn-primary btn-sm" @click="drawerOpen = true">
             <i class="bi bi-plus-lg me-1"></i>Input Baru
         </button>
+        @endif
         <button type="button" @click="filterOpen = !filterOpen"
                 :class="filterOpen ? 'btn-secondary' : 'btn-outline-secondary'"
                 class="btn btn-sm" style="position:relative">
@@ -345,10 +349,12 @@ $oldMesinTxt = $oldMesinObj ? "{$oldMesinObj->id_mesin} - {$oldMesinObj->nama_me
             <span style="position:absolute;top:-5px;right:-5px;width:8px;height:8px;background:#ef4444;border-radius:50%;border:1.5px solid #fff"></span>
             @endif
         </button>
+        @if(! auth()->user()->isGuest())
         <button class="btn btn-outline-secondary btn-sm"
                 onclick="document.getElementById('exportDandoriPanel').classList.toggle('d-none')">
             <i class="bi bi-file-earmark-excel me-1"></i>Export Excel
         </button>
+        @endif
     </div>
 </div>
 
@@ -378,6 +384,7 @@ $oldMesinTxt = $oldMesinObj ? "{$oldMesinObj->id_mesin} - {$oldMesinObj->nama_me
     </div>
 @endif
 
+@if(! auth()->user()->isGuest())
 {{-- Export Panel --}}
 <x-export-modal
     panelId="exportDandoriPanel"
@@ -386,6 +393,7 @@ $oldMesinTxt = $oldMesinObj ? "{$oldMesinObj->id_mesin} - {$oldMesinObj->nama_me
     :dateFrom="$dateFrom"
     :dateTo="$dateTo"
 />
+@endif
 
 @if(auth()->user()->role === 'admin')
 <div id="importPanel" class="{{ session('import_success') || session('import_errors') ? '' : 'd-none' }} erp-panel mb-3" style="max-width:680px">
@@ -589,7 +597,7 @@ $oldMesinTxt = $oldMesinObj ? "{$oldMesinObj->id_mesin} - {$oldMesinObj->nama_me
                             </button>
                             @endif
                         </div>
-                        @else
+                        @elseif(! auth()->user()->isGuest())
                         @php $staffResolvedAt = $r->staff_note_resolved_at?->toIso8601String() ?? ''; @endphp
                         <button type="button"
                                 onclick="openNoteDrawer('dandori',{{ $r->id }},{{ \Illuminate\Support\Js::from($note ?? '') }},false,'','','{{ $staffResolvedAt }}','')"
