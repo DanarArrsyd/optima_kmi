@@ -203,6 +203,12 @@ $oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->n
                         <div class="form-check mb-0">
                             <input class="form-check-input" type="checkbox" name="ada_ng"
                                    id="ada_ng_drawer" value="1" x-model="adaNg"
+                                   {{-- Un-tick harus benar-benar mengosongkan rows Alpine di partial
+                                        ng-rows (bukan cuma menyembunyikannya lewat x-show), supaya
+                                        ng_count ikut jadi 0 dan konsisten dengan ng=[] yang dikirim
+                                        prepareForValidation(). Tanpa ini ng_count bisa membawa sisa
+                                        hitungan baris lama saat checkbox dilepas. --}}
+                                   @change="if (!adaNg) { const w = $el.closest('[x-data]').querySelector('.ng-rows'); if (w) Alpine.$data(w).rows = []; }"
                                    {{ $oldAdaNg ? 'checked' : '' }}>
                             <label class="form-check-label fw-semibold" for="ada_ng_drawer"
                                    style="font-size:0.92rem;color:#374151">

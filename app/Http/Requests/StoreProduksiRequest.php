@@ -46,18 +46,13 @@ class StoreProduksiRequest extends FormRequest
              * sampai. Payload ng_count=2 dengan ng[] hilang lolos aturan di atas lalu
              * sync([]) menghapus detail NG dan menulis qty_ng = 0 tanpa error.
              *
-             * Hanya dicocokkan saat ada_ng dicentang: partial ng-rows selalu
-             * dirender (disembunyikan lewat x-show, bukan dihapus dari DOM), jadi
-             * ng_count bisa membawa sisa hitungan baris lama dari sebelum checkbox
-             * dilepas. Saat ada_ng dilepas, prepareForValidation() di atas sengaja
-             * mengosongkan ng — itu perilaku aplikasi yang disengaja (user bilang
-             * "tidak ada NG"), bukan indikasi request terpotong, jadi tidak boleh
-             * ditolak oleh pencocokan ini.
+             * Dicocokkan tanpa syarat ada_ng: Alpine's ngRows() di partial ng-rows
+             * sekarang mengosongkan rows saat checkbox dilepas (lihat @change di
+             * create/edit/index.blade.php), jadi un-tick genuine selalu mengirim
+             * ng_count=0 yang konsisten dengan ng=[] hasil prepareForValidation().
+             * Request dengan ada_ng absen + ng absen tapi ng_count stale bukan lagi
+             * un-tick yang sah — itu payload rusak/terpotong dan harus ditolak.
              */
-            if (! $this->boolean('ada_ng')) {
-                return;
-            }
-
             $ngCount = (int) $this->input('ng_count', 0);
             $submitted = is_array($this->input('ng')) ? count($this->input('ng')) : 0;
 

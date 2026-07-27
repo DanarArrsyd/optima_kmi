@@ -222,7 +222,14 @@ $initProsesListPhp = $initPart
                     <div class="p-3" style="background:#fafafa;border:1px solid #e5e7eb;border-radius:4px">
                         <div class="form-check mb-0">
                             <input class="form-check-input" type="checkbox" name="ada_ng" id="ada_ng"
-                                   value="1" x-model="adaNg" {{ $initAdaNg ? 'checked' : '' }}>
+                                   value="1" x-model="adaNg"
+                                   {{-- Un-tick harus benar-benar mengosongkan rows Alpine di partial
+                                        ng-rows (bukan cuma menyembunyikannya lewat x-show), supaya
+                                        ng_count ikut jadi 0 dan konsisten dengan ng=[] yang dikirim
+                                        prepareForValidation(). Tanpa ini ng_count bisa membawa sisa
+                                        hitungan baris lama saat checkbox dilepas. --}}
+                                   @change="if (!adaNg) { const w = $el.closest('[x-data]').querySelector('.ng-rows'); if (w) Alpine.$data(w).rows = []; }"
+                                   {{ $initAdaNg ? 'checked' : '' }}>
                             <label class="form-check-label fw-semibold" for="ada_ng"
                                    style="font-size:0.875rem;color:#374151">
                                 <i class="bi bi-exclamation-triangle me-1 text-warning"></i>Ada NG Proses?

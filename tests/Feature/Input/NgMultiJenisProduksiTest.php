@@ -224,6 +224,75 @@ class NgMultiJenisProduksiTest extends TestCase
         $response->assertSee('ng[${i}][id_jenis_ng]', false);
     }
 
+    public function test_update_ada_ng_absen_ng_absen_ng_count_stale_dengan_detail_asli_ditolak(): void
+    {
+        // Baris ini SUDAH punya 2 baris detail asli (bukan legacy). Skenario:
+        // checkbox "ada_ng" di-untick oleh operator TAPI Alpine gagal/terpotong
+        // sehingga hidden input ng_count tidak sempat ter-reset ke 0 — payload-nya
+        // byte-identik dengan client yang rusak/terpotong: ada_ng absen, ng absen,
+        // ng_count masih membawa angka lama (2). Sebelum perbaikan, cross-check
+        // hanya jalan saat ada_ng dicentang, jadi request ini lolos begitu saja
+        // dan syncProduksi([]) menghapus 2 baris detail + menulis qty_ng = 0 tanpa
+        // error apa pun. Setelah perbaikan, cross-check jalan tanpa syarat dan
+        // menolak payload ini.
+        $this->actingAs($this->admin)->post(route('input.produksi.store'), [
+            ...$this->base,
+            'ada_ng' => 1,
+            'ng_count' => 2,
+            'ng' => [
+                ['id_jenis_ng' => $this->dented->id, 'qty' => 5],
+                ['id_jenis_ng' => $this->crack->id, 'qty' => 2],
+            ],
+        ]);
+
+        $trx = TransaksiProduksi::latest('id')->first();
+        $this->assertSame(7, (int) $trx->qty_ng);
+        $this->assertCount(2, $trx->ngDetails);
+
+        $payload = $this->base;
+        // sengaja TIDAK menyertakan 'ada_ng' maupun 'ng' — hanya ng_count stale.
+        $payload['ng_count'] = 2;
+
+        $response = $this->actingAs($this->admin)->put(route('input.produksi.update', $trx), $payload);
+
+        $response->assertSessionHasErrorsIn('updateProduksi', 'ng_count');
+        $trx->refresh();
+        $this->assertSame(7, (int) $trx->qty_ng, 'qty_ng tidak boleh ter-nol oleh ng_count stale saat ada_ng absen.');
+        $this->assertCount(2, $trx->ngDetails);
+    }
+
+    public function test_update_untick_genuine_ada_ng_absen_ng_absen_ng_count_nol_berhasil(): void
+    {
+        // Jalur eksplisit operator yang sah: checkbox "ada_ng" di-untick, Alpine
+        // benar-benar mengosongkan rows sehingga ng_count ikut jadi 0 — payload
+        // yang dikirim: ada_ng absen, ng absen, ng_count=0. Ini HARUS tetap
+        // berhasil dan menol-kan qty_ng; perbaikan gerbang tidak boleh menolak
+        // jalur operator yang genuine ini.
+        $this->actingAs($this->admin)->post(route('input.produksi.store'), [
+            ...$this->base,
+            'ada_ng' => 1,
+            'ng_count' => 2,
+            'ng' => [
+                ['id_jenis_ng' => $this->dented->id, 'qty' => 5],
+                ['id_jenis_ng' => $this->crack->id, 'qty' => 2],
+            ],
+        ]);
+
+        $trx = TransaksiProduksi::latest('id')->first();
+        $this->assertSame(7, (int) $trx->qty_ng);
+
+        $payload = $this->base;
+        // sengaja TIDAK menyertakan 'ada_ng' maupun 'ng' — ng_count=0 konsisten.
+        $payload['ng_count'] = 0;
+
+        $response = $this->actingAs($this->admin)->put(route('input.produksi.update', $trx), $payload);
+
+        $response->assertSessionDoesntHaveErrors();
+        $trx->refresh();
+        $this->assertSame(0, (int) $trx->qty_ng);
+        $this->assertCount(0, $trx->ngDetails);
+    }
+
     public function test_baris_legacy_tanpa_detail_tidak_boleh_disimpan_tanpa_klasifikasi(): void
     {
         // Baris gaya lama: qty_ng terisi, nol baris detail — meniru data yang

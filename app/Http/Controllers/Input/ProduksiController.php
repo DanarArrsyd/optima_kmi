@@ -145,7 +145,7 @@ class ProduksiController extends Controller
     {
         $validated = $request->validated();
         $ngRows = $validated['ng'] ?? [];
-        unset($validated['ng'], $validated['ada_ng']);
+        unset($validated['ng'], $validated['ada_ng'], $validated['ng_count']);
 
         $cycleTime = $this->produksiService->calculateActualCycleTime(
             $validated['jam_start'].':00',
@@ -187,7 +187,7 @@ class ProduksiController extends Controller
     {
         $validated = $request->validated();
         $ngRows = $validated['ng'] ?? [];
-        unset($validated['ng'], $validated['ada_ng']);
+        unset($validated['ng'], $validated['ada_ng'], $validated['ng_count']);
 
         $cycleTime = $this->produksiService->calculateActualCycleTime(
             $validated['jam_start'].':00',
