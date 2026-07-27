@@ -14,6 +14,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => \App\Http\Middleware\CheckRole::class,
         ]);
+
+        // Global (bukan cuma grup auth di routes/web.php) supaya route di
+        // routes/auth.php — mis. password.update — ikut tercakup.
+        $middleware->web(append: [
+            \App\Http\Middleware\DenyGuestWrite::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
