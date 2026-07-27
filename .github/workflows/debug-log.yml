@@ -111,8 +111,6 @@ jobs:
                 echo sprintf(\"table %-22s : %s\", \$t, \$S::hasTable(\$t) ? \"ADA\" : \"TIDAK ADA\") . PHP_EOL;
               }
               echo sprintf(\"col   %-22s : %s\", \"checksheet_path\", \$S::hasColumn(\"dies_preventive_log\", \"checksheet_path\") ? \"ADA\" : \"TIDAK ADA\") . PHP_EOL;
-              \$d = Illuminate\\Support\\Facades\\DB::selectOne(\"SHOW COLUMNS FROM master_karyawan LIKE (?)\", [\"departemen\"]);
-              echo \"enum  departemen            : \" . (\$d->Type ?? \"?\") . PHP_EOL;
             "'
 
       - name: Max batch number
