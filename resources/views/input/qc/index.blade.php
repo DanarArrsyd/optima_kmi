@@ -6,10 +6,6 @@
 $oldKaryawanId  = old('id_karyawan_qc');
 $oldKaryawan    = $karyawan->firstWhere('id', $oldKaryawanId);
 $oldKaryawanTxt = $oldKaryawan?->nama_karyawan ?? '';
-
-$oldJenisNgId  = old('id_jenis_ng');
-$oldJenisNgObj = $jenisNg->firstWhere('id', $oldJenisNgId);
-$oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->nama_ng}" : '';
 @endphp
 
 @section('content')
@@ -184,56 +180,22 @@ $oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->n
                     @error('jam_finish')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
 
-                {{-- Qty OK + Qty NG + Jenis NG (shared scope) --}}
-                <div class="col-12"
-                     x-data="Object.assign(taField(taJenisNg, '{{ addslashes($oldJenisNgTxt) }}', {{ $oldJenisNgId ?: 'null' }}), { qtyNg: {{ (int) old('qty_ng', 0) }} })">
-                    <div class="row g-2">
-                        <div class="col-6">
-                            <label class="form-label" style="font-size:0.92rem">Qty OK <span class="text-danger">*</span></label>
-                            <input type="number" name="qty_ok"
-                                   class="form-control @error('qty_ok') is-invalid @enderror"
-                                   value="{{ old('qty_ok', 0) }}" min="0">
-                            @error('qty_ok')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label" style="font-size:0.92rem">Qty NG <span class="text-danger">*</span></label>
-                            <input type="number" name="qty_ng"
-                                   class="form-control @error('qty_ng') is-invalid @enderror"
-                                   value="{{ old('qty_ng', 0) }}" min="0"
-                                   x-model.number="qtyNg">
-                            @error('qty_ng')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                        </div>
-                    </div>
+                {{-- Qty OK --}}
+                <div class="col-6">
+                    <label class="form-label" style="font-size:0.92rem">Qty OK <span class="text-danger">*</span></label>
+                    <input type="number" name="qty_ok"
+                           class="form-control @error('qty_ok') is-invalid @enderror"
+                           value="{{ old('qty_ok', 0) }}" min="0">
+                    @error('qty_ok')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
 
-                    {{-- Jenis NG — muncul kalau qty_ng > 0 --}}
-                    <div x-show="qtyNg > 0" x-cloak
-                         class="mt-2 p-3" style="background:#fff8f0;border:1px solid #fde8c8;border-radius:4px">
-                        <label class="form-label mb-1" style="font-size:0.92rem">
-                            <i class="bi bi-exclamation-triangle me-1 text-warning"></i>Jenis NG
-                            <span style="color:#6b7280;font-weight:400">(opsional)</span>
-                        </label>
-                        <div class="ta-wrap">
-                            <input type="text"
-                                   class="form-control ta-input @error('id_jenis_ng') is-invalid @enderror"
-                                   x-model="query"
-                                   @focus="openDd()"
-                                   @blur="closeDd()"
-                                   @keydown="onKey($event)"
-                                   @input="onInput()"
-                                   placeholder="Ketik kode atau nama jenis NG...">
-                            <input type="hidden" name="id_jenis_ng" :value="val">
-                            <div class="ta-dropdown" x-show="open" x-cloak>
-                                <template x-if="filtered.length === 0">
-                                    <div class="ta-empty">Tidak ditemukan</div>
-                                </template>
-                                <template x-for="(item, i) in filtered" :key="item.v">
-                                    <div class="ta-item" :class="{ 'ta-active': i === idx }"
-                                         @mousedown.prevent="pick(item)" x-text="item.t"></div>
-                                </template>
-                            </div>
-                        </div>
-                        @error('id_jenis_ng')<div class="text-danger mt-1" style="font-size:0.88rem">{{ $message }}</div>@enderror
-                    </div>
+                {{-- Jenis NG --}}
+                <div class="col-12">
+                    <label class="form-label fw-semibold" style="font-size:0.92rem">Jenis NG</label>
+                    @include('input.partials.ng-rows', [
+                        'jenisNg' => $jenisNg,
+                        'initial' => old('ng', []),
+                    ])
                 </div>
 
             </div>{{-- /row --}}

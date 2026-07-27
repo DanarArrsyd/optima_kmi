@@ -228,6 +228,7 @@ class NoteAutoResolveTest extends TestCase
             'jam_finish' => '16:00',
             'qty_ok' => 95,
             'qty_ng' => 0,
+            'ng_count' => 0,
             'resolve_note' => 1,
         ])->assertSessionHasNoErrors();
 

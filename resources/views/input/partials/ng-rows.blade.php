@@ -8,6 +8,16 @@
 --}}
 <div x-data="ngRows(@js($initial ?? []))" class="ng-rows">
 
+    {{--
+        Wajib evaluasi binding Alpine. Kalau Alpine gagal boot, :value tidak
+        pernah dievaluasi dan input ini mengirim string kosong — yang ditolak
+        aturan `required|integer` di StoreQcRequest/UpdateQcRequest (dan
+        Store/UpdateProduksiRequest). Tanpa ini, ng[] yang tak pernah dirender
+        (hidup di dalam x-for) akan lolos validasi dan syncQc/syncProduksi
+        menghapus semua detail NG + menulis qty_ng = 0 tanpa error.
+    --}}
+    <input type="hidden" name="ng_count" :value="rows.length">
+
     <template x-if="rows.length === 0">
         <div class="text-muted small mb-2">Belum ada jenis NG. Klik tombol di bawah untuk menambah.</div>
     </template>
