@@ -5,6 +5,7 @@ namespace App\Models;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Schema;
 
@@ -53,6 +54,11 @@ class TransaksiProduksi extends Model
     public function jenisNg(): BelongsTo
     {
         return $this->belongsTo(MasterJenisNg::class, 'id_jenis_ng');
+    }
+
+    public function ngDetails(): HasMany
+    {
+        return $this->hasMany(TransaksiProduksiNg::class, 'id_transaksi_produksi');
     }
 
     public function createdBy(): BelongsTo
