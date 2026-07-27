@@ -152,7 +152,8 @@ jobs:
               --path=database/migrations/2026_07_27_000001_add_guest_to_users_role_enum.php \
               --path=database/migrations/2026_07_28_000001_add_kategori_to_master_jenis_ng.php \
               --path=database/migrations/2026_07_28_000002_create_transaksi_produksi_ng_table.php \
-              --path=database/migrations/2026_07_28_000003_create_transaksi_qc_ng_table.php"
+              --path=database/migrations/2026_07_28_000003_create_transaksi_qc_ng_table.php \
+              --path=database/migrations/2026_07_28_000004_migrate_existing_ng_to_detail_tables.php"
 
       # Inject secret runtime (mis. CEREBRAS_API_KEY) ke .env server dari GitHub
       # Secrets — .env tidak pernah di-commit. No-op kalau secret belum diisi.
