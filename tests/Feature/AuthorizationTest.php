@@ -67,7 +67,17 @@ class AuthorizationTest extends TestCase
         $this->actingAs($this->user('manager'))->get('/dashboard')->assertRedirect('/vcb/produksi');
     }
 
-    /** Route yang boleh dibuka guest. */
+    /**
+     * Route yang boleh dibuka guest.
+     *
+     * NB: 'maintenance.control-stroke-mesin.history' & '...control-stroke-dies.history'
+     * TIDAK ada di sini karena keduanya butuh route-model-binding (perlu record nyata
+     * di DB), sedangkan data provider ini statis dan jalan sebelum DB tersedia. Keduanya
+     * dites terpisah di test_guest_can_view_control_stroke_history_routes() dengan
+     * fixture dari seedMasterData(). Tapi keduanya TETAP masuk hitungan whitelist 31
+     * route di test_guest_route_whitelist_matches_role_middleware_exactly() lewat nama
+     * route (guestAllowedRouteNames()), jadi assertion default-deny tidak bolong.
+     */
     public static function guestAllowedRoutes(): array
     {
         return [
@@ -90,6 +100,21 @@ class AuthorizationTest extends TestCase
             ['maintenance.control-stroke-dies'], ['maintenance.control-stroke-dies.data'],
             ['input.produksi.index'], ['input.qc.index'], ['input.dandori.index'],
         ];
+    }
+
+    /**
+     * Nama 31 route whitelist guest yang dimaksud (dataset lengkap termasuk 2 route
+     * history yang tak bisa masuk guestAllowedRoutes() karena butuh model binding).
+     * Dipakai sebagai satu-satunya sumber kebenaran untuk assertion default-deny di
+     * test_guest_route_whitelist_matches_role_middleware_exactly().
+     */
+    public static function guestAllowedRouteNames(): array
+    {
+        $names = array_map(static fn (array $row) => $row[0], self::guestAllowedRoutes());
+        $names[] = 'maintenance.control-stroke-mesin.history';
+        $names[] = 'maintenance.control-stroke-dies.history';
+
+        return $names;
     }
 
     /** Route yang HARUS ditolak untuk guest. */
@@ -179,6 +204,109 @@ class AuthorizationTest extends TestCase
         $this->actingAs($guest)
             ->get(route('maintenance.control-stroke-dies.preventive.checksheet', ['diesPreventiveLog' => $diesLog->id]))
             ->assertForbidden();
+
+        // Cek di atas HTTP-level saja TIDAK cukup: ketiga controller (ControlStrokeMesinController.php:42,
+        // ControlStrokeDiesController.php:27,106) punya guard `abort_if(...403)` sendiri di dalam method-nya.
+        // Kalau 'guest' ditambahkan ke role: grup route ini (role:admin,staff_maintenance,manager), request
+        // TETAP lolos middleware role lalu baru ditolak controller — assertForbidden() di atas tetap hijau
+        // dan diam-diam menyembunyikan lubang di lapisan route. Assertion di bawah ini menguji lapisan route
+        // itu sendiri, lepas dari guard controller.
+        foreach ([
+            'maintenance.control-stroke-mesin.preventive.create',
+            'maintenance.control-stroke-dies.preventive.create',
+            'maintenance.control-stroke-dies.preventive.checksheet',
+        ] as $routeName) {
+            $route = app('router')->getRoutes()->getByName($routeName);
+            $this->assertNotNull($route, "Route {$routeName} tidak terdaftar.");
+
+            $roleMiddleware = collect($route->gatherMiddleware())
+                ->first(fn (string $m) => str_starts_with($m, 'role:'));
+
+            $this->assertNotNull($roleMiddleware, "Route {$routeName} harus digerbangi middleware role:.");
+
+            $roles = explode(',', substr($roleMiddleware, strlen('role:')));
+            $this->assertNotContains('guest', $roles, "Route {$routeName} tidak boleh mengizinkan guest.");
+        }
+    }
+
+    /**
+     * Dua route history butuh model binding nyata (MasterMesin / MasterPartProses),
+     * makanya tidak ikut guestAllowedRoutes() (data provider statis, jalan sebelum DB
+     * tersedia). Dites terpisah di sini pakai seedMasterData(), tapi keduanya tetap
+     * masuk hitungan 31 whitelist lewat guestAllowedRouteNames() supaya assertion
+     * default-deny di test_guest_route_whitelist_matches_role_middleware_exactly()
+     * tidak bolong.
+     */
+    public function test_guest_can_view_control_stroke_history_routes(): void
+    {
+        $guest = $this->user('guest');
+        $data  = $this->seedMasterData();
+
+        $this->actingAs($guest)
+            ->get(route('maintenance.control-stroke-mesin.history', ['mesin' => $data['mesin']->id]))
+            ->assertOk();
+
+        $this->actingAs($guest)
+            ->get(route('maintenance.control-stroke-dies.history', ['partProses' => $data['partProses']->id]))
+            ->assertOk();
+    }
+
+    /**
+     * Properti default-deny: himpunan route yang BENAR-BENAR bisa diakses guest (lewat
+     * middleware role: yang memuat 'guest') harus SAMA PERSIS dengan whitelist 31 nama
+     * di guestAllowedRouteNames(). Ini satu-satunya assertion yang menutup celah "route
+     * GET baru ditambahkan ke grup guest yang sudah ada, tapi lupa didaftarkan di test" —
+     * guestBlockedRoutes() cuma daftar manual yang tidak pernah tahu soal route baru,
+     * dan DenyGuestWrite hanya menolak verb non-GET, bukan menolak GET yang tidak
+     * seharusnya guest akses.
+     *
+     * Cakupan yang SENGAJA dikecualikan: route di dalam grup 'auth' yang TIDAK punya
+     * middleware 'role' sama sekali (mis. GET /notifications/poll) otomatis bisa diakses
+     * SEMUA user yang login, termasuk guest, terlepas dari whitelist berbasis role: ini.
+     * Itu kategori terpisah (login-gate biasa, bukan role-gate) dan di luar cakupan
+     * pertanyaan "role apa saja yang eksplisit mengizinkan guest" — dikecualikan secara
+     * sadar, bukan karena terlewat.
+     */
+    public function test_guest_route_whitelist_matches_role_middleware_exactly(): void
+    {
+        $guestReachable = [];
+
+        foreach (app('router')->getRoutes() as $route) {
+            $name = $route->getName();
+
+            if ($name === null) {
+                continue;
+            }
+
+            $middleware = $route->gatherMiddleware();
+
+            // Route di luar grup 'auth' (mis. GET / redirect, login/register) tidak
+            // relevan — guest yang dimaksud di sini adalah role 'guest' yang sudah login.
+            if (!in_array('auth', $middleware, true)) {
+                continue;
+            }
+
+            $roleMiddleware = collect($middleware)
+                ->first(fn (string $m) => str_starts_with($m, 'role:'));
+
+            // Lihat blok komentar method ini: route auth TANPA middleware role sengaja
+            // tidak dihitung di sini — kategori berbeda, dikecualikan secara sadar.
+            if ($roleMiddleware === null) {
+                continue;
+            }
+
+            $roles = explode(',', substr($roleMiddleware, strlen('role:')));
+
+            if (in_array('guest', $roles, true)) {
+                $guestReachable[] = $name;
+            }
+        }
+
+        sort($guestReachable);
+        $expected = self::guestAllowedRouteNames();
+        sort($expected);
+
+        $this->assertSame($expected, $guestReachable);
     }
 
     public function test_guest_write_verbs_are_rejected_on_reachable_pages(): void
