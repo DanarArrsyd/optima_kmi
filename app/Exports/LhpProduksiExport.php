@@ -24,7 +24,7 @@ class LhpProduksiExport implements FromCollection, WithColumnWidths, WithHeading
     public function collection(): Enumerable
     {
         $q = TransaksiProduksi::with([
-            'karyawan', 'mesin', 'partProses.part', 'shift', 'jenisNg',
+            'karyawan', 'mesin', 'partProses.part', 'shift', 'ngDetails.jenisNg',
         ]);
 
         if ($this->dateFrom) {
@@ -65,7 +65,7 @@ class LhpProduksiExport implements FromCollection, WithColumnWidths, WithHeading
                 substr($t->jam_finish, 0, 5),
                 $t->qty_aktual,
                 $t->qty_ng ?? 0,
-                $t->jenisNg?->kode ?? '',
+                $t->ng_ringkas,
                 $sphStd,
                 $sphAct,
                 round($t->waktu_kerja_jam, 2),

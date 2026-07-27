@@ -466,7 +466,7 @@ $oldKaryawanTxt = $oldKaryawan?->nama_karyawan ?? '';
                         @endif
                     </td>
                     <td style="font-size:0.72rem;color:#5d7283">
-                        {{ $t->jenisNg ? $t->jenisNg->kode : '—' }}
+                        {{ $t->ng_ringkas ?: '—' }}
                     </td>
                     <td style="text-align:right;color:#5d7283">{{ number_format($sphStd) }}</td>
                     <td style="text-align:right;font-weight:600;color:{{ $sphAct >= $sphStd ? '#27ae60' : '#c0392b' }}">

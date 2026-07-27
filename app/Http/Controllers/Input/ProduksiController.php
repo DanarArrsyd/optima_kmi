@@ -43,7 +43,7 @@ class ProduksiController extends Controller
         $filterKarId = (int) $request->input('filter_karyawan_id', 0);
         $filterProsesId = (int) $request->input('filter_proses_id', 0);
 
-        $q = TransaksiProduksi::with(['karyawan', 'mesin', 'partProses.part', 'shift', 'jenisNg', 'noteResolvedBy'])
+        $q = TransaksiProduksi::with(['karyawan', 'mesin', 'partProses.part', 'shift', 'ngDetails.jenisNg', 'noteResolvedBy'])
             ->whereDate('tanggal_produksi', '>=', $dateFrom)
             ->whereDate('tanggal_produksi', '<=', $dateTo);
 

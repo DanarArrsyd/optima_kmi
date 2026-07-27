@@ -24,7 +24,7 @@ class LhpQcExport implements FromCollection, WithColumnWidths, WithHeadings, Wit
     public function collection(): Enumerable
     {
         $q = TransaksiQc::with([
-            'karyawanQc', 'partProses.part', 'shift', 'jenisNg',
+            'karyawanQc', 'partProses.part', 'shift', 'ngDetails.jenisNg',
         ]);
 
         if ($this->dateFrom) {
@@ -66,7 +66,7 @@ class LhpQcExport implements FromCollection, WithColumnWidths, WithHeadings, Wit
                 $t->qty_ok,
                 $t->qty_ng ?? 0,
                 $total,
-                $t->jenisNg?->kode ?? '',
+                $t->ng_ringkas,
                 $sphStd,
                 $sphAct,
                 round($t->waktu_kerja_jam, 2),

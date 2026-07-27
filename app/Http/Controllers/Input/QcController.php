@@ -37,7 +37,7 @@ class QcController extends Controller
         $dateTo = $request->input('date_to', date('Y-m-d'));
         $search = trim((string) $request->input('q', ''));
 
-        $q = TransaksiQc::with(['karyawanQc', 'partProses.part', 'shift', 'jenisNg', 'noteResolvedBy'])
+        $q = TransaksiQc::with(['karyawanQc', 'partProses.part', 'shift', 'ngDetails.jenisNg', 'noteResolvedBy'])
             ->whereDate('tgl_pengecekan', '>=', $dateFrom)
             ->whereDate('tgl_pengecekan', '<=', $dateTo);
 

@@ -732,7 +732,7 @@ foreach ($transaksi as $_t) {
                     <td style="text-align:right;font-weight:600;color:{{ $t->qty_ng ? '#c0392b' : '#9ca3af' }}">
                         {{ $t->qty_ng ? number_format($t->qty_ng) : '—' }}
                     </td>
-                    <td style="font-size:0.72rem;color:#5d7283">{{ $t->jenisNg?->kode ?? '—' }}</td>
+                    <td style="font-size:0.72rem;color:#5d7283">{{ $t->ng_ringkas ?: '—' }}</td>
                     <td style="text-align:right;color:#5d7283">{{ number_format($sphStd) }}</td>
                     <td style="text-align:right;font-weight:600;color:{{ $sphAct >= $sphStd ? '#27ae60' : '#c0392b' }}">
                         {{ number_format($sphAct) }}
