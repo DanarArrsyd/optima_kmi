@@ -22,10 +22,12 @@ $initPart         = $produksi->partProses?->part;
 $initPartTxt      = $initPart ? "{$initPart->part_no} — {$initPart->part_name}" : '';
 $initPartId       = $initPart?->id;
 
-$existingNg   = $produksi->ngDetails->map(fn ($d) => [
-    'id_jenis_ng' => $d->id_jenis_ng,
-    'qty'         => $d->qty,
-])->values()->all();
+$existingNg   = \App\Services\NgDetailService::available()
+    ? $produksi->ngDetails->map(fn ($d) => [
+        'id_jenis_ng' => $d->id_jenis_ng,
+        'qty'         => $d->qty,
+    ])->values()->all()
+    : [];
 
 /*
  * Baris gaya lama: qty_ng terisi tapi nol baris detail. Render satu baris

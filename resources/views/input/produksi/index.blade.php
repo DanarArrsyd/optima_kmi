@@ -209,34 +209,11 @@ $oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->n
                                 <i class="bi bi-exclamation-triangle me-1 text-warning"></i>Ada NG Proses?
                             </label>
                         </div>
-                        <div x-show="adaNg" x-cloak class="row g-2 mt-2"
-                             x-data="taField(taJenisNg, '{{ addslashes($oldJenisNgTxt) }}', {{ $oldJenisNgId ?: 'null' }})">
-                            <div class="col-5">
-                                <label class="form-label mb-1" style="font-size:0.88rem">Qty NG <span class="text-danger">*</span></label>
-                                <input type="number" name="qty_ng"
-                                       class="form-control @error('qty_ng') is-invalid @enderror"
-                                       value="{{ old('qty_ng') }}" min="1">
-                                @error('qty_ng')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                            </div>
-                            <div class="col-7">
-                                <label class="form-label mb-1" style="font-size:0.88rem">Jenis NG <span class="text-danger">*</span></label>
-                                <div class="ta-wrap">
-                                    <input type="text"
-                                           class="form-control ta-input @error('id_jenis_ng') is-invalid @enderror"
-                                           x-model="query" @focus="openDd()" @blur="closeDd()"
-                                           @keydown="onKey($event)" @input="onInput()"
-                                           placeholder="Ketik jenis NG...">
-                                    <input type="hidden" name="id_jenis_ng" :value="val">
-                                    <div class="ta-dropdown" x-show="open" x-cloak>
-                                        <template x-if="filtered.length===0"><div class="ta-empty">Tidak ditemukan</div></template>
-                                        <template x-for="(item,i) in filtered" :key="item.v">
-                                            <div class="ta-item" :class="{'ta-active':i===idx}"
-                                                 @mousedown.prevent="pick(item)" x-text="item.t"></div>
-                                        </template>
-                                    </div>
-                                </div>
-                                @error('id_jenis_ng')<div class="text-danger mt-1" style="font-size:0.88rem">{{ $message }}</div>@enderror
-                            </div>
+                        <div x-show="adaNg" x-cloak class="mt-2">
+                            @include('input.partials.ng-rows', [
+                                'jenisNg' => $jenisNg,
+                                'initial' => old('ng', []),
+                            ])
                         </div>
                     </div>
                 </div>
