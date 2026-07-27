@@ -89,6 +89,15 @@ jobs:
               }
             "'
 
+      # Daftar LENGKAP status migrasi di prod (mode `migstatus` sengaja di-grep sempit).
+      # Read-only. Dipakai buat menyusun baseline gerbang CI cakupan migrasi.
+      - name: Migrate status (semua)
+        if: ${{ github.event.inputs.mode == 'migstatusall' }}
+        run: |
+          ssh -p "${{ secrets.SSH_PORT }}" -i ~/.ssh/deploy_key \
+            "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" \
+            "cd ${{ env.REMOTE_PATH }} && ${{ env.REMOTE_PHP }} artisan migrate:status"
+
       - name: Max batch number
         if: ${{ github.event.inputs.mode == 'maxbatch' }}
         run: |
