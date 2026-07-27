@@ -20,7 +20,9 @@ Path: `/Applications/XAMPP/xamppfiles/htdocs/optima/`
 | `admin` | Semua fitur |
 | `staff_produksi` | Input LHP Produksi, Dandori, VCB Produksi/Mesin |
 | `staff_qc` | Input LHP Quality, VCB Quality |
+| `staff_maintenance` | Breakdown Mesin/Dies, analitik MTTR/MTBF/Availability, Control Stroke |
 | `manager` | VCB semua, Export |
+| `guest` | Read-only: VCB, analitik maintenance, daftar LHP. Tanpa export, master data, breakdown, chatbot |
 
 ## Key Patterns
 - SoftDeletes semua model
@@ -32,6 +34,7 @@ Path: `/Applications/XAMPP/xamppfiles/htdocs/optima/`
 ## Active Work
 | Task | Status |
 |------|--------|
-| **Dandori Migration** | 🔴 PENDING — lihat `memory/projects/dandori-migration.md` |
+| **Akun Guest Read-Only** | ✅ DONE — role `guest`, route default-deny + middleware `DenyGuestWrite`. Akun dibuat admin di Master > Users. |
+| **Dandori Migration** | ✅ DONE sejak Jun 2026 (data prod sudah termigrasi) |
 
 → Detail proyek: `memory/projects/`, context: `memory/context/`
