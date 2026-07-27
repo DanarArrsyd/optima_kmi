@@ -8,6 +8,7 @@ use App\Models\MasterPart;
 use App\Models\MasterPartProses;
 use App\Models\MasterShift;
 use App\Models\TransaksiQc;
+use App\Services\NgDetailService;
 use App\Services\QcService;
 use App\Support\SaneDate;
 use Carbon\Carbon;
@@ -114,7 +115,14 @@ class QcImport implements ToCollection, WithHeadingRow
                 /* ── Jenis NG (opsional) ───────────────────── */
                 $idJenisNg = null;
                 $kodeNg = trim((string) ($row['kode_jenis_ng'] ?? ''));
-                if ($qtyNg > 0 && $kodeNg !== '') {
+                if ($qtyNg > 0) {
+                    if ($kodeNg === '') {
+                        $this->errors[] = "Baris {$rowNum}: Qty NG diisi ({$qtyNg}) tapi Kode Jenis NG kosong. "
+                            .'Isi kode jenis NG-nya — NG tanpa jenis tidak bisa disimpan.';
+
+                        continue;
+                    }
+
                     $jenisNg = MasterJenisNg::whereRaw('LOWER(TRIM(kode)) = ?', [strtolower($kodeNg)])->first();
                     if (! $jenisNg) {
                         $this->errors[] = "Baris {$rowNum}: Jenis NG \"{$kodeNg}\" tidak ditemukan di master Jenis NG.";
@@ -132,7 +140,7 @@ class QcImport implements ToCollection, WithHeadingRow
                     $qtyNg
                 );
 
-                TransaksiQc::create([
+                $qc = TransaksiQc::create([
                     'tgl_pengecekan' => $tglCek,
                     'tgl_produksi_part' => $tglProd,
                     'id_shift' => $shift->id,
@@ -141,11 +149,16 @@ class QcImport implements ToCollection, WithHeadingRow
                     'jam_start' => $jamStart,
                     'jam_finish' => $jamFinish,
                     'qty_ok' => $qtyOk,
-                    'qty_ng' => $qtyNg,
-                    'id_jenis_ng' => $idJenisNg,
                     'actual_cycle_time' => $cycleTime,
                     'created_by' => auth()->id(),
                 ]);
+
+                app(NgDetailService::class)->syncQc(
+                    $qc,
+                    ($qtyNg > 0 && $idJenisNg)
+                        ? [['id_jenis_ng' => $idJenisNg, 'qty' => $qtyNg]]
+                        : []
+                );
 
                 $this->importedCount++;
 

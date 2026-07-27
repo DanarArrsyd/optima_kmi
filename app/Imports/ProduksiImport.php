@@ -9,6 +9,7 @@ use App\Models\MasterPart;
 use App\Models\MasterPartProses;
 use App\Models\MasterShift;
 use App\Models\TransaksiProduksi;
+use App\Services\NgDetailService;
 use App\Services\ProduksiService;
 use App\Support\SaneDate;
 use Carbon\Carbon;
@@ -125,15 +126,23 @@ class ProduksiImport implements ToCollection, WithHeadingRow
                     $qtyNg = (int) $qtyNgRaw;
 
                     $kodeNg = trim((string) ($row['kode_jenis_ng'] ?? ''));
-                    if ($kodeNg !== '') {
-                        $jenisNg = MasterJenisNg::whereRaw('LOWER(TRIM(kode)) = ?', [strtolower($kodeNg)])->first();
-                        if (! $jenisNg) {
-                            $this->errors[] = "Baris {$rowNum}: Jenis NG \"{$kodeNg}\" tidak ditemukan di master Jenis NG.";
 
-                            continue;
-                        }
-                        $idJenisNg = $jenisNg->id;
+                    if ($kodeNg === '') {
+                        $this->errors[] = "Baris {$rowNum}: Qty NG diisi ({$qtyNg}) tapi Kode Jenis NG kosong. "
+                            .'Isi kode jenis NG-nya — NG tanpa jenis tidak bisa disimpan.';
+
+                        continue;
                     }
+
+                    $jenisNg = MasterJenisNg::whereRaw('LOWER(TRIM(kode)) = ?', [strtolower($kodeNg)])->first();
+
+                    if (! $jenisNg) {
+                        $this->errors[] = "Baris {$rowNum}: Jenis NG \"{$kodeNg}\" tidak ditemukan di master Jenis NG.";
+
+                        continue;
+                    }
+
+                    $idJenisNg = $jenisNg->id;
                 }
 
                 /* ── Cycle time ────────────────────────────── */
@@ -143,7 +152,7 @@ class ProduksiImport implements ToCollection, WithHeadingRow
                     $qtyAktual
                 );
 
-                TransaksiProduksi::create([
+                $produksi = TransaksiProduksi::create([
                     'tanggal_produksi' => $tanggal,
                     'id_shift' => $shift->id,
                     'id_karyawan' => $karyawan->id,
@@ -152,11 +161,16 @@ class ProduksiImport implements ToCollection, WithHeadingRow
                     'jam_start' => $jamStart,
                     'jam_finish' => $jamFinish,
                     'qty_aktual' => $qtyAktual,
-                    'qty_ng' => $qtyNg,
-                    'id_jenis_ng' => $idJenisNg,
                     'actual_cycle_time' => $cycleTime,
                     'created_by' => auth()->id(),
                 ]);
+
+                app(NgDetailService::class)->syncProduksi(
+                    $produksi,
+                    ($qtyNg > 0 && $idJenisNg)
+                        ? [['id_jenis_ng' => $idJenisNg, 'qty' => $qtyNg]]
+                        : []
+                );
 
                 $this->importedCount++;
 
