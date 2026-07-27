@@ -14,6 +14,10 @@ class TransaksiQcNg extends Model
 
     protected $fillable = ['id_transaksi_qc', 'id_jenis_ng', 'qty'];
 
+    protected $casts = [
+        'qty' => 'integer',
+    ];
+
     public function transaksi(): BelongsTo
     {
         return $this->belongsTo(TransaksiQc::class, 'id_transaksi_qc');

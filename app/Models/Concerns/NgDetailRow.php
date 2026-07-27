@@ -14,10 +14,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 trait NgDetailRow
 {
-    protected $casts = [
-        'qty' => 'integer',
-    ];
-
     public function jenisNg(): BelongsTo
     {
         return $this->belongsTo(MasterJenisNg::class, 'id_jenis_ng');

@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Memindahkan NG gaya lama (satu jenis per baris) ke tabel detail.
@@ -69,6 +70,18 @@ return new class extends Migration
             ->whereNull('id_jenis_ng')
             ->count();
 
-        echo "  → {$parent}: {$migrated} baris NG dimigrasi, {$skipped} di-skip (qty_ng > 0 tanpa jenis NG)\n";
+        $ringkas = "  → {$parent}: {$migrated} baris NG dimigrasi, {$skipped} di-skip (qty_ng > 0 tanpa jenis NG)";
+
+        /*
+         * Angka ini penting justru saat deploy — supaya jumlah yang di-skip
+         * diketahui sekali di awal, bukan jadi selisih tak terlihat. Tapi saat
+         * test, migrasi jalan di setiap boot dan menulis ke stdout milik
+         * printer test, jadi jangan cetak di sana.
+         */
+        if (! app()->runningUnitTests()) {
+            echo $ringkas."\n";
+        }
+
+        Log::info($ringkas);
     }
 };
