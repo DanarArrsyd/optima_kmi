@@ -66,4 +66,148 @@ class AuthorizationTest extends TestCase
         $this->actingAs($this->user('staff_produksi'))->get('/dashboard')->assertRedirect('/vcb/produksi');
         $this->actingAs($this->user('manager'))->get('/dashboard')->assertRedirect('/vcb/produksi');
     }
+
+    /** Route yang boleh dibuka guest. */
+    public static function guestAllowedRoutes(): array
+    {
+        return [
+            ['vcb.produksi'], ['vcb.produksi.data'],
+            // operator-data adalah endpoint Mode 2 (drill-down per operator) — butuh
+            // karyawan_id, kalau kosong controller sengaja balas 422 "Pilih operator
+            // terlebih dahulu." Bukan bug; kirim query param supaya konsisten 200.
+            ['vcb.produksi.operator-data', ['karyawan_id' => 1]],
+            ['vcb.mesin'], ['vcb.mesin.data'],
+            ['vcb.dandori'], ['vcb.dandori.data'],
+            ['vcb.quality'], ['vcb.quality.data'],
+            ['vcb.quality.operator-data', ['karyawan_id' => 1]],
+            ['maintenance.mttr'], ['maintenance.mttr.data'],
+            ['maintenance.mtbf'], ['maintenance.mtbf.data'],
+            ['maintenance.availability'], ['maintenance.availability.data'],
+            ['maintenance.mttr-dies'], ['maintenance.mttr-dies.data'],
+            ['maintenance.mtbf-dies'], ['maintenance.mtbf-dies.data'],
+            ['maintenance.availability-dies'], ['maintenance.availability-dies.data'],
+            ['maintenance.control-stroke-mesin'], ['maintenance.control-stroke-mesin.data'],
+            ['maintenance.control-stroke-dies'], ['maintenance.control-stroke-dies.data'],
+            ['input.produksi.index'], ['input.qc.index'], ['input.dandori.index'],
+        ];
+    }
+
+    /** Route yang HARUS ditolak untuk guest. */
+    public static function guestBlockedRoutes(): array
+    {
+        return [
+            ['master.karyawan.index'], ['master.mesin.index'], ['master.part.index'],
+            ['master.losstime.index'], ['master.shift.index'], ['master.users.index'],
+            ['master.jenis-ng.index'], ['master.users.create'],
+            ['master.part.export'],
+            ['input.produksi.export'], ['input.qc.export'], ['input.dandori.export'],
+            ['vcb.dandori.export'],
+            ['input.produksi.create'], ['input.qc.create'], ['input.dandori.create'],
+            ['input.produksi.import-template'], ['input.qc.import-template'], ['input.dandori.import-template'],
+            ['maintenance.breakdown.index'], ['maintenance.breakdown-dies.index'],
+            ['maintenance.breakdown.export'], ['maintenance.breakdown-dies.export'],
+            ['maintenance.breakdown.create'],
+            ['chatbot.index'], ['admin.anomali'],
+        ];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('guestAllowedRoutes')]
+    public function test_guest_can_view_allowed_routes(string $routeName, array $query = []): void
+    {
+        $this->actingAs($this->user('guest'))->get(route($routeName, $query))->assertOk();
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('guestBlockedRoutes')]
+    public function test_guest_cannot_view_blocked_routes(string $routeName): void
+    {
+        $this->actingAs($this->user('guest'))->get(route($routeName))->assertForbidden();
+    }
+
+    /**
+     * Fixture minimal untuk route ber-binding model. Perlu record NYATA (bukan ID
+     * mentah 1) karena implicit route-model-binding (SubstituteBindings) di app ini
+     * jalan SEBELUM middleware `role` — kalau ID tidak ada di DB, request 404 duluan
+     * lewat ModelNotFoundException sebelum middleware role sempat menolak, sehingga
+     * assertForbidden() (403) tidak pernah teruji. Dibuktikan lewat probe manual:
+     * bahkan user admin dapat 404 untuk ID yang tidak ada — perilaku binding standar
+     * Laravel, bukan soal role sama sekali.
+     */
+    private function seedMasterData(): array
+    {
+        $mesin = \App\Models\MasterMesin::create([
+            'id_mesin' => 'M-TEST-1', 'nama_mesin' => 'Mesin Test', 'line' => 'A',
+            'tipe_mesin' => 'STAMPING',
+        ]);
+        $part = \App\Models\MasterPart::create([
+            'part_no' => 'PART-TEST-1', 'part_name' => 'Part Test',
+        ]);
+        $partProses = \App\Models\MasterPartProses::create([
+            'id_part' => $part->id, 'id_proses' => 'P1', 'nama_proses' => 'Proses Test',
+        ]);
+        $karyawan = \App\Models\MasterKaryawan::create([
+            'nik' => 'NIK-TEST-1', 'nama_karyawan' => 'Karyawan Test', 'departemen' => 'Produksi',
+        ]);
+        $shift = \App\Models\MasterShift::create([
+            'nama_shift' => 'Shift Test', 'jam_start' => '07:00', 'jam_finish' => '15:00',
+        ]);
+
+        return compact('mesin', 'part', 'partProses', 'karyawan', 'shift');
+    }
+
+    public function test_guest_cannot_open_control_stroke_write_routes(): void
+    {
+        $guest = $this->user('guest');
+        $admin = $this->user('admin');
+        $data  = $this->seedMasterData();
+
+        $diesLog = \App\Models\DiesPreventiveLog::create([
+            'id_part_proses'       => $data['partProses']->id,
+            'tanggal_preventive'   => now()->toDateString(),
+            'id_karyawan'          => $data['karyawan']->id,
+            'stroke_at_preventive' => 100,
+            'created_by'           => $admin->id,
+        ]);
+
+        $this->actingAs($guest)
+            ->get(route('maintenance.control-stroke-mesin.preventive.create', ['mesin' => $data['mesin']->id]))
+            ->assertForbidden();
+
+        $this->actingAs($guest)
+            ->get(route('maintenance.control-stroke-dies.preventive.create', ['partProses' => $data['partProses']->id]))
+            ->assertForbidden();
+
+        $this->actingAs($guest)
+            ->get(route('maintenance.control-stroke-dies.preventive.checksheet', ['diesPreventiveLog' => $diesLog->id]))
+            ->assertForbidden();
+    }
+
+    public function test_guest_write_verbs_are_rejected_on_reachable_pages(): void
+    {
+        $guest = $this->user('guest');
+        $admin = $this->user('admin');
+        $data  = $this->seedMasterData();
+
+        $produksi = \App\Models\TransaksiProduksi::create([
+            'tanggal_produksi' => now()->toDateString(),
+            'id_shift'         => $data['shift']->id,
+            'id_karyawan'      => $data['karyawan']->id,
+            'id_mesin'         => $data['mesin']->id,
+            'id_part_proses'   => $data['partProses']->id,
+            'jam_start'        => '07:00',
+            'jam_finish'       => '08:00',
+            'qty_aktual'       => 10,
+            'created_by'       => $admin->id,
+        ]);
+
+        $this->actingAs($guest)->post(route('input.produksi.note'), [
+            'id' => 1, 'note' => 'coba tulis',
+        ])->assertForbidden();
+
+        $this->actingAs($guest)->delete(route('input.produksi.destroy', ['produksi' => $produksi->id]))->assertForbidden();
+    }
+
+    public function test_dashboard_redirects_guest_to_vcb_produksi(): void
+    {
+        $this->actingAs($this->user('guest'))->get('/dashboard')->assertRedirect('/vcb/produksi');
+    }
 }
