@@ -199,7 +199,14 @@ function vcbNg() {
                     scales: {
                         y: {
                             beginAtZero: true,
-                            ticks: { callback: v => v + '%' },
+                            /*
+                             * NG Rate pabrik berada di orde 0,00x%, jadi Chart.js
+                             * membuat tick pecahan kecil yang rawan artefak float
+                             * (0.006000000000000001). Dibatasi 4 desimal.
+                             */
+                            ticks: {
+                                callback: v => Number(v).toLocaleString('id-ID', { maximumFractionDigits: 4 }) + '%',
+                            },
                         },
                     },
                     plugins: {
