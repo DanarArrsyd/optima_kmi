@@ -1,6 +1,68 @@
 @extends('layouts.app')
 @section('title', $judul)
 
+@push('styles')
+<style>
+    /* ══ VCB NG — mengikuti bahasa visual ERP yang sudah ada ═══════════
+     * Nol font baru, nol bayangan, nol warna di luar token layout.
+     * Aksen merah #b91c1c adalah warna "danger" yang sudah dipakai
+     * traffic light VCB lain — bukan warna baru.
+     */
+    .ngv-kpi {
+        border-left: 3px solid var(--border);
+        padding: 10px 14px;
+        height: 100%;
+    }
+    .ngv-kpi--accent { border-left-color: #b91c1c; }
+    .ngv-kpi-label {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+        color: var(--text-3);
+    }
+    .ngv-kpi-value {
+        font-size: 1.6rem;
+        font-weight: 700;
+        line-height: 1.15;
+        margin-top: 2px;
+        color: var(--text);
+        font-variant-numeric: tabular-nums;
+    }
+    .ngv-kpi-sub {
+        font-size: 11px;
+        color: var(--text-3);
+        margin-top: 2px;
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* Batang bisa diklik — kursor dan keterangan harus mengatakannya. */
+    #ngRateChart { cursor: pointer; }
+
+    .ngv-hint {
+        font-size: 11px;
+        color: var(--text-3);
+        border-top: 1px solid var(--border);
+        margin-top: 10px;
+        padding-top: 8px;
+    }
+
+    /* Bilah porsi di dalam sel — rata, tanpa radius, sesuai tema industrial. */
+    .ngv-bar-track {
+        height: 6px;
+        background: var(--surface-3);
+        border: 1px solid var(--border);
+        min-width: 60px;
+    }
+    .ngv-bar-fill { height: 100%; background: #b91c1c; }
+
+    .ngv-total-row td {
+        border-top: 2px solid var(--border);
+        font-weight: 700;
+    }
+</style>
+@endpush
+
 @section('content')
 @php
     $defaultTo = date('Y-m-d');
@@ -39,28 +101,33 @@
     {{-- ── Ringkasan ────────────────────────────── --}}
     <div class="row g-2 mb-3" x-show="hasData" x-cloak>
         <div class="col-6 col-md-4">
-            <div class="erp-panel h-100"><div class="erp-panel-body">
-                <div class="text-muted" style="font-size:0.78rem">Total NG</div>
-                <div style="font-size:1.4rem;font-weight:700" x-text="fmtInt(summary.total_ng)"></div>
+            <div class="erp-panel h-100"><div class="ngv-kpi">
+                <div class="ngv-kpi-label">Total NG</div>
+                <div class="ngv-kpi-value" x-text="fmtInt(summary.total_ng)">—</div>
+                <div class="ngv-kpi-sub">pcs</div>
             </div></div>
         </div>
         <div class="col-6 col-md-4">
-            <div class="erp-panel h-100"><div class="erp-panel-body">
-                <div class="text-muted" style="font-size:0.78rem">Total Diperiksa</div>
-                <div style="font-size:1.4rem;font-weight:700" x-text="fmtInt(summary.total_check)"></div>
+            <div class="erp-panel h-100"><div class="ngv-kpi">
+                <div class="ngv-kpi-label">Total Diperiksa</div>
+                <div class="ngv-kpi-value" x-text="fmtInt(summary.total_check)">—</div>
+                <div class="ngv-kpi-sub">pcs</div>
             </div></div>
         </div>
         <div class="col-12 col-md-4">
-            <div class="erp-panel h-100"><div class="erp-panel-body">
-                <div class="text-muted" style="font-size:0.78rem">NG Rate</div>
-                <div style="font-size:1.4rem;font-weight:700" x-text="summary.ng_rate + '%'"></div>
+            <div class="erp-panel h-100"><div class="ngv-kpi ngv-kpi--accent">
+                <div class="ngv-kpi-label">NG Rate</div>
+                <div class="ngv-kpi-value">
+                    <span x-text="fmtInt(ppmOf(summary))"></span><span style="font-size:0.9rem;font-weight:600"> PPM</span>
+                </div>
+                <div class="ngv-kpi-sub" x-text="fmtPct(summary.ng_rate) + '%'">—</div>
             </div></div>
         </div>
     </div>
 
     {{-- ── Grafik NG Rate per bulan ─────────────── --}}
     <div class="erp-panel mb-3">
-        <div class="erp-panel-head">NG Rate per Bulan</div>
+        <div class="erp-panel-header">NG Rate per Bulan &mdash; PPM</div>
         <div class="erp-panel-body">
             <div x-show="!hasData && !loading && !loadError" x-cloak class="text-muted text-center py-4">
                 {{ $catatanKosong }}
@@ -71,15 +138,17 @@
             <div x-show="hasData" x-cloak style="height:320px">
                 <canvas id="ngRateChart"></canvas>
             </div>
-            <div x-show="hasData" x-cloak class="text-muted mt-2" style="font-size:0.78rem">
-                Klik satu batang bulan untuk melihat rincian jenis NG bulan itu.
+            <div x-show="hasData" x-cloak class="ngv-hint">
+                1 PPM = 1 pcs NG per sejuta diperiksa. Klik satu batang bulan untuk melihat rincian jenis NG bulan itu.
             </div>
         </div>
     </div>
 
     {{-- ── Rincian bulan terpilih ───────────────── --}}
-    <div class="erp-panel" x-show="bulanTerpilih" x-cloak>
-        <div class="erp-panel-head" x-text="'Rincian NG — ' + labelBulanTerpilih"></div>
+    <div class="erp-panel" x-show="bulanTerpilih" x-cloak id="ngv-rincian">
+        <div class="erp-panel-header">
+            <span x-text="'Rincian Jenis NG — ' + labelBulanTerpilih"></span>
+        </div>
         <div class="erp-panel-body">
             <div x-show="detailError" x-cloak class="text-danger text-center py-3">
                 Gagal memuat rincian bulan ini — coba klik batang bulan itu lagi.
@@ -88,24 +157,36 @@
                 Bulan ini tidak punya NG tercatat.
             </div>
             <div class="table-responsive" x-show="!detailError && detail.length > 0" x-cloak>
-                <table class="table table-sm align-middle mb-0">
+                <table class="erp-table mb-0">
                     <thead>
                         <tr>
-                            <th style="width:100px">Kode</th>
+                            <th style="width:90px">Kode</th>
                             <th>Jenis NG</th>
-                            <th class="text-end" style="width:100px">Qty</th>
-                            <th class="text-end" style="width:100px">Porsi</th>
+                            <th class="text-end" style="width:90px">Qty</th>
+                            <th class="text-end" style="width:80px">Porsi</th>
+                            <th style="width:120px"></th>
                         </tr>
                     </thead>
                     <tbody>
                         <template x-for="row in detail" :key="row.id_jenis_ng">
                             <tr>
-                                <td x-text="row.kode"></td>
+                                <td style="font-weight:700" x-text="row.kode"></td>
                                 <td x-text="row.nama_ng"></td>
-                                <td class="text-end" x-text="fmtInt(row.qty)"></td>
-                                <td class="text-end" x-text="row.porsi + '%'"></td>
+                                <td class="text-end" style="font-variant-numeric:tabular-nums" x-text="fmtInt(row.qty)"></td>
+                                <td class="text-end" style="font-variant-numeric:tabular-nums" x-text="fmtPct(row.porsi) + '%'"></td>
+                                <td>
+                                    <div class="ngv-bar-track">
+                                        <div class="ngv-bar-fill" :style="`width: ${Math.min(100, row.porsi)}%`"></div>
+                                    </div>
+                                </td>
                             </tr>
                         </template>
+                        <tr class="ngv-total-row">
+                            <td colspan="2">Total bulan ini</td>
+                            <td class="text-end" style="font-variant-numeric:tabular-nums" x-text="fmtInt(totalDetail)"></td>
+                            <td class="text-end">100%</td>
+                            <td></td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -133,6 +214,23 @@ function vcbNg() {
 
         fmtInt(v) {
             return Number(v || 0).toLocaleString('id-ID');
+        },
+
+        /* NG Rate pabrik berada di orde 0,00x% — persen sulit dibaca sekilas,
+         * PPM adalah satuan yang dipakai di lantai produksi. Dihitung dari
+         * cacah mentah, bukan dari rate yang sudah dibulatkan. */
+        ppmOf(m) {
+            return m && m.total_check > 0
+                ? Math.round(m.total_ng / m.total_check * 1000000)
+                : 0;
+        },
+
+        fmtPct(v) {
+            return Number(v || 0).toLocaleString('id-ID', { maximumFractionDigits: 4 });
+        },
+
+        get totalDetail() {
+            return this.detail.reduce((s, r) => s + Number(r.qty || 0), 0);
         },
 
         async load() {
@@ -182,41 +280,67 @@ function vcbNg() {
                 data: {
                     labels: this.byMonth.map(m => m.bulan),
                     datasets: [{
-                        label: 'NG Rate (%)',
-                        data: this.byMonth.map(m => m.ng_rate),
-                        backgroundColor: '#b91c1c',
-                        borderRadius: 3,
+                        label: 'NG Rate (PPM)',
+                        data: this.byMonth.map(m => self.ppmOf(m)),
+                        /* Baja untuk bulan biasa, merah untuk bulan yang sedang
+                         * dibuka — seleksi harus terlihat di grafik, bukan cuma
+                         * di judul panel di bawahnya. */
+                        backgroundColor: c => self.byMonth[c.dataIndex]?.bulan_raw === self.bulanTerpilih
+                            ? '#b91c1c'
+                            : '#6b7280',
+                        hoverBackgroundColor: '#374151',
                         borderSkipped: false,
+                        maxBarThickness: 84,
                     }],
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    layout: { padding: { top: 24 } },   /* ruang untuk label di atas batang */
                     onClick(evt, els) {
                         if (!els.length) return;
                         self.pilihBulan(self.byMonth[els[0].index]);
                     },
                     scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#4b5563', font: { size: 12 } },
+                        },
                         y: {
                             beginAtZero: true,
-                            /*
-                             * NG Rate pabrik berada di orde 0,00x%, jadi Chart.js
-                             * membuat tick pecahan kecil yang rawan artefak float
-                             * (0.006000000000000001). Dibatasi 4 desimal.
-                             */
+                            border: { display: false },
+                            grid: { color: '#e5e7eb' },
                             ticks: {
-                                callback: v => Number(v).toLocaleString('id-ID', { maximumFractionDigits: 4 }) + '%',
+                                color: '#6b7280',
+                                font: { size: 11 },
+                                precision: 0,
+                                callback: v => Number(v).toLocaleString('id-ID') + ' PPM',
                             },
                         },
                     },
                     plugins: {
                         legend: { display: false },
-                        datalabels: { display: false },
+                        /* Plugin datalabels terdaftar global dengan default
+                         * display:false. Dinyalakan khusus di grafik ini supaya
+                         * angkanya terbaca tanpa harus hover. */
+                        datalabels: {
+                            display: true,
+                            anchor: 'end',
+                            align: 'end',
+                            offset: 2,
+                            color: '#374151',
+                            font: { size: 11, weight: 700 },
+                            formatter: v => Number(v).toLocaleString('id-ID'),
+                        },
                         tooltip: {
+                            displayColors: false,
                             callbacks: {
                                 label(c) {
                                     const m = self.byMonth[c.dataIndex];
-                                    return `${m.ng_rate}%  —  ${self.fmtInt(m.total_ng)} NG dari ${self.fmtInt(m.total_check)}`;
+                                    return [
+                                        `${self.fmtInt(self.ppmOf(m))} PPM  ·  ${self.fmtPct(m.ng_rate)}%`,
+                                        `${self.fmtInt(m.total_ng)} NG dari ${self.fmtInt(m.total_check)} diperiksa`,
+                                    ];
                                 },
                             },
                         },
@@ -231,6 +355,9 @@ function vcbNg() {
             this.detail = [];
             this.detailError = false;
 
+            /* Warnai ulang batang yang terpilih. */
+            if (this.chart) this.chart.update('none');
+
             try {
                 const p = new URLSearchParams({ bulan: m.bulan_raw });
                 const res = await fetch(`{{ $routeDetail }}?${p}`, {
@@ -242,6 +369,15 @@ function vcbNg() {
                 this.detail = await res.json();
             } catch (e) {
                 this.detailError = true;
+            } finally {
+                /* Bawa mata pengguna ke daftar rincian — tanpa ini, panelnya
+                 * muncul di bawah lipatan dan kliknya terasa tidak melakukan apa-apa. */
+                this.$nextTick(() => {
+                    const el = document.getElementById('ngv-rincian');
+                    if (!el) return;
+                    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                    el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+                });
             }
         },
     };
