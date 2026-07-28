@@ -15,6 +15,8 @@ use App\Http\Controllers\Vcb\VcbProduksiController;
 use App\Http\Controllers\Vcb\VcbMesinController;
 use App\Http\Controllers\Vcb\VcbQualityController;
 use App\Http\Controllers\Vcb\VcbDandoriController;
+use App\Http\Controllers\Vcb\VcbNgProsesController;
+use App\Http\Controllers\Vcb\VcbNgTotalController;
 use App\Http\Controllers\Admin\AnomalyController;
 use App\Http\Controllers\Maintenance\BreakdownMesinController;
 use App\Http\Controllers\Maintenance\MttrController;
@@ -144,6 +146,9 @@ Route::middleware('auth')->group(function () {
         Route::get('mesin/data', [VcbMesinController::class, 'data'])->name('mesin.data');
         Route::get('dandori', [VcbDandoriController::class, 'index'])->name('dandori');
         Route::get('dandori/data', [VcbDandoriController::class, 'data'])->name('dandori.data');
+        Route::get('ng-proses', [VcbNgProsesController::class, 'index'])->name('ng-proses');
+        Route::get('ng-proses/data', [VcbNgProsesController::class, 'data'])->name('ng-proses.data');
+        Route::get('ng-proses/detail', [VcbNgProsesController::class, 'detail'])->name('ng-proses.detail');
     });
 
     // --- VCB DANDORI EXPORT — guest TIDAK boleh ---
@@ -156,6 +161,9 @@ Route::middleware('auth')->group(function () {
         Route::get('quality', [VcbQualityController::class, 'index'])->name('quality');
         Route::get('quality/data', [VcbQualityController::class, 'data'])->name('quality.data');
         Route::get('quality/operator-data', [VcbQualityController::class, 'operatorData'])->name('quality.operator-data');
+        Route::get('ng-total', [VcbNgTotalController::class, 'index'])->name('ng-total');
+        Route::get('ng-total/data', [VcbNgTotalController::class, 'data'])->name('ng-total.data');
+        Route::get('ng-total/detail', [VcbNgTotalController::class, 'detail'])->name('ng-total.detail');
     });
 
     // --- MAINTENANCE: breakdown, import/export, input preventive (guest TIDAK boleh) ---
