@@ -79,4 +79,37 @@ class VcbNgDashboardTest extends TestCase
             ->assertOk()
             ->assertJson([]);
     }
+
+    public function test_sidebar_memuat_entri_ng_proses_untuk_staff_produksi(): void
+    {
+        $produksi = User::factory()->create(['role' => 'staff_produksi']);
+
+        $this->actingAs($produksi)
+            ->get(route('vcb.produksi'))
+            ->assertOk()
+            ->assertSee('VCB NG Proses')
+            ->assertDontSee('VCB NG Total');
+    }
+
+    public function test_sidebar_memuat_entri_ng_total_untuk_staff_qc(): void
+    {
+        $qc = User::factory()->create(['role' => 'staff_qc']);
+
+        $this->actingAs($qc)
+            ->get(route('vcb.quality'))
+            ->assertOk()
+            ->assertSee('VCB NG Total')
+            ->assertDontSee('VCB NG Proses');
+    }
+
+    public function test_admin_melihat_kedua_entri_sidebar(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $this->actingAs($admin)
+            ->get(route('vcb.produksi'))
+            ->assertOk()
+            ->assertSee('VCB NG Proses')
+            ->assertSee('VCB NG Total');
+    }
 }
