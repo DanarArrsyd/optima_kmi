@@ -998,8 +998,10 @@
         $vcbActive = match(true) {
             str_starts_with($uri, 'vcb/produksi'),
             str_starts_with($uri, 'vcb/mesin'),
+            str_starts_with($uri, 'vcb/ng-proses'),
             str_starts_with($uri, 'vcb/dandori')          => 'produksi',
-            str_starts_with($uri, 'vcb/quality')           => 'quality',
+            str_starts_with($uri, 'vcb/quality'),
+            str_starts_with($uri, 'vcb/ng-total')          => 'quality',
             str_starts_with($uri, 'maintenance/mttr-dies'),
             str_starts_with($uri, 'maintenance/mtbf-dies'),
             str_starts_with($uri, 'maintenance/availability-dies'),
@@ -1030,6 +1032,9 @@
             <a href="{{ route('vcb.dandori') }}" class="nav-item-link {{ str_starts_with($uri,'vcb/dandori')?'active':'' }}">
                 <i class="bi bi-clock-history"></i><span class="nav-text">VCB Dandori</span>
             </a>
+            <a href="{{ route('vcb.ng-proses') }}" class="nav-item-link {{ str_starts_with($uri,'vcb/ng-proses')?'active':'' }}">
+                <i class="bi bi-exclamation-triangle"></i><span class="nav-text">VCB NG Proses</span>
+            </a>
         </div>
         @endif
 
@@ -1043,6 +1048,9 @@
         <div class="nav-group-body" x-show="isOpen('quality')" x-cloak>
             <a href="{{ route('vcb.quality') }}" class="nav-item-link {{ str_starts_with($uri,'vcb/quality')?'active':'' }}">
                 <i class="bi bi-shield-check"></i><span class="nav-text">VCB Quality</span>
+            </a>
+            <a href="{{ route('vcb.ng-total') }}" class="nav-item-link {{ str_starts_with($uri,'vcb/ng-total')?'active':'' }}">
+                <i class="bi bi-exclamation-triangle"></i><span class="nav-text">VCB NG Total</span>
             </a>
         </div>
         @endif
