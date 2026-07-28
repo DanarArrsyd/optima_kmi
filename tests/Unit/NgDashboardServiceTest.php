@@ -2,16 +2,20 @@
 
 namespace Tests\Unit;
 
+use App\Models\MasterJenisNg;
 use App\Models\MasterKaryawan;
 use App\Models\MasterMesin;
 use App\Models\MasterPart;
 use App\Models\MasterPartProses;
 use App\Models\MasterShift;
 use App\Models\TransaksiProduksi;
+use App\Models\TransaksiProduksiNg;
 use App\Models\TransaksiQc;
+use App\Models\TransaksiQcNg;
 use App\Models\User;
 use App\Services\NgDashboardService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class NgDashboardServiceTest extends TestCase
@@ -206,5 +210,116 @@ class NgDashboardServiceTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
 
         $this->svc->getVcbNg('mesin', '2026-01-01', '2026-12-31');
+    }
+
+    public function test_detail_mengembalikan_jenis_ng_urut_qty_terbanyak(): void
+    {
+        $trx = $this->produksi('2026-03-10', 90, 10);
+        $dented = MasterJenisNg::create(['kode' => 'DNT', 'nama_ng' => 'Dented']);
+        $crack = MasterJenisNg::create(['kode' => 'CRK', 'nama_ng' => 'Crack']);
+
+        TransaksiProduksiNg::create(['id_transaksi_produksi' => $trx->id, 'id_jenis_ng' => $crack->id, 'qty' => 3]);
+        TransaksiProduksiNg::create(['id_transaksi_produksi' => $trx->id, 'id_jenis_ng' => $dented->id, 'qty' => 7]);
+
+        $hasil = $this->svc->getVcbNgDetail('produksi', '2026-03');
+
+        $this->assertCount(2, $hasil);
+        $this->assertSame('DNT', $hasil[0]['kode']);
+        $this->assertSame('Dented', $hasil[0]['nama_ng']);
+        $this->assertSame(7, $hasil[0]['qty']);
+        $this->assertSame(70.0, $hasil[0]['porsi']);
+        $this->assertSame('CRK', $hasil[1]['kode']);
+        $this->assertSame(3, $hasil[1]['qty']);
+        $this->assertSame(30.0, $hasil[1]['porsi']);
+    }
+
+    public function test_detail_menjumlahkan_jenis_yang_sama_dari_beberapa_sesi(): void
+    {
+        $a = $this->produksi('2026-03-01', 95, 5);
+        $b = $this->produksi('2026-03-20', 95, 5);
+        $dented = MasterJenisNg::create(['kode' => 'DNT', 'nama_ng' => 'Dented']);
+
+        TransaksiProduksiNg::create(['id_transaksi_produksi' => $a->id, 'id_jenis_ng' => $dented->id, 'qty' => 5]);
+        TransaksiProduksiNg::create(['id_transaksi_produksi' => $b->id, 'id_jenis_ng' => $dented->id, 'qty' => 5]);
+
+        $hasil = $this->svc->getVcbNgDetail('produksi', '2026-03');
+
+        $this->assertCount(1, $hasil);
+        $this->assertSame(10, $hasil[0]['qty']);
+        $this->assertSame(100.0, $hasil[0]['porsi']);
+    }
+
+    public function test_detail_tidak_bocor_lintas_bulan(): void
+    {
+        $maret = $this->produksi('2026-03-10', 95, 5);
+        $april = $this->produksi('2026-04-10', 97, 3);
+        $dented = MasterJenisNg::create(['kode' => 'DNT', 'nama_ng' => 'Dented']);
+        $crack = MasterJenisNg::create(['kode' => 'CRK', 'nama_ng' => 'Crack']);
+
+        TransaksiProduksiNg::create(['id_transaksi_produksi' => $maret->id, 'id_jenis_ng' => $dented->id, 'qty' => 5]);
+        TransaksiProduksiNg::create(['id_transaksi_produksi' => $april->id, 'id_jenis_ng' => $crack->id, 'qty' => 3]);
+
+        $hasil = $this->svc->getVcbNgDetail('produksi', '2026-03');
+
+        $this->assertCount(1, $hasil);
+        $this->assertSame('DNT', $hasil[0]['kode']);
+    }
+
+    public function test_detail_mengabaikan_sesi_ter_soft_delete(): void
+    {
+        $hidup = $this->produksi('2026-03-10', 95, 5);
+        $mati = $this->produksi('2026-03-11', 95, 5);
+        $dented = MasterJenisNg::create(['kode' => 'DNT', 'nama_ng' => 'Dented']);
+
+        TransaksiProduksiNg::create(['id_transaksi_produksi' => $hidup->id, 'id_jenis_ng' => $dented->id, 'qty' => 5]);
+        TransaksiProduksiNg::create(['id_transaksi_produksi' => $mati->id, 'id_jenis_ng' => $dented->id, 'qty' => 5]);
+        $mati->delete();
+
+        $hasil = $this->svc->getVcbNgDetail('produksi', '2026-03');
+
+        $this->assertSame(5, $hasil[0]['qty']);
+    }
+
+    public function test_detail_sisi_qc_terpisah_dari_produksi(): void
+    {
+        $trx = $this->qc('2026-03-10', 90, 10);
+        $burry = MasterJenisNg::create(['kode' => 'BRY', 'nama_ng' => 'Burry']);
+
+        TransaksiQcNg::create(['id_transaksi_qc' => $trx->id, 'id_jenis_ng' => $burry->id, 'qty' => 10]);
+
+        $this->assertSame([], $this->svc->getVcbNgDetail('produksi', '2026-03'));
+
+        $hasil = $this->svc->getVcbNgDetail('qc', '2026-03');
+        $this->assertCount(1, $hasil);
+        $this->assertSame('BRY', $hasil[0]['kode']);
+        $this->assertSame(10, $hasil[0]['qty']);
+    }
+
+    public function test_detail_bulan_tanpa_ng_mengembalikan_array_kosong(): void
+    {
+        $this->produksi('2026-03-10', 100, 0);
+
+        $this->assertSame([], $this->svc->getVcbNgDetail('produksi', '2026-03'));
+    }
+
+    public function test_detail_sumber_tidak_dikenal_melempar(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->svc->getVcbNgDetail('mesin', '2026-03');
+    }
+
+    public function test_detail_mengembalikan_kosong_saat_tabel_detail_belum_ada(): void
+    {
+        $trx = $this->produksi('2026-03-10', 95, 5);
+        $dented = MasterJenisNg::create(['kode' => 'DNT', 'nama_ng' => 'Dented']);
+        TransaksiProduksiNg::create(['id_transaksi_produksi' => $trx->id, 'id_jenis_ng' => $dented->id, 'qty' => 5]);
+
+        // Meniru jendela antara rsync dan artisan migrate: kode sudah live,
+        // tabelnya belum ada. Halaman harus tampil kosong, bukan meledak.
+        Schema::drop('transaksi_produksi_ng');
+        Schema::drop('transaksi_qc_ng');
+
+        $this->assertSame([], $this->svc->getVcbNgDetail('produksi', '2026-03'));
     }
 }

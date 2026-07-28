@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\Models\TransaksiProduksi;
+use App\Models\TransaksiProduksiNg;
 use App\Models\TransaksiQc;
+use App\Models\TransaksiQcNg;
 use Illuminate\Support\Carbon;
 
 /**
@@ -30,11 +32,15 @@ class NgDashboardService
                 'model' => TransaksiProduksi::class,
                 'tanggal' => 'tanggal_produksi',
                 'qty_baik' => 'qty_aktual',
+                'detail' => TransaksiProduksiNg::class,
+                'detail_fk' => 'id_transaksi_produksi',
             ],
             'qc' => [
                 'model' => TransaksiQc::class,
                 'tanggal' => 'tgl_pengecekan',
                 'qty_baik' => 'qty_ok',
+                'detail' => TransaksiQcNg::class,
+                'detail_fk' => 'id_transaksi_qc',
             ],
             default => throw new \InvalidArgumentException(
                 "Sumber NG tidak dikenal: {$sumber}. Yang sah: 'produksi' atau 'qc'."
@@ -105,6 +111,65 @@ class NgDashboardService
             ],
             'by_month' => $rows,
         ];
+    }
+
+    /**
+     * Rincian jenis NG untuk satu bulan, urut qty terbanyak.
+     *
+     * @param  string  $bulan  format 'YYYY-MM'
+     */
+    public function getVcbNgDetail(string $sumber, string $bulan): array
+    {
+        $cfg = $this->config($sumber);
+
+        /*
+         * Tabel detail bisa belum ada di jendela antara rsync dan migrate.
+         * Halaman harus tampil dengan keadaan kosong, bukan 500.
+         */
+        if (! NgDetailService::available()) {
+            return [];
+        }
+
+        [$tahun, $bln] = array_map('intval', explode('-', $bulan));
+
+        /*
+         * whereHas menerapkan global scope model induk, jadi sesi ter-soft-delete
+         * otomatis tidak ikut.
+         */
+        $rows = $cfg['detail']::query()
+            ->with('jenisNg')
+            ->whereHas('transaksi', fn ($q) => $q
+                ->whereYear($cfg['tanggal'], $tahun)
+                ->whereMonth($cfg['tanggal'], $bln))
+            ->get();
+
+        $byJenis = [];
+        $total = 0;
+
+        foreach ($rows as $row) {
+            $id = (int) $row->id_jenis_ng;
+            $qty = (int) $row->qty;
+
+            if (! isset($byJenis[$id])) {
+                $byJenis[$id] = [
+                    'kode' => $row->jenisNg?->kode ?? '?',
+                    'nama_ng' => $row->jenisNg?->nama_ng ?? 'Jenis NG terhapus',
+                    'qty' => 0,
+                ];
+            }
+
+            $byJenis[$id]['qty'] += $qty;
+            $total += $qty;
+        }
+
+        $hasil = array_values($byJenis);
+        usort($hasil, fn ($a, $b) => $b['qty'] <=> $a['qty']);
+
+        foreach ($hasil as $i => $row) {
+            $hasil[$i]['porsi'] = $total > 0 ? round($row['qty'] / $total * 100, 1) : 0.0;
+        }
+
+        return $hasil;
     }
 
     private function rate(int $ng, int $check): float
