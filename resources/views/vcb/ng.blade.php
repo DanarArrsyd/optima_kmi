@@ -4,7 +4,7 @@
 @section('content')
 @php
     $defaultTo = date('Y-m-d');
-    $defaultFrom = date('Y-m-01', strtotime('-11 months'));
+    $defaultFrom = date('Y-m-01', strtotime('first day of -11 months'));
 @endphp
 
 <div x-data="vcbNg()" x-init="load()">
@@ -65,6 +65,9 @@
             <div x-show="!hasData && !loading && !loadError" x-cloak class="text-muted text-center py-4">
                 {{ $catatanKosong }}
             </div>
+            <div x-show="hasData && summary.total_ng === 0" x-cloak class="text-muted mb-2">
+                {{ $catatanKosong }}
+            </div>
             <div x-show="hasData" x-cloak style="height:320px">
                 <canvas id="ngRateChart"></canvas>
             </div>
@@ -95,7 +98,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <template x-for="row in detail" :key="row.kode">
+                        <template x-for="row in detail" :key="row.id_jenis_ng">
                             <tr>
                                 <td x-text="row.kode"></td>
                                 <td x-text="row.nama_ng"></td>

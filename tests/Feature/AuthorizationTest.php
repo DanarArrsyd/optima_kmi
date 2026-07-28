@@ -248,7 +248,7 @@ class AuthorizationTest extends TestCase
      * Dua route history butuh model binding nyata (MasterMesin / MasterPartProses),
      * makanya tidak ikut guestAllowedRoutes() (data provider statis, jalan sebelum DB
      * tersedia). Dites terpisah di sini pakai seedMasterData(), tapi keduanya tetap
-     * masuk hitungan 31 whitelist lewat guestAllowedRouteNames() supaya assertion
+     * masuk hitungan 37 whitelist lewat guestAllowedRouteNames() supaya assertion
      * default-deny di test_guest_route_whitelist_matches_role_middleware_exactly()
      * tidak bolong.
      */

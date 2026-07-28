@@ -23,7 +23,7 @@ use Illuminate\Support\Carbon;
 class NgDashboardService
 {
     /**
-     * @return array{model: class-string, tanggal: string, qty_baik: string}
+     * @return array{model: class-string, tanggal: string, qty_baik: string, detail: class-string}
      */
     private function config(string $sumber): array
     {
@@ -33,14 +33,12 @@ class NgDashboardService
                 'tanggal' => 'tanggal_produksi',
                 'qty_baik' => 'qty_aktual',
                 'detail' => TransaksiProduksiNg::class,
-                'detail_fk' => 'id_transaksi_produksi',
             ],
             'qc' => [
                 'model' => TransaksiQc::class,
                 'tanggal' => 'tgl_pengecekan',
                 'qty_baik' => 'qty_ok',
                 'detail' => TransaksiQcNg::class,
-                'detail_fk' => 'id_transaksi_qc',
             ],
             default => throw new \InvalidArgumentException(
                 "Sumber NG tidak dikenal: {$sumber}. Yang sah: 'produksi' atau 'qc'."
@@ -95,7 +93,7 @@ class NgDashboardService
         $rows = [];
         foreach ($byMonth as $key => $agg) {
             $rows[] = [
-                'bulan' => Carbon::createFromFormat('Y-m', $key)->format('M Y'),
+                'bulan' => Carbon::createFromFormat('!Y-m', $key)->format('M Y'),
                 'bulan_raw' => $key,
                 'total_ng' => $agg['total_ng'],
                 'total_check' => $agg['total_check'],
@@ -117,6 +115,7 @@ class NgDashboardService
      * Rincian jenis NG untuk satu bulan, urut qty terbanyak.
      *
      * @param  string  $bulan  format 'YYYY-MM'
+     * @return list<array{id_jenis_ng: int, kode: string, nama_ng: string, qty: int, porsi: float}>
      */
     public function getVcbNgDetail(string $sumber, string $bulan): array
     {
@@ -152,6 +151,7 @@ class NgDashboardService
 
             if (! isset($byJenis[$id])) {
                 $byJenis[$id] = [
+                    'id_jenis_ng' => $id,
                     'kode' => $row->jenisNg?->kode ?? '?',
                     'nama_ng' => $row->jenisNg?->nama_ng ?? 'Jenis NG terhapus',
                     'qty' => 0,

@@ -15,6 +15,7 @@ use App\Models\TransaksiQcNg;
 use App\Models\User;
 use App\Services\NgDashboardService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -148,6 +149,26 @@ class NgDashboardServiceTest extends TestCase
         // April tidak punya transaksi — tidak boleh muncul sebagai bulan 0%.
         $this->assertCount(2, $hasil['by_month']);
         $this->assertSame(['2026-03', '2026-05'], array_column($hasil['by_month'], 'bulan_raw'));
+    }
+
+    public function test_label_bulan_tidak_overflow_saat_dijalankan_di_tanggal_31(): void
+    {
+        // Bug: Carbon::createFromFormat('Y-m', '2026-02') tanpa '!' mengisi hari
+        // dari "hari ini". Kalau "hari ini" tanggal 31 Januari, hari-31 dipaksakan
+        // ke bulan Februari (28 hari) lalu overflow ke Maret — label jadi "Mar 2026"
+        // padahal bulan_raw tetap benar '2026-02'.
+        Carbon::setTestNow('2026-01-31');
+
+        try {
+            $this->produksi('2026-02-10', 95, 5);
+
+            $hasil = $this->svc->getVcbNg('produksi', '2026-01-01', '2026-12-31');
+
+            $this->assertSame('2026-02', $hasil['by_month'][0]['bulan_raw']);
+            $this->assertSame('Feb 2026', $hasil['by_month'][0]['bulan']);
+        } finally {
+            Carbon::setTestNow();
+        }
     }
 
     public function test_urut_menaik_menurut_bulan(): void
@@ -300,6 +321,37 @@ class NgDashboardServiceTest extends TestCase
         $this->produksi('2026-03-10', 100, 0);
 
         $this->assertSame([], $this->svc->getVcbNgDetail('produksi', '2026-03'));
+    }
+
+    public function test_detail_jenis_ng_terhapus_tetap_beda_baris_meski_kode_sama_sama_tanda_tanya(): void
+    {
+        // Dua jenis NG berbeda yang master row-nya sudah soft-delete sama-sama
+        // fallback ke kode '?'. Sebelum perbaikan, x-for di Blade dikunci pakai
+        // `row.kode` sehingga Alpine menganggap keduanya satu baris yang sama
+        // dan salah satunya hilang dari tabel. Di level service ini kita pastikan
+        // datanya sendiri tetap dua baris terpisah dengan id_jenis_ng berbeda.
+        $trx = $this->produksi('2026-03-10', 90, 10);
+        $dented = MasterJenisNg::create(['kode' => 'DNT', 'nama_ng' => 'Dented']);
+        $crack = MasterJenisNg::create(['kode' => 'CRK', 'nama_ng' => 'Crack']);
+
+        TransaksiProduksiNg::create(['id_transaksi_produksi' => $trx->id, 'id_jenis_ng' => $dented->id, 'qty' => 7]);
+        TransaksiProduksiNg::create(['id_transaksi_produksi' => $trx->id, 'id_jenis_ng' => $crack->id, 'qty' => 3]);
+
+        $dented->delete();
+        $crack->delete();
+
+        $hasil = $this->svc->getVcbNgDetail('produksi', '2026-03');
+
+        $this->assertCount(2, $hasil);
+
+        $idJenisNg = array_column($hasil, 'id_jenis_ng');
+        $this->assertNotSame($idJenisNg[0], $idJenisNg[1]);
+        $this->assertEqualsCanonicalizing([$dented->id, $crack->id], $idJenisNg);
+
+        foreach ($hasil as $row) {
+            $this->assertSame('?', $row['kode']);
+            $this->assertSame('Jenis NG terhapus', $row['nama_ng']);
+        }
     }
 
     public function test_detail_sumber_tidak_dikenal_melempar(): void

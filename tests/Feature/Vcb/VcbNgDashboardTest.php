@@ -77,7 +77,7 @@ class VcbNgDashboardTest extends TestCase
         $this->actingAs($admin)
             ->getJson(route('vcb.ng-proses.detail', ['bulan' => '2026-03']))
             ->assertOk()
-            ->assertJson([]);
+            ->assertJsonIsArray();
     }
 
     public function test_sidebar_memuat_entri_ng_proses_untuk_staff_produksi(): void
