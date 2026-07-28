@@ -172,8 +172,19 @@ class NgDashboardService
         return $hasil;
     }
 
+    /**
+     * Empat desimal, bukan satu.
+     *
+     * NG Rate pabrik stamping berada di orde 0,00x% — 211 NG dari 2.668.690
+     * pcs = 0,0079%. Pembulatan ke 1 desimal membuang seluruh sinyal itu:
+     * setiap bulan menjadi 0,0, tiap batang grafik bertinggi nol, dan halaman
+     * tampak kosong padahal datanya ada. Terjadi di prod 2026-07-28.
+     *
+     * Empat desimal menahan skala PPM (1 PPM = 0,0001%), yang merupakan satuan
+     * yang benar-benar dipakai di lantai produksi.
+     */
     private function rate(int $ng, int $check): float
     {
-        return $check > 0 ? round($ng / $check * 100, 1) : 0.0;
+        return $check > 0 ? round($ng / $check * 100, 4) : 0.0;
     }
 }

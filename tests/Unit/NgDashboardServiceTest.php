@@ -124,7 +124,7 @@ class NgDashboardServiceTest extends TestCase
         $this->assertCount(1, $hasil['by_month']);
         $this->assertSame(20, $hasil['by_month'][0]['total_ng']);
         $this->assertSame(300, $hasil['by_month'][0]['total_check']);
-        $this->assertSame(6.7, $hasil['by_month'][0]['ng_rate']);
+        $this->assertSame(6.6667, $hasil['by_month'][0]['ng_rate']);
     }
 
     public function test_bulan_dengan_transaksi_tapi_nol_ng_tampil_sebagai_nol_persen(): void
@@ -223,7 +223,32 @@ class NgDashboardServiceTest extends TestCase
 
         $this->assertSame(20, $hasil['summary']['total_ng']);
         $this->assertSame(300, $hasil['summary']['total_check']);
-        $this->assertSame(6.7, $hasil['summary']['ng_rate']);
+        $this->assertSame(6.6667, $hasil['summary']['ng_rate']);
+    }
+
+    /**
+     * Regresi dari prod 2026-07-28: halaman VCB NG Proses menampilkan grafik
+     * kosong dengan NG Rate 0%. Angka aslinya 211 NG dari 2.668.690 diperiksa
+     * = 0,0079% — tiga orde di bawah resolusi pembulatan 1 desimal, sehingga
+     * seluruh sinyal terbuang dan tiap batang bertinggi nol.
+     */
+    public function test_rate_kecil_khas_pabrik_tidak_dibulatkan_jadi_nol(): void
+    {
+        // Skala prod diperkecil dengan perbandingan yang sama persis.
+        $this->produksi('2026-03-10', 266869 - 21, 21);
+
+        $hasil = $this->svc->getVcbNg('produksi', '2026-01-01', '2026-12-31');
+
+        $rate = $hasil['by_month'][0]['ng_rate'];
+
+        $this->assertGreaterThan(
+            0,
+            $rate,
+            'NG Rate khas pabrik (<0,01%) tidak boleh dibulatkan menjadi 0 — '
+            .'batang grafik jadi bertinggi nol dan halaman tampak kosong.'
+        );
+        $this->assertSame(0.0079, $rate);
+        $this->assertSame(0.0079, $hasil['summary']['ng_rate']);
     }
 
     public function test_sumber_tidak_dikenal_melempar(): void
