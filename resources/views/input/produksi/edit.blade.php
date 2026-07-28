@@ -22,11 +22,25 @@ $initPart         = $produksi->partProses?->part;
 $initPartTxt      = $initPart ? "{$initPart->part_no} — {$initPart->part_name}" : '';
 $initPartId       = $initPart?->id;
 
-$initAdaNg     = $useOld ? old('ada_ng', $produksi->qty_ng > 0 ? '1' : '0') : ($produksi->qty_ng > 0 ? '1' : '0');
-$initQtyNg     = $useOld ? old('qty_ng', $produksi->qty_ng) : $produksi->qty_ng;
-$initJenisNgId = $useOld ? old('id_jenis_ng', $produksi->id_jenis_ng) : $produksi->id_jenis_ng;
-$initJenisNgObj = $jenisNg->firstWhere('id', $initJenisNgId);
-$initJenisNgTxt = $initJenisNgObj ? "{$initJenisNgObj->kode} — {$initJenisNgObj->nama_ng}" : '';
+$existingNg   = \App\Services\NgDetailService::available()
+    ? $produksi->ngDetails->map(fn ($d) => [
+        'id_jenis_ng' => $d->id_jenis_ng,
+        'qty'         => $d->qty,
+    ])->values()->all()
+    : [];
+
+/*
+ * Baris gaya lama: qty_ng terisi tapi nol baris detail. Render satu baris
+ * dengan qty terisi dan jenis kosong supaya operator wajib mengklasifikasi —
+ * kalau dibiarkan nol baris, menyimpan akan menulis qty_ng = 0 dan menghapus
+ * angka NG yang pernah tercatat tanpa error.
+ */
+if (empty($existingNg) && (int) $produksi->qty_ng > 0) {
+    $existingNg = [['id_jenis_ng' => '', 'qty' => (int) $produksi->qty_ng]];
+}
+
+$initNgRows   = $useOld ? (old('ng') ?: $existingNg) : $existingNg;
+$initAdaNg    = ! empty($initNgRows) ? '1' : '0';
 
 $initProsesListPhp = $initPart
     ? $initPart->proses->map(fn($pr) => [
@@ -208,46 +222,25 @@ $initProsesListPhp = $initPart
                     <div class="p-3" style="background:#fafafa;border:1px solid #e5e7eb;border-radius:4px">
                         <div class="form-check mb-0">
                             <input class="form-check-input" type="checkbox" name="ada_ng" id="ada_ng"
-                                   value="1" x-model="adaNg" {{ $initAdaNg ? 'checked' : '' }}>
+                                   value="1" x-model="adaNg"
+                                   {{-- Un-tick harus benar-benar mengosongkan rows Alpine di partial
+                                        ng-rows (bukan cuma menyembunyikannya lewat x-show), supaya
+                                        ng_count ikut jadi 0 dan konsisten dengan ng=[] yang dikirim
+                                        prepareForValidation(). Tanpa ini ng_count bisa membawa sisa
+                                        hitungan baris lama saat checkbox dilepas. --}}
+                                   @change="if (!adaNg) { const w = $el.closest('[x-data]').querySelector('.ng-rows'); if (w) Alpine.$data(w).rows = []; }"
+                                   {{ $initAdaNg ? 'checked' : '' }}>
                             <label class="form-check-label fw-semibold" for="ada_ng"
                                    style="font-size:0.875rem;color:#374151">
                                 <i class="bi bi-exclamation-triangle me-1 text-warning"></i>Ada NG Proses?
                             </label>
                         </div>
 
-                        <div x-show="adaNg" x-cloak class="row g-2 mt-2"
-                             x-data="taField(taJenisNg, '{{ addslashes($initJenisNgTxt) }}', {{ $initJenisNgId ?: 'null' }})">
-                            <div class="col-md-4">
-                                <label class="form-label mb-1" style="font-size:0.8rem">Qty NG <span class="text-danger">*</span></label>
-                                <input type="number" name="qty_ng"
-                                       class="form-control form-control-sm @error('qty_ng', 'updateProduksi') is-invalid @enderror"
-                                       value="{{ $useOld ? old('qty_ng', $produksi->qty_ng) : $produksi->qty_ng }}" min="1" placeholder="0">
-                                @error('qty_ng', 'updateProduksi')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                            </div>
-                            <div class="col-md-8">
-                                <label class="form-label mb-1" style="font-size:0.8rem">Jenis NG <span class="text-danger">*</span></label>
-                                <div class="ta-wrap">
-                                    <input type="text"
-                                           class="form-control form-control-sm ta-input @error('id_jenis_ng') is-invalid @enderror"
-                                           x-model="query"
-                                           @focus="openDd()"
-                                           @blur="closeDd()"
-                                           @keydown="onKey($event)"
-                                           @input="onInput()"
-                                           placeholder="Ketik kode atau nama jenis NG...">
-                                    <input type="hidden" name="id_jenis_ng" :value="val">
-                                    <div class="ta-dropdown" x-show="open" x-cloak>
-                                        <template x-if="filtered.length === 0">
-                                            <div class="ta-empty">Tidak ditemukan</div>
-                                        </template>
-                                        <template x-for="(item, i) in filtered" :key="item.v">
-                                            <div class="ta-item" :class="{ 'ta-active': i === idx }"
-                                                 @mousedown.prevent="pick(item)" x-text="item.t"></div>
-                                        </template>
-                                    </div>
-                                </div>
-                                @error('id_jenis_ng', 'updateProduksi')<div class="text-danger mt-1" style="font-size:0.8rem">{{ $message }}</div>@enderror
-                            </div>
+                        <div x-show="adaNg" x-cloak class="mt-2">
+                            @include('input.partials.ng-rows', [
+                                'jenisNg' => $jenisNg,
+                                'initial' => $initNgRows,
+                            ])
                         </div>
                     </div>
                 </div>

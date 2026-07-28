@@ -14,9 +14,11 @@ use App\Models\MasterKaryawan;
 use App\Models\MasterPart;
 use App\Models\MasterShift;
 use App\Models\TransaksiQc;
+use App\Services\NgDetailService;
 use App\Services\NotificationService;
 use App\Services\QcService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 
 class QcController extends Controller
@@ -26,6 +28,7 @@ class QcController extends Controller
     public function __construct(
         private QcService $qcService,
         private NotificationService $notifSvc,
+        private NgDetailService $ngDetailService,
     ) {}
 
     public function index(Request $request)
@@ -34,7 +37,7 @@ class QcController extends Controller
         $dateTo = $request->input('date_to', date('Y-m-d'));
         $search = trim((string) $request->input('q', ''));
 
-        $q = TransaksiQc::with(['karyawanQc', 'partProses.part', 'shift', 'jenisNg', 'noteResolvedBy'])
+        $q = TransaksiQc::with(['karyawanQc', 'partProses.part', 'shift', 'ngDetails.jenisNg', 'noteResolvedBy'])
             ->whereDate('tgl_pengecekan', '>=', $dateFrom)
             ->whereDate('tgl_pengecekan', '<=', $dateTo);
 
@@ -125,26 +128,39 @@ class QcController extends Controller
     public function store(StoreQcRequest $request)
     {
         $validated = $request->validated();
+        $ngRows = $validated['ng'] ?? [];
+        unset($validated['ng'], $validated['ng_count']);
+
+        $qtyNg = array_sum(array_column($ngRows, 'qty'));
 
         $cycleTime = $this->qcService->calculateActualCycleTime(
             $validated['jam_start'].':00',
             $validated['jam_finish'].':00',
             (int) $validated['qty_ok'],
-            (int) $validated['qty_ng']
+            (int) $qtyNg
         );
 
-        TransaksiQc::create([
-            ...$validated,
-            'actual_cycle_time' => $cycleTime,
-            'created_by' => auth()->id(),
-        ]);
+        DB::transaction(function () use ($validated, $cycleTime, $ngRows) {
+            $qc = TransaksiQc::create([
+                ...$validated,
+                'qty_ng' => 0,
+                'actual_cycle_time' => $cycleTime,
+                'created_by' => auth()->id(),
+            ]);
+
+            $this->ngDetailService->syncQc($qc, $ngRows);
+        });
 
         return redirect()->route('input.qc.index')->with('success', 'LHP Quality berhasil disimpan.');
     }
 
     public function edit(TransaksiQc $qc)
     {
-        $qc->load(['karyawanQc', 'partProses.part.proses', 'jenisNg']);
+        $relations = ['karyawanQc', 'partProses.part.proses'];
+        if (NgDetailService::available()) {
+            $relations[] = 'ngDetails.jenisNg';
+        }
+        $qc->load($relations);
         $shifts = MasterShift::orderBy('jam_start')->get();
         $karyawan = MasterKaryawan::where('departemen', 'QC')->aktif()->orderBy('nama_karyawan')->get();
         $parts = MasterPart::with(['proses' => fn ($q) => $q->orderByDesc('id_proses')])
@@ -164,16 +180,27 @@ class QcController extends Controller
     public function update(UpdateQcRequest $request, TransaksiQc $qc)
     {
         $validated = $request->validated();
+        $ngRows = $validated['ng'] ?? [];
+        unset($validated['ng'], $validated['ng_count']);
+
+        $qtyNg = array_sum(array_column($ngRows, 'qty'));
+
         $cycleTime = $this->qcService->calculateActualCycleTime(
             $validated['jam_start'].':00',
             $validated['jam_finish'].':00',
             (int) $validated['qty_ok'],
-            (int) $validated['qty_ng']
+            (int) $qtyNg
         );
-        $qc->update([
-            ...$validated,
-            'actual_cycle_time' => $cycleTime,
-        ]);
+
+        DB::transaction(function () use ($validated, $cycleTime, $ngRows, $qc) {
+            $qc->update([
+                ...$validated,
+                'actual_cycle_time' => $cycleTime,
+            ]);
+
+            $this->ngDetailService->syncQc($qc, $ngRows);
+        });
+
         $this->resolveStaffNoteIfRequested(
             $request, $qc, 'qc',
             $qc->tgl_pengecekan->format('Y-m-d')

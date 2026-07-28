@@ -38,6 +38,7 @@ class ProduksiStoreTest extends TestCase
             'jam_start' => '08:00',
             'jam_finish' => '16:00',
             'qty_aktual' => 4000,
+            'ng_count' => 0,
         ], $override);
     }
 

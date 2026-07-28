@@ -26,4 +26,7 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 *.sql
+# Kecuali probe read-only: query audit tulisan tangan, nol data di dalamnya.
+# Dump database tetap terblokir oleh aturan *.sql di atas.
+!docs/probes/*.sql
 .env.production.example

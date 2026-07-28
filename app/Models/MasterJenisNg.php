@@ -12,7 +12,7 @@ class MasterJenisNg extends Model
 
     protected $table = 'master_jenis_ng';
 
-    protected $fillable = ['kode', 'nama_ng', 'deskripsi'];
+    protected $fillable = ['kode', 'nama_ng', 'kategori', 'deskripsi'];
 
     public function transaksiProduksi(): HasMany
     {

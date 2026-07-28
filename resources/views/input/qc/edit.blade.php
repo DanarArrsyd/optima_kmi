@@ -19,11 +19,24 @@ $initProses = $qc->partProses ? [
     'sph_standar_qc' => $qc->partProses->sph_standar_qc,
 ] : null;
 
-$initJenisNgId  = $useOld ? old('id_jenis_ng', $qc->id_jenis_ng) : $qc->id_jenis_ng;
-$initJenisNgObj = $jenisNg->firstWhere('id', $initJenisNgId);
-$initJenisNgTxt = $initJenisNgObj ? "{$initJenisNgObj->kode} — {$initJenisNgObj->nama_ng}" : '';
+$existingNg = \App\Services\NgDetailService::available()
+    ? $qc->ngDetails->map(fn ($d) => [
+        'id_jenis_ng' => $d->id_jenis_ng,
+        'qty'         => $d->qty,
+    ])->values()->all()
+    : [];
 
-$initQtyNg = $useOld ? (int) old('qty_ng', $qc->qty_ng ?? 0) : (int) ($qc->qty_ng ?? 0);
+/*
+ * Baris gaya lama: qty_ng terisi tapi nol baris detail. Render satu baris
+ * dengan qty terisi dan jenis kosong supaya operator wajib mengklasifikasi —
+ * kalau dibiarkan nol baris, menyimpan akan menulis qty_ng = 0 dan menghapus
+ * angka NG yang pernah tercatat tanpa error.
+ */
+if (empty($existingNg) && (int) $qc->qty_ng > 0) {
+    $existingNg = [['id_jenis_ng' => '', 'qty' => (int) $qc->qty_ng]];
+}
+
+$initNgRows = $useOld ? (old('ng') ?: $existingNg) : $existingNg;
 @endphp
 
 @section('content')
@@ -148,49 +161,22 @@ $initQtyNg = $useOld ? (int) old('qty_ng', $qc->qty_ng ?? 0) : (int) ($qc->qty_n
                     @error('jam_finish', 'updateQc')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
 
-                {{-- Qty + Jenis NG --}}
-                <div class="col-12"
-                     x-data="Object.assign(taField(taJenisNg, '{{ addslashes($initJenisNgTxt) }}', {{ $initJenisNgId ?: 'null' }}), { qtyNg: {{ $initQtyNg }} })">
-                    <div class="row g-2">
-                        <div class="col-md-6">
-                            <label class="form-label">Qty OK <span class="text-danger">*</span></label>
-                            <input type="number" name="qty_ok"
-                                   class="form-control @error('qty_ok', 'updateQc') is-invalid @enderror"
-                                   value="{{ $useOld ? old('qty_ok', $qc->qty_ok) : $qc->qty_ok }}" min="0">
-                            @error('qty_ok', 'updateQc')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Qty NG <span class="text-danger">*</span></label>
-                            <input type="number" name="qty_ng"
-                                   class="form-control @error('qty_ng', 'updateQc') is-invalid @enderror"
-                                   value="{{ $useOld ? old('qty_ng', $qc->qty_ng) : $qc->qty_ng }}" min="0"
-                                   x-model.number="qtyNg">
-                            @error('qty_ng', 'updateQc')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                        </div>
-                    </div>
-                    <div x-show="qtyNg > 0" x-cloak class="mt-2 p-3"
-                         style="background:#fff8f0;border:1px solid #fde8c8;border-radius:4px">
-                        <label class="form-label mb-1" style="font-size:0.85rem">
-                            <i class="bi bi-exclamation-triangle me-1 text-warning"></i>Jenis NG
-                            <span style="color:#6b7280;font-weight:400">(opsional)</span>
-                        </label>
-                        <div class="ta-wrap">
-                            <input type="text"
-                                   class="form-control form-control-sm ta-input @error('id_jenis_ng', 'updateQc') is-invalid @enderror"
-                                   x-model="query" @focus="openDd()" @blur="closeDd()"
-                                   @keydown="onKey($event)" @input="onInput()"
-                                   placeholder="Ketik kode atau nama jenis NG...">
-                            <input type="hidden" name="id_jenis_ng" :value="val">
-                            <div class="ta-dropdown" x-show="open" x-cloak>
-                                <template x-if="filtered.length === 0"><div class="ta-empty">Tidak ditemukan</div></template>
-                                <template x-for="(item, i) in filtered" :key="item.v">
-                                    <div class="ta-item" :class="{ 'ta-active': i === idx }"
-                                         @mousedown.prevent="pick(item)" x-text="item.t"></div>
-                                </template>
-                            </div>
-                        </div>
-                        @error('id_jenis_ng', 'updateQc')<div class="text-danger mt-1" style="font-size:0.8rem">{{ $message }}</div>@enderror
-                    </div>
+                {{-- Qty OK --}}
+                <div class="col-md-6">
+                    <label class="form-label">Qty OK <span class="text-danger">*</span></label>
+                    <input type="number" name="qty_ok"
+                           class="form-control @error('qty_ok', 'updateQc') is-invalid @enderror"
+                           value="{{ $useOld ? old('qty_ok', $qc->qty_ok) : $qc->qty_ok }}" min="0">
+                    @error('qty_ok', 'updateQc')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+
+                {{-- Jenis NG --}}
+                <div class="col-12">
+                    <label class="form-label fw-semibold">Jenis NG</label>
+                    @include('input.partials.ng-rows', [
+                        'jenisNg' => $jenisNg,
+                        'initial' => $initNgRows,
+                    ])
                 </div>
 
             </div>

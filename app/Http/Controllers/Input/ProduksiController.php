@@ -15,9 +15,11 @@ use App\Models\MasterMesin;
 use App\Models\MasterPart;
 use App\Models\MasterShift;
 use App\Models\TransaksiProduksi;
+use App\Services\NgDetailService;
 use App\Services\NotificationService;
 use App\Services\ProduksiService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 
 class ProduksiController extends Controller
@@ -27,6 +29,7 @@ class ProduksiController extends Controller
     public function __construct(
         private ProduksiService $produksiService,
         private NotificationService $notifSvc,
+        private NgDetailService $ngDetailService,
     ) {}
 
     public function index(Request $request)
@@ -40,7 +43,7 @@ class ProduksiController extends Controller
         $filterKarId = (int) $request->input('filter_karyawan_id', 0);
         $filterProsesId = (int) $request->input('filter_proses_id', 0);
 
-        $q = TransaksiProduksi::with(['karyawan', 'mesin', 'partProses.part', 'shift', 'jenisNg', 'noteResolvedBy'])
+        $q = TransaksiProduksi::with(['karyawan', 'mesin', 'partProses.part', 'shift', 'ngDetails.jenisNg', 'noteResolvedBy'])
             ->whereDate('tanggal_produksi', '>=', $dateFrom)
             ->whereDate('tanggal_produksi', '<=', $dateTo);
 
@@ -141,6 +144,8 @@ class ProduksiController extends Controller
     public function store(StoreProduksiRequest $request)
     {
         $validated = $request->validated();
+        $ngRows = $validated['ng'] ?? [];
+        unset($validated['ng'], $validated['ada_ng'], $validated['ng_count']);
 
         $cycleTime = $this->produksiService->calculateActualCycleTime(
             $validated['jam_start'].':00',
@@ -148,11 +153,15 @@ class ProduksiController extends Controller
             $validated['qty_aktual']
         );
 
-        TransaksiProduksi::create([
-            ...$validated,
-            'actual_cycle_time' => $cycleTime,
-            'created_by' => auth()->id(),
-        ]);
+        DB::transaction(function () use ($validated, $cycleTime, $ngRows) {
+            $produksi = TransaksiProduksi::create([
+                ...$validated,
+                'actual_cycle_time' => $cycleTime,
+                'created_by' => auth()->id(),
+            ]);
+
+            $this->ngDetailService->syncProduksi($produksi, $ngRows);
+        });
 
         return redirect()->route('input.produksi.index')
             ->with('success', 'LHP Produksi berhasil disimpan.');
@@ -160,7 +169,11 @@ class ProduksiController extends Controller
 
     public function edit(TransaksiProduksi $produksi)
     {
-        $produksi->load(['karyawan', 'mesin', 'partProses.part.proses', 'jenisNg']);
+        $relations = ['karyawan', 'mesin', 'partProses.part.proses'];
+        if (NgDetailService::available()) {
+            $relations[] = 'ngDetails.jenisNg';
+        }
+        $produksi->load($relations);
         $shifts = MasterShift::orderBy('jam_start')->get();
         $karyawan = MasterKaryawan::where('departemen', 'Produksi')->aktif()->orderBy('nama_karyawan')->get();
         $mesin = MasterMesin::orderBy('line')->orderBy('id_mesin')->get();
@@ -173,21 +186,28 @@ class ProduksiController extends Controller
     public function update(UpdateProduksiRequest $request, TransaksiProduksi $produksi)
     {
         $validated = $request->validated();
+        $ngRows = $validated['ng'] ?? [];
+        unset($validated['ng'], $validated['ada_ng'], $validated['ng_count']);
+
         $cycleTime = $this->produksiService->calculateActualCycleTime(
             $validated['jam_start'].':00',
             $validated['jam_finish'].':00',
             $validated['qty_aktual']
         );
-        try {
-            $produksi->update([
-                ...$validated,
-                'actual_cycle_time' => $cycleTime,
-                'anomaly_reviewed_at' => null,
-                'anomaly_reviewed_by' => null,
-            ]);
-        } catch (\Throwable) {
-            $produksi->update([...$validated, 'actual_cycle_time' => $cycleTime]);
-        }
+        DB::transaction(function () use ($validated, $cycleTime, $ngRows, $produksi) {
+            try {
+                $produksi->update([
+                    ...$validated,
+                    'actual_cycle_time' => $cycleTime,
+                    'anomaly_reviewed_at' => null,
+                    'anomaly_reviewed_by' => null,
+                ]);
+            } catch (\Throwable) {
+                $produksi->update([...$validated, 'actual_cycle_time' => $cycleTime]);
+            }
+
+            $this->ngDetailService->syncProduksi($produksi, $ngRows);
+        });
 
         $this->resolveStaffNoteIfRequested(
             $request, $produksi, 'produksi',
