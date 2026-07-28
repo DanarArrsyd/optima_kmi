@@ -31,6 +31,11 @@
         </div>
     </div>
 
+    {{-- ── Galat muat data ──────────────────────── --}}
+    <div class="text-danger mb-3" x-show="loadError" x-cloak>
+        Gagal memuat data NG dari server. Ringkasan dan grafik di bawah mungkin tidak lengkap atau tidak tampil — coba klik "Tampilkan" lagi.
+    </div>
+
     {{-- ── Ringkasan ────────────────────────────── --}}
     <div class="row g-2 mb-3" x-show="hasData" x-cloak>
         <div class="col-6 col-md-4">
@@ -57,7 +62,7 @@
     <div class="erp-panel mb-3">
         <div class="erp-panel-head">NG Rate per Bulan</div>
         <div class="erp-panel-body">
-            <div x-show="!hasData && !loading" x-cloak class="text-muted text-center py-4">
+            <div x-show="!hasData && !loading && !loadError" x-cloak class="text-muted text-center py-4">
                 {{ $catatanKosong }}
             </div>
             <div x-show="hasData" x-cloak style="height:320px">
@@ -73,10 +78,13 @@
     <div class="erp-panel" x-show="bulanTerpilih" x-cloak>
         <div class="erp-panel-head" x-text="'Rincian NG — ' + labelBulanTerpilih"></div>
         <div class="erp-panel-body">
-            <div x-show="detail.length === 0" x-cloak class="text-muted text-center py-3">
+            <div x-show="detailError" x-cloak class="text-danger text-center py-3">
+                Gagal memuat rincian bulan ini — coba klik batang bulan itu lagi.
+            </div>
+            <div x-show="!detailError && detail.length === 0" x-cloak class="text-muted text-center py-3">
                 Bulan ini tidak punya NG tercatat.
             </div>
-            <div class="table-responsive" x-show="detail.length > 0" x-cloak>
+            <div class="table-responsive" x-show="!detailError && detail.length > 0" x-cloak>
                 <table class="table table-sm align-middle mb-0">
                     <thead>
                         <tr>
@@ -111,11 +119,13 @@ function vcbNg() {
         dateTo: '{{ $defaultTo }}',
         loading: false,
         hasData: false,
+        loadError: false,
         summary: { total_ng: 0, total_check: 0, ng_rate: 0 },
         byMonth: [],
         bulanTerpilih: null,
         labelBulanTerpilih: '',
         detail: [],
+        detailError: false,
         chart: null,
 
         fmtInt(v) {
@@ -124,8 +134,10 @@ function vcbNg() {
 
         async load() {
             this.loading = true;
+            this.loadError = false;
             this.bulanTerpilih = null;
             this.detail = [];
+            this.detailError = false;
 
             try {
                 const p = new URLSearchParams({ date_from: this.dateFrom, date_to: this.dateTo });
@@ -133,7 +145,7 @@ function vcbNg() {
                     headers: { 'Accept': 'application/json' },
                 });
 
-                if (!res.ok) { this.hasData = false; return; }
+                if (!res.ok) { this.hasData = false; this.loadError = true; return; }
 
                 const json = await res.json();
                 this.summary = json.summary;
@@ -146,6 +158,9 @@ function vcbNg() {
                     this.chart.destroy();
                     this.chart = null;
                 }
+            } catch (e) {
+                this.hasData = false;
+                this.loadError = true;
             } finally {
                 this.loading = false;
             }
@@ -186,6 +201,7 @@ function vcbNg() {
                     },
                     plugins: {
                         legend: { display: false },
+                        datalabels: { display: false },
                         tooltip: {
                             callbacks: {
                                 label(c) {
@@ -203,13 +219,20 @@ function vcbNg() {
             this.bulanTerpilih = m.bulan_raw;
             this.labelBulanTerpilih = m.bulan;
             this.detail = [];
+            this.detailError = false;
 
-            const p = new URLSearchParams({ bulan: m.bulan_raw });
-            const res = await fetch(`{{ $routeDetail }}?${p}`, {
-                headers: { 'Accept': 'application/json' },
-            });
+            try {
+                const p = new URLSearchParams({ bulan: m.bulan_raw });
+                const res = await fetch(`{{ $routeDetail }}?${p}`, {
+                    headers: { 'Accept': 'application/json' },
+                });
 
-            if (res.ok) this.detail = await res.json();
+                if (!res.ok) { this.detailError = true; return; }
+
+                this.detail = await res.json();
+            } catch (e) {
+                this.detailError = true;
+            }
         },
     };
 }
