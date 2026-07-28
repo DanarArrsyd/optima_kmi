@@ -198,6 +198,20 @@
 @push('scripts')
 <script>
 function vcbNg() {
+    /*
+     * Instance Chart.js SENGAJA disimpan di variabel closure, bukan sebagai
+     * properti objek yang dikembalikan.
+     *
+     * Alpine membungkus state komponen jadi Proxy reaktif secara mendalam.
+     * Instance Chart.js yang ikut ter-proxy akan meledak saat chart.update()
+     * menelusuri struktur internalnya — tiap akses memicu pelacakan Alpine
+     * sampai "Maximum call stack size exceeded", dan plugin datalabels tumbang
+     * bersamanya. Itu yang membuat klik batang gagal diam-diam di prod
+     * 2026-07-28: exception terjadi sebelum fetch, jadi panel rincian tampil
+     * "tidak punya NG tercatat" padahal datanya ada.
+     */
+    let chart = null;
+
     return {
         dateFrom: '{{ $defaultFrom }}',
         dateTo: '{{ $defaultTo }}',
@@ -210,7 +224,6 @@ function vcbNg() {
         labelBulanTerpilih: '',
         detail: [],
         detailError: false,
-        chart: null,
 
         fmtInt(v) {
             return Number(v || 0).toLocaleString('id-ID');
@@ -255,9 +268,9 @@ function vcbNg() {
 
                 if (this.hasData) {
                     this.$nextTick(() => this.render());
-                } else if (this.chart) {
-                    this.chart.destroy();
-                    this.chart = null;
+                } else if (chart) {
+                    chart.destroy();
+                    chart = null;
                 }
             } catch (e) {
                 this.hasData = false;
@@ -271,11 +284,11 @@ function vcbNg() {
             const ctx = document.getElementById('ngRateChart');
             if (!ctx) return;
 
-            if (this.chart) this.chart.destroy();
+            if (chart) chart.destroy();
 
             const self = this;
 
-            this.chart = new Chart(ctx, {
+            chart = new Chart(ctx, {
                 type: 'bar',
                 data: {
                     labels: this.byMonth.map(m => m.bulan),
@@ -355,8 +368,18 @@ function vcbNg() {
             this.detail = [];
             this.detailError = false;
 
-            /* Warnai ulang batang yang terpilih. */
-            if (this.chart) this.chart.update('none');
+            /*
+             * Pewarnaan ulang batang ditunda ke frame berikutnya dan dibungkus
+             * try/catch: memanggil update() di tengah penanganan klik Chart.js
+             * pernah menjatuhkan plugin datalabels. Apa pun yang terjadi di
+             * sini tidak boleh menggagalkan pengambilan rincian di bawah —
+             * itulah kegagalan yang membuat panel tampak kosong.
+             */
+            if (chart) {
+                requestAnimationFrame(() => {
+                    try { chart.update('none'); } catch (e) { /* warna saja, bukan data */ }
+                });
+            }
 
             try {
                 const p = new URLSearchParams({ bulan: m.bulan_raw });
