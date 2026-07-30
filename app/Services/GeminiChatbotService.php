@@ -27,6 +27,11 @@ class GeminiChatbotService implements ChatbotProviderInterface
         return $this->registry ??= app(CapabilityRegistry::class);
     }
 
+    public function isConfigured(): bool
+    {
+        return ! empty(config('services.gemini.key')) && ! empty(config('services.gemini.model'));
+    }
+
     public function ask(array $history, string $userMessage): ?string
     {
         $contents = $this->buildHistory($history);

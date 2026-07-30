@@ -40,7 +40,136 @@ class ChatbotTools
         private SqlGuard $sqlGuard = new SqlGuard,
         private ToolSchemaCatalog $schemaCatalog = new ToolSchemaCatalog,
         private OeeService $oee = new OeeService,
+        private NgListService $ngList = new NgListService,
+        private NgDashboardService $ngDashboard = new NgDashboardService,
     ) {}
+
+    /**
+     * Rentang tanggal untuk tool NG: `periode` YYYY-MM kalau diisi, kalau kosong
+     * seluruh data. Balikin ['error' => ...] bila formatnya tidak terbaca.
+     *
+     * @return array{0: string, 1: string}|array{error: string}
+     */
+    private function ngRange(?string $periode): array
+    {
+        if ($periode === null || trim($periode) === '') {
+            return [self::ALL_TIME_FROM, Carbon::now()->toDateString()];
+        }
+
+        [$from, $to] = $this->monthRange($periode);
+        if (! $from) {
+            return ['error' => "Format periode \"{$periode}\" tidak valid, gunakan format YYYY-MM."];
+        }
+
+        return [$from->toDateString(), $to->toDateString()];
+    }
+
+    /** @return array{error: string}|null */
+    private function ngSumberError(string $sumber): ?array
+    {
+        if (in_array($sumber, ['produksi', 'qc'], true)) {
+            return null;
+        }
+
+        return ['error' => "Sumber NG \"{$sumber}\" tidak dikenal. Yang sah: 'produksi' (NG proses) atau 'qc' (NG total)."];
+    }
+
+    /**
+     * Pareto jenis NG: jenis mana yang paling banyak, berikut porsi & kumulatifnya.
+     *
+     * Barisnya diambil lewat {@see NgListService::rows()} — sumber yang SAMA dengan
+     * halaman Daftar NG, jadi chatbot dan layar mustahil menjawab beda. Service itu
+     * sudah menangani pemisahan sumber, soft-delete induk, dan tabel detail yang
+     * belum ada di jendela deploy.
+     */
+    public function getParetoNg(string $sumber = 'produksi', ?string $periode = null): array
+    {
+        if ($err = $this->ngSumberError($sumber)) {
+            return $err;
+        }
+
+        $range = $this->ngRange($periode);
+        if (isset($range['error'])) {
+            return $range;
+        }
+
+        $rows = $this->ngList->rows($sumber, ['date_from' => $range[0], 'date_to' => $range[1]]);
+
+        $byJenis = [];
+        $total = 0;
+        foreach ($rows as $r) {
+            $key = $r->kode_ng.'|'.$r->nama_ng;
+            $byJenis[$key] ??= ['kode' => $r->kode_ng, 'nama_ng' => $r->nama_ng, 'qty' => 0];
+            $byJenis[$key]['qty'] += (int) $r->qty;
+            $total += (int) $r->qty;
+        }
+
+        $pareto = array_values($byJenis);
+        usort($pareto, fn ($a, $b) => $b['qty'] <=> $a['qty']);
+
+        $kumulatif = 0;
+        foreach ($pareto as $i => $baris) {
+            $kumulatif += $baris['qty'];
+            $pareto[$i]['porsi_pct'] = $total > 0 ? round($baris['qty'] / $total * 100, 1) : 0.0;
+            $pareto[$i]['kumulatif_pct'] = $total > 0 ? round($kumulatif / $total * 100, 1) : 0.0;
+        }
+
+        return [
+            'sumber' => $this->ngLabelSumber($sumber),
+            'periode' => $periode ?: 'semua data',
+            'total_ng' => $total,
+            'jumlah_jenis' => count($pareto),
+            'pareto' => $pareto,
+            'catatan' => $pareto === []
+                ? 'Tidak ada NG tercatat pada sumber & periode ini. Bukan berarti nol cacat — bisa juga NG-nya belum dicatat di LHP.'
+                : 'Urut dari jenis NG terbanyak. kumulatif_pct dipakai untuk aturan Pareto 80/20.',
+        ];
+    }
+
+    /**
+     * NG rate dalam PPM dan persen sekaligus.
+     *
+     * Penyebutnya TOTAL DIPRODUKSI (barang baik + NG), bukan qty_aktual sendirian:
+     * qty_aktual berisi barang BAIK saja (dikonfirmasi ke produksi 2026-07-28).
+     * Rumus ini sengaja sama persis dengan {@see NgDashboardService}.
+     *
+     * PPM ikut dilaporkan karena rate pabrik stamping ada di orde 0,00x% dan
+     * terbaca sebagai nol kalau cuma disajikan dalam persen.
+     */
+    public function getNgRate(string $sumber = 'produksi', ?string $periode = null): array
+    {
+        if ($err = $this->ngSumberError($sumber)) {
+            return $err;
+        }
+
+        $range = $this->ngRange($periode);
+        if (isset($range['error'])) {
+            return $range;
+        }
+
+        $data = $this->ngDashboard->getVcbNg($sumber, $range[0], $range[1]);
+        $ng = (int) $data['summary']['total_ng'];
+        $check = (int) $data['summary']['total_check'];
+
+        return [
+            'sumber' => $this->ngLabelSumber($sumber),
+            'periode' => $periode ?: 'semua data',
+            'total_ng' => $ng,
+            'total_baik' => $check - $ng,
+            'total_diproduksi' => $check,
+            'ng_rate_ppm' => $check > 0 ? round($ng / $check * 1_000_000, 1) : 0.0,
+            'ng_rate_pct' => $check > 0 ? round($ng / $check * 100, 4) : 0.0,
+            'per_bulan' => $data['by_month'],
+            'catatan' => $check === 0
+                ? 'Tidak ada transaksi pada sumber & periode ini, jadi rate tidak bisa dihitung.'
+                : 'Penyebut = barang baik + NG (total diproduksi). PPM dipakai karena rate pabrik stamping ada di orde 0,00x%.',
+        ];
+    }
+
+    private function ngLabelSumber(string $sumber): string
+    {
+        return $sumber === 'produksi' ? 'NG Proses (produksi)' : 'NG Total (quality)';
+    }
 
     /** MTBF/MTTR untuk sebuah part/dies (per proses), dalam 1 bulan. */
     public function getMtbfMttrDies(string $partNo, string $bulan): array
@@ -114,38 +243,70 @@ class ChatbotTools
         );
     }
 
-    /** Rekap qty NG untuk sebuah nama proses, dalam 1 bulan. */
-    public function getRekapNg(string $namaProses, ?string $periode = null): array
+    /**
+     * Rekap qty & rate NG, opsional disaring per nama proses dan per bulan.
+     *
+     * `$namaProses` SENGAJA opsional. Dulu wajib, dan itu memaksa LLM mengarang
+     * isinya: pertanyaan "Pareto NG proses" masuk sebagai namaProses="PARETO"
+     * lalu dijawab "tidak ada data QC untuk proses PARETO" — bukan salah data,
+     * salah kontrak tool.
+     *
+     * `$sumber` juga baru. Dulu tool ini hanya membaca `transaksi_qc`, padahal
+     * NG produksi ada di `transaksi_produksi`. Di prod QC nol NG sejak sistem
+     * berjalan, jadi tool ini praktis selalu menjawab "tidak ada data".
+     */
+    public function getRekapNg(?string $namaProses = null, ?string $periode = null, string $sumber = 'produksi'): array
     {
-        $from = $to = null;
-        if ($periode !== null) {
-            [$from, $to] = $this->monthRange($periode);
-            if (! $from) {
-                return ['error' => "Format periode \"{$periode}\" tidak valid, gunakan format YYYY-MM."];
-            }
+        if ($err = $this->ngSumberError($sumber)) {
+            return $err;
         }
 
-        $q = TransaksiQc::whereHas('partProses', fn ($p) => $p->whereRaw('LOWER(TRIM(nama_proses)) = ?', [strtolower(trim($namaProses))])
-        )
-            ->when($from && $to, fn ($x) => $x->whereBetween('tgl_pengecekan', [$from->toDateString(), $to->toDateString()]));
+        $range = $this->ngRange($periode);
+        if (isset($range['error'])) {
+            return $range;
+        }
 
-        $totalOk = (int) $q->clone()->sum('qty_ok');
+        $proses = $namaProses !== null && trim($namaProses) !== '' ? trim($namaProses) : null;
+
+        [$model, $kolomTanggal, $kolomBaik] = $sumber === 'produksi'
+            ? [TransaksiProduksi::class, 'tanggal_produksi', 'qty_aktual']
+            : [TransaksiQc::class, 'tgl_pengecekan', 'qty_ok'];
+
+        $q = $model::query()
+            ->whereBetween($kolomTanggal, [$range[0], $range[1]])
+            ->when($proses, fn ($x) => $x->whereHas(
+                'partProses',
+                fn ($p) => $p->whereRaw('LOWER(TRIM(nama_proses)) = ?', [strtolower($proses)])
+            ));
+
+        $totalBaik = (int) $q->clone()->sum($kolomBaik);
+        // COALESCE lewat sum() Eloquent: qty_ng nullable di transaksi_produksi.
         $totalNg = (int) $q->clone()->sum('qty_ng');
-        $total = $totalOk + $totalNg;
+        $total = $totalBaik + $totalNg;
 
         if ($total === 0) {
-            $periodeLabel = $periode ? " di periode {$periode}" : '';
+            $bagian = [];
+            if ($proses) {
+                $bagian[] = "proses \"{$proses}\"";
+            }
+            if ($periode) {
+                $bagian[] = "periode {$periode}";
+            }
+            $ekor = $bagian ? ' untuk '.implode(' di ', $bagian) : '';
 
-            return ['error' => "Tidak ada data QC untuk proses \"{$namaProses}\"{$periodeLabel}."];
+            return ['error' => 'Tidak ada data '.$this->ngLabelSumber($sumber).$ekor.'.'];
         }
 
         return [
-            'nama_proses' => $namaProses,
-            'periode' => $periode ?? 'semua data',
-            'total_ok' => $totalOk,
+            'sumber' => $this->ngLabelSumber($sumber),
+            'nama_proses' => $proses ?? 'semua proses',
+            'periode' => $periode ?: 'semua data',
+            'total_baik' => $totalBaik,
             'total_ng' => $totalNg,
-            'total_inspeksi' => $total,
-            'ng_rate_pct' => round($totalNg / $total * 100, 2),
+            'total_diproduksi' => $total,
+            'ng_rate_ppm' => round($totalNg / $total * 1_000_000, 1),
+            'ng_rate_pct' => round($totalNg / $total * 100, 4),
+            'catatan' => 'Penyebut = barang baik + NG. Untuk rincian per JENIS NG, pakai getParetoNg.',
         ];
     }
 

@@ -21,6 +21,8 @@ class AppServiceProvider extends ServiceProvider
         Capabilities\MtbfMttrMesinCapability::class,
         Capabilities\OeeMesinCapability::class,
         Capabilities\RekapNgCapability::class,
+        Capabilities\ParetoNgCapability::class,
+        Capabilities\NgRateCapability::class,
         Capabilities\CustomerQualityCapability::class,
         Capabilities\TrendCapability::class,
         Capabilities\RootCauseCapability::class,

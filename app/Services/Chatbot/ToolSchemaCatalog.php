@@ -79,14 +79,22 @@ class ToolSchemaCatalog
         return [
             [
                 'name' => 'getRekapNg',
-                'description' => 'Total & rate NG per nama proses. periode opsional.',
+                'description' => 'Total & rate NG (PPM + persen), opsional disaring per nama proses. '
+                    .'sumber "produksi" (NG Proses) atau "qc" (NG Total). periode opsional YYYY-MM. '
+                    .'Untuk rincian per JENIS NG pakai getParetoNg.',
                 'parameters' => [
                     'type' => 'object',
                     'properties' => [
-                        'namaProses' => ['type' => 'string', 'description' => 'Nama proses, mis. BENDING'],
+                        'namaProses' => ['type' => 'string', 'description' => 'Opsional. Nama proses, mis. BENDING. Kosong = semua proses.'],
                         'periode' => ['type' => 'string', 'description' => 'Opsional YYYY-MM, kosong=semua'],
+                        'sumber' => [
+                            'type' => 'string',
+                            'enum' => ['produksi', 'qc'],
+                            'description' => 'produksi = NG Proses (LHP produksi), qc = NG Total (LHP quality). Default produksi.',
+                        ],
                     ],
-                    'required' => ['namaProses'],
+                    // Lihat RekapNgCapability: namaProses dulu wajib dan memaksa LLM mengarang.
+                    'required' => [],
                 ],
             ],
             [
