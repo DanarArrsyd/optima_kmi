@@ -41,12 +41,12 @@ class MaintenanceDiesDashboardServiceCurrentCycleTest extends TestCase
         ]);
     }
 
-    private function produksi(array $f, MasterPartProses $proses, string $tanggal, int $qty): TransaksiProduksi
+    private function produksi(array $f, MasterPartProses $proses, string $tanggal, int $qty, ?int $ng = null): TransaksiProduksi
     {
         return TransaksiProduksi::create([
             'tanggal_produksi' => $tanggal, 'id_shift' => $f['shift']->id, 'id_karyawan' => $f['karyawan']->id,
             'id_mesin' => $f['mesin']->id, 'id_part_proses' => $proses->id,
-            'jam_start' => '08:00', 'jam_finish' => '09:00', 'qty_aktual' => $qty,
+            'jam_start' => '08:00', 'jam_finish' => '09:00', 'qty_aktual' => $qty, 'qty_ng' => $ng,
             'created_by' => $f['user']->id,
         ]);
     }
@@ -107,6 +107,39 @@ class MaintenanceDiesDashboardServiceCurrentCycleTest extends TestCase
 
         $svc = new MaintenanceDiesDashboardService;
         $this->assertSame(700, $svc->currentStrokeFor($pr->fresh()));
+    }
+
+    /**
+     * Stroke adalah aksi FISIK dies: dies tetap menekan untuk barang yang jadi NG.
+     * `qty_aktual` berisi barang baik saja (dikonfirmasi ke produksi 2026-07-28,
+     * lihat OeeService), jadi stroke = qty_aktual + qty_ng. Menghitung barang baik
+     * saja membuat siklus stroke understated dan preventive terpicu TERLAMBAT.
+     */
+    public function test_current_stroke_counts_ng_because_dies_still_pressed_for_it(): void
+    {
+        $f = $this->fixtures();
+        $pr = $this->partProses('2026-01-01');
+        $this->produksi($f, $pr, '2026-02-01', 100, 20);
+        $this->produksi($f, $pr, '2026-03-01', 50, 5);
+
+        $svc = new MaintenanceDiesDashboardService;
+        $this->assertSame(175, $svc->currentStrokeFor($pr->fresh()));
+    }
+
+    /**
+     * `qty_ng` nullable default null di `transaksi_produksi` — `qty_aktual + qty_ng`
+     * tanpa COALESCE menghasilkan NULL di SQL, yang membuat stroke jatuh ke 0 dan
+     * dies tampak tak pernah dipakai.
+     */
+    public function test_current_stroke_treats_null_qty_ng_as_zero(): void
+    {
+        $f = $this->fixtures();
+        $pr = $this->partProses('2026-01-01');
+        $this->produksi($f, $pr, '2026-02-01', 100, null);
+        $this->produksi($f, $pr, '2026-03-01', 50, 5);
+
+        $svc = new MaintenanceDiesDashboardService;
+        $this->assertSame(155, $svc->currentStrokeFor($pr->fresh()));
     }
 
     public function test_compute_current_cycle_status_bands(): void
