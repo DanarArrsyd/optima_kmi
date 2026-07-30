@@ -58,14 +58,15 @@ class OeeServiceTest extends TestCase
     public function test_performance_and_quality_are_exact(): void
     {
         ['mesin' => $mesin, 'proses' => $proses] = $this->scaffold(sph: 400);
-        // 8 jam kerja × sph_std 400 = teoretis 3200; aktual 3200 → performance 100%.
+        // 8 jam kerja × sph_std 400 = teoretis 3200. Diproduksi 3200 baik + 200 NG
+        // = 3400 → performance 3400/3200 = 106,25% (di atas 100% = SPH standar terlalu rendah).
         // 3200 baik + 200 NG = 3400 diproduksi → quality 3200/3400 = 94,12%.
         $this->lhp($mesin->id, $proses->id, qty: 3200, ng: 200);
 
         [$from, $to] = $this->july();
         $r = (new OeeService)->computeMesin($mesin->id, $from, $to);
 
-        $this->assertSame(100.0, $r['performance_pct']);
+        $this->assertSame(106.25, $r['performance_pct']);
         $this->assertSame(94.12, $r['quality_pct']);
         $this->assertSame(3200, $r['total_qty']);
         $this->assertSame(200, $r['total_ng']);
@@ -107,6 +108,47 @@ class OeeServiceTest extends TestCase
 
         $this->assertGreaterThan(0, $r['quality_pct'], 'Quality tidak boleh negatif.');
         $this->assertSame(33.33, $r['quality_pct']);
+    }
+
+    /**
+     * Performance mengukur KECEPATAN MESIN. Mesin tetap menekan untuk barang
+     * NG, jadi pembilangnya total yang diproduksi (baik + NG) — bukan barang
+     * baik saja. Kalau pembilangnya barang baik, NG dihukum di Performance DAN
+     * di Quality, padahal pemisahan tiga komponen OEE ada justru untuk mencegah
+     * itu.
+     *
+     * teoretis 3200; diproduksi 3200 baik + 200 NG = 3400 → 106,25%.
+     * Di atas 100% itu sah: artinya SPH standar diset terlalu rendah.
+     */
+    public function test_performance_menghitung_total_diproduksi_bukan_hanya_barang_baik(): void
+    {
+        ['mesin' => $mesin, 'proses' => $proses] = $this->scaffold(sph: 400);
+        $this->lhp($mesin->id, $proses->id, qty: 3200, ng: 200);
+
+        [$from, $to] = $this->july();
+        $r = (new OeeService)->computeMesin($mesin->id, $from, $to);
+
+        $this->assertSame(106.25, $r['performance_pct']);
+    }
+
+    /**
+     * Sifat elok OEE standar: Availability × Performance × Quality menyusut
+     * menjadi (barang baik ÷ output teoretis). Sifat itu hanya berlaku kalau
+     * Performance memakai total diproduksi dan Quality memakai rasio baik dari
+     * total — dengan rumus lama, keduanya tidak saling menghapus dan hasilnya
+     * lebih kecil dari yang seharusnya.
+     */
+    public function test_performance_kali_quality_menyusut_jadi_baik_per_teoretis(): void
+    {
+        ['mesin' => $mesin, 'proses' => $proses] = $this->scaffold(sph: 400);
+        $this->lhp($mesin->id, $proses->id, qty: 3000, ng: 200);
+
+        [$from, $to] = $this->july();
+        $r = (new OeeService)->computeMesin($mesin->id, $from, $to);
+
+        // 3000 baik ÷ 3200 teoretis = 93,75%
+        $gabungan = round($r['performance_pct'] / 100 * $r['quality_pct'] / 100 * 100, 2);
+        $this->assertSame(93.75, $gabungan);
     }
 
     public function test_oee_is_product_of_three_components(): void
@@ -210,13 +252,13 @@ class OeeServiceTest extends TestCase
     public function test_methodology_shows_actual_numbers(): void
     {
         ['mesin' => $mesin, 'proses' => $proses] = $this->scaffold(sph: 400);
-        $this->lhp($mesin->id, $proses->id, qty: 3200, ng: 200); // teoretis 3200, perf 100, qual 94.12
+        $this->lhp($mesin->id, $proses->id, qty: 3200, ng: 200); // teoretis 3200, perf 106.25, qual 94.12
 
         [$from, $to] = $this->july();
         $r = (new OeeService)->computeMesin($mesin->id, $from, $to);
 
         $this->assertSame(3200, $r['output_teoretis']);
-        $this->assertStringContainsString('3200 ÷ 3200', $r['metodologi']['performance']);
+        $this->assertStringContainsString('3400 ÷ 3200', $r['metodologi']['performance']);
         $this->assertStringContainsString('3200 ÷ 3400', $r['metodologi']['quality']);
     }
 }
