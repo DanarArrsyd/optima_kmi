@@ -13,20 +13,23 @@
     catatan kecil di bawah kolom ketik, dekat tempat orang mengetiknya.
 --}}
 <div x-data="chatbotPage()" x-init="init()" class="cb-wrap">
-    <section class="cb-main">
-        {{-- Saat kosong, isi dipusatkan vertikal supaya terbaca sebagai keadaan
-             yang disengaja, bukan konten yang habis di tengah jalan. --}}
-        <div class="cb-scroll" :class="{ 'cb-scroll-empty': messages.length === 0 }" x-ref="scrollArea">
+    {{--
+        Saat kosong: sapaan + kolom ketik + saran jadi SATU kluster di tengah.
+        Setelah pesan pertama: percakapan mengisi layar, kolom ketik turun ke bawah.
+
+        Kolom ketiknya TIDAK dipindah di DOM antar dua keadaan — hanya flexbox
+        yang berubah lewat kelas .cb-is-empty. Memindahkannya berarti Alpine
+        membuat ulang elemennya, dan fokus keyboard user ikut lepas di tengah
+        ketikan.
+    --}}
+    <section class="cb-main" :class="{ 'cb-is-empty': messages.length === 0 }">
+        <div class="cb-scroll" x-ref="scrollArea">
             <div class="cb-thread">
 
-                {{-- Keadaan kosong: menyebut apa yang bisa ditanya, bukan sekadar hening. --}}
                 <div class="cb-empty" x-show="messages.length === 0" x-cloak>
-                    <div class="cb-empty-title">Tanya data OPTIMA</div>
-                    <div class="cb-empty-body">
-                        Jawaban diambil langsung dari database produksi &mdash; LHP, NG, breakdown,
-                        dandori, dan OEE. Sebutkan periode kalau ingin dipersempit, misalnya
-                        &ldquo;bulan Juli&rdquo;. Pakai saran di bawah kalau belum tahu mulai dari mana.
-                    </div>
+                    {{-- Sapaan dipilih di browser dari jam LOKAL user. Menghitungnya
+                         di server salah: app UTC, pabrik WIB. --}}
+                    <h1 class="cb-greet" x-text="greeting"></h1>
                 </div>
 
                 <template x-for="(m, i) in messages" :key="i">

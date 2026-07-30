@@ -49,12 +49,65 @@ class ChatbotCanvasTest extends TestCase
     }
 
     /** Keadaan kosong adalah perabot halaman, menggantikan pesan sapaan palsu. */
-    public function test_keadaan_kosong_ada_dan_menyebut_yang_bisa_ditanya(): void
+    public function test_keadaan_kosong_menampilkan_sapaan_besar(): void
     {
         $html = $this->halaman();
 
         $this->assertStringContainsString('cb-empty', $html);
-        $this->assertStringContainsString('Tanya data OPTIMA', $html);
+        $this->assertStringContainsString('cb-greet', $html);
+        $this->assertStringContainsString('x-text="greeting"', $html);
+    }
+
+    /**
+     * Kelas .cb-is-empty yang memindahkan kluster ke tengah HARUS berada di
+     * pembungkus, bukan memindahkan kolom ketik ke elemen lain: memindahkannya
+     * membuat Alpine merakit ulang input dan fokus keyboard user lepas di tengah
+     * ketikan. Terverifikasi di browser — fokus & isi draft bertahan.
+     */
+    public function test_kolom_ketik_hanya_satu_di_dom(): void
+    {
+        $html = $this->halaman();
+
+        $this->assertSame(1, substr_count($html, 'class="cb-input"'),
+            'Kolom ketik harus tunggal; dua salinan berarti elemennya dipindah antar keadaan.');
+        $this->assertStringContainsString('cb-is-empty', $html);
+    }
+
+    /**
+     * ⚠️ Jam sapaan WAJIB dari browser. Aplikasi jalan UTC, pabrik WIB (UTC+7):
+     * menghitungnya di PHP membuat pukul 09.00 WIB terbaca 02.00, dan operator
+     * disapa "masih tengah malam" saat shift 1 sedang panas.
+     */
+    public function test_sapaan_dihitung_dari_jam_browser_bukan_server(): void
+    {
+        $js = file_get_contents(public_path('js/chatbot.js'));
+        $blade = file_get_contents(resource_path('views/chatbot/index.blade.php'));
+
+        $this->assertStringContainsString('new Date().getHours()', $js,
+            'Sapaan harus memakai jam lokal browser.');
+        $this->assertStringNotContainsString('now()', $blade,
+            'Jam sapaan tidak boleh datang dari server: app UTC, pabrik WIB.');
+        $this->assertStringNotContainsString('date(', $blade,
+            'Jam sapaan tidak boleh datang dari server: app UTC, pabrik WIB.');
+    }
+
+    /** Tiap jam 0-23 harus punya sapaan; pita yang bolong bikin judul kosong. */
+    public function test_setiap_jam_punya_pita_sapaan(): void
+    {
+        $js = file_get_contents(public_path('js/chatbot.js'));
+
+        preg_match_all('/sampai:\s*(\d+)/', $js, $m);
+        $batas = array_map('intval', $m[1]);
+
+        $this->assertNotEmpty($batas, 'Pita waktu sapaan tidak ditemukan.');
+        $this->assertSame(24, max($batas), 'Pita terakhir harus menutup sampai jam 24.');
+
+        // Setiap jam 0-23 harus jatuh ke salah satu pita (batas menaik & rapat).
+        $sebelumnya = 0;
+        foreach ($batas as $b) {
+            $this->assertGreaterThan($sebelumnya, $b, 'Batas pita harus menaik tanpa lubang.');
+            $sebelumnya = $b;
+        }
     }
 
     public function test_kolom_ketik_dan_saran_tetap_ada(): void

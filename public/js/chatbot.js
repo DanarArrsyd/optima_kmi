@@ -3,6 +3,7 @@ function chatbotPage() {
         loading: false,
         input: '',
         messages: [],
+        greeting: '',
         lastUserMessage: '',
         questionPool: [
             'Problem dies apa yang paling sering muncul?',
@@ -33,7 +34,74 @@ function chatbotPage() {
            dikembalikan juga — kalau tidak, giliran pertama ikut terkirim dua kali. */
         init() {
             this.messages = [];
+            this.greeting = this.pickGreeting();
             this.shuffleSuggestions();
+        },
+
+        /*
+         * Sapaan pembuka, dipilih acak dari pita waktu yang cocok.
+         *
+         * Jamnya WAJIB dari `new Date()` di BROWSER, bukan dari server: aplikasi
+         * jalan di UTC sementara pabrik di WIB (UTC+7). Menghitungnya di PHP
+         * membuat pukul 09.00 WIB terbaca 02.00 dan operator disapa "masih
+         * tengah malam" saat shift 1 sedang panas.
+         *
+         * Pita jam mengikuti shift asli pabrik (06-14, 14-22, 22-06), jadi
+         * kalimatnya nyambung dengan ritme kerja yang sebenarnya.
+         */
+        pickGreeting() {
+            const jam = new Date().getHours();
+
+            const pita = [
+                { sampai: 4,  baris: [
+                    'Waktunya sesi tengah malam.',
+                    'Shift 3 masih jalan.',
+                    'Mesin belum tidur, kita juga belum.',
+                    'Sepi di luar, angka tetap bergerak.',
+                    'Dini hari. Ada yang mengganjal?',
+                ] },
+                { sampai: 7,  baris: [
+                    'Sebentar lagi ganti shift.',
+                    'Subuh, sebelum lini menyala.',
+                    'Pagi buta. Mulai dari mana?',
+                    'Shift 3 hampir tutup buku.',
+                ] },
+                { sampai: 11, baris: [
+                    'Shift 1 sudah panas.',
+                    'Pagi. Mau lihat yang mana?',
+                    'Kopi dulu, baru angka.',
+                    'Lini sudah jalan sejak tadi.',
+                    'Pagi. Ada yang perlu dicek?',
+                ] },
+                { sampai: 14, baris: [
+                    'Jam makan siang, angkanya tetap jalan.',
+                    'Rehat dulu, atau lanjut?',
+                    'Tengah hari. Sampai mana?',
+                    'Shift 1 menuju garis akhir.',
+                ] },
+                { sampai: 17, baris: [
+                    'Shift 2 baru masuk.',
+                    'Sore. Cek yang tertinggal?',
+                    'Pergantian shift sudah lewat.',
+                    'Sore. Mau rekap dulu?',
+                ] },
+                { sampai: 21, baris: [
+                    'Lini mulai melambat.',
+                    'Tutup hari, lihat rekapnya?',
+                    'Petang. Ada yang belum beres?',
+                    'Shift 2 hampir selesai.',
+                ] },
+                { sampai: 24, baris: [
+                    'Shift 3 ambil alih.',
+                    'Malam. Masih ada yang mengganjal?',
+                    'Lembur, ya?',
+                    'Malam. Mau lihat angka hari ini?',
+                ] },
+            ];
+
+            const baris = (pita.find(p => jam < p.sampai) ?? pita[pita.length - 1]).baris;
+
+            return baris[Math.floor(Math.random() * baris.length)];
         },
 
         shuffleSuggestions() {
