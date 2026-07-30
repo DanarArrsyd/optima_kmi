@@ -59,17 +59,54 @@ class OeeServiceTest extends TestCase
     {
         ['mesin' => $mesin, 'proses' => $proses] = $this->scaffold(sph: 400);
         // 8 jam kerja × sph_std 400 = teoretis 3200; aktual 3200 → performance 100%.
-        // NG 200 dari 3200 → quality (3200-200)/3200 = 93.75%.
+        // 3200 baik + 200 NG = 3400 diproduksi → quality 3200/3400 = 94,12%.
         $this->lhp($mesin->id, $proses->id, qty: 3200, ng: 200);
 
         [$from, $to] = $this->july();
         $r = (new OeeService)->computeMesin($mesin->id, $from, $to);
 
         $this->assertSame(100.0, $r['performance_pct']);
-        $this->assertSame(93.75, $r['quality_pct']);
+        $this->assertSame(94.12, $r['quality_pct']);
         $this->assertSame(3200, $r['total_qty']);
         $this->assertSame(200, $r['total_ng']);
         $this->assertSame(1, $r['jumlah_lhp']);
+    }
+
+    /**
+     * qty_aktual berisi barang BAIK saja — NG dicatat terpisah. Rumus lama
+     * (qty_aktual − qty_ng) ÷ qty_aktual mengurangi NG dari barang baik, jadi
+     * NG dihukum dua kali dan Quality jatuh lebih dalam dari seharusnya.
+     *
+     * 100 baik + 50 NG: dari 150 pcs yang diproduksi, 100 di antaranya baik
+     * → 66,67%. Rumus lama memberi (100−50)/100 = 50%.
+     */
+    public function test_quality_tidak_menghukum_ng_dua_kali(): void
+    {
+        ['mesin' => $mesin, 'proses' => $proses] = $this->scaffold(sph: 0);
+        $this->lhp($mesin->id, $proses->id, qty: 100, ng: 50);
+
+        [$from, $to] = $this->july();
+        $r = (new OeeService)->computeMesin($mesin->id, $from, $to);
+
+        $this->assertSame(66.67, $r['quality_pct']);
+    }
+
+    /**
+     * Tidak ada validasi qty_ng <= qty_aktual di form (StoreProduksiRequest
+     * hanya min:1), jadi qty_ng lebih besar itu mungkin. Rumus lama
+     * menghasilkan Quality NEGATIF — mustahil secara fisik dan merusak
+     * perkalian OEE. Rumus rasio tidak bisa negatif.
+     */
+    public function test_quality_tidak_pernah_negatif_walau_ng_lebih_besar(): void
+    {
+        ['mesin' => $mesin, 'proses' => $proses] = $this->scaffold(sph: 0);
+        $this->lhp($mesin->id, $proses->id, qty: 10, ng: 20);
+
+        [$from, $to] = $this->july();
+        $r = (new OeeService)->computeMesin($mesin->id, $from, $to);
+
+        $this->assertGreaterThan(0, $r['quality_pct'], 'Quality tidak boleh negatif.');
+        $this->assertSame(33.33, $r['quality_pct']);
     }
 
     public function test_oee_is_product_of_three_components(): void
@@ -108,7 +145,7 @@ class OeeServiceTest extends TestCase
         $r = (new OeeService)->computeMesin($mesin->id, $from, $to);
 
         $this->assertNull($r['performance_pct']);
-        $this->assertSame(95.0, $r['quality_pct']); // quality tetap terhitung
+        $this->assertSame(95.24, $r['quality_pct']); // 1000/1050 — quality tetap terhitung
         $this->assertNull($r['oee_pct']);
     }
 
@@ -173,13 +210,13 @@ class OeeServiceTest extends TestCase
     public function test_methodology_shows_actual_numbers(): void
     {
         ['mesin' => $mesin, 'proses' => $proses] = $this->scaffold(sph: 400);
-        $this->lhp($mesin->id, $proses->id, qty: 3200, ng: 200); // teoretis 3200, perf 100, qual 93.75
+        $this->lhp($mesin->id, $proses->id, qty: 3200, ng: 200); // teoretis 3200, perf 100, qual 94.12
 
         [$from, $to] = $this->july();
         $r = (new OeeService)->computeMesin($mesin->id, $from, $to);
 
         $this->assertSame(3200, $r['output_teoretis']);
         $this->assertStringContainsString('3200 ÷ 3200', $r['metodologi']['performance']);
-        $this->assertStringContainsString('(3200 − 200) ÷ 3200', $r['metodologi']['quality']);
+        $this->assertStringContainsString('3200 ÷ 3400', $r['metodologi']['quality']);
     }
 }

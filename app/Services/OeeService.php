@@ -17,7 +17,8 @@ use Illuminate\Support\Carbon;
  *   - Performance  : output aktual ÷ output teoretis pada SPH standar
  *     (sph_standar_produksi × waktu kerja), tertimbang waktu. Sama basis dengan
  *     "Achievement %" di AnomalyController.
- *   - Quality      : (qty_aktual − qty_ng) ÷ qty_aktual.
+ *   - Quality      : qty_aktual ÷ (qty_aktual + qty_ng). qty_aktual berisi
+ *     barang BAIK saja; NG dicatat terpisah, jadi penyebutnya total diproduksi.
  *
  * Komponen yang tak bisa dihitung (mis. instalasi belum diset, SPH standar 0)
  * dikembalikan null + catatan — JANGAN ditebak. OEE hanya diisi bila ketiga
@@ -72,7 +73,18 @@ class OeeService
         }
 
         $performancePct = $theoretical > 0 ? round($totalQty / $theoretical * 100, 2) : null;
-        $qualityPct = $totalQty > 0 ? round(($totalQty - $totalNg) / $totalQty * 100, 2) : null;
+        /*
+         * qty_aktual berisi barang BAIK saja — NG dicatat terpisah (dikonfirmasi
+         * ke produksi 2026-07-28). Jadi total diproduksi = baik + NG, dan Quality
+         * adalah porsi yang baik dari total itu.
+         *
+         * Rumus lama (qty_aktual − qty_ng) ÷ qty_aktual mengurangi NG dari barang
+         * baik, sehingga NG dihukum dua kali dan Quality jatuh lebih dalam dari
+         * seharusnya. Pada qty_ng > qty_aktual rumus itu bahkan menghasilkan
+         * Quality NEGATIF, yang lalu masuk ke perkalian OEE.
+         */
+        $totalProduksi = $totalQty + $totalNg;
+        $qualityPct = $totalProduksi > 0 ? round($totalQty / $totalProduksi * 100, 2) : null;
 
         if ($rows->isEmpty()) {
             $catatan[] = 'Tidak ada LHP produksi di rentang ini: Performance & Quality tak bisa dihitung.';
@@ -126,8 +138,8 @@ class OeeService
                 ? "Performance = output aktual ÷ output teoretis × 100 = {$qty} ÷ {$teoretis} × 100 = {$perf}%. Output teoretis = SPH standar produksi × jam kerja tiap LHP (ditotal)."
                 : 'Performance belum bisa dihitung: SPH standar proses belum diset.',
             'quality' => $qual !== null
-                ? "Quality = (qty aktual − qty NG) ÷ qty aktual × 100 = ({$qty} − {$ng}) ÷ {$qty} × 100 = {$qual}%."
-                : 'Quality belum bisa dihitung: belum ada qty produksi.',
+                ? "Quality = qty baik ÷ total diproduksi × 100 = {$qty} ÷ ".($qty + $ng)." × 100 = {$qual}%. Total diproduksi = qty aktual (barang baik) + qty NG."
+                : 'Quality belum bisa dihitung: belum ada produksi (baik maupun NG) di rentang ini.',
             'oee' => 'OEE = Availability × Performance × Quality (ketiga dalam desimal), lalu ×100.',
         ];
     }
