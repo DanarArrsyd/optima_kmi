@@ -99,11 +99,14 @@ class ChatbotToolsTest extends TestCase
             'created_by' => $user->id,
         ]);
 
-        $result = (new ChatbotTools)->getRekapNg('BENDING', '2026-07');
+        // sumber 'qc' sekarang harus DISEBUT. Defaultnya pindah ke 'produksi':
+        // di prod sisi QC nol NG sejak sistem berjalan, jadi default lama membuat
+        // tool ini praktis selalu menjawab "tidak ada data".
+        $result = (new ChatbotTools)->getRekapNg('BENDING', '2026-07', 'qc');
 
         $this->assertArrayNotHasKey('error', $result);
         $this->assertSame(10, $result['total_ng']);
-        $this->assertSame(100, $result['total_inspeksi']);
+        $this->assertSame(100, $result['total_diproduksi']);
     }
 
     public function test_bandingkan_produksi_returns_both_periods_and_delta(): void

@@ -11,4 +11,14 @@ interface ChatbotProviderInterface
      * Returns null on total provider failure so the caller can fall back.
      */
     public function ask(array $history, string $userMessage): ?string;
+
+    /**
+     * Apakah provider ini punya key & model, tanpa memanggil API-nya.
+     *
+     * `ask()` mengembalikan null untuk DUA sebab yang sangat berbeda: provider
+     * tak dikonfigurasi, atau dikonfigurasi tapi gagal. Tanpa pemisahan ini
+     * pemanggil tidak bisa membedakan salah setup dari gangguan, dan pengguna
+     * disuruh "coba lagi nanti" untuk masalah yang tidak akan hilang sendiri.
+     */
+    public function isConfigured(): bool;
 }

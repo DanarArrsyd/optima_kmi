@@ -8,13 +8,22 @@ use App\Services\GeminiChatbotService;
 use App\Services\GroqChatbotService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ChatbotController extends Controller
 {
+    /** Semua provider dicoba dan gagal — gangguan, menunggu masuk akal. */
     private const FALLBACK = 'Maaf, sistem AI lagi ga bisa diakses, coba lagi nanti.';
+
+    /**
+     * Nol provider punya API key. Ini salah setup, bukan gangguan — menyuruh
+     * "coba lagi nanti" hanya menunda orang dari perbaikan yang sebenarnya.
+     */
+    private const FALLBACK_TANPA_KONFIGURASI = 'Layanan AI belum dikonfigurasi: tidak ada provider yang punya API key. '
+        .'Hubungi admin untuk mengisi key-nya — menunggu tidak akan memperbaiki ini.';
 
     public function __construct(
         private DeepseekChatbotService $deepseek,
@@ -80,15 +89,49 @@ class ChatbotController extends Controller
 
     /**
      * Rantai fallback provider: DeepSeek (paid, andal) → Cerebras → Groq → Gemini.
-     * Provider tanpa key otomatis di-skip (ask() balikin null).
+     *
+     * Tiap provider dicatat hasilnya — 'ok', 'gagal', atau 'tanpa_key'. Pemisahan
+     * itu yang membuat kegagalan bisa didiagnosa: `ask()` mengembalikan null untuk
+     * dua sebab yang sangat berbeda, dan sebelumnya keduanya berakhir di pesan
+     * "coba lagi nanti" yang sama. Kalau sebabnya nol key, menunggu tidak akan
+     * memperbaiki apa pun.
      */
     private function resolveReply(array $history, string $message): string
     {
-        return $this->deepseek->ask($history, $message)
-            ?? $this->cerebras->ask($history, $message)
-            ?? $this->groq->ask($history, $message)
-            ?? $this->gemini->ask($history, $message)
-            ?? self::FALLBACK;
+        $rantai = [
+            'deepseek' => $this->deepseek,
+            'cerebras' => $this->cerebras,
+            'groq' => $this->groq,
+            'gemini' => $this->gemini,
+        ];
+
+        $status = [];
+
+        foreach ($rantai as $nama => $provider) {
+            if (! $provider->isConfigured()) {
+                $status[$nama] = 'tanpa_key';
+
+                continue;
+            }
+
+            $jawaban = $provider->ask($history, $message);
+            if ($jawaban !== null) {
+                $status[$nama] = 'ok';
+
+                return $jawaban;
+            }
+
+            $status[$nama] = 'gagal';
+        }
+
+        $adaYangTerkonfigurasi = in_array('gagal', $status, true);
+
+        Log::error('Chatbot: seluruh rantai provider habis', [
+            'provider' => $status,
+            'sebab' => $adaYangTerkonfigurasi ? 'semua provider terkonfigurasi gagal' : 'nol provider terkonfigurasi',
+        ]);
+
+        return $adaYangTerkonfigurasi ? self::FALLBACK : self::FALLBACK_TANPA_KONFIGURASI;
     }
 
     /** Pecah jawaban jadi potongan kecil untuk SSE (per kata, spasi dipertahankan). */

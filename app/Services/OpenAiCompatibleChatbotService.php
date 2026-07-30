@@ -39,10 +39,15 @@ abstract class OpenAiCompatibleChatbotService implements ChatbotProviderInterfac
 
     abstract protected function providerLabel(): string;
 
+    public function isConfigured(): bool
+    {
+        return ! empty($this->apiKey()) && ! empty($this->model());
+    }
+
     public function ask(array $history, string $userMessage): ?string
     {
         // Provider tak dikonfigurasi (key/model kosong) → lewati, biar fallback jalan.
-        if (empty($this->apiKey()) || empty($this->model())) {
+        if (! $this->isConfigured()) {
             return null;
         }
 

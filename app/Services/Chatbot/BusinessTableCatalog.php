@@ -20,8 +20,19 @@ class BusinessTableCatalog
         'master_shift_istirahat' => 'Jadwal istirahat per shift.',
         'master_jenis_ng' => 'Master jenis defect/NG.',
         'master_losstime' => 'Master jenis losstime dandori + standar menit.',
-        'transaksi_produksi' => 'LHP produksi (tanggal_produksi, id_karyawan, id_mesin, id_part_proses, id_shift, qty_aktual, qty_ng).',
-        'transaksi_qc' => 'LHP quality (tgl_pengecekan, id_karyawan_qc, id_part_proses, qty_ok, qty_ng).',
+        'transaksi_produksi' => 'LHP produksi (tanggal_produksi, id_karyawan, id_mesin, id_part_proses, id_shift, qty_aktual, qty_ng). '
+            .'qty_aktual = barang BAIK saja, NG dicatat terpisah; total diproduksi = qty_aktual + qty_ng. '
+            .'Rincian jenis NG ada di transaksi_produksi_ng, BUKAN di tabel ini.',
+        'transaksi_qc' => 'LHP quality (tgl_pengecekan, id_karyawan_qc, id_part_proses, qty_ok, qty_ng). '
+            .'qty_ok = barang baik saja. Rincian jenis NG ada di transaksi_qc_ng.',
+        'transaksi_produksi_ng' => 'Rincian NG per jenis untuk satu sesi LHP produksi '
+            .'(id_transaksi_produksi, id_jenis_ng, qty). Satu baris = satu jenis NG dalam satu sesi; '
+            .'SUM(qty) per sesi sama dengan transaksi_produksi.qty_ng. '
+            .'Join ke master_jenis_ng lewat id_jenis_ng untuk kode & nama jenis NG.',
+        'transaksi_qc_ng' => 'Rincian NG per jenis untuk satu sesi LHP quality '
+            .'(id_transaksi_qc, id_jenis_ng, qty). Satu baris = satu jenis NG dalam satu sesi; '
+            .'SUM(qty) per sesi sama dengan transaksi_qc.qty_ng. '
+            .'Join ke master_jenis_ng lewat id_jenis_ng untuk kode & nama jenis NG.',
         'transaksi_dandori' => 'Header dandori (ganti setup/part).',
         'transaksi_dandori_rincian' => 'Rincian dandori per losstime (tanggal, id_mesin, id_losstime, actual_menit, std_menit, over_menit).',
         'transaksi_breakdown_mesin' => 'Breakdown mesin (tanggal_breakdown, id_mesin, problem_mesin, penyebab_breakdown, tindakan_perbaikan, repair_time, total_downtime).',
