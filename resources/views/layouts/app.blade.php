@@ -1032,8 +1032,14 @@
             <a href="{{ route('vcb.dandori') }}" class="nav-item-link {{ str_starts_with($uri,'vcb/dandori')?'active':'' }}">
                 <i class="bi bi-clock-history"></i><span class="nav-text">VCB Dandori</span>
             </a>
-            <a href="{{ route('vcb.ng-proses') }}" class="nav-item-link {{ str_starts_with($uri,'vcb/ng-proses')?'active':'' }}">
+            {{-- Cek exact-match, BUKAN str_starts_with: prefiks 'vcb/ng-proses'
+                 juga cocok dengan 'vcb/ng-proses/daftar', dan itu membuat dua
+                 entri menyala bersamaan. --}}
+            <a href="{{ route('vcb.ng-proses') }}" class="nav-item-link {{ $uri==='vcb/ng-proses'?'active':'' }}">
                 <i class="bi bi-exclamation-triangle"></i><span class="nav-text">VCB NG Proses</span>
+            </a>
+            <a href="{{ route('vcb.ng-proses.daftar') }}" class="nav-item-link {{ str_starts_with($uri,'vcb/ng-proses/daftar')?'active':'' }}">
+                <i class="bi bi-list-ul"></i><span class="nav-text">Daftar NG Proses</span>
             </a>
         </div>
         @endif
@@ -1049,8 +1055,12 @@
             <a href="{{ route('vcb.quality') }}" class="nav-item-link {{ str_starts_with($uri,'vcb/quality')?'active':'' }}">
                 <i class="bi bi-shield-check"></i><span class="nav-text">VCB Quality</span>
             </a>
-            <a href="{{ route('vcb.ng-total') }}" class="nav-item-link {{ str_starts_with($uri,'vcb/ng-total')?'active':'' }}">
+            {{-- Exact-match, alasan sama seperti sisi Produksi di atas. --}}
+            <a href="{{ route('vcb.ng-total') }}" class="nav-item-link {{ $uri==='vcb/ng-total'?'active':'' }}">
                 <i class="bi bi-exclamation-triangle"></i><span class="nav-text">VCB NG Total</span>
+            </a>
+            <a href="{{ route('vcb.ng-total.daftar') }}" class="nav-item-link {{ str_starts_with($uri,'vcb/ng-total/daftar')?'active':'' }}">
+                <i class="bi bi-list-ul"></i><span class="nav-text">Daftar NG Total</span>
             </a>
         </div>
         @endif

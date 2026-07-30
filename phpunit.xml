@@ -8,6 +8,13 @@
     </testsuites>
     <source><include><directory>app</directory></include></source>
     <php>
+        <!-- Suite butuh lebih dari 128M (default php.ini di mesin dev). Tanpa ini
+             `php artisan test` MATI DI TENGAH JALAN dengan "Premature end of PHP
+             process": PHPUnit tetap mencetak "passed", padahal belasan test
+             terakhir tidak pernah dijalankan. CI lolos karena setup-php memakai
+             memory_limit=-1, jadi lokal dan CI diam-diam berbeda. Dikunci di sini
+             supaya sama di mana pun. -->
+        <ini name="memory_limit" value="512M"/>
         <env name="APP_ENV" value="testing"/>
         <env name="APP_URL" value="http://localhost"/>
         <env name="DB_CONNECTION" value="sqlite"/>
