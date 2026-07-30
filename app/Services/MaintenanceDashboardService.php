@@ -99,10 +99,20 @@ class MaintenanceDashboardService
         // Kalau belum, jangan sentuh kolomnya — cukup SUM stroke, running time 0.
         $durasiExpr = $this->durasiKolomAda() ? 'COALESCE(SUM(durasi_menit),0)' : '0';
 
+        /*
+         * Stroke = qty_aktual + qty_ng. `qty_aktual` berisi barang BAIK saja
+         * (dikonfirmasi ke produksi 2026-07-28, lihat OeeService), sedangkan
+         * stroke mengukur aksi FISIK mesin — mesin tetap menekan untuk barang
+         * yang jadi NG. Menghitung barang baik saja membuat siklus understated
+         * dan preventive terpicu TERLAMBAT, arah error yang tidak aman.
+         *
+         * COALESCE di dalam SUM wajib: qty_ng nullable default null, dan
+         * `qty_aktual + NULL` = NULL di SQL.
+         */
         $agg = TransaksiProduksi::query()
             ->where('id_mesin', $m->id)
             ->when($cycleStart, fn ($q) => $q->where('tanggal_produksi', '>', $cycleStart))
-            ->selectRaw("COALESCE(SUM(qty_aktual),0) as stroke, {$durasiExpr} as durasi_menit")
+            ->selectRaw("COALESCE(SUM(qty_aktual + COALESCE(qty_ng,0)),0) as stroke, {$durasiExpr} as durasi_menit")
             ->first();
 
         return ['stroke' => (int) $agg->stroke, 'durasi_menit' => (int) $agg->durasi_menit];
