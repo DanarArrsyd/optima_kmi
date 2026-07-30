@@ -149,11 +149,13 @@ Route::middleware('auth')->group(function () {
         Route::get('ng-proses', [VcbNgProsesController::class, 'index'])->name('ng-proses');
         Route::get('ng-proses/data', [VcbNgProsesController::class, 'data'])->name('ng-proses.data');
         Route::get('ng-proses/detail', [VcbNgProsesController::class, 'detail'])->name('ng-proses.detail');
+        Route::get('ng-proses/daftar', [VcbNgProsesController::class, 'daftar'])->name('ng-proses.daftar');
     });
 
-    // --- VCB DANDORI EXPORT — guest TIDAK boleh ---
+    // --- VCB DANDORI & DAFTAR NG PROSES EXPORT — guest TIDAK boleh ---
     Route::middleware('role:admin,staff_produksi,manager')->prefix('vcb')->name('vcb.')->group(function () {
         Route::get('dandori/export', [VcbDandoriController::class, 'export'])->name('dandori.export');
+        Route::get('ng-proses/daftar/export', [VcbNgProsesController::class, 'export'])->name('ng-proses.daftar.export');
     });
 
     // --- VCB QUALITY — read-only, guest boleh ---
@@ -164,6 +166,14 @@ Route::middleware('auth')->group(function () {
         Route::get('ng-total', [VcbNgTotalController::class, 'index'])->name('ng-total');
         Route::get('ng-total/data', [VcbNgTotalController::class, 'data'])->name('ng-total.data');
         Route::get('ng-total/detail', [VcbNgTotalController::class, 'detail'])->name('ng-total.detail');
+        Route::get('ng-total/daftar', [VcbNgTotalController::class, 'daftar'])->name('ng-total.daftar');
+    });
+
+    // --- DAFTAR NG TOTAL EXPORT — guest TIDAK boleh ---
+    // Grup baru: sisi Produksi sudah punya padanannya (lihat grup dandori/export di
+    // atas), sisi QC belum. Isinya GET semua, jadi DenyGuestWrite tidak tersentuh.
+    Route::middleware('role:admin,staff_qc,manager')->prefix('vcb')->name('vcb.')->group(function () {
+        Route::get('ng-total/daftar/export', [VcbNgTotalController::class, 'export'])->name('ng-total.daftar.export');
     });
 
     // --- MAINTENANCE: breakdown, import/export, input preventive (guest TIDAK boleh) ---
