@@ -108,6 +108,21 @@ class NgListPageTest extends TestCase
             ->assertSee('PN-001');
     }
 
+    /**
+     * Tanggal ditampilkan d/m/Y, sama dengan daftar LHP di /input/produksi.
+     * Format ISO mentah (Y-m-d) datang langsung dari SQL dan tidak dipakai di
+     * layar mana pun yang dibaca orang produksi.
+     */
+    public function test_tanggal_ditampilkan_format_hari_bulan_tahun(): void
+    {
+        $f = $this->seedNg();
+
+        $response = $this->actingAs($f['user'])->get(route('vcb.ng-proses.daftar'))->assertOk();
+
+        $response->assertSee(now()->format('d/m/Y'));
+        $response->assertDontSee('<td class="ngl-kode">'.now()->format('Y-m-d').'</td>', false);
+    }
+
     public function test_rentang_tanggal_default_dua_belas_bulan_terakhir(): void
     {
         $f = $this->seedNg();
