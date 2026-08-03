@@ -106,9 +106,17 @@ class OverviewPageTest extends TestCase
             $this->assertStringContainsString($label, $html);
         }
 
-        // css/chatbot.css TIDAK boleh ikut termuat — dia menyetel #main jadi
+        // css/chatbot.css TIDAK boleh ikut TERMUAT — dia menyetel #main jadi
         // kanvas penuh tanpa padding dan merusak grid halaman ini.
-        $this->assertStringNotContainsString('chatbot.css', $html);
+        //
+        // Yang dicek tag <link>-nya, bukan sekadar ada-tidaknya string
+        // "chatbot.css" di respons. Versi lama memakai
+        // assertStringNotContainsString dan langsung merah begitu komentar CSS
+        // halaman ini menyebut nama berkas itu untuk MENJELASKAN kenapa ia
+        // dihindari — komentar di dalam <style> ikut terkirim ke browser.
+        // Assertion yang menghukum penjelasannya sendiri bikin orang menghapus
+        // komentarnya, bukan memperbaiki kodenya.
+        $this->assertDoesNotMatchRegularExpression('#<link[^>]+chatbot\.css#', $html);
     }
 
     public function test_payload_tren_berisi_enam_titik(): void
