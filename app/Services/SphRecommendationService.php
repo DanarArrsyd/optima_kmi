@@ -74,20 +74,50 @@ class SphRecommendationService
      ╚══════════════════════════════════════════════════════ */
 
     /**
+     * Detik kerja jam_start→jam_finish, shift lewat tengah malam ikut terhitung
+     * (finish ≤ start berarti +1 hari). Minimum 1 detik supaya tidak ada
+     * pembagian nol.
+     *
+     * Dua dialek, satu makna. Prod pakai MySQL; suite pakai SQLite in-memory,
+     * dan SQLite tidak punya GREATEST/IF/TIME_TO_SEC/TIMEDIFF/ADDTIME. Selama
+     * ekspresi ini hanya ditulis untuk MySQL, seluruh layanan — dan halaman
+     * Master Part / Dies yang memanggilnya — mustahil diuji: query-nya 500
+     * sebelum satu assertion pun jalan.
+     *
+     * Perbandingan string 'HH:MM:SS' setara dengan perbandingan waktu, jadi
+     * cabang tengah malam dipilih dengan operator yang sama di kedua dialek.
+     */
+    private function detikKerjaExpr(string $alias): string
+    {
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            $awal = "strftime('%s', '1970-01-01 ' || {$alias}.jam_start)";
+            $akhir = "strftime('%s', '1970-01-01 ' || {$alias}.jam_finish)";
+
+            return "max(
+                CASE WHEN {$alias}.jam_finish > {$alias}.jam_start
+                    THEN {$akhir} - {$awal}
+                    ELSE {$akhir} + 86400 - {$awal}
+                END,
+                1
+            )";
+        }
+
+        return "GREATEST(
+            IF({$alias}.jam_finish > {$alias}.jam_start,
+                TIME_TO_SEC(TIMEDIFF({$alias}.jam_finish, {$alias}.jam_start)),
+                TIME_TO_SEC(TIMEDIFF(ADDTIME({$alias}.jam_finish, '24:00:00'), {$alias}.jam_start))
+            ),
+            1
+        )";
+    }
+
+    /**
      * Ekspresi SQL untuk SPH Produksi aktual.
      * Identik dengan TransaksiProduksi::getSphAktualAttribute()
      */
     private function sphProdExpr(string $alias = 'lhp'): string
     {
-        return "ROUND(
-            {$alias}.qty_aktual * 3600 / GREATEST(
-                IF({$alias}.jam_finish > {$alias}.jam_start,
-                    TIME_TO_SEC(TIMEDIFF({$alias}.jam_finish, {$alias}.jam_start)),
-                    TIME_TO_SEC(TIMEDIFF(ADDTIME({$alias}.jam_finish, '24:00:00'), {$alias}.jam_start))
-                ),
-                1
-            )
-        )";
+        return "ROUND({$alias}.qty_aktual * 3600 / {$this->detikKerjaExpr($alias)})";
     }
 
     /**
@@ -96,26 +126,7 @@ class SphRecommendationService
      */
     private function sphQcExpr(string $alias = 'qc'): string
     {
-        return "ROUND(
-            ({$alias}.qty_ok + COALESCE({$alias}.qty_ng, 0)) * 3600 / GREATEST(
-                IF({$alias}.jam_finish > {$alias}.jam_start,
-                    TIME_TO_SEC(TIMEDIFF({$alias}.jam_finish, {$alias}.jam_start)),
-                    TIME_TO_SEC(TIMEDIFF(ADDTIME({$alias}.jam_finish, '24:00:00'), {$alias}.jam_start))
-                ),
-                1
-            )
-        )";
-    }
-
-    private function waktuExpr(string $alias): string
-    {
-        return "GREATEST(
-            IF({$alias}.jam_finish > {$alias}.jam_start,
-                TIME_TO_SEC(TIMEDIFF({$alias}.jam_finish, {$alias}.jam_start)),
-                TIME_TO_SEC(TIMEDIFF(ADDTIME({$alias}.jam_finish, '24:00:00'), {$alias}.jam_start))
-            ),
-            1
-        )";
+        return "ROUND(({$alias}.qty_ok + COALESCE({$alias}.qty_ng, 0)) * 3600 / {$this->detikKerjaExpr($alias)})";
     }
 
     /* ── Produksi query ──────────────────────────────────── */

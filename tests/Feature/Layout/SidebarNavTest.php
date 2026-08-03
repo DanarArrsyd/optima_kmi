@@ -30,13 +30,10 @@ class SidebarNavTest extends TestCase
      * di-substitusi di sini, atau route($namaRoute) akan throw UrlGenerationException.
      */
     private const SUBSTITUSI_ROUTE = [
-        // 'master.part.index' sengaja TIDAK dipakai: controllernya manggil
-        // SphRecommendationService, yang isi query mentahnya pakai fungsi
-        // MySQL-only (GREATEST dkk) dan 500 di SQLite (driver test suite).
-        // Bug lama, tak berkaitan sama sidebar. 'master.part.create' dipakai
-        // gantinya — sama-sama cocok pola 'master.part.*' di menu, dan
-        // controller create() tidak menyentuh sphSvc sama sekali.
-        'master.part.index' => 'master.part.create',
+        // Kosong. Dulu 'master.part.index' => 'master.part.create' di sini
+        // karena SphRecommendationService memakai fungsi MySQL-only dan 500
+        // di SQLite. Sudah diperbaiki (lihat SphRecommendationServiceTest),
+        // jadi halaman aslinya dites langsung lagi.
     ];
 
     /**
