@@ -11,9 +11,16 @@ use Illuminate\Support\Carbon;
  *
  * Definisi tiap komponen SENGAJA konsisten dengan angka yang sudah dipakai di
  * app, supaya chatbot & dashboard tak saling bertentangan:
- *   - Availability : dari MaintenanceDashboardService (jam kalender sejak
- *     instalasi − downtime). CATATAN: basis kalender (24/7), bukan jam shift
- *     terjadwal — sama seperti dashboard maintenance.
+ *   - Availability : dari MaintenanceDashboardService (jam kalender − downtime
+ *     breakdown − waktu dandori). Waktu dandori ikut dikurangi karena setup /
+ *     ganti dies adalah kerugian availability di OEE standar: mesinnya sehat
+ *     tapi tidak memproduksi.
+ *     ⚠️ CATATAN BASIS: penyebutnya jam KALENDER (24/7), bukan jam shift
+ *     terjadwal. Pabrik dikonfirmasi hanya menjalankan Shift 1 & 2 (16 jam),
+ *     jadi penyebut ini memuat 8 jam per hari yang tidak pernah dijadwalkan
+ *     dan availability-nya condong tinggi. Dipertahankan supaya angka di sini
+ *     tidak bertentangan dengan halaman Availability/MTBF. Kalau kelak diganti
+ *     ke basis shift, ganti di MaintenanceDashboardService — jangan di sini.
  *   - Performance  : total diproduksi (qty_aktual + qty_ng) ÷ output teoretis
  *     pada SPH standar (sph_standar_produksi × waktu kerja), tertimbang waktu.
  *     SENGAJA BEDA dari "Achievement %" di AnomalyController dan VCB Produksi,

@@ -259,6 +259,23 @@ class OverviewServiceTest extends TestCase
         $this->assertNotSame(75.0, $r['availability_pct']);
     }
 
+    public function test_dandori_ikut_menurunkan_availability_pabrik(): void
+    {
+        // Integrasi: keputusan "dandori itu kerugian availability" diambil di
+        // MaintenanceDashboardService, tapi yang dilihat orang angkanya di
+        // halaman Overview. Test ini yang memastikan perubahan itu benar-benar
+        // sampai ke sana, bukan berhenti di service maintenance.
+        ['mesin' => $m, 'proses' => $p] = $this->scaffold(install: '2026-01-01');
+
+        $tanpa = $this->svc()->oee($this->tgl('2026-07-15'), $this->tgl('2026-07-15'));
+        $this->assertSame(100.0, $tanpa['availability_pct']);
+
+        $this->dandori('Setting_Dies', 360.0, '2026-07-15', $m->id, $p->id);   // 6 jam
+
+        $dengan = $this->svc()->oee($this->tgl('2026-07-15'), $this->tgl('2026-07-15'));
+        $this->assertEqualsWithDelta(75.0, $dengan['availability_pct'], 0.5);
+    }
+
     public function test_oee_null_kalau_salah_satu_komponen_tak_terhitung(): void
     {
         // Ada mesin & breakdown (availability bisa), tapi nol LHP produksi →
