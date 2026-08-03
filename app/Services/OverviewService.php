@@ -18,8 +18,8 @@ use Illuminate\Support\Facades\DB;
  * Definisi sengaja MEMINJAM yang sudah dipakai app, bukan bikin baru:
  *   - Achievement : qty_aktual ÷ (waktu kerja × sph_standar_produksi), sama
  *     seperti DashboardService::getVcbMesin(). Pembilangnya barang BAIK saja.
- *   - Availability: jam jendela kalender − downtime breakdown, dari
- *     MaintenanceDashboardService. Lihat catatan basis kalender di bawah.
+ *   - Availability: jam jendela kalender − downtime breakdown − waktu dandori,
+ *     dari MaintenanceDashboardService. Lihat catatan basis kalender di bawah.
  *   - Performance : (qty_aktual + qty_ng) ÷ output teoretis, sama seperti
  *     OeeService. Menilai kecepatan MESIN, jadi barang NG tetap dihitung.
  *   - Quality     : qty_aktual ÷ (qty_aktual + qty_ng), sama seperti OeeService.
@@ -126,12 +126,22 @@ class OverviewService
     /**
      * A / P / Q / OEE skala pabrik pada satu rentang.
      *
-     * ⚠️ Availability berbasis jam KALENDER (24/7), bukan jam shift terjadwal —
-     * warisan definisi MaintenanceDashboardService, dipertahankan supaya angka
-     * di halaman ini tidak bertentangan dengan halaman Availability. Efeknya:
-     * mesin yang memang tidak dijadwalkan jalan tetap dihitung "available",
-     * jadi angkanya wajar kalau mendekati 100% dan OEE pabrik praktis mengikuti
-     * Performance × Quality.
+     * Kerugian availability = downtime breakdown + waktu dandori. Setup /
+     * ganti dies adalah kerugian availability di OEE standar: mesinnya sehat
+     * tapi tidak memproduksi apa pun.
+     *
+     * ⚠️ CATATAN BASIS: penyebutnya jam KALENDER (24/7), bukan jam shift
+     * terjadwal — warisan definisi MaintenanceDashboardService, dipertahankan
+     * supaya angka di sini tidak bertentangan dengan halaman Availability/MTBF.
+     *
+     * Batasan yang DIKETAHUI, bukan dugaan: pabrik dikonfirmasi hanya
+     * menjalankan Shift 1 & 2 (16 jam), jadi penyebut ini memuat 8 jam per hari
+     * yang tidak pernah dijadwalkan dan availability-nya condong tinggi. Kalau
+     * kelak diganti ke basis jam shift terjadwal, ganti di
+     * MaintenanceDashboardService — jangan di sini — supaya tetap satu definisi.
+     * Data jadwalnya sudah ada: master_shift punya jam per kelompok hari
+     * (Senin–Kamis / Jumat / Sabtu) plus tabel master_shift_istirahat. Yang
+     * belum ada: jadwal Minggu, dan jadwal PER MESIN.
      *
      * @return array{
      *   availability_pct: float|null, performance_pct: float|null,
@@ -146,7 +156,7 @@ class OverviewService
            Bukan rata-rata polos availability_pct: penyebut tiap mesin beda
            begitu ada yang instalasinya jatuh di tengah rentang. */
         $totalJam = 0.0;
-        $totalDowntime = 0.0;
+        $totalLoss = 0.0;
         $mesinTanpaInstalasi = 0;
 
         foreach ($this->mesinDashboard->compute($from, $to) as $row) {
@@ -157,12 +167,23 @@ class OverviewService
                 continue;
             }
             $totalJam += (float) $jam;
-            $totalDowntime += (float) $row['sum_downtime'];
+
+            /*
+             * sum_loss, BUKAN sum_downtime: kerugian availability = downtime
+             * breakdown + waktu dandori (lihat MaintenanceDashboardService).
+             *
+             * Baris ini pernah memakai sum_downtime dan itu membuat keputusan
+             * "dandori adalah kerugian availability" berhenti di halaman
+             * Availability tanpa pernah sampai ke Overview — halaman ini tetap
+             * melaporkan 100% padahal halaman sebelahnya sudah tidak. Dua
+             * halaman saling bertentangan persis seperti yang dihindari.
+             */
+            $totalLoss += (float) $row['sum_loss'];
         }
 
         $availabilityPct = null;
         if ($totalJam > 0) {
-            $uptime = max(0.0, $totalJam - $totalDowntime);
+            $uptime = max(0.0, $totalJam - $totalLoss);
             $availabilityPct = round($uptime / $totalJam * 100, 2);
         } else {
             $catatan[] = 'Availability tak bisa dihitung: belum ada mesin dengan tanggal instalasi terisi.';

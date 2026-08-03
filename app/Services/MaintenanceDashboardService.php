@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\MasterMesin;
 use App\Models\MesinPreventiveLog;
 use App\Models\TransaksiBreakdownMesin;
+use App\Models\TransaksiDandoriRincian;
 use App\Models\TransaksiProduksi;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Schema;
@@ -60,6 +61,30 @@ class MaintenanceDashboardService
             ->get(['id_mesin', 'repair_time', 'total_downtime'])
             ->groupBy('id_mesin');
 
+        /*
+         * Waktu dandori (setup / ganti dies) per mesin, satuan MENIT.
+         *
+         * Di OEE standar, setup & adjustment adalah kerugian AVAILABILITY —
+         * mesinnya ada dan sehat, tapi tidak bisa memproduksi. Sebelum ini
+         * waktu dandori hanya muncul di Pareto loss time dan nol pengaruh ke
+         * Availability, sehingga hari tanpa breakdown selalu 100% walau
+         * belasan jam habis untuk ganti dies.
+         *
+         * Rentang setengah terbuka, alasan sama seperti query breakdown di
+         * atas: cast 'tanggal' di TransaksiDandoriRincian juga 'date' tanpa
+         * format, jadi hari terakhir rentang hilang di SQLite.
+         *
+         * Diagregasi di DB (groupBy + SUM), bukan dimuat lalu dijumlah di PHP:
+         * all-time bisa puluhan ribu baris.
+         */
+        $dandori = TransaksiDandoriRincian::query()
+            ->where('tanggal', '>=', $from->toDateString())
+            ->where('tanggal', '<', $to->copy()->addDay()->toDateString())
+            ->when($mesinId, fn ($q) => $q->where('id_mesin', $mesinId))
+            ->groupBy('id_mesin')
+            ->selectRaw('id_mesin, SUM(actual_menit) as menit')
+            ->pluck('menit', 'id_mesin');
+
         $rows = [];
         foreach ($mesins as $m) {
             $group = $stats->get($m->id) ?? collect();
@@ -67,6 +92,11 @@ class MaintenanceDashboardService
             $sumRepair = round((float) $group->sum('repair_time'), 2);
             $sumDowntime = round((float) $group->sum('total_downtime'), 2);
             $mttr = $count > 0 ? round($sumRepair / $count, 2) : 0.0;
+
+            // actual_menit → jam. total_downtime memang sudah jam (lihat
+            // komentar 'hours' di migrasi transaksi_breakdown_mesin).
+            $sumDandori = round(((float) ($dandori[$m->id] ?? 0)) / 60, 2);
+            $sumLoss = round($sumDowntime + $sumDandori, 2);
 
             $instalasi = $hasInstalasi ? $m->tanggal_instalasi : null;
             $mtbfJam = $mtbfHari = $availPct = null;
@@ -77,10 +107,25 @@ class MaintenanceDashboardService
                 $instalasiSet = true;
                 $windowStart = Carbon::parse($instalasi)->max($from->copy()->startOfDay());
                 $operatingHours = max(0.0, $windowStart->diffInRealHours($to->copy()->endOfDay(), false));
-                $uptime = max(0.0, $operatingHours - $sumDowntime);
-                $mtbfJam = $count > 0 ? round($uptime / $count, 2) : round($uptime, 2);
+
+                /*
+                 * DUA uptime, sengaja, karena kedua metrik menanyakan hal berbeda.
+                 *
+                 * MTBF = "berapa lama antar KEGAGALAN", metrik keandalan. Waktu
+                 * dandori bukan kegagalan — memasukkannya ke sini membuat mesin
+                 * yang sering ganti dies terlihat lebih sering rusak. Jadi MTBF
+                 * tetap memakai breakdown saja, angkanya TIDAK berubah.
+                 *
+                 * Availability = "berapa banyak jendela ini mesinnya benar-benar
+                 * bisa memproduksi". Dandori masuk: mesinnya sehat tapi tidak
+                 * menghasilkan apa pun.
+                 */
+                $uptimeBreakdown = max(0.0, $operatingHours - $sumDowntime);
+                $uptimeTotal = max(0.0, $operatingHours - $sumLoss);
+
+                $mtbfJam = $count > 0 ? round($uptimeBreakdown / $count, 2) : round($uptimeBreakdown, 2);
                 $mtbfHari = round($mtbfJam / 24, 2);
-                $availPct = $operatingHours > 0 ? round($uptime / $operatingHours * 100, 2) : 100.0;
+                $availPct = $operatingHours > 0 ? round($uptimeTotal / $operatingHours * 100, 2) : 100.0;
             }
 
             $rows[] = [
@@ -90,6 +135,11 @@ class MaintenanceDashboardService
                 'count' => $count,
                 'sum_repair' => $sumRepair,
                 'sum_downtime' => $sumDowntime,
+                // Dua kerugian dipisah supaya halaman bisa menjelaskan KENAPA
+                // availability turun: rusak, atau kelamaan ganti dies.
+                // Menggabungkannya jadi satu angka menghapus bedanya.
+                'sum_dandori' => $sumDandori,
+                'sum_loss' => $sumLoss,
                 'mttr_jam' => $mttr,
                 'mtbf_jam' => $mtbfJam,
                 'mtbf_hari' => $mtbfHari,
