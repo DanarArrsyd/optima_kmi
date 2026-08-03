@@ -267,22 +267,10 @@
         /* Main shifts when pinned */
         body.sb-pinned #main { margin-left: var(--sb-exp-w); }
 
-        /* Sidebar sections */
+        /* Sidebar: satu pembungkus saja sejak menu jadi satu tingkat.
+           Pemisah antar-section dan label section dibuang — tugasnya
+           sudah diambil header grup. */
         .nav-section { padding: 10px 0 4px; }
-        .nav-section + .nav-section {
-            border-top: 1px solid #374151;
-            margin-top: 2px;
-        }
-        .nav-section-label {
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 1.5px;
-            text-transform: uppercase;
-            color: #6b7280;
-            padding: 8px 16px 4px;
-            display: block;
-            white-space: nowrap;
-        }
 
         .nav-item-link {
             display: flex;
