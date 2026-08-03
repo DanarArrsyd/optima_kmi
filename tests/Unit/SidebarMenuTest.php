@@ -13,27 +13,42 @@ use Tests\TestCase;
  */
 class SidebarMenuTest extends TestCase
 {
-    /** Batas yang membuat sidebar tidak pernah bisa di-scroll. */
-    private const PLAFON_BARIS = 8;
+    /**
+     * Batas yang membuat sidebar tidak pernah perlu di-scroll.
+     *
+     * Naik 8 → 9 saat Overview jadi menu berdiri sendiri (bukan sub-menu AI
+     * Assistant). Lihat hitungan di PLAFON_TERBUKA: 9 masih muat. Yang KESEPULUH
+     * tidak — di situ sidebar beneran ke-scroll di layar pabrik, bukan cuma
+     * test merah. Jangan naikkan angka ini lagi tanpa menghitung ulang.
+     */
+    private const PLAFON_BARIS = 9;
 
     /**
      * Plafon gabungan baris tingkat atas + anak grup yang paling banyak
      * dibuka sekaligus. Accordion cuma boleh satu grup terbuka (single-open),
      * jadi paling banyak yang pernah tampak bersamaan adalah semua baris
      * tingkat atas ditambah isi SATU grup — bukan jumlah semua anak grup.
-     * Angka 15 ≈ 15 baris × 40px ≈ 600px, muat di viewport pabrik ~700px.
+     *
+     * Angka 16 dihitung dari tinggi NYATA, bukan taksiran. Versi lama menulis
+     * "15 baris × 40px ≈ 600px" dan itu keliru: anak grup tingginya 36px
+     * (layouts/app.blade.php: .nav-group-body .nav-item-link), bukan 40px.
+     * Kasus terburuk sekarang = 9 baris atas + 7 anak Master Data:
+     *   9 × 40px + 7 × 36px + 14px padding .nav-section = 626px
+     * Ruang tersedia di viewport pabrik ~700px = 700 − 46px topbar = 654px.
+     * Muat, sisa 28px. Napasnya tinggal segitu — baris tingkat atas berikutnya
+     * ATAU anak Master Data kedelapan akan melewatinya.
      */
-    private const PLAFON_TERBUKA = 15;
+    private const PLAFON_TERBUKA = 16;
 
     private function keys(string $role): array
     {
         return array_column(SidebarMenu::forRole($role), 'key');
     }
 
-    public function test_admin_melihat_delapan_baris_tingkat_atas(): void
+    public function test_admin_melihat_sembilan_baris_tingkat_atas(): void
     {
         $this->assertSame(
-            ['chatbot', 'anomali', 'input', 'produksi', 'quality', 'mtcmesin', 'mtcdies', 'master'],
+            ['chatbot', 'overview', 'anomali', 'input', 'produksi', 'quality', 'mtcmesin', 'mtcdies', 'master'],
             $this->keys('admin')
         );
     }

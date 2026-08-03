@@ -239,10 +239,18 @@ Route::middleware('auth')->group(function () {
         Route::delete('breakdown-dies/{breakdownDy}',   [BreakdownDiesController::class, 'destroy'])->name('breakdown-dies.destroy');
     });
 
+    // --- OVERVIEW (grafik global, admin & manager only) ---
+    // Sengaja DI LUAR prefix 'chatbot': halaman ini bukan fitur AI, dan
+    // menunya berdiri sendiri di sidebar. URL '/chatbot/overview' akan
+    // menyesatkan. Konsekuensinya middleware role: harus ditulis eksplisit
+    // di sini — dia tidak lagi mewarisi dari grup chatbot.
+    Route::middleware('role:admin,manager')
+        ->get('overview', [\App\Http\Controllers\OverviewController::class, 'index'])
+        ->name('overview');
+
     // --- AI CHATBOT (admin & manager only) ---
     Route::middleware('role:admin,manager')->prefix('chatbot')->name('chatbot.')->group(function () {
         Route::get('/', [\App\Http\Controllers\ChatbotController::class, 'index'])->name('index');
-        Route::get('overview', [\App\Http\Controllers\ChatbotController::class, 'overview'])->name('overview');
         Route::post('message', [\App\Http\Controllers\ChatbotController::class, 'sendMessage'])
             ->middleware('throttle:20,1')->name('send-message');
         Route::post('stream', [\App\Http\Controllers\ChatbotController::class, 'stream'])

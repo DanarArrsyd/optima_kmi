@@ -31,34 +31,31 @@
 */
 
 return [
-    // Dulu 'link' tunggal. Jadi grup begitu Overview lahir: menambah baris
-    // tingkat atas kesembilan akan melewati PLAFON_BARIS (8), dan tingkat
-    // atas admin memang sudah pas di angka itu.
-    //
-    // Pola 'match' lama 'chatbot.*' TIDAK boleh diturunkan ke anak: dia
-    // cocok dengan chatbot.index DAN chatbot.overview sekaligus, jadi dua
-    // entri menyala bersamaan. Keduanya wajib persis.
     [
-        'type'  => 'group',
+        'type'  => 'link',
         'key'   => 'chatbot',
         'label' => 'AI Assistant',
         'icon'  => 'bi-robot',
-        'items' => [
-            [
-                'label' => 'Chat',
-                'icon'  => 'bi-chat-dots',
-                'route' => 'chatbot.index',
-                'roles' => ['admin', 'manager'],
-                'match' => ['chatbot.index'],
-            ],
-            [
-                'label' => 'Overview',
-                'icon'  => 'bi-graph-up-arrow',
-                'route' => 'chatbot.overview',
-                'roles' => ['admin', 'manager'],
-                'match' => ['chatbot.overview'],
-            ],
-        ],
+        'route' => 'chatbot.index',
+        'roles' => ['admin', 'manager'],
+        'match' => ['chatbot.*'],
+    ],
+
+    // Berdiri sendiri, BUKAN anak AI Assistant. Halaman ini grafik global,
+    // tidak ada hubungannya dengan AI — pernah sempat jadi sub-menu di sana
+    // dan itu bikin orang menyangka isinya AI-generated.
+    //
+    // Route-nya 'overview' (bukan 'chatbot.overview'), jadi pola 'chatbot.*'
+    // di entri atas aman: tidak ada lagi nama route lain yang berbagi
+    // prefiks itu selain endpoint POST yang tidak pernah merender layout.
+    [
+        'type'  => 'link',
+        'key'   => 'overview',
+        'label' => 'Overview',
+        'icon'  => 'bi-graph-up-arrow',
+        'route' => 'overview',
+        'roles' => ['admin', 'manager'],
+        'match' => ['overview'],
     ],
 
     // Sengaja di luar grup Input Data: item ini kuning karena memang harus

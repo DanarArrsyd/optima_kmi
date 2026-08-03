@@ -6,10 +6,10 @@
     digambar. Yang sudah final di sini cuma dua hal: judul topbar (via
     @section('title')) dan page-header.
 
-    Sengaja TIDAK memuat css/chatbot.css. Berkas itu menyetel #main jadi
-    kanvas penuh tanpa padding untuk halaman chat; kalau ikut dimuat di sini,
-    halaman ini kehilangan padding layout standarnya dan tiap panel grafik
-    harus melawan gaya itu satu-satu.
+    Halaman ini TIDAK ada hubungannya dengan AI Assistant, walau dulu sempat
+    lahir sebagai sub-menunya. Jangan memuat css/chatbot.css di sini: berkas
+    itu menyetel #main jadi kanvas penuh tanpa padding untuk halaman chat,
+    dan tiap panel grafik nanti harus melawan gaya itu satu-satu.
 --}}
 
 @section('content')
