@@ -71,12 +71,12 @@ class NgListSidebarTest extends TestCase
         $this->actingAs($this->admin())
             ->get(route('vcb.ng-proses.daftar'))
             ->assertOk()
-            ->assertSee("vcbGroups('produksi')", false);
+            ->assertSee("navGroups('produksi')", false);
 
         $this->actingAs($this->admin())
             ->get(route('vcb.ng-total.daftar'))
             ->assertOk()
-            ->assertSee("vcbGroups('quality')", false);
+            ->assertSee("navGroups('quality')", false);
     }
 
     public function test_staff_qc_tidak_melihat_entri_daftar_produksi(): void
