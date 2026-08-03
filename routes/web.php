@@ -239,12 +239,18 @@ Route::middleware('auth')->group(function () {
         Route::delete('breakdown-dies/{breakdownDy}',   [BreakdownDiesController::class, 'destroy'])->name('breakdown-dies.destroy');
     });
 
-    // --- OVERVIEW (grafik global, admin & manager only) ---
+    // --- OVERVIEW (grafik global pabrik, semua role) ---
     // Sengaja DI LUAR prefix 'chatbot': halaman ini bukan fitur AI, dan
     // menunya berdiri sendiri di sidebar. URL '/chatbot/overview' akan
     // menyesatkan. Konsekuensinya middleware role: harus ditulis eksplisit
     // di sini — dia tidak lagi mewarisi dari grup chatbot.
-    Route::middleware('role:admin,manager')
+    //
+    // 'guest' ADA di daftar ini, dan itu disengaja: halaman read-only tanpa
+    // export. Route-nya WAJIB terdaftar di AuthorizationTest::guestAllowedRoutes()
+    // — assertion default-deny di sana membandingkan himpunan route yang
+    // benar-benar bisa dicapai guest dengan whitelist itu, jadi menambah guest
+    // di sini tanpa mendaftarkannya bikin test merah (bukan bolong senyap).
+    Route::middleware('role:admin,manager,staff_produksi,staff_qc,staff_maintenance,guest')
         ->get('overview', [\App\Http\Controllers\OverviewController::class, 'index'])
         ->name('overview');
 

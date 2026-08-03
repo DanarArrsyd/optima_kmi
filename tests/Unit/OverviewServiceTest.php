@@ -1,0 +1,368 @@
+<?php
+
+namespace Tests\Unit;
+
+use App\Models\MasterKaryawan;
+use App\Models\MasterLosstime;
+use App\Models\MasterMesin;
+use App\Models\MasterPart;
+use App\Models\MasterPartProses;
+use App\Models\MasterShift;
+use App\Models\TransaksiBreakdownMesin;
+use App\Models\TransaksiDandoriRincian;
+use App\Models\TransaksiProduksi;
+use App\Models\User;
+use App\Services\OverviewService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
+use Tests\TestCase;
+
+/**
+ * Angka halaman Overview.
+ *
+ * Yang dijaga di sini bukan cuma "rumusnya benar", tapi tiga kelas bug yang
+ * sudah pernah kejadian di repo ini:
+ *   1. Agregasi pabrik yang memakai rata-rata polos, bukan pooled.
+ *   2. Metrik yang mengembalikan 0 padahal maksudnya "tak bisa dihitung".
+ *   3. SQL mentah khusus MySQL — lossTime() dites langsung supaya kalau ada
+ *      fungsi yang tak dikenal SQLite, gagalnya di sini, bukan di prod.
+ */
+class OverviewServiceTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private function svc(): OverviewService
+    {
+        return new OverviewService;
+    }
+
+    private function user(): User
+    {
+        return User::factory()->create();
+    }
+
+    /** @return array{mesin: MasterMesin, proses: MasterPartProses} */
+    private function scaffold(int $sph = 400, string $install = '2026-01-01', string $kode = 'M-OV'): array
+    {
+        $part = MasterPart::firstOrCreate(
+            ['part_no' => 'PT-OV'],
+            ['part_name' => 'X', 'customer' => 'Toyota']
+        );
+        $proses = MasterPartProses::firstOrCreate(
+            ['id_part' => $part->id, 'id_proses' => 1],
+            ['nama_proses' => 'BLANKING', 'sph_standar_produksi' => $sph, 'sph_standar_qc' => 200]
+        );
+        $mesin = MasterMesin::create([
+            'id_mesin' => $kode, 'nama_mesin' => 'Press', 'line' => '1',
+            'tipe_mesin' => 'BLANKING', 'kapasitas_max_stroke' => 100,
+            'tanggal_instalasi' => $install,
+        ]);
+
+        return ['mesin' => $mesin, 'proses' => $proses];
+    }
+
+    private function shift(string $nama, string $start = '08:00', string $finish = '16:00'): MasterShift
+    {
+        return MasterShift::firstOrCreate(
+            ['nama_shift' => $nama],
+            ['jam_start' => $start, 'jam_finish' => $finish]
+        );
+    }
+
+    private function lhp(
+        int $mesinId,
+        int $prosesId,
+        int $qty,
+        int $ng = 0,
+        string $tgl = '2026-07-15',
+        string $shift = 'Shift 1',
+        string $start = '08:00',
+        string $finish = '16:00',
+    ): void {
+        $kar = MasterKaryawan::firstOrCreate(
+            ['nik' => 'K-OV'],
+            ['nama_karyawan' => 'A', 'departemen' => 'Produksi', 'is_aktif' => true]
+        );
+
+        TransaksiProduksi::create([
+            'tanggal_produksi' => $tgl,
+            'id_shift' => $this->shift($shift, $start, $finish)->id,
+            'id_karyawan' => $kar->id,
+            'id_mesin' => $mesinId,
+            'id_part_proses' => $prosesId,
+            'jam_start' => $start, 'jam_finish' => $finish,
+            'qty_aktual' => $qty, 'qty_ng' => $ng,
+            'created_by' => $this->user()->id,
+        ]);
+    }
+
+    private function dandori(string $jenis, float $menit, string $tgl, int $mesinId, int $prosesId): void
+    {
+        $lt = MasterLosstime::firstOrCreate(
+            ['jenis_losstime' => $jenis],
+            ['kode' => substr(md5($jenis), 0, 3), 'std_menit_default' => null, 'std_menit_progressive' => null]
+        );
+        $kar = MasterKaryawan::firstOrCreate(
+            ['nik' => 'K-OV'],
+            ['nama_karyawan' => 'A', 'departemen' => 'Produksi', 'is_aktif' => true]
+        );
+
+        TransaksiDandoriRincian::create([
+            'tanggal' => $tgl,
+            'id_shift' => $this->shift('Shift 1')->id,
+            'id_karyawan' => $kar->id,
+            'id_mesin' => $mesinId,
+            'id_part_proses' => $prosesId,
+            'id_losstime' => $lt->id,
+            'actual_menit' => $menit,
+            'std_menit' => 0,
+            'over_menit' => 0,
+            'created_by' => $this->user()->id,
+        ]);
+    }
+
+    private function tgl(string $s): Carbon
+    {
+        return Carbon::parse($s)->startOfDay();
+    }
+
+    /* ═══ Tanggal acuan ═══════════════════════════════════════════ */
+
+    public function test_tanggal_acuan_adalah_lhp_produksi_terbaru(): void
+    {
+        ['mesin' => $m, 'proses' => $p] = $this->scaffold();
+        $this->lhp($m->id, $p->id, qty: 100, tgl: '2026-07-10');
+        $this->lhp($m->id, $p->id, qty: 100, tgl: '2026-07-18');
+        $this->lhp($m->id, $p->id, qty: 100, tgl: '2026-07-14');
+
+        $this->assertSame('2026-07-18', $this->svc()->tanggalAcuan()->toDateString());
+    }
+
+    public function test_tanggal_acuan_null_kalau_belum_ada_lhp(): void
+    {
+        $this->assertNull($this->svc()->tanggalAcuan());
+    }
+
+    /* ═══ Achievement ═════════════════════════════════════════════ */
+
+    public function test_achievement_di_pool_bukan_dirata_rata_antar_mesin(): void
+    {
+        // Mesin A: 8 jam × sph 400 = target 3200, aktual 3200 → 100%
+        // Mesin B: 1 jam × sph 400 = target 400,  aktual 100  → 25%
+        // Rata-rata polos = 62,5%. Pooled = 3300/3600 = 91,67%.
+        // Pooled yang benar: mesin B cuma jalan 1 jam, bobotnya harus kecil.
+        ['mesin' => $a, 'proses' => $p] = $this->scaffold(sph: 400, kode: 'M-A');
+        $b = $this->scaffold(sph: 400, kode: 'M-B')['mesin'];
+
+        $this->lhp($a->id, $p->id, qty: 3200, tgl: '2026-07-15', start: '08:00', finish: '16:00');
+        $this->lhp($b->id, $p->id, qty: 100, tgl: '2026-07-15', start: '08:00', finish: '09:00');
+
+        $r = $this->svc()->achievement($this->tgl('2026-07-15'), $this->tgl('2026-07-15'));
+
+        $this->assertSame(91.67, $r['pct']);
+        $this->assertSame(3300, $r['qty']);
+        $this->assertSame(3600.0, $r['target']);
+    }
+
+    public function test_achievement_null_bukan_nol_kalau_sph_standar_belum_diset(): void
+    {
+        // Target nol berarti "tidak ada yang bisa dibandingkan", BUKAN gagal
+        // total. 0% membuat donut terlihat seperti pabrik berhenti.
+        ['mesin' => $m, 'proses' => $p] = $this->scaffold(sph: 0);
+        $this->lhp($m->id, $p->id, qty: 500, tgl: '2026-07-15');
+
+        $r = $this->svc()->achievement($this->tgl('2026-07-15'), $this->tgl('2026-07-15'));
+
+        $this->assertNull($r['pct']);
+        $this->assertSame(500, $r['qty']);
+    }
+
+    /* ═══ Achievement per shift ═══════════════════════════════════ */
+
+    public function test_shift_3_tidak_dipecah_jadi_donut_tapi_tetap_masuk_total(): void
+    {
+        ['mesin' => $m, 'proses' => $p] = $this->scaffold(sph: 400);
+
+        // Shift 1: target 3200, aktual 1600 → 50%
+        $this->lhp($m->id, $p->id, qty: 1600, tgl: '2026-07-15', shift: 'Shift 1', start: '06:00', finish: '14:00');
+        // Shift 2: target 3200, aktual 3200 → 100%
+        $this->lhp($m->id, $p->id, qty: 3200, tgl: '2026-07-15', shift: 'Shift 2', start: '14:00', finish: '22:00');
+        // Shift 3: target 3200, aktual 800 → 25%. Tidak punya donut sendiri.
+        $this->lhp($m->id, $p->id, qty: 800, tgl: '2026-07-15', shift: 'Shift 3', start: '22:00', finish: '06:00');
+
+        $perShift = $this->svc()->achievementPerShift($this->tgl('2026-07-15'), $this->tgl('2026-07-15'));
+
+        $this->assertSame(['Shift 1', 'Shift 2'], array_column($perShift, 'nama'));
+        $this->assertSame([50.0, 100.0], array_column($perShift, 'pct'));
+
+        // Total pabrik memuat KETIGA shift: 5600 / 9600 = 58,33%.
+        // Kalau Shift 3 bocor keluar dari total, angkanya jadi 4800/6400 = 75%.
+        $total = $this->svc()->achievement($this->tgl('2026-07-15'), $this->tgl('2026-07-15'));
+        $this->assertSame(58.33, $total['pct']);
+    }
+
+    public function test_shift_yang_belum_ada_di_master_bernilai_null(): void
+    {
+        ['mesin' => $m, 'proses' => $p] = $this->scaffold();
+        $this->lhp($m->id, $p->id, qty: 100, tgl: '2026-07-15', shift: 'Shift 1');
+
+        $perShift = $this->svc()->achievementPerShift($this->tgl('2026-07-15'), $this->tgl('2026-07-15'));
+
+        // Shift 2 tak pernah dibuat di test ini → null, bukan 0%.
+        $this->assertNull(collect($perShift)->firstWhere('nama', 'Shift 2')['pct']);
+    }
+
+    /* ═══ OEE pabrik ══════════════════════════════════════════════ */
+
+    public function test_performance_dan_quality_pabrik_di_pool_lintas_mesin(): void
+    {
+        ['mesin' => $a, 'proses' => $p] = $this->scaffold(sph: 400, kode: 'M-A');
+        $b = $this->scaffold(sph: 400, kode: 'M-B')['mesin'];
+
+        // Teoretis total = 2 × (8 jam × 400) = 6400.
+        // Diproduksi = (3000+200) + (2000+400) = 5600 → performance 87,5%.
+        // Baik 5000 dari 5600 → quality 89,29%.
+        $this->lhp($a->id, $p->id, qty: 3000, ng: 200, tgl: '2026-07-15');
+        $this->lhp($b->id, $p->id, qty: 2000, ng: 400, tgl: '2026-07-15');
+
+        $r = $this->svc()->oee($this->tgl('2026-07-15'), $this->tgl('2026-07-15'));
+
+        $this->assertSame(87.5, $r['performance_pct']);
+        $this->assertSame(89.29, $r['quality_pct']);
+    }
+
+    public function test_availability_pabrik_ditimbang_jam_jendela_bukan_dirata_rata(): void
+    {
+        // Mesin lama: jendela penuh 3 hari (72 jam), downtime 0 → 100%.
+        // Mesin baru: instalasi di hari terakhir, jendela 24 jam, downtime 12 → 50%.
+        // Rata-rata polos = 75%. Pooled tertimbang = (96−12)/96 = 87,5%.
+        // Inilah sebabnya operating_hours dikeluarkan MaintenanceDashboardService.
+        $lama = $this->scaffold(install: '2026-01-01', kode: 'M-LAMA')['mesin'];
+        $baru = $this->scaffold(install: '2026-07-17', kode: 'M-BARU')['mesin'];
+
+        TransaksiBreakdownMesin::create([
+            'no_lkm' => 'LKM-OV', 'id_mesin' => $baru->id,
+            'tanggal_breakdown' => '2026-07-17', 'jam_breakdown' => '08:00',
+            'tanggal_mulai_perbaikan' => '2026-07-17', 'jam_mulai_perbaikan' => '08:00',
+            'tanggal_selesai_perbaikan' => '2026-07-17', 'jam_selesai_perbaikan' => '20:00',
+            'problem_mesin' => 'x', 'penyebab_breakdown' => 'x', 'tindakan_perbaikan' => 'x',
+            'status_breakdown' => 'Sedang', 'pic_maintenance' => 'Budi',
+            'repair_time' => 12.0, 'total_downtime' => 12.0,
+        ]);
+
+        $r = $this->svc()->oee($this->tgl('2026-07-15'), $this->tgl('2026-07-17'));
+
+        // Mesin lama memang tak punya breakdown — disebut eksplisit supaya
+        // jelas dia BUKAN yang diabaikan dari penyebut.
+        $this->assertNotNull($lama->tanggal_instalasi);
+        $this->assertSame(87.5, $r['availability_pct']);
+        $this->assertNotSame(75.0, $r['availability_pct']);
+    }
+
+    public function test_oee_null_kalau_salah_satu_komponen_tak_terhitung(): void
+    {
+        // Ada mesin & breakdown (availability bisa), tapi nol LHP produksi →
+        // performance & quality null → OEE HARUS null, bukan 0.
+        $this->scaffold(install: '2026-01-01');
+
+        $r = $this->svc()->oee($this->tgl('2026-07-15'), $this->tgl('2026-07-15'));
+
+        $this->assertNull($r['oee_pct']);
+        $this->assertNull($r['performance_pct']);
+        $this->assertNotEmpty($r['catatan']);
+    }
+
+    public function test_mesin_tanpa_tanggal_instalasi_dicatat_bukan_didiamkan(): void
+    {
+        ['mesin' => $ok, 'proses' => $p] = $this->scaffold(install: '2026-01-01', kode: 'M-OK');
+        MasterMesin::create([
+            'id_mesin' => 'M-NOINST', 'nama_mesin' => 'Y', 'line' => '1',
+            'tipe_mesin' => 'BLANKING', 'kapasitas_max_stroke' => 100,
+            'tanggal_instalasi' => null,
+        ]);
+        $this->lhp($ok->id, $p->id, qty: 3200, tgl: '2026-07-15');
+
+        $r = $this->svc()->oee($this->tgl('2026-07-15'), $this->tgl('2026-07-15'));
+
+        $this->assertNotNull($r['availability_pct']);
+        $this->assertNotEmpty(array_filter(
+            $r['catatan'],
+            fn (string $c) => str_contains($c, 'tanggal instalasi belum diset')
+        ));
+    }
+
+    /* ═══ Tren ════════════════════════════════════════════════════ */
+
+    public function test_tren_menghasilkan_enam_titik_mundur_dari_acuan(): void
+    {
+        ['mesin' => $m, 'proses' => $p] = $this->scaffold(sph: 400);
+        $this->lhp($m->id, $p->id, qty: 3200, tgl: '2026-07-15');
+
+        $tren = $this->svc()->tren($this->tgl('2026-07-15'));
+
+        $this->assertCount(OverviewService::HARI_TREN, $tren);
+        $this->assertSame('2026-07-10', $tren[0]['tanggal']);
+        $this->assertSame('2026-07-15', $tren[5]['tanggal']);
+        $this->assertSame('15-Jul', $tren[5]['label']);
+
+        // Hari tanpa LHP = null, BUKAN 0 — grafik memutus garisnya, dan 0
+        // akan terbaca sebagai "produksi nol" padahal cuma tak ada data.
+        $this->assertNull($tren[0]['achievement_pct']);
+        $this->assertSame(100.0, $tren[5]['achievement_pct']);
+    }
+
+    /* ═══ Loss time (Pareto) ══════════════════════════════════════ */
+
+    /**
+     * Gerbang dialek SQL: lossTime() memakai DB::raw (COALESCE + SUM + GROUP BY).
+     * Kalau ada fungsi khusus MySQL menyelinap masuk, test ini merah di SQLite —
+     * itu justru gunanya. Tanpa test ini halaman Pareto bisa hidup bertahun-tahun
+     * dengan nol cakupan.
+     */
+    public function test_loss_time_terurut_menurun_dan_underscore_jadi_spasi(): void
+    {
+        ['mesin' => $m, 'proses' => $p] = $this->scaffold();
+
+        $this->dandori('Tunggu_Dies', 120.5, '2026-07-15', $m->id, $p->id);
+        $this->dandori('Tunggu_Dies', 80.0, '2026-07-15', $m->id, $p->id);
+        $this->dandori('Setting_Dies', 60.0, '2026-07-15', $m->id, $p->id);
+        $this->dandori('Ke_Toilet', 15.0, '2026-07-15', $m->id, $p->id);
+
+        $rows = $this->svc()->lossTime($this->tgl('2026-07-15'), $this->tgl('2026-07-15'));
+
+        $this->assertSame(['Tunggu Dies', 'Setting Dies', 'Ke Toilet'], array_column($rows, 'jenis'));
+        $this->assertSame([200.5, 60.0, 15.0], array_column($rows, 'menit'));
+    }
+
+    public function test_loss_time_all_time_tanpa_batas_tanggal(): void
+    {
+        ['mesin' => $m, 'proses' => $p] = $this->scaffold();
+
+        $this->dandori('Tunggu_Dies', 10.0, '2025-01-05', $m->id, $p->id);
+        $this->dandori('Tunggu_Dies', 20.0, '2026-07-15', $m->id, $p->id);
+
+        $semua = $this->svc()->lossTime();
+
+        $this->assertSame(30.0, $semua[0]['menit']);
+    }
+
+    public function test_tiga_scope_pareto_menyaring_rentang_yang_berbeda(): void
+    {
+        ['mesin' => $m, 'proses' => $p] = $this->scaffold();
+
+        $this->dandori('Tunggu_Dies', 5.0, '2026-06-20', $m->id, $p->id);   // bulan lain
+        $this->dandori('Tunggu_Dies', 7.0, '2026-07-02', $m->id, $p->id);   // bulan sama, hari lain
+        $this->dandori('Tunggu_Dies', 9.0, '2026-07-15', $m->id, $p->id);   // hari acuan
+
+        $scope = $this->svc()->lossTimeSemuaScope($this->tgl('2026-07-15'));
+
+        $this->assertSame(9.0, $scope['harian'][0]['menit']);
+        $this->assertSame(16.0, $scope['bulanan'][0]['menit']);
+        $this->assertSame(21.0, $scope['semua'][0]['menit']);
+    }
+
+    public function test_loss_time_kosong_mengembalikan_array_kosong(): void
+    {
+        $this->assertSame([], $this->svc()->lossTime());
+    }
+}
