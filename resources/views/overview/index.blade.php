@@ -58,10 +58,16 @@
     .ov-row-1 { grid-template-columns: 1fr 1.9fr 1.2fr 1.2fr; }
     .ov-row-2 { grid-template-columns: 1fr 1.9fr 2.4fr; }
 
-    /* Kolom kiri baris 2: dua panel menumpuk (OEE besar + rincian A/P/Q) */
+    /* Kolom kiri baris 2: dua panel menumpuk (OEE besar + rincian A/P/Q).
+       KEDUANYA bertinggi definit lewat rasio flex, bukan satu 'auto' + satu
+       'grow'. Versi itu memotong angka OEE: panel-nya flex:0 0 auto (tinggi =
+       tinggi konten) sementara body-nya flex:1 1 0, dan flex-basis 0 membuat
+       kontribusi tinggi body ke induk runtuh — panel menyusut sebatas header,
+       lalu overflow:hidden mengklip angkanya.
+       Rasio 1 : 2.4 = satu angka besar vs tiga angka + catatan. */
     .ov-stack { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
-    .ov-stack > .erp-panel { flex: 0 0 auto; }
-    .ov-stack > .erp-panel.ov-grow { flex: 1 1 0; }
+    .ov-stack > .erp-panel { flex: 1 1 0; }
+    .ov-stack > .erp-panel.ov-grow { flex: 2.4 1 0; }
 
     .ov-row .erp-panel,
     .ov-stack .erp-panel {
@@ -81,28 +87,41 @@
         padding: 7px 9px;
     }
 
-    /* Header panel dipadatkan dan dipaksa satu baris. Sebelumnya
-       "ACHIEVEMENT PRODUCTION - LAST 24 H" membungkus jadi dua baris, yang
-       memakan ~18px DAN membuat header baris 1 tidak lagi sejajar. */
+    /* Header panel: satu baris, dipadatkan.
+       .erp-panel-header itu display:flex dari design system. Menaruh
+       white-space/text-overflow di SINI tidak bekerja — teks label jadi
+       anonymous flex item yang tak bisa menyusut, jadi ia terpotong mentah
+       tanpa elipsis ("ACHIEVEMENT PRODUCTION - LAST" lalu habis).
+       Solusinya memberi label elemennya sendiri (.ov-h) yang boleh menyusut,
+       dan menahan suffix rentang supaya TIDAK ikut hilang — kalau harus ada
+       yang dipangkas, nama metrik masih bisa diterka dari konteks panel,
+       sedangkan rentang waktunya tidak. */
     .ov-row .erp-panel-header,
     .ov-stack .erp-panel-header {
-        padding: 4px 9px;
+        padding: 3px 9px;
         min-height: 0;
-        font-size: 11px;
-        letter-spacing: 0.3px;
+        font-size: 10px;
+        letter-spacing: 0.2px;
         white-space: nowrap;
         overflow: hidden;
+        gap: 4px;
+    }
+    .ov-h {
+        min-width: 0;
+        overflow: hidden;
         text-overflow: ellipsis;
-        gap: 5px;
+        white-space: nowrap;
     }
 
-    /* Suffix rentang di header panel — abu, bukan bold, supaya nama metriknya
-       yang dibaca lebih dulu. */
+    /* Suffix rentang di header panel — lebih kecil DAN lebih terang dari nama
+       metriknya, supaya nama metrik yang dibaca lebih dulu. flex-shrink:0
+       menahannya utuh (lihat catatan .ov-h di atas). */
     .ov-sub {
         color: var(--text-4);
         font-weight: 600;
-        letter-spacing: 0.6px;
-        margin-left: 2px;
+        font-size: 9px;
+        letter-spacing: 0.3px;
+        flex: 0 0 auto;
     }
 
     /* ══ Angka besar (OEE / A / P / Q) ══════════════════════════════
@@ -122,17 +141,26 @@
     .ov-big-sm { font-size: clamp(17px, 2.9vh, 34px); }
     .ov-metric { min-height: 0; }
     .ov-metric + .ov-metric { border-top: 1px solid var(--border-2); margin-top: 5px; padding-top: 5px; }
+    /* flex + baseline, senada header panel: .ov-h di dalamnya butuh induk flex
+       supaya min-width:0 + ellipsis-nya berlaku. Sebagai blok biasa, .ov-h
+       tidak pernah menyusut dan label panjang tetap terpotong mentah. */
     .ov-metric-label {
+        display: flex;
+        align-items: baseline;
+        gap: 4px;
         font-size: 10px;
         font-weight: 700;
         color: var(--text-2);
         text-transform: uppercase;
         letter-spacing: 0.4px;
         margin-bottom: 0;
-        white-space: nowrap;
         overflow: hidden;
-        text-overflow: ellipsis;
     }
+
+    /* Tiga metrik disebar rata, bukan digumpal di tengah. Dengan center,
+       sisa ruang panel menumpuk jadi satu blok kosong di atas dan angkanya
+       tampak menggantung — terlihat seperti salah render, bukan pilihan. */
+    .ov-grow .erp-panel-body { justify-content: space-evenly; }
 
     /* ══ Donut + angka di tengahnya ═════════════════════════════════
        Angka ditulis sebagai HTML yang ditumpuk di atas canvas, bukan plugin
@@ -295,7 +323,7 @@
     <div class="ov-row ov-row-1">
 
         <div class="erp-panel">
-            <div class="erp-panel-header">Achievement Production <span class="ov-sub">- LAST 24 H</span></div>
+            <div class="erp-panel-header"><span class="ov-h">Achievement Production</span><span class="ov-sub">- LAST 24 H</span></div>
             <div class="erp-panel-body">
                 <div class="ov-donut-wrap">
                     <canvas id="ovDonutTotal"></canvas>
@@ -309,7 +337,7 @@
         </div>
 
         <div class="erp-panel">
-            <div class="erp-panel-header">Achievement <span class="ov-sub">- {{ $tren === [] ? '' : count($tren) }} LAST DAYS</span></div>
+            <div class="erp-panel-header"><span class="ov-h">Achievement</span><span class="ov-sub">- {{ $tren === [] ? '' : count($tren) }} LAST DAYS</span></div>
             <div class="erp-panel-body">
                 <div class="ov-chart-line"><canvas id="ovLineAch"></canvas></div>
             </div>
@@ -317,7 +345,7 @@
 
         @foreach($perShift as $s)
             <div class="erp-panel">
-                <div class="erp-panel-header">Achievement {{ strtoupper($s['nama']) }} <span class="ov-sub">- LAST 24 H</span></div>
+                <div class="erp-panel-header"><span class="ov-h">Achievement {{ strtoupper($s['nama']) }}</span><span class="ov-sub">- LAST 24 H</span></div>
                 <div class="erp-panel-body">
                     <div class="ov-donut-wrap">
                         <canvas id="ovDonutShift{{ $loop->index }}"></canvas>
@@ -338,7 +366,7 @@
         {{-- Kolom kiri: OEE besar + rincian A/P/Q --}}
         <div class="ov-stack">
             <div class="erp-panel">
-                <div class="erp-panel-header">OEE <span class="ov-sub">- LAST 24 H</span></div>
+                <div class="erp-panel-header"><span class="ov-h">OEE</span><span class="ov-sub">- LAST 24 H</span></div>
                 <div class="erp-panel-body">
                     <div class="ov-big">{{ $oee['oee_pct'] === null ? '—' : number_format($oee['oee_pct'], 1, ',', '.').'%' }}</div>
                 </div>
@@ -355,7 +383,7 @@
                         'Quality'      => $oee['quality_pct'],
                     ] as $label => $nilai)
                         <div class="ov-metric">
-                            <div class="ov-metric-label">{{ $label }} <span class="ov-sub">- LAST 24 H</span></div>
+                            <div class="ov-metric-label"><span class="ov-h">{{ $label }}</span><span class="ov-sub">- LAST 24 H</span></div>
                             <div class="ov-big ov-big-sm">{{ $nilai === null ? '—' : number_format($nilai, 1, ',', '.').'%' }}</div>
                         </div>
                     @endforeach
@@ -376,7 +404,7 @@
 
         {{-- Tengah: tren OEE --}}
         <div class="erp-panel">
-            <div class="erp-panel-header">OEE <span class="ov-sub">- {{ count($tren) }} LAST DAYS</span></div>
+            <div class="erp-panel-header"><span class="ov-h">OEE</span><span class="ov-sub">- {{ count($tren) }} LAST DAYS</span></div>
             <div class="erp-panel-body">
                 <div class="ov-chart-line"><canvas id="ovLineOee"></canvas></div>
             </div>
@@ -385,7 +413,7 @@
         {{-- Kanan: Pareto loss time --}}
         <div class="erp-panel">
             <div class="erp-panel-header">
-                Loss Time
+                <span class="ov-h">Loss Time</span>
                 <span class="ov-sub" x-text="'- ' + labelScope()"></span>
                 <span class="ov-sub" style="margin-left:auto;text-transform:none;letter-spacing:0">menit</span>
             </div>
