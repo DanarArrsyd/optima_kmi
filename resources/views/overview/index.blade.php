@@ -14,25 +14,87 @@
 
 @push('styles')
 <style>
-    /* ══ Grid Overview ══════════════════════════════════════════════
-       Dua baris grid terpisah, bukan satu grid 12 kolom: tiap baris punya
-       proporsi sendiri dan tinggi panel di satu baris tidak boleh menyeret
-       baris lain. */
+    /* ══ Kanvas satu layar ═══════════════════════════════════════════
+       Seluruh dashboard dikunci setinggi viewport supaya tidak pernah
+       di-scroll. Tingginya DIHITUNG, bukan ditebak:
+
+         100vh
+         − var(--tb-h)  (46px topbar fixed)
+         − 36px         (padding atas+bawah #main, 18px masing-masing)
+         − 44px         (page-header versi ringkas: judul 16px + padding 5
+                         + border 1 + margin-bottom 8 ≈ 38px, dibulatkan ke 44
+                         sebagai sisa napas. Angka pas-pasan berarti pertumbuhan
+                         sekecil apa pun di header langsung memunculkan scroll,
+                         dan itu justru yang sedang dihindari.)
+
+       #main SENGAJA TIDAK di-override di sini. css/chatbot.css melakukan itu
+       untuk halaman chat dan akibatnya tiap elemen baru di sana harus melawan
+       gaya global. Memasukkan padding #main ke dalam calc() memberi hasil yang
+       sama tanpa menyentuh apa pun di luar halaman ini.
+
+       min-height:0 di SETIAP anak flex/grid itu WAJIB, bukan hiasan: tanpa itu
+       anak flex menolak menyusut di bawah tinggi kontennya, canvas Chart.js
+       memaksa tingginya sendiri, dan seluruh trik ini bocor jadi scroll. */
+    .ov-page {
+        height: calc(100vh - var(--tb-h) - 36px - 44px);
+        display: grid;
+        grid-template-rows: minmax(0, 1fr) minmax(0, 1.25fr);
+        gap: 8px;
+        overflow: hidden;
+    }
+
+    /* Header halaman diringkas — tiap piksel di sini langsung mengurangi
+       ruang grafik. */
+    .ov-page-header { margin-bottom: 8px; padding-bottom: 5px; }
+    .ov-page-header .page-title { font-size: 16px; }
+    .ov-page-header .page-title i { font-size: 15px; }
+
     .ov-row {
         display: grid;
-        gap: 12px;
-        margin-bottom: 12px;
+        gap: 8px;
+        min-height: 0;
         align-items: stretch;
     }
     .ov-row-1 { grid-template-columns: 1fr 1.9fr 1.2fr 1.2fr; }
     .ov-row-2 { grid-template-columns: 1fr 1.9fr 2.4fr; }
 
     /* Kolom kiri baris 2: dua panel menumpuk (OEE besar + rincian A/P/Q) */
-    .ov-stack { display: flex; flex-direction: column; gap: 12px; }
-    .ov-stack > .erp-panel { margin-bottom: 0; flex: 1 1 auto; display: flex; flex-direction: column; }
+    .ov-stack { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+    .ov-stack > .erp-panel { flex: 0 0 auto; }
+    .ov-stack > .erp-panel.ov-grow { flex: 1 1 0; }
 
-    .ov-row .erp-panel { margin-bottom: 0; display: flex; flex-direction: column; }
-    .ov-row .erp-panel-body { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; }
+    .ov-row .erp-panel,
+    .ov-stack .erp-panel {
+        margin-bottom: 0;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    .ov-row .erp-panel-body,
+    .ov-stack .erp-panel-body {
+        flex: 1 1 0;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 7px 9px;
+    }
+
+    /* Header panel dipadatkan dan dipaksa satu baris. Sebelumnya
+       "ACHIEVEMENT PRODUCTION - LAST 24 H" membungkus jadi dua baris, yang
+       memakan ~18px DAN membuat header baris 1 tidak lagi sejajar. */
+    .ov-row .erp-panel-header,
+    .ov-stack .erp-panel-header {
+        padding: 4px 9px;
+        min-height: 0;
+        font-size: 11px;
+        letter-spacing: 0.3px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        gap: 5px;
+    }
 
     /* Suffix rentang di header panel — abu, bukan bold, supaya nama metriknya
        yang dibaca lebih dulu. */
@@ -43,31 +105,40 @@
         margin-left: 2px;
     }
 
-    /* ══ Angka besar (OEE / A / P / Q) ══════════════════════════════ */
+    /* ══ Angka besar (OEE / A / P / Q) ══════════════════════════════
+       Ukurannya pakai clamp() bersatuan vh, bukan px tetap. Halaman ini
+       terkunci setinggi viewport, jadi font px tetap berarti angkanya
+       tumpah keluar panel di layar pendek (laptop 768px) sementara di layar
+       besar malah kelihatan kecil. Batas bawah clamp menjaga tetap terbaca
+       dari jarak berdiri di lantai produksi. */
     .ov-big {
-        font-size: 58px;
+        font-size: clamp(24px, 4.6vh, 54px);
         font-weight: 700;
-        line-height: 1.05;
+        line-height: 1.02;
         text-align: center;
         color: var(--text);
         letter-spacing: -1px;
     }
-    .ov-big-sm { font-size: 40px; }
-    .ov-metric + .ov-metric { border-top: 1px solid var(--border-2); margin-top: 10px; padding-top: 10px; }
+    .ov-big-sm { font-size: clamp(17px, 2.9vh, 34px); }
+    .ov-metric { min-height: 0; }
+    .ov-metric + .ov-metric { border-top: 1px solid var(--border-2); margin-top: 5px; padding-top: 5px; }
     .ov-metric-label {
-        font-size: 12px;
+        font-size: 10px;
         font-weight: 700;
         color: var(--text-2);
         text-transform: uppercase;
-        letter-spacing: 0.6px;
-        margin-bottom: 2px;
+        letter-spacing: 0.4px;
+        margin-bottom: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     /* ══ Donut + angka di tengahnya ═════════════════════════════════
        Angka ditulis sebagai HTML yang ditumpuk di atas canvas, bukan plugin
        Chart.js: satu elemen teks biasa lebih mudah distel dan ikut aturan
        font Arial global tanpa menghitung ulang koordinat canvas. */
-    .ov-donut-wrap { position: relative; height: 190px; }
+    .ov-donut-wrap { position: relative; flex: 1 1 0; min-height: 0; }
     .ov-donut-center {
         position: absolute;
         inset: 0;
@@ -75,44 +146,48 @@
         align-items: center;
         justify-content: center;
         pointer-events: none;
-        font-size: 30px;
+        font-size: clamp(17px, 2.9vh, 30px);
         font-weight: 700;
         color: var(--text);
     }
     .ov-legend {
         display: flex;
         justify-content: center;
-        gap: 14px;
-        margin-top: 6px;
-        font-size: 11px;
+        gap: 11px;
+        margin-top: 3px;
+        flex: 0 0 auto;
+        font-size: 9.5px;
         font-weight: 700;
         color: var(--text-2);
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.4px;
     }
-    .ov-legend span { display: inline-flex; align-items: center; gap: 4px; }
+    .ov-legend span { display: inline-flex; align-items: center; gap: 3px; }
     .ov-legend i {
-        width: 9px; height: 9px;
+        width: 8px; height: 8px;
         display: inline-block;
         border: 1px solid var(--border);
     }
 
-    /* ══ Tinggi canvas grafik ═══════════════════════════════════════ */
-    .ov-chart-line   { height: 235px; }
-    .ov-chart-pareto { height: 345px; }
+    /* ══ Kotak canvas grafik ════════════════════════════════════════
+       Tinggi px tetap DIGANTI flex: canvas mengisi sisa ruang panel apa pun
+       tinggi viewport-nya. Chart.js sudah maintainAspectRatio:false, jadi ia
+       mengikuti kotak ini — bukan sebaliknya. */
+    .ov-chart-line,
+    .ov-chart-pareto { position: relative; flex: 1 1 0; min-height: 0; }
 
     /* ══ Tombol scope Pareto ════════════════════════════════════════ */
-    .ov-scope { display: flex; justify-content: center; margin-bottom: 6px; }
+    .ov-scope { display: flex; justify-content: center; margin-bottom: 4px; flex: 0 0 auto; }
     .ov-scope button {
         background: var(--surface);
         border: 1px solid var(--border);
         margin-left: -1px;
-        padding: 4px 14px;
-        font-size: 11.5px;
+        padding: 2px 11px;
+        font-size: 10px;
         font-weight: 700;
         color: var(--text-3);
         text-transform: uppercase;
-        letter-spacing: 0.6px;
+        letter-spacing: 0.4px;
         cursor: pointer;
         transition: background var(--t), color var(--t);
     }
@@ -133,26 +208,53 @@
         font-size: 14px;
     }
 
-    /* Catatan kenapa sebuah angka kosong — jangan disembunyikan, halaman yang
-       diam soal ini bikin orang menyangka datanya nol. */
+    /* Catatan kenapa sebuah angka kosong — TETAP terlihat, tidak dipindah ke
+       tooltip. Halaman yang diam soal ini bikin orang menyangka datanya nol.
+       Yang berubah cuma tempatnya: dulu panel sendiri (mencuri satu slot
+       grid), sekarang catatan kaki di dalam panel A/P/Q dengan tinggi dibatasi
+       + scroll sendiri, supaya catatan panjang tidak pernah mendorong grafik
+       lain keluar layar. */
     .ov-catatan {
-        font-size: 12px;
+        font-size: 10px;
         color: var(--text-3);
-        line-height: 1.5;
-        margin: 0;
-        padding-left: 18px;
+        line-height: 1.35;
+        margin: 5px 0 0;
+        padding-left: 14px;
+        max-height: 3.6em;
+        overflow-y: auto;
+        flex: 0 0 auto;
+        border-top: 1px solid var(--border-2);
+        padding-top: 4px;
     }
 
-    /* ══ Responsif ══════════════════════════════════════════════════ */
-    @media (max-width: 1400px) {
+    /* ══ Responsif ══════════════════════════════════════════════════
+       Di bawah ambang ini kunci satu-layar DILEPAS dan halaman boleh
+       di-scroll lagi. Memaksa sepuluh panel masuk layar sempit atau pendek
+       menghasilkan grafik yang tak terbaca — scroll lebih baik daripada
+       angka setinggi 8px. */
+    @media (max-width: 1400px), (max-height: 620px) {
+        .ov-page {
+            height: auto;
+            overflow: visible;
+            grid-template-rows: none;
+        }
         .ov-row-1 { grid-template-columns: 1fr 1fr; }
         .ov-row-2 { grid-template-columns: 1fr 1fr; }
         .ov-row-2 > .erp-panel:last-child { grid-column: 1 / -1; }
+
+        /* Kotak grafik kembali bertinggi tetap: tanpa tinggi induk yang
+           terdefinisi, flex:1 1 0 runtuh jadi nol dan canvas-nya hilang. */
+        .ov-donut-wrap  { flex: 0 0 auto; height: 180px; }
+        .ov-chart-line  { flex: 0 0 auto; height: 225px; }
+        .ov-chart-pareto{ flex: 0 0 auto; height: 320px; }
+        .ov-big         { font-size: 44px; }
+        .ov-big-sm      { font-size: 30px; }
+        .ov-donut-center{ font-size: 26px; }
+        .ov-catatan     { max-height: none; }
     }
     @media (max-width: 900px) {
         .ov-row-1, .ov-row-2 { grid-template-columns: 1fr; }
         .ov-row-2 > .erp-panel:last-child { grid-column: auto; }
-        .ov-big { font-size: 46px; }
     }
 </style>
 @endpush
@@ -160,7 +262,7 @@
 @section('content')
 
 {{-- ── PAGE HEADER ──────────────────────────────────────────── --}}
-<div class="page-header">
+<div class="page-header ov-page-header">
     <h1 class="page-title">
         <i class="bi bi-graph-up-arrow"></i>Overview
     </h1>
@@ -169,7 +271,7 @@
              "LAST 24 H", dan tanpa tanggal ini orang tidak punya cara tahu
              hari mana yang sebenarnya ditampilkan — LHP sering baru masuk
              besoknya, jadi acuannya belum tentu hari ini. --}}
-        <span class="text-muted" style="font-size:13px">
+        <span class="text-muted" style="font-size:12px">
             Data per <strong>{{ $acuan->format('d M Y') }}</strong> (tanggal LHP produksi terakhir)
         </span>
     @endunless
@@ -187,7 +289,7 @@
      DOMContentLoaded di bawah, lepas dari Alpine — kalau Alpine gagal boot,
      semua grafik tetap tampil dan yang mati cuma tombol scope-nya. Menaruh
      penggambaran di x-init membuat kegagalan Alpine berarti halaman KOSONG. --}}
-<div x-data="ovPage()">
+<div x-data="ovPage()" class="ov-page">
 
     {{-- ══ BARIS 1 — ACHIEVEMENT ══════════════════════════════════ --}}
     <div class="ov-row ov-row-1">
@@ -242,7 +344,10 @@
                 </div>
             </div>
 
-            <div class="erp-panel">
+            {{-- ov-grow: panel INILAH yang menyerap sisa tinggi kolom, bukan
+                 panel OEE di atasnya. Kalau keduanya tumbuh, angka OEE tunggal
+                 dapat ruang sebanyak tiga angka A/P/Q sekaligus. --}}
+            <div class="erp-panel ov-grow">
                 <div class="erp-panel-body">
                     @foreach([
                         'Availability' => $oee['availability_pct'],
@@ -254,20 +359,19 @@
                             <div class="ov-big ov-big-sm">{{ $nilai === null ? '—' : number_format($nilai, 1, ',', '.').'%' }}</div>
                         </div>
                     @endforeach
-                </div>
-            </div>
 
-            @if($oee['catatan'] !== [])
-                <div class="erp-panel">
-                    <div class="erp-panel-body">
+                    {{-- Catatan ikut DI DALAM panel ini, bukan panel ketiga.
+                         Panel sendiri mencuri satu slot tinggi dari kolom dan
+                         itu langsung memakan ukuran angka A/P/Q. --}}
+                    @if($oee['catatan'] !== [])
                         <ul class="ov-catatan">
                             @foreach($oee['catatan'] as $c)
                                 <li>{{ $c }}</li>
                             @endforeach
                         </ul>
-                    </div>
+                    @endif
                 </div>
-            @endif
+            </div>
         </div>
 
         {{-- Tengah: tren OEE --}}
@@ -337,23 +441,23 @@ const OV_KUNING = '#facc15';   /* isi donut ACT */
 const ovLabelAct = {
     display: true,
     align: 'bottom',
-    offset: 6,
+    offset: 4,
     backgroundColor: '#ffff00',
     borderColor: OV_ORANYE,
     borderWidth: 1,
     borderRadius: 2,
-    padding: { top: 1, bottom: 1, left: 3, right: 3 },
+    padding: { top: 0, bottom: 0, left: 2, right: 2 },
     color: '#000',
-    font: { size: 10, weight: 'bold' },
+    font: { size: 9, weight: 'bold' },
     formatter: v => v === null ? '' : Math.round(v) + '%',
 };
 
 const ovLabelTarget = {
     display: true,
     align: 'top',
-    offset: 4,
+    offset: 3,
     color: '#4b5563',
-    font: { size: 10, weight: 'bold' },
+    font: { size: 9, weight: 'bold' },
     formatter: v => v === null ? '' : Math.round(v) + '%',
 };
 
@@ -433,18 +537,18 @@ function ovLine(id, kunci) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            layout: { padding: { top: 14, right: 8 } },
+            layout: { padding: { top: 10, right: 6 } },
             scales: {
                 y: {
                     beginAtZero: true,
                     max: 120,
-                    ticks: { stepSize: 20, callback: v => v + '%', font: { size: 11 } },
+                    ticks: { stepSize: 20, callback: v => v + '%', font: { size: 9 } },
                     grid: { color: '#f3f4f6' },
                 },
-                x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+                x: { grid: { display: false }, ticks: { font: { size: 9 } } },
             },
             plugins: {
-                legend: { position: 'bottom', labels: { boxWidth: 26, font: { size: 11 } } },
+                legend: { position: 'bottom', labels: { boxWidth: 20, boxHeight: 8, padding: 6, font: { size: 9 } } },
                 tooltip: {
                     callbacks: {
                         label: c => c.dataset.label + ': ' +
@@ -478,12 +582,12 @@ function ovPareto(scope) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            layout: { padding: { top: 18 } },
+            layout: { padding: { top: 14 } },
             scales: {
                 y: {
                     beginAtZero: true,
                     ticks: {
-                        font: { size: 11 },
+                        font: { size: 9 },
                         /* 35.0k — ribuan disingkat, kalau tidak label sumbunya
                            lebih lebar dari grafiknya sendiri. */
                         callback: v => v >= 1000 ? ovNum(v / 1000, 1) + 'k' : ovNum(v, 0),
@@ -492,7 +596,7 @@ function ovPareto(scope) {
                 },
                 x: {
                     grid: { display: false },
-                    ticks: { font: { size: 10 }, maxRotation: 55, minRotation: 45, autoSkip: false },
+                    ticks: { font: { size: 8 }, maxRotation: 60, minRotation: 50, autoSkip: false },
                 },
             },
             plugins: {
@@ -503,7 +607,7 @@ function ovPareto(scope) {
                     align: 'top',
                     offset: 2,
                     color: '#374151',
-                    font: { size: 9, weight: 'bold' },
+                    font: { size: 8, weight: 'bold' },
                     formatter: v => ovNum(v, 1),
                 },
                 tooltip: {
