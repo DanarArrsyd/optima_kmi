@@ -26,6 +26,8 @@ class SidebarNavTest extends TestCase
      * yang dites SEBAGAI GANTINYA. Dipakai kalau route asli tidak bisa
      * dibuka di lingkungan test. Sengaja berupa peta eksplisit (bukan
      * di-skip diam-diam) supaya tiap pengecualian kelihatan di kode.
+     * Catatan: entry yang menunjuk ke route **berparameter** juga WAJIB
+     * di-substitusi di sini, atau route($namaRoute) akan throw UrlGenerationException.
      */
     private const SUBSTITUSI_ROUTE = [
         // 'master.part.index' sengaja TIDAK dipakai: controllernya manggil
@@ -149,12 +151,18 @@ class SidebarNavTest extends TestCase
     public function test_saringan_role_tetap_utuh(): void
     {
         $qc = User::factory()->create(['role' => 'staff_qc']);
-        $response = $this->actingAs($qc)->get(route('vcb.quality'))->assertOk();
+        // Scope ke sidebar saja — di awal, komentar CSS di layout.app berisi
+        // string 'MTC Dies' dan meledakkan test ini, padahal tidak berhubungan
+        // dengan role filtering. Sekarang scope terbatas di sidebar untuk
+        // hindari false positive dari isi halaman lain.
+        $html = $this->sidebar(
+            $this->actingAs($qc)->get(route('vcb.quality'))->assertOk()->getContent()
+        );
 
-        $response->assertDontSee(route('master.users.index'));
-        $response->assertDontSee(route('maintenance.breakdown.index'));
-        $response->assertDontSee(route('chatbot.index'));
-        $response->assertDontSee('MTC Dies');
+        $this->assertStringNotContainsString('href="'.route('master.users.index').'"', $html);
+        $this->assertStringNotContainsString('href="'.route('maintenance.breakdown.index').'"', $html);
+        $this->assertStringNotContainsString('href="'.route('chatbot.index').'"', $html);
+        $this->assertStringNotContainsString('MTC Dies', $html);
     }
 
     public function test_label_section_lama_sudah_tidak_dirender(): void
@@ -175,7 +183,7 @@ class SidebarNavTest extends TestCase
         );
 
         foreach (SidebarMenu::forRole('admin') as $entri) {
-            $daftar = $entri['type'] === 'group' ? $entri['items'] : [$entri];
+            $daftar = ($entri['type'] ?? 'link') === 'group' ? $entri['items'] : [$entri];
 
             foreach ($daftar as $item) {
                 // Tanda kutip penutup WAJIB ikut dicocokkan — tanpa itu
