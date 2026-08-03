@@ -32,7 +32,14 @@
                     <span class="nav-text">{{ $entry['label'] }}</span>
                     <i class="bi bi-chevron-down nav-caret"></i>
                 </button>
-                <div class="nav-group-body" x-show="isOpen('{{ $entry['key'] }}')" x-cloak>
+                {{-- Grup aktif sengaja TANPA x-cloak: PHP sudah tahu grup ini
+                     harus terbuka, jadi dirender terbuka langsung di HTML
+                     mentah. Kalau Alpine gagal boot, isi grup aktif tetap
+                     kelihatan — cuma grup lain yang nunggu Alpine untuk
+                     dibuka. Ini juga menghapus kedipan "grup aktif nyusul
+                     kebuka" setelah hydration. --}}
+                <div class="nav-group-body" x-show="isOpen('{{ $entry['key'] }}')"
+                     @if($activeGroup !== $entry['key']) x-cloak @endif>
                     @foreach($entry['items'] as $item)
                         <a href="{{ route($item['route']) }}"
                            class="nav-item-link {{ SidebarMenu::isActive($item) ? 'active' : '' }}"

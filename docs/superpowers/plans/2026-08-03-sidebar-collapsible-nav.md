@@ -880,7 +880,7 @@ Expected: FAIL — `test_grup_yang_memuat_halaman_ikut_terbuka` gagal karena HTM
 </nav>
 ```
 
-Perhatikan `class="nav-item-link {{ ... }}"` menghasilkan `class="nav-item-link active"` atau `class="nav-item-link "`. Regex di kedua test bergantung pada bentuk itu — jangan diubah jadi `@class([...])`.
+Perhatikan `class="nav-item-link {{ ... }}"` menghasilkan `class="nav-item-link active"` atau `class="nav-item-link "`. `@class(['nav-item-link', 'active' => $aktif])` sebenarnya menghasilkan markup yang sama-sama cocok dengan regex kedua test — jadi itu BUKAN alasan larangannya. Alasan sebenarnya: `active` / `has-active` harus tetap jadi kelas TERAKHIR di atribut, karena regex di kedua test mengunci pada `\s*"` di ujungnya. Larangan tetap berlaku — jangan diubah jadi `@class([...])` kecuali urutan kelasnya dijaga persis.
 
 - [ ] **Step 4: Ganti blok sidebar di layout dengan `@include`**
 

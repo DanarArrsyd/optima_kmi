@@ -18,64 +18,44 @@ class SidebarNavTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** Halaman tanpa parameter yang bisa dibuka tiap role. */
-    private const HALAMAN = [
-        'admin' => [
-            'chatbot.index', 'admin.anomali',
-            'input.produksi.index', 'input.dandori.index', 'input.qc.index',
-            'maintenance.breakdown.index', 'maintenance.breakdown-dies.index',
-            'vcb.produksi', 'vcb.mesin', 'vcb.dandori', 'vcb.ng-proses', 'vcb.ng-proses.daftar',
-            'vcb.quality', 'vcb.ng-total', 'vcb.ng-total.daftar',
-            'maintenance.mttr', 'maintenance.mtbf', 'maintenance.availability',
-            'maintenance.control-stroke-mesin',
-            'maintenance.mttr-dies', 'maintenance.mtbf-dies', 'maintenance.availability-dies',
-            'maintenance.control-stroke-dies',
-            'master.karyawan.index', 'master.mesin.index',
-            // 'master.part.index' sengaja TIDAK dipakai: controllernya manggil
-            // SphRecommendationService, yang isi query mentahnya pakai fungsi
-            // MySQL-only (GREATEST dkk) dan 500 di SQLite (driver test suite).
-            // Bug lama, tak berkaitan sama sidebar. 'master.part.create' dipakai
-            // gantinya — sama-sama cocok pola 'master.part.*' di menu, dan
-            // controller create() tidak menyentuh sphSvc sama sekali.
-            'master.part.create',
-            'master.losstime.index', 'master.shift.index', 'master.jenis-ng.index',
-            'master.users.index',
-        ],
-        'manager' => [
-            'chatbot.index',
-            'maintenance.breakdown.index', 'maintenance.breakdown-dies.index',
-            'vcb.produksi', 'vcb.mesin', 'vcb.dandori', 'vcb.ng-proses', 'vcb.ng-proses.daftar',
-            'vcb.quality', 'vcb.ng-total', 'vcb.ng-total.daftar',
-            'maintenance.mttr', 'maintenance.mtbf', 'maintenance.availability',
-            'maintenance.control-stroke-mesin',
-            'maintenance.mttr-dies', 'maintenance.mtbf-dies', 'maintenance.availability-dies',
-            'maintenance.control-stroke-dies',
-        ],
-        'staff_produksi' => [
-            'input.produksi.index', 'input.dandori.index',
-            'vcb.produksi', 'vcb.mesin', 'vcb.dandori', 'vcb.ng-proses', 'vcb.ng-proses.daftar',
-        ],
-        'staff_qc' => [
-            'input.qc.index',
-            'vcb.quality', 'vcb.ng-total', 'vcb.ng-total.daftar',
-        ],
-        'staff_maintenance' => [
-            'maintenance.breakdown.index', 'maintenance.breakdown-dies.index',
-            'maintenance.mttr', 'maintenance.mtbf', 'maintenance.availability',
-            'maintenance.control-stroke-mesin',
-            'maintenance.mttr-dies', 'maintenance.mtbf-dies', 'maintenance.availability-dies',
-            'maintenance.control-stroke-dies',
-        ],
-        'guest' => [
-            'input.produksi.index', 'input.dandori.index', 'input.qc.index',
-            'vcb.produksi', 'vcb.mesin', 'vcb.dandori', 'vcb.ng-proses', 'vcb.ng-proses.daftar',
-            'vcb.quality', 'vcb.ng-total', 'vcb.ng-total.daftar',
-            'maintenance.mttr', 'maintenance.mtbf', 'maintenance.availability',
-            'maintenance.control-stroke-mesin',
-            'maintenance.mttr-dies', 'maintenance.mtbf-dies', 'maintenance.availability-dies',
-            'maintenance.control-stroke-dies',
-        ],
+    /** Role nyata sistem — dipakai untuk iterasi, bukan role 'group' semu apa pun. */
+    private const ROLES = ['admin', 'manager', 'staff_produksi', 'staff_qc', 'staff_maintenance', 'guest'];
+
+    /**
+     * Substitusi route: nama route di config/sidebar.php → nama route lain
+     * yang dites SEBAGAI GANTINYA. Dipakai kalau route asli tidak bisa
+     * dibuka di lingkungan test. Sengaja berupa peta eksplisit (bukan
+     * di-skip diam-diam) supaya tiap pengecualian kelihatan di kode.
+     */
+    private const SUBSTITUSI_ROUTE = [
+        // 'master.part.index' sengaja TIDAK dipakai: controllernya manggil
+        // SphRecommendationService, yang isi query mentahnya pakai fungsi
+        // MySQL-only (GREATEST dkk) dan 500 di SQLite (driver test suite).
+        // Bug lama, tak berkaitan sama sidebar. 'master.part.create' dipakai
+        // gantinya — sama-sama cocok pola 'master.part.*' di menu, dan
+        // controller create() tidak menyentuh sphSvc sama sekali.
+        'master.part.index' => 'master.part.create',
     ];
+
+    /**
+     * Halaman tanpa parameter yang bisa dibuka sebuah role, DITURUNKAN dari
+     * config/sidebar.php lewat SidebarMenu::forRole() — bukan ditranskrip
+     * tangan. Entri baru di config otomatis ikut tercakup di sini.
+     */
+    private function halaman(string $role): array
+    {
+        $routes = [];
+
+        foreach (SidebarMenu::forRole($role) as $entri) {
+            $daftar = ($entri['type'] ?? 'link') === 'group' ? $entri['items'] : [$entri];
+
+            foreach ($daftar as $item) {
+                $routes[] = self::SUBSTITUSI_ROUTE[$item['route']] ?? $item['route'];
+            }
+        }
+
+        return $routes;
+    }
 
     /** Potong hanya bagian <nav id="sidebar"> supaya tidak ikut menghitung isi halaman. */
     private function sidebar(string $html): string
@@ -92,10 +72,10 @@ class SidebarNavTest extends TestCase
 
     public function test_tepat_satu_entri_menyala_di_tiap_halaman(): void
     {
-        foreach (self::HALAMAN as $role => $daftarRoute) {
+        foreach (self::ROLES as $role) {
             $user = User::factory()->create(['role' => $role]);
 
-            foreach ($daftarRoute as $namaRoute) {
+            foreach ($this->halaman($role) as $namaRoute) {
                 $html = $this->actingAs($user)->get(route($namaRoute))->assertOk()->getContent();
 
                 $this->assertSame(
@@ -139,9 +119,9 @@ class SidebarNavTest extends TestCase
 
     public function test_jumlah_baris_tingkat_atas_tidak_melewati_plafon(): void
     {
-        foreach (array_keys(self::HALAMAN) as $role) {
+        foreach (self::ROLES as $role) {
             $user = User::factory()->create(['role' => $role]);
-            $rute = self::HALAMAN[$role][0];
+            $rute = $this->halaman($role)[0];
 
             $html = $this->sidebar(
                 $this->actingAs($user)->get(route($rute))->assertOk()->getContent()
@@ -190,14 +170,21 @@ class SidebarNavTest extends TestCase
     public function test_semua_href_menu_benar_benar_dirender(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
-        $html = $this->actingAs($admin)->get(route('vcb.produksi'))->assertOk()->getContent();
+        $html = $this->sidebar(
+            $this->actingAs($admin)->get(route('vcb.produksi'))->assertOk()->getContent()
+        );
 
         foreach (SidebarMenu::forRole('admin') as $entri) {
             $daftar = $entri['type'] === 'group' ? $entri['items'] : [$entri];
 
             foreach ($daftar as $item) {
+                // Tanda kutip penutup WAJIB ikut dicocokkan — tanpa itu
+                // 'vcb/ng-proses' lolos hanya karena jadi prefiks
+                // 'vcb/ng-proses/daftar' (begitu juga vcb.ng-total,
+                // maintenance.mttr/mttr-dies, mtbf/mtbf-dies,
+                // availability/availability-dies, breakdown/breakdown-dies).
                 $this->assertStringContainsString(
-                    route($item['route']),
+                    'href="'.route($item['route']).'"',
                     $html,
                     "Tautan {$item['label']} hilang dari sidebar."
                 );

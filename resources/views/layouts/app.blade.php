@@ -309,7 +309,8 @@
             white-space: nowrap;
         }
 
-        /* ── Nav accordion group (Dashboard) ── */
+        /* ── Nav accordion group (berlaku untuk keenam grup sidebar,
+           bukan cuma satu section "Dashboard" seperti dulu) ── */
         .nav-group-header {
             display: flex; align-items: center; width: 100%;
             background: none; border: none; cursor: pointer;

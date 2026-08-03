@@ -16,6 +16,15 @@ class SidebarMenuTest extends TestCase
     /** Batas yang membuat sidebar tidak pernah bisa di-scroll. */
     private const PLAFON_BARIS = 8;
 
+    /**
+     * Plafon gabungan baris tingkat atas + anak grup yang paling banyak
+     * dibuka sekaligus. Accordion cuma boleh satu grup terbuka (single-open),
+     * jadi paling banyak yang pernah tampak bersamaan adalah semua baris
+     * tingkat atas ditambah isi SATU grup — bukan jumlah semua anak grup.
+     * Angka 15 ≈ 15 baris × 40px ≈ 600px, muat di viewport pabrik ~700px.
+     */
+    private const PLAFON_TERBUKA = 15;
+
     private function keys(string $role): array
     {
         return array_column(SidebarMenu::forRole($role), 'key');
@@ -36,6 +45,28 @@ class SidebarMenuTest extends TestCase
                 self::PLAFON_BARIS,
                 count(SidebarMenu::forRole($role)),
                 "Sidebar role {$role} melewati plafon baris."
+            );
+        }
+    }
+
+    public function test_tiap_role_tidak_melewati_plafon_saat_satu_grup_terbuka(): void
+    {
+        foreach (['admin', 'manager', 'staff_produksi', 'staff_qc', 'staff_maintenance', 'guest'] as $role) {
+            $entries = SidebarMenu::forRole($role);
+
+            $ukuranGrup = array_map(
+                fn (array $e) => ($e['type'] ?? 'link') === 'group' ? count($e['items']) : 0,
+                $entries
+            );
+
+            // max() meledak kalau array kosong — role tanpa grup sama sekali
+            // berarti tidak ada anak yang bisa ikut terbuka.
+            $maks = $ukuranGrup === [] ? 0 : max($ukuranGrup);
+
+            $this->assertLessThanOrEqual(
+                self::PLAFON_TERBUKA,
+                count($entries) + $maks,
+                "Sidebar role {$role} melewati plafon {baris tingkat atas + grup terbesar terbuka}."
             );
         }
     }
@@ -70,8 +101,10 @@ class SidebarMenuTest extends TestCase
 
     public function test_tiap_item_punya_pola_match_yang_terisi(): void
     {
-        foreach (SidebarMenu::forRole('admin') as $entri) {
-            $daftar = $entri['type'] === 'group' ? $entri['items'] : [$entri];
+        // Baca config MENTAH (bukan forRole('admin')) supaya entri yang cuma
+        // kelihatan role selain admin (mis. manager-only) tetap tercakup.
+        foreach (config('sidebar', []) as $entri) {
+            $daftar = ($entri['type'] ?? 'link') === 'group' ? $entri['items'] : [$entri];
 
             foreach ($daftar as $item) {
                 $this->assertNotEmpty($item['match'], "Item {$item['label']} tidak punya pola match.");
@@ -84,8 +117,10 @@ class SidebarMenuTest extends TestCase
     {
         $terdaftar = collect(app('router')->getRoutes())->map->getName()->filter()->all();
 
-        foreach (SidebarMenu::forRole('admin') as $entri) {
-            $daftar = $entri['type'] === 'group' ? $entri['items'] : [$entri];
+        // Idem: config mentah, bukan forRole('admin'), supaya entri yang
+        // hanya terlihat role non-admin tidak lolos tanpa dicek.
+        foreach (config('sidebar', []) as $entri) {
+            $daftar = ($entri['type'] ?? 'link') === 'group' ? $entri['items'] : [$entri];
 
             foreach ($daftar as $item) {
                 $this->assertContains($item['route'], $terdaftar, "Route {$item['route']} tidak terdaftar.");

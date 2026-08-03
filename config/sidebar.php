@@ -11,7 +11,11 @@
 |
 | type   : 'link' (tautan tunggal) atau 'group' (accordion)
 | key    : identitas grup untuk accordion & localStorage. Nilai grup TIDAK
-|          boleh diganti — sudah tersimpan di localStorage pengguna.
+|          boleh diganti — dia identitas accordion (dipakai localStorage,
+|          isOpen()/toggle() di JS, dan diasersikan langsung oleh test).
+|          Bukan lagi soal localStorage pengguna lama: branch ini mengganti
+|          nama key storage-nya sendiri (optima_vcb_group → optima_nav_group),
+|          jadi nilai lama sudah yatim duluan.
 | route  : nama route tujuan
 | match  : pola nama route yang membuat entri menyala (dipakai routeIs()).
 |          Wildcard hanya boleh kalau tidak ada menu lain yang berbagi
