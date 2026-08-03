@@ -140,11 +140,12 @@
     }
     .ov-big-sm { font-size: clamp(17px, 2.9vh, 34px); }
 
-    /* Tiap metrik = satu blok simetris: label DAN angka sama-sama rata tengah,
-       lalu bloknya sendiri dipusatkan vertikal di jatahnya.
-       Sebelumnya label rata kiri sementara angkanya rata tengah, dan pasangan
-       itu terbaca seperti salah render — angkanya tampak melenceng ke kanan
-       relatif labelnya, padahal keduanya "benar" masing-masing. */
+    /* Label POJOK KIRI, angka rata tengah panel — dua perataan berbeda dan itu
+       disengaja. Label berperan seperti judul kotak (senada .erp-panel-header
+       di panel lain, yang juga rata kiri), sedangkan angkanya yang harus
+       sejajar dengan angka di kotak-kotak lain di kolom ini.
+       Sempat dicoba label ikut ke tengah dan hasilnya salah: judul kotak jadi
+       melayang tanpa jangkar, dan kolomnya tidak lagi senada panel lain. */
     .ov-metric {
         min-height: 0;
         display: flex;
@@ -153,13 +154,14 @@
     }
     .ov-metric + .ov-metric { border-top: 1px solid var(--border-2); margin-top: 5px; padding-top: 5px; }
 
-    /* flex + baseline + center, senada header panel: .ov-h di dalamnya butuh
-       induk flex supaya min-width:0 + ellipsis-nya berlaku. Sebagai blok biasa,
-       .ov-h tidak pernah menyusut dan label panjang tetap terpotong mentah. */
+    /* flex + baseline, senada header panel: .ov-h di dalamnya butuh induk flex
+       supaya min-width:0 + ellipsis-nya berlaku. Sebagai blok biasa, .ov-h
+       tidak pernah menyusut dan label panjang tetap terpotong mentah.
+       TANPA justify-content: default flex-start = pojok kiri. Jangan
+       "dirapikan" jadi center — lihat catatan .ov-metric di atas. */
     .ov-metric-label {
         display: flex;
         align-items: baseline;
-        justify-content: center;
         gap: 4px;
         font-size: 10px;
         font-weight: 700;
