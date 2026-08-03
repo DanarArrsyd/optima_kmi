@@ -32,8 +32,30 @@ class MaintenanceDashboardService
             ->when($tipeMesin && $hasTipe, fn ($q) => $q->where('tipe_mesin', $tipeMesin))
             ->orderBy('id_mesin')->get();
 
+        /*
+         * Rentang SETENGAH TERBUKA [from, to+1hari), bukan whereBetween dengan
+         * batas atas $to->toDateString().
+         *
+         * Kolomnya DATE, tapi cast model-nya 'date' TANPA format (bandingkan
+         * TransaksiProduksi yang pakai 'date:Y-m-d'). Akibatnya nilai yang
+         * ditulis berbentuk '2026-07-17 00:00:00'. Di MySQL kolom DATE
+         * memotong jamnya, jadi tak ada gejala. Di SQLite tidak ada tipe DATE:
+         * jamnya tersimpan, dan '2026-07-17 00:00:00' <= '2026-07-17' itu FALSE
+         * secara leksikografis — breakdown di HARI TERAKHIR rentang hilang.
+         *
+         * Dampaknya bukan teoretis: halaman Overview memakai rentang satu hari
+         * (from == to), jadi versi whereBetween membuat SELURUH breakdown hari
+         * itu tak terhitung di Availability. Di prod (MySQL) angkanya benar,
+         * tapi tak ada satu test pun yang bisa membuktikannya — persis kelas
+         * bug "fitur mustahil diuji karena dialek SQL".
+         *
+         * Setengah terbuka benar di kedua dialek, ada atau tidak ada komponen
+         * jam, dan tetap memakai indeks tanggal_breakdown (tidak seperti
+         * whereDate yang membungkus kolom dalam fungsi).
+         */
         $stats = TransaksiBreakdownMesin::query()
-            ->whereBetween('tanggal_breakdown', [$from->toDateString(), $to->toDateString()])
+            ->where('tanggal_breakdown', '>=', $from->toDateString())
+            ->where('tanggal_breakdown', '<', $to->copy()->addDay()->toDateString())
             ->when($mesinId, fn ($q) => $q->where('id_mesin', $mesinId))
             ->get(['id_mesin', 'repair_time', 'total_downtime'])
             ->groupBy('id_mesin');
@@ -48,6 +70,7 @@ class MaintenanceDashboardService
 
             $instalasi = $hasInstalasi ? $m->tanggal_instalasi : null;
             $mtbfJam = $mtbfHari = $availPct = null;
+            $operatingHours = null;
             $instalasiSet = false;
 
             if ($instalasi) {
@@ -71,6 +94,14 @@ class MaintenanceDashboardService
                 'mtbf_jam' => $mtbfJam,
                 'mtbf_hari' => $mtbfHari,
                 'availability_pct' => $availPct,
+                // Jam jendela yang dipakai sebagai PENYEBUT availability_pct, ikut
+                // dikeluarkan supaya pemakai yang meng-agregasi banyak mesin
+                // (OverviewService: availability pabrik) bisa menimbangnya dengan
+                // benar tanpa menyalin rumus jendela di atas. Rata-rata polos
+                // availability_pct antar-mesin salah begitu ada mesin yang
+                // instalasinya jatuh di tengah rentang — penyebutnya beda.
+                // null = tanggal instalasi belum diset, sama seperti availability_pct.
+                'operating_hours' => $operatingHours === null ? null : round($operatingHours, 2),
                 'instalasi_set' => $instalasiSet,
             ];
         }

@@ -54,7 +54,7 @@ return [
         'label' => 'Overview',
         'icon'  => 'bi-graph-up-arrow',
         'route' => 'overview',
-        'roles' => ['admin', 'manager'],
+        'roles' => ['admin', 'manager', 'staff_produksi', 'staff_qc', 'staff_maintenance', 'guest'],
         'match' => ['overview'],
     ],
 
