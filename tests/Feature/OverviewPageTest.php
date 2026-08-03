@@ -119,6 +119,41 @@ class OverviewPageTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('#<link[^>]+chatbot\.css#', $html);
     }
 
+    public function test_oee_dan_apq_masing_masing_kotak_sendiri(): void
+    {
+        $this->seedPabrik();
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $html = $this->actingAs($admin)->get(route('overview'))->assertOk()->getContent();
+
+        // Empat kotak terpisah, masing-masing berjudul di .erp-panel-header —
+        // bukan satu panel berisi tiga metrik bertumpuk.
+        foreach (['OEE', 'Availability', 'Performance', 'Quality'] as $label) {
+            $this->assertStringContainsString(
+                '<span class="ov-h">'.$label.'</span>',
+                $html,
+                "Kotak {$label} tidak punya header sendiri."
+            );
+        }
+
+        // Markup lama tidak boleh kembali. Kalau kelas ini dipakai lagi, itu
+        // tanda ketiganya digabung balik ke satu panel.
+        //
+        // Dicek sebagai ATRIBUT class, bukan sebagai string mentah. Komentar
+        // CSS halaman ini menyebut .ov-metric dan .ov-grow untuk menjelaskan
+        // kenapa keduanya dihapus, dan komentar di dalam <style> ikut terkirim
+        // ke browser — assertStringNotContainsString akan merah karena
+        // penjelasannya sendiri. Kesalahan yang sama pernah terjadi pada
+        // assertion chatbot.css di test lain di kelas ini.
+        foreach (['ov-metric', 'ov-grow'] as $kelas) {
+            $this->assertDoesNotMatchRegularExpression(
+                '#class="[^"]*'.preg_quote($kelas, '#').'#',
+                $html,
+                "Kelas {$kelas} dipakai lagi — A/P/Q kemungkinan digabung balik."
+            );
+        }
+    }
+
     public function test_warna_donut_ikut_nilai_dan_konsisten_dengan_legenda(): void
     {
         $this->seedPabrik();

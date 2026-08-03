@@ -58,16 +58,17 @@
     .ov-row-1 { grid-template-columns: 1fr 1.9fr 1.2fr 1.2fr; }
     .ov-row-2 { grid-template-columns: 1fr 1.9fr 2.4fr; }
 
-    /* Kolom kiri baris 2: dua panel menumpuk (OEE besar + rincian A/P/Q).
-       KEDUANYA bertinggi definit lewat rasio flex, bukan satu 'auto' + satu
-       'grow'. Versi itu memotong angka OEE: panel-nya flex:0 0 auto (tinggi =
-       tinggi konten) sementara body-nya flex:1 1 0, dan flex-basis 0 membuat
-       kontribusi tinggi body ke induk runtuh — panel menyusut sebatas header,
-       lalu overflow:hidden mengklip angkanya.
-       Rasio 1 : 2.4 = satu angka besar vs tiga angka + catatan. */
+    /* Kolom kiri baris 2: EMPAT kotak menumpuk — OEE, Availability,
+       Performance, Quality. Keempatnya bertinggi SAMA (flex: 1 1 0).
+       OEE tampak dominan dari ukuran hurufnya (.ov-big vs .ov-big-sm), bukan
+       dari besar kotaknya.
+
+       Semua bertinggi definit lewat flex, tidak ada yang 'auto'. Panel
+       flex:0 0 auto yang body-nya flex:1 1 0 akan RUNTUH sebatas header —
+       flex-basis 0 membuat kontribusi tinggi body ke induk hilang — lalu
+       overflow:hidden mengklip angkanya. Itu pernah terjadi pada panel OEE. */
     .ov-stack { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
     .ov-stack > .erp-panel { flex: 1 1 0; }
-    .ov-stack > .erp-panel.ov-grow { flex: 2.4 1 0; }
 
     .ov-row .erp-panel,
     .ov-stack .erp-panel {
@@ -140,42 +141,11 @@
     }
     .ov-big-sm { font-size: clamp(17px, 2.9vh, 34px); }
 
-    /* Label POJOK KIRI, angka rata tengah panel — dua perataan berbeda dan itu
-       disengaja. Label berperan seperti judul kotak (senada .erp-panel-header
-       di panel lain, yang juga rata kiri), sedangkan angkanya yang harus
-       sejajar dengan angka di kotak-kotak lain di kolom ini.
-       Sempat dicoba label ikut ke tengah dan hasilnya salah: judul kotak jadi
-       melayang tanpa jangkar, dan kolomnya tidak lagi senada panel lain. */
-    .ov-metric {
-        min-height: 0;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-    }
-    .ov-metric + .ov-metric { border-top: 1px solid var(--border-2); margin-top: 5px; padding-top: 5px; }
-
-    /* flex + baseline, senada header panel: .ov-h di dalamnya butuh induk flex
-       supaya min-width:0 + ellipsis-nya berlaku. Sebagai blok biasa, .ov-h
-       tidak pernah menyusut dan label panjang tetap terpotong mentah.
-       TANPA justify-content: default flex-start = pojok kiri. Jangan
-       "dirapikan" jadi center — lihat catatan .ov-metric di atas. */
-    .ov-metric-label {
-        display: flex;
-        align-items: baseline;
-        gap: 4px;
-        font-size: 10px;
-        font-weight: 700;
-        color: var(--text-2);
-        text-transform: uppercase;
-        letter-spacing: 0.4px;
-        margin-bottom: 0;
-        overflow: hidden;
-    }
-
-    /* space-evenly, bukan center: tiga metrik dapat jatah tinggi yang sama
-       DAN jarak ke tepi panel sama besar dengan jarak antar-metrik. Dengan
-       center, sisa ruang menumpuk jadi satu blok kosong di atas dan bawah. */
-    .ov-grow .erp-panel-body { justify-content: space-evenly; }
+    /* .ov-metric* dan .ov-grow DIHAPUS: A/P/Q sekarang tiga panel terpisah,
+       masing-masing memakai .erp-panel-header seperti panel lain. Label rata
+       kiri dan angka rata tengah tetap berlaku — sekarang datang dari
+       .erp-panel-header (kiri) dan .ov-big (text-align: center), bukan dari
+       aturan khusus. Satu mekanisme lebih sedikit untuk salah. */
 
     /* ══ Donut + angka di tengahnya ═════════════════════════════════
        Angka ditulis sebagai HTML yang ditumpuk di atas canvas, bukan plugin
@@ -378,34 +348,24 @@
     {{-- ══ BARIS 2 — OEE + LOSS TIME ══════════════════════════════ --}}
     <div class="ov-row ov-row-2">
 
-        {{-- Kolom kiri: OEE besar + rincian A/P/Q --}}
+        {{-- Kolom kiri: EMPAT kotak terpisah — OEE, Availability, Performance,
+             Quality. Masing-masing punya header sendiri seperti panel lain di
+             halaman ini, bukan satu panel berisi tiga metrik bertumpuk.
+
+             Keempatnya flex: 1 1 0 (tinggi sama). OEE tetap tampak dominan
+             karena angkanya memakai .ov-big, sedangkan tiga sisanya
+             .ov-big-sm — bedanya dari ukuran huruf, bukan dari besar kotak. --}}
         <div class="ov-stack">
             <div class="erp-panel">
                 <div class="erp-panel-header"><span class="ov-h">OEE</span><span class="ov-sub">- LAST 24 H</span></div>
                 <div class="erp-panel-body">
                     <div class="ov-big">{{ $oee['oee_pct'] === null ? '—' : number_format($oee['oee_pct'], 1, ',', '.').'%' }}</div>
-                </div>
-            </div>
 
-            {{-- ov-grow: panel INILAH yang menyerap sisa tinggi kolom, bukan
-                 panel OEE di atasnya. Kalau keduanya tumbuh, angka OEE tunggal
-                 dapat ruang sebanyak tiga angka A/P/Q sekaligus. --}}
-            <div class="erp-panel ov-grow">
-                <div class="erp-panel-body">
-                    @foreach([
-                        'Availability' => $oee['availability_pct'],
-                        'Performance'  => $oee['performance_pct'],
-                        'Quality'      => $oee['quality_pct'],
-                    ] as $label => $nilai)
-                        <div class="ov-metric">
-                            <div class="ov-metric-label"><span class="ov-h">{{ $label }}</span><span class="ov-sub">- LAST 24 H</span></div>
-                            <div class="ov-big ov-big-sm">{{ $nilai === null ? '—' : number_format($nilai, 1, ',', '.').'%' }}</div>
-                        </div>
-                    @endforeach
-
-                    {{-- Catatan ikut DI DALAM panel ini, bukan panel ketiga.
-                         Panel sendiri mencuri satu slot tinggi dari kolom dan
-                         itu langsung memakan ukuran angka A/P/Q. --}}
+                    {{-- Catatan menempel di panel OEE, bukan kotak kelima.
+                         Kotak sendiri akan mencuri seperlima tinggi kolom
+                         padahal isinya kosong di hari normal. Di sini ia cuma
+                         memakan ruang saat memang ada yang perlu dijelaskan —
+                         dan yang dijelaskan justru kenapa OEE tak lengkap. --}}
                     @if($oee['catatan'] !== [])
                         <ul class="ov-catatan">
                             @foreach($oee['catatan'] as $c)
@@ -415,6 +375,19 @@
                     @endif
                 </div>
             </div>
+
+            @foreach([
+                'Availability' => $oee['availability_pct'],
+                'Performance'  => $oee['performance_pct'],
+                'Quality'      => $oee['quality_pct'],
+            ] as $label => $nilai)
+                <div class="erp-panel">
+                    <div class="erp-panel-header"><span class="ov-h">{{ $label }}</span><span class="ov-sub">- LAST 24 H</span></div>
+                    <div class="erp-panel-body">
+                        <div class="ov-big ov-big-sm">{{ $nilai === null ? '—' : number_format($nilai, 1, ',', '.').'%' }}</div>
+                    </div>
+                </div>
+            @endforeach
         </div>
 
         {{-- Tengah: tren OEE --}}
