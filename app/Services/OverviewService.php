@@ -316,4 +316,57 @@ class OverviewService
     {
         return MasterLosstime::count();
     }
+
+    /** Ambang bawah: di bawah ini warnanya merah penuh. */
+    public const AMBANG_MERAH = 20.0;
+
+    /** Ambang atas: di atas ini warnanya hijau penuh. */
+    public const AMBANG_HIJAU = 80.0;
+
+    /**
+     * Warna cincin donut menurut nilai achievement-nya.
+     *
+     * ≤20% merah penuh, ≥80% hijau penuh, di antaranya digradasi lewat kuning.
+     * Angkanya diinterpolasi, bukan dipetakan ke tiga kotak diskret: batas
+     * mendadak membuat 79% dan 81% terlihat seperti dua kelas berbeda padahal
+     * selisihnya dua poin.
+     *
+     * Tiga simpul warnanya SENGAJA mengambil aksen fungsional design system
+     * (--c-danger, aksen Anomali LHP, --c-success), bukan merah/kuning/hijau
+     * penuh. Warna jenuh menabrak palet monokrom industrial di seluruh app.
+     *
+     * Ada di service, bukan di JS, karena dua alasan: nilainya dipakai DUA
+     * tempat (dataset donut dan kotak legenda, yang harus selalu sama), dan
+     * ambang 20/80 jadi bisa diuji alih-alih jadi angka sakti di dalam Blade.
+     *
+     * null = achievement tak bisa dihitung → abu netral, bukan merah. Merah
+     * berarti "buruk"; tak ada data bukan buruk, cuma tak diketahui.
+     */
+    public static function warnaAchievement(?float $pct): string
+    {
+        if ($pct === null) {
+            return '#e5e7eb';
+        }
+
+        $simpul = [
+            [185, 28, 28],   // #b91c1c  --c-danger
+            [202, 138, 4],   // #ca8a04  aksen Anomali LHP
+            [21, 128, 61],   // #15803d  --c-success
+        ];
+
+        $t = max(0.0, min(1.0, ($pct - self::AMBANG_MERAH) / (self::AMBANG_HIJAU - self::AMBANG_MERAH)));
+
+        // Dua segmen: merah→kuning lalu kuning→hijau.
+        [$dari, $ke, $lokal] = $t < 0.5
+            ? [$simpul[0], $simpul[1], $t * 2]
+            : [$simpul[1], $simpul[2], ($t - 0.5) * 2];
+
+        $rgb = array_map(
+            fn (int $a, int $b) => (int) round($a + ($b - $a) * $lokal),
+            $dari,
+            $ke
+        );
+
+        return sprintf('#%02x%02x%02x', ...$rgb);
+    }
 }

@@ -119,6 +119,29 @@ class OverviewPageTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('#<link[^>]+chatbot\.css#', $html);
     }
 
+    public function test_warna_donut_ikut_nilai_dan_konsisten_dengan_legenda(): void
+    {
+        $this->seedPabrik();
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $html = $this->actingAs($admin)->get(route('overview'))->assertOk()->getContent();
+
+        // Seed: 2 shift × (8 jam × sph 400) = target 6400, aktual 6000 → 93,75%
+        // → di atas AMBANG_HIJAU, jadi hijau penuh.
+        $this->assertStringContainsString('#15803d', $html);
+
+        // Kuning hardcoded lama TIDAK boleh ada lagi. Kalau ia kembali, itu
+        // tanda seseorang mengembalikan warna tetap dan cincin donut berhenti
+        // memberi tahu apa pun soal nilainya.
+        $this->assertStringNotContainsString('#facc15', $html);
+
+        // Kotak legenda dan dataset donut memakai nilai yang SAMA. Keduanya
+        // dihitung dari OverviewService::warnaAchievement(), bukan dua sumber
+        // terpisah yang bisa melenceng.
+        $this->assertStringContainsString('warnaAch', $html);
+        $this->assertStringContainsString('background:#15803d', $html);
+    }
+
     public function test_payload_tren_berisi_enam_titik(): void
     {
         $this->seedPabrik();
