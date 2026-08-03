@@ -137,10 +137,12 @@ class SidebarNavTest extends TestCase
             }
             $semuaTautan = preg_match_all('/class="nav-item-link/', $html);
 
+            // Angka ini kembaran PLAFON_BARIS di SidebarMenuTest — di sana ada
+            // hitungan tingginya. Naik 8 → 9 saat Overview jadi menu sendiri.
             $this->assertLessThanOrEqual(
-                8,
+                9,
                 $header + ($semuaTautan - $isiGrup),
-                "Sidebar role {$role} melewati plafon 8 baris tingkat atas."
+                "Sidebar role {$role} melewati plafon 9 baris tingkat atas."
             );
         }
     }
