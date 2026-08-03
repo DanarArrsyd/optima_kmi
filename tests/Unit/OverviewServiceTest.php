@@ -365,4 +365,49 @@ class OverviewServiceTest extends TestCase
     {
         $this->assertSame([], $this->svc()->lossTime());
     }
+
+    /* ═══ Warna donut ═════════════════════════════════════════════ */
+
+    public function test_warna_terjepit_di_kedua_ambang(): void
+    {
+        // ≤20% merah penuh, ≥80% hijau penuh. Nilai di luar rentang tidak
+        // boleh "melewati" warnanya jadi sesuatu yang lain.
+        $merah = OverviewService::warnaAchievement(OverviewService::AMBANG_MERAH);
+        $hijau = OverviewService::warnaAchievement(OverviewService::AMBANG_HIJAU);
+
+        $this->assertSame('#b91c1c', $merah);
+        $this->assertSame('#15803d', $hijau);
+
+        $this->assertSame($merah, OverviewService::warnaAchievement(0.0));
+        $this->assertSame($merah, OverviewService::warnaAchievement(5.0));
+        $this->assertSame($hijau, OverviewService::warnaAchievement(100.0));
+        // Achievement di atas 100% itu nyata (SPH standar terlalu rendah) dan
+        // harus tetap hijau, bukan berputar balik ke merah.
+        $this->assertSame($hijau, OverviewService::warnaAchievement(150.0));
+    }
+
+    public function test_warna_digradasi_bukan_tiga_kotak_diskret(): void
+    {
+        // Titik tengah rentang = simpul kuning.
+        $this->assertSame('#ca8a04', OverviewService::warnaAchievement(50.0));
+
+        // 79% dan 81% tidak boleh identik — batas mendadak membuat selisih dua
+        // poin terlihat seperti dua kelas berbeda.
+        $this->assertNotSame(
+            OverviewService::warnaAchievement(79.0),
+            OverviewService::warnaAchievement(81.0)
+        );
+
+        // Monoton: makin tinggi achievement, komponen merah makin turun.
+        $merahDi = fn (float $p) => hexdec(substr(OverviewService::warnaAchievement($p), 1, 2));
+        $this->assertGreaterThan($merahDi(60.0), $merahDi(30.0));
+        $this->assertGreaterThan($merahDi(80.0), $merahDi(60.0));
+    }
+
+    public function test_warna_null_abu_netral_bukan_merah(): void
+    {
+        // Merah berarti "buruk". Tak ada data bukan buruk, cuma tak diketahui —
+        // mewarnainya merah itu melaporkan kegagalan yang tidak pernah terukur.
+        $this->assertSame('#e5e7eb', OverviewService::warnaAchievement(null));
+    }
 }

@@ -139,14 +139,27 @@
         letter-spacing: -1px;
     }
     .ov-big-sm { font-size: clamp(17px, 2.9vh, 34px); }
-    .ov-metric { min-height: 0; }
+
+    /* Tiap metrik = satu blok simetris: label DAN angka sama-sama rata tengah,
+       lalu bloknya sendiri dipusatkan vertikal di jatahnya.
+       Sebelumnya label rata kiri sementara angkanya rata tengah, dan pasangan
+       itu terbaca seperti salah render — angkanya tampak melenceng ke kanan
+       relatif labelnya, padahal keduanya "benar" masing-masing. */
+    .ov-metric {
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
     .ov-metric + .ov-metric { border-top: 1px solid var(--border-2); margin-top: 5px; padding-top: 5px; }
-    /* flex + baseline, senada header panel: .ov-h di dalamnya butuh induk flex
-       supaya min-width:0 + ellipsis-nya berlaku. Sebagai blok biasa, .ov-h
-       tidak pernah menyusut dan label panjang tetap terpotong mentah. */
+
+    /* flex + baseline + center, senada header panel: .ov-h di dalamnya butuh
+       induk flex supaya min-width:0 + ellipsis-nya berlaku. Sebagai blok biasa,
+       .ov-h tidak pernah menyusut dan label panjang tetap terpotong mentah. */
     .ov-metric-label {
         display: flex;
         align-items: baseline;
+        justify-content: center;
         gap: 4px;
         font-size: 10px;
         font-weight: 700;
@@ -157,9 +170,9 @@
         overflow: hidden;
     }
 
-    /* Tiga metrik disebar rata, bukan digumpal di tengah. Dengan center,
-       sisa ruang panel menumpuk jadi satu blok kosong di atas dan angkanya
-       tampak menggantung — terlihat seperti salah render, bukan pilihan. */
+    /* space-evenly, bukan center: tiga metrik dapat jatah tinggi yang sama
+       DAN jarak ke tepi panel sama besar dengan jarak antar-metrik. Dengan
+       center, sisa ruang menumpuk jadi satu blok kosong di atas dan bawah. */
     .ov-grow .erp-panel-body { justify-content: space-evenly; }
 
     /* ══ Donut + angka di tengahnya ═════════════════════════════════
@@ -330,7 +343,7 @@
                     <div class="ov-donut-center">{{ $achievement['pct'] === null ? '—' : number_format($achievement['pct'], 0, ',', '.').'%' }}</div>
                 </div>
                 <div class="ov-legend">
-                    <span><i style="background:#facc15"></i>ACT</span>
+                    <span><i style="background:{{ \App\Services\OverviewService::warnaAchievement($achievement['pct']) }}"></i>ACT</span>
                     <span><i style="background:#ffffff"></i>TARGET</span>
                 </div>
             </div>
@@ -352,7 +365,7 @@
                         <div class="ov-donut-center">{{ $s['pct'] === null ? '—' : number_format($s['pct'], 0, ',', '.').'%' }}</div>
                     </div>
                     <div class="ov-legend">
-                        <span><i style="background:#facc15"></i>ACT</span>
+                        <span><i style="background:{{ \App\Services\OverviewService::warnaAchievement($s['pct']) }}"></i>ACT</span>
                         <span><i style="background:#ffffff"></i>TARGET</span>
                     </div>
                 </div>
@@ -454,6 +467,13 @@ const OV = {
     loss: @json($lossTime),
     ach: @json($achievement['pct']),
     shift: @json(array_column($perShift, 'pct')),
+    /* Warna dihitung di OverviewService, bukan di sini: nilainya dipakai
+       dataset donut DAN kotak legenda, dan keduanya harus selalu sama. */
+    warnaAch: @json(\App\Services\OverviewService::warnaAchievement($achievement['pct'])),
+    warnaShift: @json(array_map(
+        fn (?float $p) => \App\Services\OverviewService::warnaAchievement($p),
+        array_column($perShift, 'pct')
+    )),
 };
 
 /* Format angka gaya Indonesia: 33.619,0 */
@@ -463,7 +483,6 @@ const ovNum = (v, d = 1) => Number(v).toLocaleString('id-ID', {
 
 const OV_BIRU   = '#31708f';   /* ACT   */
 const OV_ORANYE = '#ed7d31';   /* TARGET */
-const OV_KUNING = '#facc15';   /* isi donut ACT */
 
 /* Datalabel ACT: kotak kuning bergaris oranye, seperti desain. */
 const ovLabelAct = {
@@ -493,7 +512,7 @@ const ovLabelTarget = {
    pct null = tidak ada target yang bisa dibandingkan. Cincin digambar
    kosong dan angka tengahnya sudah "—" dari Blade; JANGAN dipaksa 0,
    itu terbaca sebagai gagal total. */
-function ovDonut(id, pct) {
+function ovDonut(id, pct, warna) {
     const el = document.getElementById(id);
     if (!el) return;
 
@@ -506,7 +525,7 @@ function ovDonut(id, pct) {
             labels: ['ACT', 'TARGET'],
             datasets: [{
                 data: pct === null ? [0, 100] : [act, sisa],
-                backgroundColor: [OV_KUNING, '#ffffff'],
+                backgroundColor: [warna, '#ffffff'],
                 borderColor: '#111827',
                 borderWidth: 1,
             }],
@@ -652,8 +671,8 @@ function ovPareto(scope) {
    Alpine yang boot dengan defer. Kalau Alpine mati, halaman ini tetap
    menampilkan seluruh grafiknya; yang hilang cuma tombol scope. */
 document.addEventListener('DOMContentLoaded', () => {
-    ovDonut('ovDonutTotal', OV.ach);
-    OV.shift.forEach((p, i) => ovDonut('ovDonutShift' + i, p));
+    ovDonut('ovDonutTotal', OV.ach, OV.warnaAch);
+    OV.shift.forEach((p, i) => ovDonut('ovDonutShift' + i, p, OV.warnaShift[i]));
     ovLine('ovLineAch', 'achievement_pct');
     ovLine('ovLineOee', 'oee_pct');
     ovPareto('harian');
