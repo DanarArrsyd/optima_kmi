@@ -242,6 +242,7 @@ Route::middleware('auth')->group(function () {
     // --- AI CHATBOT (admin & manager only) ---
     Route::middleware('role:admin,manager')->prefix('chatbot')->name('chatbot.')->group(function () {
         Route::get('/', [\App\Http\Controllers\ChatbotController::class, 'index'])->name('index');
+        Route::get('overview', [\App\Http\Controllers\ChatbotController::class, 'overview'])->name('overview');
         Route::post('message', [\App\Http\Controllers\ChatbotController::class, 'sendMessage'])
             ->middleware('throttle:20,1')->name('send-message');
         Route::post('stream', [\App\Http\Controllers\ChatbotController::class, 'stream'])

@@ -37,6 +37,15 @@ class ChatbotController extends Controller
         return view('chatbot.index');
     }
 
+    /**
+     * Overview grafik global. Masih rangka: belum ada data yang dilewatkan
+     * karena desain grafiknya belum final. Isi menyusul.
+     */
+    public function overview(): View
+    {
+        return view('chatbot.overview');
+    }
+
     /** Aturan validasi request chat, dipakai bareng sendMessage & stream. */
     private const MESSAGE_RULES = [
         'message' => ['required', 'string', 'max:2000'],
