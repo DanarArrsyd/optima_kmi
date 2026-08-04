@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'log = tail laravel.log, schema = cek kolom/tabel, migstatus = migrate:status, usersaudit = daftar akun (read-only)'
+        description: 'log = tail laravel.log, schema = cek kolom/tabel, migstatus = migrate:status, usersaudit = daftar akun, sphteoretis = kandidat SPH teoretis (semua read-only)'
         required: false
         default: 'log'
 
@@ -112,6 +112,15 @@ jobs:
               }
               echo sprintf(\"col   %-22s : %s\", \"checksheet_path\", \$S::hasColumn(\"dies_preventive_log\", \"checksheet_path\") ? \"ADA\" : \"TIDAK ADA\") . PHP_EOL;
             "'
+
+      # Kandidat SPH teoretis per part+proses — READ-ONLY, nol tulisan ke DB.
+      # Keluar sebagai CSV supaya bisa disalin ke spreadsheet untuk ditinjau.
+      - name: Kandidat SPH teoretis (read-only)
+        if: ${{ github.event.inputs.mode == 'sphteoretis' }}
+        run: |
+          ssh -p "${{ secrets.SSH_PORT }}" -i ~/.ssh/deploy_key \
+            "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" \
+            'cd ${{ env.REMOTE_PATH }} && ${{ env.REMOTE_PHP }} artisan optima:sph-teoretis --csv'
 
       - name: Max batch number
         if: ${{ github.event.inputs.mode == 'maxbatch' }}
