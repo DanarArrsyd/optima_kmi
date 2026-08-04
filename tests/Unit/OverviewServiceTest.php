@@ -434,6 +434,104 @@ class OverviewServiceTest extends TestCase
         $this->assertSame([], $tren);
     }
 
+    /* ═══ Tren pada rentang ═══════════════════════════════════════ */
+
+    public function test_rentang_satu_hari_diperlebar_jadi_enam_hari_kerja(): void
+    {
+        /*
+         * Aturan ini yang membuat default halaman TIDAK berubah setelah filter
+         * ditambahkan: rentang default satu hari, dan satu hari diperlebar mundur
+         * jadi HARI_TREN hari kerja. Aturan yang sama berlaku kalau pengguna
+         * memilih satu tanggal — jadi tidak ada cabang "sedang difilter atau
+         * tidak" yang bisa melenceng.
+         */
+        config(['hari_libur' => []]);
+        ['mesin' => $m, 'proses' => $p] = $this->scaffold(sph: 400);
+        $this->lhp($m->id, $p->id, qty: 3200, tgl: '2026-07-15');
+
+        $tren = $this->svc()->tren($this->tgl('2026-07-15'), $this->tgl('2026-07-15'));
+
+        $this->assertCount(OverviewService::HARI_TREN, $tren);
+        $this->assertSame('2026-07-15', $tren[5]['tanggal']);
+    }
+
+    public function test_rentang_pendek_satu_titik_per_hari_kerja(): void
+    {
+        config(['hari_libur' => []]);
+        ['mesin' => $m, 'proses' => $p] = $this->scaffold(sph: 400);
+        $this->lhp($m->id, $p->id, qty: 3200, tgl: '2026-08-05');
+
+        // 03 Sen s/d 08 Sab = 6 hari kerja (09 Min di luar rentang).
+        $tren = $this->svc()->tren($this->tgl('2026-08-03'), $this->tgl('2026-08-08'));
+
+        $this->assertCount(6, $tren);
+        $this->assertSame('2026-08-03', $tren[0]['tanggal']);
+        $this->assertSame('2026-08-08', $tren[5]['tanggal']);
+    }
+
+    public function test_rentang_panjang_beralih_ke_agregasi_mingguan(): void
+    {
+        /*
+         * Batas 31 titik bukan kosmetik. Tiap titik memanggil achievement() DAN
+         * oee(), dan oee() memanggil compute() — sekitar lima query per titik.
+         * Enam bulan tanpa batas ini ~130 titik dan ~650 query dalam satu
+         * request; grafik 130 titik juga tak terbaca.
+         */
+        config(['hari_libur' => []]);
+        ['mesin' => $m, 'proses' => $p] = $this->scaffold(sph: 400);
+        $this->lhp($m->id, $p->id, qty: 3200, tgl: '2026-08-05');
+
+        // Enam bulan: jauh di atas 31 hari kerja.
+        $tren = $this->svc()->tren($this->tgl('2026-03-01'), $this->tgl('2026-08-31'));
+
+        $this->assertGreaterThan(OverviewService::MAKS_TITIK_HARIAN, 130);
+        $this->assertLessThanOrEqual(
+            30,
+            count($tren),
+            'Rentang panjang harus diagregasi per minggu, bukan per hari.'
+        );
+        $this->assertNotEmpty($tren);
+    }
+
+    public function test_ambang_agregasi_tepat_di_batas(): void
+    {
+        /*
+         * Batas yang tidak diuji adalah batas yang bergeser diam-diam. Dua rentang
+         * dipilih supaya mengapit MAKS_TITIK_HARIAN (31), dan jumlah hari kerjanya
+         * dihitung dulu bukan ditebak:
+         *
+         *   2026-08-03 s/d 2026-09-04 = 29 hari kerja → di bawah batas, HARIAN
+         *   2026-08-03 s/d 2026-09-08 = 32 hari kerja → di atas batas, MINGGUAN
+         *
+         * Selisihnya cuma empat hari kalender, jadi kalau ambangnya bergeser
+         * sedikit pun salah satu assertion ini gagal.
+         */
+        config(['hari_libur' => []]);
+        $this->scaffold(sph: 400);
+
+        $harian = $this->svc()->tren($this->tgl('2026-08-03'), $this->tgl('2026-09-04'));
+        $this->assertCount(29, $harian, 'Di bawah batas: satu titik per hari kerja.');
+
+        $mingguan = $this->svc()->tren($this->tgl('2026-08-03'), $this->tgl('2026-09-08'));
+        $this->assertLessThanOrEqual(6, count($mingguan), 'Di atas batas: satu titik per minggu ISO.');
+        $this->assertGreaterThan(3, count($mingguan));
+    }
+
+    public function test_dua_scope_pareto_bukan_tiga(): void
+    {
+        ['mesin' => $m, 'proses' => $p] = $this->scaffold();
+        $this->dandori('Tunggu_Dies', 9.0, '2026-07-15', $m->id, $p->id);
+        $this->dandori('Tunggu_Dies', 5.0, '2026-06-20', $m->id, $p->id);
+
+        $scope = $this->svc()->lossTimeSemuaScope($this->tgl('2026-07-15'), $this->tgl('2026-07-15'));
+
+        // 'rentang' mengikuti rentang halaman; 'semua' pertanyaan berbeda
+        // (penyumbang terbesar sepanjang masa), bukan rentang berbeda.
+        $this->assertSame(['rentang', 'semua'], array_keys($scope));
+        $this->assertSame(9.0, $scope['rentang'][0]['menit']);
+        $this->assertSame(14.0, $scope['semua'][0]['menit']);
+    }
+
     /* ═══ Loss time (Pareto) ══════════════════════════════════════ */
 
     /**
@@ -467,21 +565,6 @@ class OverviewServiceTest extends TestCase
         $semua = $this->svc()->lossTime();
 
         $this->assertSame(30.0, $semua[0]['menit']);
-    }
-
-    public function test_tiga_scope_pareto_menyaring_rentang_yang_berbeda(): void
-    {
-        ['mesin' => $m, 'proses' => $p] = $this->scaffold();
-
-        $this->dandori('Tunggu_Dies', 5.0, '2026-06-20', $m->id, $p->id);   // bulan lain
-        $this->dandori('Tunggu_Dies', 7.0, '2026-07-02', $m->id, $p->id);   // bulan sama, hari lain
-        $this->dandori('Tunggu_Dies', 9.0, '2026-07-15', $m->id, $p->id);   // hari acuan
-
-        $scope = $this->svc()->lossTimeSemuaScope($this->tgl('2026-07-15'));
-
-        $this->assertSame(9.0, $scope['harian'][0]['menit']);
-        $this->assertSame(16.0, $scope['bulanan'][0]['menit']);
-        $this->assertSame(21.0, $scope['semua'][0]['menit']);
     }
 
     public function test_loss_time_kosong_mengembalikan_array_kosong(): void

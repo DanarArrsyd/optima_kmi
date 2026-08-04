@@ -46,6 +46,45 @@
     /* Header halaman diringkas — tiap piksel di sini langsung mengurangi
        ruang grafik. */
     .ov-page-header { margin-bottom: 8px; padding-bottom: 5px; }
+
+    /* ══ Filter tanggal — DI DALAM page-header ══════════════════════
+       Sengaja bukan .filter-bar terpisah seperti halaman VCB. Filter bar design
+       system tingginya ~64px (padding 20 + isi 30 + border 2 + margin 12)
+       sementara sisa napas layout satu-layar ini cuma 28px — memakainya
+       mengembalikan scroll dan membatalkan kerja PR #61 dan #66.
+       Sisi kanan page-header sebelumnya cuma berisi teks "Data per ...", jadi
+       ruangnya sudah ada dan gratis: tinggi barisnya ditentukan input 26px,
+       masih di bawah alokasi 44px di calc() .ov-page. */
+    .ov-filter {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        flex-wrap: nowrap;
+    }
+    .ov-filter input[type="date"],
+    .ov-filter button,
+    .ov-filter a {
+        height: 26px;
+        font-size: 11px;
+        padding: 0 7px;
+        border: 1px solid var(--border);
+        border-radius: 2px;
+        background: var(--surface);
+        color: var(--text);
+        line-height: 24px;
+    }
+    .ov-filter button {
+        background: var(--btn-bg);
+        border-color: var(--btn-bg);
+        color: #fff;
+        font-weight: 700;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+    .ov-filter button:hover { background: var(--btn-bg-h); }
+    .ov-filter a { color: var(--text-3); text-decoration: none; white-space: nowrap; }
+    .ov-filter a:hover { background: var(--surface-2); color: var(--text); }
+    .ov-filter-sep { font-size: 11px; color: var(--text-4); }
     .ov-page-header .page-title { font-size: 16px; }
     .ov-page-header .page-title i { font-size: 15px; }
 
@@ -307,13 +346,24 @@
         <i class="bi bi-graph-up-arrow"></i>Overview
     </h1>
     @unless($kosong)
-        {{-- Tanggal acuan ditulis eksplisit. Panel-panel di bawah berlabel
-             "LAST 24 H", dan tanpa tanggal ini orang tidak punya cara tahu
-             hari mana yang sebenarnya ditampilkan — LHP sering baru masuk
-             besoknya, jadi acuannya belum tentu hari ini. --}}
-        <span class="text-muted" style="font-size:12px">
-            Data per <strong>{{ $acuan->format('d M Y') }}</strong> (tanggal LHP produksi terakhir)
-        </span>
+        {{-- Filter GET, bukan POST: periode bisa di-bookmark dan dibagikan, dan
+             halaman tetap benar setelah di-refresh.
+             Menempati ruang yang sebelumnya dipakai teks "Data per ..." — nol
+             tinggi tambahan, jadi kunci satu-layar tetap utuh. --}}
+        <form method="GET" action="{{ route('overview') }}" class="ov-filter">
+            <input type="date" name="date_from" value="{{ $from->toDateString() }}" aria-label="Dari tanggal">
+            <span class="ov-filter-sep">s/d</span>
+            <input type="date" name="date_to" value="{{ $to->toDateString() }}" aria-label="Sampai tanggal">
+            <button type="submit">Tampilkan</button>
+            @if($difilter)
+                {{-- Reset hanya muncul saat memang ada yang perlu direset.
+                     Tombol yang selalu ada tapi sering tak berguna melatih orang
+                     untuk mengabaikannya. --}}
+                <a href="{{ route('overview') }}" title="Kembali ke tanggal LHP produksi terakhir">Reset</a>
+            @else
+                <span class="ov-filter-sep" title="Tanggal LHP produksi terakhir">&middot; terbaru</span>
+            @endif
+        </form>
     @endunless
 </div>
 
@@ -335,7 +385,7 @@
     <div class="ov-row ov-row-1">
 
         <div class="erp-panel">
-            <div class="erp-panel-header"><span class="ov-h">Achievement Production</span><span class="ov-sub">- LAST 24 H</span></div>
+            <div class="erp-panel-header"><span class="ov-h">Achievement Production</span><span class="ov-sub">- {{ $labelRentang }}</span></div>
             <div class="erp-panel-body">
                 <div class="ov-donut-wrap">
                     <canvas id="ovDonutTotal"></canvas>
@@ -351,7 +401,7 @@
         <div class="erp-panel">
             <div class="erp-panel-header"><span class="ov-h">Achievement</span>{{-- "HARI KERJA", bukan "LAST DAYS": Minggu & hari libur dilewati, jadi
                      6 titik membentang lebih dari 6 hari kalender. --}}
-                <span class="ov-sub">- {{ $tren === [] ? '' : count($tren) }} HARI KERJA</span></div>
+                <span class="ov-sub">- {{ count($tren) }} TITIK</span></div>
             <div class="erp-panel-body">
                 <div class="ov-chart-line"><canvas id="ovLineAch"></canvas></div>
             </div>
@@ -359,7 +409,7 @@
 
         @foreach($perShift as $s)
             <div class="erp-panel">
-                <div class="erp-panel-header"><span class="ov-h">Achievement {{ strtoupper($s['nama']) }}</span><span class="ov-sub">- LAST 24 H</span></div>
+                <div class="erp-panel-header"><span class="ov-h">Achievement {{ strtoupper($s['nama']) }}</span><span class="ov-sub">- {{ $labelRentang }}</span></div>
                 <div class="erp-panel-body">
                     <div class="ov-donut-wrap">
                         <canvas id="ovDonutShift{{ $loop->index }}"></canvas>
@@ -386,7 +436,7 @@
              .ov-big-sm — bedanya dari ukuran huruf, bukan dari besar kotak. --}}
         <div class="ov-stack">
             <div class="erp-panel">
-                <div class="erp-panel-header"><span class="ov-h">OEE</span><span class="ov-sub">- LAST 24 H</span></div>
+                <div class="erp-panel-header"><span class="ov-h">OEE</span><span class="ov-sub">- {{ $labelRentang }}</span></div>
                 <div class="erp-panel-body">
                     <div class="ov-big">{{ $oee['oee_pct'] === null ? '—' : number_format($oee['oee_pct'], 1, ',', '.').'%' }}</div>
 
@@ -411,7 +461,7 @@
                 'Quality'      => $oee['quality_pct'],
             ] as $label => $nilai)
                 <div class="erp-panel">
-                    <div class="erp-panel-header"><span class="ov-h">{{ $label }}</span><span class="ov-sub">- LAST 24 H</span></div>
+                    <div class="erp-panel-header"><span class="ov-h">{{ $label }}</span><span class="ov-sub">- {{ $labelRentang }}</span></div>
                     <div class="erp-panel-body">
                         <div class="ov-big ov-big-sm">{{ $nilai === null ? '—' : number_format($nilai, 1, ',', '.').'%' }}</div>
                     </div>
@@ -421,7 +471,7 @@
 
         {{-- Tengah: tren OEE --}}
         <div class="erp-panel">
-            <div class="erp-panel-header"><span class="ov-h">OEE</span><span class="ov-sub">- {{ count($tren) }} HARI KERJA</span></div>
+            <div class="erp-panel-header"><span class="ov-h">OEE</span><span class="ov-sub">- {{ count($tren) }} TITIK</span></div>
             <div class="erp-panel-body">
                 <div class="ov-chart-line"><canvas id="ovLineOee"></canvas></div>
             </div>
@@ -447,8 +497,7 @@
             </div>
             <div class="erp-panel-body">
                 <div class="ov-scope">
-                    <button type="button" :class="{ 'on': scope === 'harian' }"  @click="setScope('harian')">Last 24 H</button>
-                    <button type="button" :class="{ 'on': scope === 'bulanan' }" @click="setScope('bulanan')">This Month</button>
+                    <button type="button" :class="{ 'on': scope === 'rentang' }" @click="setScope('rentang')">Rentang</button>
                     <button type="button" :class="{ 'on': scope === 'semua' }"   @click="setScope('semua')">All Time</button>
                 </div>
                 <div class="ov-chart-pareto"><canvas id="ovPareto"></canvas></div>
@@ -704,12 +753,12 @@ document.addEventListener('DOMContentLoaded', () => {
     OV.shift.forEach((p, i) => ovDonut('ovDonutShift' + i, p, OV.warnaShift[i]));
     ovLine('ovLineAch', 'achievement_pct');
     ovLine('ovLineOee', 'oee_pct');
-    ovPareto('harian');
+    ovPareto('rentang');
 });
 
 function ovPage() {
     return {
-        scope: 'harian',
+        scope: 'rentang',
 
         setScope(s) {
             if (this.scope === s) return;
@@ -737,7 +786,7 @@ function ovPage() {
         },
 
         labelScope() {
-            return { harian: 'LAST 24 H', bulanan: 'THIS MONTH', semua: 'ALL TIME' }[this.scope];
+            return { rentang: @json($labelRentang), semua: 'ALL TIME' }[this.scope];
         },
     };
 }
