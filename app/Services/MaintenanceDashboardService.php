@@ -125,7 +125,8 @@ class MaintenanceDashboardService
                  * dikurangi istirahat, hanya pada hari kerja. Lihat
                  * KalenderKerjaService.
                  */
-                $operatingHours = $this->kalender->jamTerjadwal($windowStart, $to);
+                $jadwal = $this->kalender->jamTerjadwalRinci($windowStart, $to);
+                $operatingHours = $jadwal['jam'];
 
                 /*
                  * DUA uptime, sengaja, karena kedua metrik menanyakan hal berbeda.
@@ -143,7 +144,22 @@ class MaintenanceDashboardService
                 $uptimeTotal = max(0.0, $operatingHours - $sumLoss);
 
                 $mtbfJam = $count > 0 ? round($uptimeBreakdown / $count, 2) : round($uptimeBreakdown, 2);
-                $mtbfHari = round($mtbfJam / 24, 2);
+                /*
+                 * MTBF dalam HARI KERJA, bukan hari kalender.
+                 *
+                 * Pembaginya rata-rata jam terjadwal per hari kerja, BUKAN 24.
+                 * Sejak penyebutnya pindah ke jam terjadwal (~16 jam/hari kerja),
+                 * membagi 24 mengubah jam-TERJADWAL jadi hari KALENDER: "MTBF
+                 * 48 jam" tampil 2 hari padahal 48 jam terjadwal ≈ 3 hari kerja.
+                 * Salah 50%, dan salahnya tidak kelihatan karena angkanya tetap
+                 * masuk akal.
+                 *
+                 * Rata-ratanya diambil dari jendela yang SAMA dengan
+                 * operatingHours, jadi keduanya tidak bisa melenceng — dan itu
+                 * juga menangani Jumat/Sabtu yang jamnya berbeda.
+                 */
+                $jamPerHariKerja = $jadwal['hari'] > 0 ? $operatingHours / $jadwal['hari'] : 0.0;
+                $mtbfHari = $jamPerHariKerja > 0 ? round($mtbfJam / $jamPerHariKerja, 2) : null;
 
                 /*
                  * Nol jam terjadwal (rentang cuma Minggu / hari libur) → null,

@@ -132,6 +132,53 @@ class MaintenanceDashboardServiceTest extends TestCase
         $this->assertSame(0.0, $rows[0]['mttr_jam']);
     }
 
+    /* ═══ MTBF dalam hari kerja ═══════════════════════════════════ */
+
+    public function test_mtbf_hari_pakai_jam_kerja_bukan_dibagi_24(): void
+    {
+        /*
+         * Bug yang ditutup di sini: mtbf_hari dulu = mtbf_jam / 24. Sejak
+         * penyebutnya pindah ke jam TERJADWAL (~16 jam/hari kerja), membagi 24
+         * mengubah jam-terjadwal jadi hari KALENDER — salah 50% dan tidak
+         * kelihatan karena angkanya tetap masuk akal.
+         *
+         * Fixture: Shift 1 + Shift 2 = 16 jam/hari kerja.
+         * 2026-08-03 (Sen) s/d 2026-08-08 (Sab) = 6 hari kerja × 16 = 96 jam.
+         * Nol breakdown → uptime 96 jam, count 0 → mtbf_jam = 96.
+         *
+         * BENAR  : 96 / 16 = 6,0 hari kerja
+         * SALAH  : 96 / 24 = 4,0 hari kalender
+         */
+        $this->shiftKerja('Shift 1', '06:00', '14:00');
+        $this->shiftKerja('Shift 2', '14:00', '22:00');
+        $m = $this->mesin('2026-01-01');
+
+        $rows = (new MaintenanceDashboardService)->compute(
+            Carbon::parse('2026-08-03'), Carbon::parse('2026-08-08')
+        );
+
+        $this->assertSame(96.0, $rows[0]['operating_hours']);
+        $this->assertEqualsWithDelta(96.0, $rows[0]['mtbf_jam'], 0.01);
+        $this->assertEqualsWithDelta(6.0, $rows[0]['mtbf_hari'], 0.01, 'MTBF harus dalam HARI KERJA.');
+        $this->assertNotEqualsWithDelta(4.0, $rows[0]['mtbf_hari'], 0.01, 'Bukan hari kalender (dibagi 24).');
+        $this->assertSame($m->id, $rows[0]['id_mesin']);
+    }
+
+    public function test_mtbf_hari_null_kalau_nol_jam_terjadwal(): void
+    {
+        // Rentang cuma Minggu → nol jam terjadwal → pembagi nol. Harus null,
+        // bukan pembagian nol atau angka palsu.
+        $this->shiftKerja();
+        $this->mesin('2026-01-01');
+
+        $rows = (new MaintenanceDashboardService)->compute(
+            Carbon::parse('2026-08-02'), Carbon::parse('2026-08-02')
+        );
+
+        $this->assertNull($rows[0]['availability_pct']);
+        $this->assertNull($rows[0]['mtbf_hari']);
+    }
+
     /* ═══ Dandori sebagai kerugian availability ═══════════════════ */
 
     private function dandori(int $mesinId, float $menit, string $tgl): void

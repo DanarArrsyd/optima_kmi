@@ -84,7 +84,7 @@
         <div class="table-responsive">
             <table class="erp-table">
                 <thead>
-                    <tr><th>Mesin</th><th>Nama Mesin</th><th class="text-end">Breakdown</th><th class="text-end">MTBF (jam)</th><th class="text-end">MTBF (hari)</th></tr>
+                    <tr><th>Mesin</th><th>Nama Mesin</th><th class="text-end">Breakdown</th><th class="text-end">MTBF (jam kerja)</th><th class="text-end">MTBF (hari kerja)</th></tr>
                 </thead>
                 <tbody id="mtbfTableBody">
                     <tr><td colspan="5" class="text-center text-muted py-3">Klik Tampilkan untuk melihat data.</td></tr>
@@ -98,6 +98,14 @@
 @push('scripts')
 <script>
 /* Cegah stored XSS: data master (nama mesin, part, proses) bisa memuat markup. */
+
+/* null ≠ 0 dan ≠ 100. Sejak penyebut Availability jadi jam TERJADWAL, nilainya
+   bisa null saat rentangnya nol jam kerja (Minggu/libur). Tanpa penjaga ini sel
+   tabel mencetak literal "null%" — bukan crash, tapi terbaca seperti data rusak
+   padahal maksudnya "tidak ada jam kerja untuk dinilai". */
+function fmtPct(v) { return v === null || v === undefined ? '—' : v + '%'; }
+function fmtNum(v) { return v === null || v === undefined ? '—' : v; }
+
 function escHtml(str) {
     if (str === null || str === undefined) return "";
     return String(str).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c]));
@@ -160,7 +168,7 @@ async function loadData() {
                 <td class="text-end" colspan="2"><em>instalasi belum diset</em></td></tr>`;
         }
         return `<tr><td>${escHtml(r.kode_mesin)}</td><td>${escHtml(r.nama_mesin)}</td><td class="text-end">${r.count}</td>
-            <td class="text-end"><strong>${r.mtbf_jam}</strong></td><td class="text-end">${r.mtbf_hari}</td></tr>`;
+            <td class="text-end"><strong>${fmtNum(r.mtbf_jam)}</strong></td><td class="text-end">${fmtNum(r.mtbf_hari)}</td></tr>`;
     }).join('');
 }
 
