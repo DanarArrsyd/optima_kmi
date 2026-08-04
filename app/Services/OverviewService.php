@@ -245,7 +245,50 @@ class OverviewService
     }
 
     /**
-     * Tren achievement & OEE per hari, mundur dari tanggal acuan.
+     * Batas seberapa jauh ke belakang pencarian hari kerja boleh menjelajah.
+     *
+     * Pengali, bukan angka mati: 6 hari tren → maksimal 36 hari kalender.
+     * Ada supaya libur panjang (mis. cuti bersama Idul Fitri) tidak membuat
+     * loop berjalan tanpa ujung, dan supaya konfigurasi hari libur yang salah
+     * isi berhenti di batas yang jelas alih-alih menggantung request.
+     */
+    private const PENGALI_JELAJAH_TREN = 6;
+
+    /**
+     * Apakah tanggal ini hari kerja pabrik.
+     *
+     * Minggu diturunkan dari tanggalnya, TIDAK perlu didaftarkan di config.
+     * Konsisten dengan master_shift yang cuma punya kolom jam Senin–Kamis,
+     * Jumat, dan Sabtu — nol kolom Minggu, jadi struktur DB memang sudah
+     * menyatakan Minggu bukan hari kerja.
+     *
+     * Tanggal merah & cuti bersama datang dari config/hari_libur.php karena
+     * tidak mungkin diturunkan: keputusan pemerintah, berubah tiap tahun.
+     */
+    public static function hariKerja(Carbon $tgl): bool
+    {
+        if ($tgl->isSunday()) {
+            return false;
+        }
+
+        return ! in_array($tgl->toDateString(), config('hari_libur', []), true);
+    }
+
+    /**
+     * Tren achievement & OEE per HARI KERJA, mundur dari tanggal acuan.
+     *
+     * Minggu dan hari libur dilewati, bukan ditampilkan kosong. Kolom kosong di
+     * sumbu memakan ruang untuk nol informasi dan membuat tren terlihat anjlok
+     * padahal pabriknya memang tutup.
+     *
+     * ⚠️ Konsekuensinya jumlah titik tetap $hari tapi rentang KALENDER-nya
+     * melebar. Label panel karena itu harus menyebut "hari kerja", bukan
+     * "days" — kalau tidak, orang membaca 6 titik sebagai 6 hari terakhir.
+     *
+     * HARI LIBUR YANG PUNYA LHP TETAP DITAMPILKAN. Lembur di hari libur itu
+     * nyata, dan menyembunyikan hari yang punya data lebih buruk daripada
+     * menampilkan hari libur: angkanya hilang dari tren tanpa jejak. Karena itu
+     * kelayakan sebuah tanggal = hari kerja ATAU ada produksinya.
      *
      * OEE dihitung ULANG per hari (bukan rentang penuh sekali) karena
      * Availability tidak linier terhadap panjang rentang: penyebutnya jam
@@ -255,11 +298,39 @@ class OverviewService
      */
     public function tren(Carbon $acuan, int $hari = self::HARI_TREN): array
     {
+        $jelajahMaks = $hari * self::PENGALI_JELAJAH_TREN;
+
+        /*
+         * Tanggal yang punya LHP diambil SEKALI di sini, bukan dicek per hari
+         * di dalam loop: satu query untuk seluruh jendela jelajah, bukan 36.
+         */
+        $adaProduksi = TransaksiProduksi::query()
+            ->whereBetween('tanggal_produksi', [
+                $acuan->copy()->subDays($jelajahMaks)->toDateString(),
+                $acuan->toDateString(),
+            ])
+            ->distinct()
+            ->pluck('tanggal_produksi')
+            ->map(fn ($t) => Carbon::parse($t)->toDateString())
+            ->all();
+
+        // Kumpulkan mundur dulu, lalu dibalik — jumlah hari yang harus
+        // dilangkahi tidak diketahui sebelum tanggalnya diperiksa.
+        $tanggal = [];
+        $kursor = $acuan->copy();
+
+        for ($langkah = 0; $langkah <= $jelajahMaks && count($tanggal) < $hari; $langkah++) {
+            $iso = $kursor->toDateString();
+
+            if (self::hariKerja($kursor) || in_array($iso, $adaProduksi, true)) {
+                $tanggal[] = $kursor->copy();
+            }
+
+            $kursor->subDay();
+        }
+
         $hasil = [];
-
-        for ($i = $hari - 1; $i >= 0; $i--) {
-            $tgl = $acuan->copy()->subDays($i);
-
+        foreach (array_reverse($tanggal) as $tgl) {
             $hasil[] = [
                 'tanggal' => $tgl->toDateString(),
                 'label' => $tgl->format('d-M'),

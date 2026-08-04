@@ -231,10 +231,17 @@ class OverviewPageTest extends TestCase
 
         $html = $this->actingAs($admin)->get(route('overview'))->assertOk()->getContent();
 
-        // Enam label tanggal mundur dari 15 Jul.
-        foreach (['10-Jul', '11-Jul', '12-Jul', '13-Jul', '14-Jul', '15-Jul'] as $label) {
+        /*
+         * Enam HARI KERJA mundur dari Rabu 15 Jul:
+         *   09 Kam · 10 Jum · 11 Sab · [12 MINGGU dilangkahi] · 13 Sen · 14 Sel · 15 Rab
+         *
+         * Karena itu 09-Jul ikut dan 12-Jul TIDAK. Nama harinya ditulis supaya
+         * kalau assertion ini gagal, penyebabnya langsung terbaca.
+         */
+        foreach (['09-Jul', '10-Jul', '11-Jul', '13-Jul', '14-Jul', '15-Jul'] as $label) {
             $this->assertStringContainsString($label, $html, "Titik tren {$label} hilang.");
         }
+        $this->assertStringNotContainsString('12-Jul', $html, 'Minggu tidak boleh muncul di tren.');
     }
 
     public function test_loss_time_underscore_jadi_spasi_di_payload(): void
