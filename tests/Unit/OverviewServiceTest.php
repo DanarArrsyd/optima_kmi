@@ -383,6 +383,52 @@ class OverviewServiceTest extends TestCase
         $this->assertSame([], $this->svc()->lossTime());
     }
 
+    /**
+     * Overview memakai actual_menit, VCB Dandori memakai over_menit.
+     *
+     * Keduanya benar tapi mengukur hal berbeda, dan pernah SAMA-SAMA dilabeli
+     * "Loss Time" sehingga terlihat seperti salah satunya salah hitung: di prod,
+     * Setting Dies muncul 372,0 di Overview dan 55,0 di VCB Dandori.
+     *
+     * Test ini mengunci maknanya, bukan angkanya: Overview HARUS aktual. Kalau
+     * kelak ada yang "menyeragamkan" halaman ini ke over_menit, Pareto-nya
+     * berhenti rekonsiliasi dengan Availability di halaman yang sama —
+     * Availability mengurangi actual_menit (lihat MaintenanceDashboardService),
+     * jadi panel loss dan panel OEE akan saling bertentangan DI SATU HALAMAN.
+     * Itu lebih buruk daripada beda antar-halaman.
+     */
+    public function test_loss_time_overview_pakai_aktual_bukan_over_standar(): void
+    {
+        ['mesin' => $m, 'proses' => $p] = $this->scaffold();
+
+        $lt = MasterLosstime::firstOrCreate(
+            ['jenis_losstime' => 'Setting_Dies'],
+            ['kode' => 'SD', 'std_menit_default' => 10, 'std_menit_progressive' => 15]
+        );
+        $kar = MasterKaryawan::firstOrCreate(
+            ['nik' => 'K-OV'],
+            ['nama_karyawan' => 'A', 'departemen' => 'Produksi', 'is_aktif' => true]
+        );
+
+        // Aktual 90 menit dengan standar 10 → over 80. Dua angka yang jauh beda,
+        // jadi kalau kolomnya tertukar, test ini gagal telak bukan marginal.
+        TransaksiDandoriRincian::create([
+            'tanggal' => '2026-07-15',
+            'id_shift' => $this->shift('Shift 1')->id,
+            'id_karyawan' => $kar->id,
+            'id_mesin' => $m->id,
+            'id_part_proses' => $p->id,
+            'id_losstime' => $lt->id,
+            'actual_menit' => 90, 'std_menit' => 10, 'over_menit' => 80,
+            'created_by' => $this->user()->id,
+        ]);
+
+        $rows = $this->svc()->lossTime($this->tgl('2026-07-15'), $this->tgl('2026-07-15'));
+
+        $this->assertSame(90.0, $rows[0]['menit'], 'Overview harus memakai actual_menit.');
+        $this->assertNotSame(80.0, $rows[0]['menit'], 'Overview TIDAK boleh memakai over_menit.');
+    }
+
     /* ═══ Warna donut ═════════════════════════════════════════════ */
 
     public function test_warna_terjepit_di_kedua_ambang(): void

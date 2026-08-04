@@ -430,7 +430,15 @@
             <div class="erp-panel-header">
                 <span class="ov-h">Loss Time</span>
                 <span class="ov-sub" x-text="'- ' + labelScope()"></span>
-                <span class="ov-sub" style="margin-left:auto;text-transform:none;letter-spacing:0">menit</span>
+                {{-- "aktual" ditulis eksplisit, bukan sekadar "menit".
+                     Halaman VCB Dandori menggrafikkan over_menit (actual − std)
+                     untuk jenis yang punya standar, jadi angkanya lebih kecil
+                     di sana. Tanpa kata ini, dua halaman menampilkan "Loss
+                     Time" dengan angka berbeda dan orang wajar menyimpulkan
+                     salah satunya salah hitung. Aktual juga yang dikurangkan
+                     dari Availability, jadi Pareto ini rekonsiliasi dengan
+                     angka OEE di halaman yang sama. --}}
+                <span class="ov-sub" style="margin-left:auto;text-transform:none;letter-spacing:0">menit &middot; aktual</span>
             </div>
             <div class="erp-panel-body">
                 <div class="ov-scope">

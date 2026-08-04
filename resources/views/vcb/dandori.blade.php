@@ -233,7 +233,7 @@
                     <span style="font-size:0.75rem;color:#5d7283;background:#f0f2f5;
                                  border:1px solid #d4dbe3;padding:4px 10px;white-space:nowrap">
                         <span x-show="loading"><i class="bi bi-arrow-repeat spin me-1"></i>Memuat...</span>
-                        <span x-show="!loading" x-text="'Total Loss Time: ' + fmt(summary.total_loss_time) + ' mnt'">—</span>
+                        <span x-show="!loading" x-text="'Aktual ' + fmt(summary.total_actual) + ' mnt \u00b7 over standar ' + fmt(summary.total_over) + ' mnt'">—</span>
                     </span>
                 </div>
             </form>
@@ -243,7 +243,7 @@
         <div class="erp-panel">
             <div class="erp-panel-header">
                 <i class="bi bi-bar-chart me-1"></i>
-                Grafik Loss Time per Jenis Loss Time (menit)
+                Grafik Loss Time per Jenis &mdash; Over Standar (menit)
             </div>
             <div class="erp-panel-body" style="padding:16px">
                 <div x-show="!loading && !hasData"
@@ -262,7 +262,7 @@
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
             <div class="erp-panel">
                 <div class="erp-panel-header">
-                    <i class="bi bi-calendar-week me-1"></i>Grafik Loss Time / Minggu (menit)
+                    <i class="bi bi-calendar-week me-1"></i>Grafik Loss Time / Minggu &mdash; Over Standar (menit)
                 </div>
                 <div class="erp-panel-body" style="padding:16px">
                     <div x-show="!hasData && !loading"
@@ -276,7 +276,7 @@
             </div>
             <div class="erp-panel">
                 <div class="erp-panel-header">
-                    <i class="bi bi-calendar-month me-1"></i>Grafik Loss Time / Bulan (menit)
+                    <i class="bi bi-calendar-month me-1"></i>Grafik Loss Time / Bulan &mdash; Over Standar (menit)
                 </div>
                 <div class="erp-panel-body" style="padding:16px">
                     <div x-show="!hasData && !loading"
@@ -293,7 +293,7 @@
         {{-- Detail table --}}
         <div class="erp-panel">
             <div class="erp-panel-header">
-                <i class="bi bi-list-ol me-1"></i>Ranking Loss Time per Jenis
+                <i class="bi bi-list-ol me-1"></i>Ranking Over Standar per Jenis
             </div>
             <div style="overflow-x:auto">
                 <table class="erp-table">
@@ -302,7 +302,7 @@
                             <th style="width:36px;text-align:center">No</th>
                             <th style="width:80px">Kode</th>
                             <th>Jenis Loss Time</th>
-                            <th style="width:140px;text-align:right">Total Loss Time (mnt)</th>
+                            <th style="width:140px;text-align:right">Over Standar (mnt)</th>
                             <th style="min-width:160px">Proporsi</th>
                         </tr>
                     </thead>
@@ -322,14 +322,26 @@
     {{-- ── RIGHT PANEL — KPI + ranking ────────────────────────── --}}
     <aside class="vcbd-right">
 
+        {{-- DUA angka, sengaja. Halaman ini menggrafikkan over_menit
+             (actual − std), sementara halaman Overview menggrafikkan
+             actual_menit. Keduanya benar tapi mengukur hal berbeda, dan dulu
+             SAMA-SAMA dilabeli "Loss Time" — orang wajar menyimpulkan salah
+             satunya salah hitung. Menampilkan keduanya di sini membuat kedua
+             halaman bisa direkonsiliasi tanpa membuka kode. --}}
         <div class="vcbd-kpi-box">
-            <div class="vcbd-kpi-label">Total Loss Time</div>
-            <div class="vcbd-kpi-value" x-text="fmt(summary.total_loss_time)">—</div>
-            <div class="vcbd-kpi-sub">menit</div>
+            <div class="vcbd-kpi-label">Total Aktual</div>
+            <div class="vcbd-kpi-value" x-text="fmt(summary.total_actual)">—</div>
+            <div class="vcbd-kpi-sub">menit &mdash; sama dengan Overview</div>
+        </div>
+
+        <div class="vcbd-kpi-box">
+            <div class="vcbd-kpi-label">Total Over Standar</div>
+            <div class="vcbd-kpi-value" x-text="fmt(summary.total_over)">—</div>
+            <div class="vcbd-kpi-sub">menit &mdash; dasar semua grafik di halaman ini</div>
         </div>
 
         <div class="vcbd-rank-section">
-            <div class="vcbd-rank-label">Jenis Loss Time</div>
+            <div class="vcbd-rank-label">Jenis Loss Time <span style="font-weight:400;color:#9ca3af">(over standar)</span></div>
             <div x-show="!summary.by_jenis || summary.by_jenis.length === 0"
                  style="color:#9ca3af;font-size:0.78rem;padding:4px 0">Tidak ada data</div>
             <table class="vcbd-rank-table" x-show="summary.by_jenis && summary.by_jenis.length > 0">
@@ -482,7 +494,8 @@ function vcbDandori() {
         hasData: false,
 
         summary: {
-            total_loss_time: 0,
+            total_actual: 0,
+            total_over: 0,
             by_jenis: [], by_mesin: [], by_week: [], by_month: [],
         },
 
@@ -537,9 +550,12 @@ function vcbDandori() {
                 const res  = await fetch(`{{ route('vcb.dandori.data') }}?${p}`);
                 const data = await res.json();
 
-                /* Map total_over → total_loss_time for display label */
-                data.total_loss_time = data.total_over;
-
+                /* Alias total_over → total_loss_time DIHAPUS. Alias itulah
+                   sumber kebingungannya: ia menamai over-menit sebagai "loss
+                   time", padahal loss time yang utuh adalah actual_menit —
+                   dan itu yang dipakai halaman Overview serta dikurangkan dari
+                   Availability. Sekarang kedua angka dipakai dengan nama
+                   aslinya, jadi labelnya tidak bisa lagi berbohong. */
                 this.summary = data;
                 this.hasData = data.by_jenis.length > 0;
 
