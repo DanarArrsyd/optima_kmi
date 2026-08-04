@@ -312,41 +312,56 @@ class OverviewService
      *
      * @return list<array{tanggal: string, label: string, achievement_pct: float|null, oee_pct: float|null}>
      */
-    public function tren(Carbon $acuan, int $hari = self::HARI_TREN): array
+    /** Titik harian maksimum sebelum tren beralih ke agregasi mingguan. */
+    public const MAKS_TITIK_HARIAN = 31;
+
+    /**
+     * Tren achievement & OEE pada sebuah RENTANG.
+     *
+     * Dua mode, dipilih dari panjang rentangnya:
+     *   ≤ 31 hari kerja → satu titik per hari kerja
+     *   > 31 hari kerja → satu titik per minggu ISO
+     *
+     * Batas itu bukan kosmetik. Tiap titik memanggil achievement() DAN oee(),
+     * dan oee() memanggil MaintenanceDashboardService::compute() — sekitar lima
+     * query per titik. Rentang enam bulan tanpa batas ini berarti ~130 titik dan
+     * ~650 query dalam satu request. Agregasi mingguan menahannya di ~26 titik
+     * apa pun panjang rentangnya, dan grafik dengan 130 titik juga tak terbaca.
+     *
+     * RENTANG SATU HARI diperlebar mundur menjadi HARI_TREN hari kerja yang
+     * berakhir di hari itu. Aturan yang sama berlaku untuk keadaan default
+     * (tanpa filter, rentangnya satu hari) maupun untuk pengguna yang memilih
+     * satu tanggal — jadi tidak ada cabang "sedang difilter atau tidak" yang
+     * bisa melenceng. Efeknya default halaman ini tidak berubah sama sekali:
+     * tetap enam titik seperti sebelum filter ada.
+     *
+     * Minggu dan hari libur dilewati; hari libur yang PUNYA LHP tetap muncul.
+     * Lihat hariKerja() dan catatan di config/hari_libur.php.
+     *
+     * @return list<array{tanggal: string, label: string, achievement_pct: float|null, oee_pct: float|null}>
+     */
+    public function tren(Carbon $from, ?Carbon $to = null, int $hari = self::HARI_TREN): array
     {
-        $jelajahMaks = $hari * self::PENGALI_JELAJAH_TREN;
+        $to ??= $from;
 
-        /*
-         * Tanggal yang punya LHP diambil SEKALI di sini, bukan dicek per hari
-         * di dalam loop: satu query untuk seluruh jendela jelajah, bukan 36.
-         */
-        $adaProduksi = TransaksiProduksi::query()
-            ->whereBetween('tanggal_produksi', [
-                $acuan->copy()->subDays($jelajahMaks)->toDateString(),
-                $acuan->toDateString(),
-            ])
-            ->distinct()
-            ->pluck('tanggal_produksi')
-            ->map(fn ($t) => Carbon::parse($t)->toDateString())
-            ->all();
+        $hariKerja = $from->isSameDay($to)
+            ? $this->hariKerjaMundur($to, $hari)
+            : $this->hariKerjaDalamRentang($from, $to);
 
-        // Kumpulkan mundur dulu, lalu dibalik — jumlah hari yang harus
-        // dilangkahi tidak diketahui sebelum tanggalnya diperiksa.
-        $tanggal = [];
-        $kursor = $acuan->copy();
-
-        for ($langkah = 0; $langkah <= $jelajahMaks && count($tanggal) < $hari; $langkah++) {
-            $iso = $kursor->toDateString();
-
-            if (self::hariKerja($kursor) || in_array($iso, $adaProduksi, true)) {
-                $tanggal[] = $kursor->copy();
-            }
-
-            $kursor->subDay();
+        if ($hariKerja === []) {
+            return [];
         }
 
+        return count($hariKerja) <= self::MAKS_TITIK_HARIAN
+            ? $this->trenHarian($hariKerja)
+            : $this->trenMingguan($hariKerja);
+    }
+
+    /** @param list<Carbon> $hariKerja */
+    private function trenHarian(array $hariKerja): array
+    {
         $hasil = [];
-        foreach (array_reverse($tanggal) as $tgl) {
+        foreach ($hariKerja as $tgl) {
             $hasil[] = [
                 'tanggal' => $tgl->toDateString(),
                 'label' => $tgl->format('d-M'),
@@ -356,6 +371,115 @@ class OverviewService
         }
 
         return $hasil;
+    }
+
+    /**
+     * Satu titik per minggu ISO.
+     *
+     * Batas mingguannya DIJEPIT ke hari kerja pertama & terakhir yang benar-benar
+     * ada di minggu itu, bukan Senin–Minggu penuh. Tanpa penjepitan, minggu di
+     * ujung rentang menarik tanggal di luar rentang yang diminta ke dalam
+     * hitungan — angkanya jadi memuat hari yang tidak pernah dipilih.
+     *
+     * @param  list<Carbon>  $hariKerja
+     */
+    private function trenMingguan(array $hariKerja): array
+    {
+        $perMinggu = [];
+        foreach ($hariKerja as $tgl) {
+            $perMinggu[$tgl->isoWeekYear.'-'.str_pad((string) $tgl->isoWeek, 2, '0', STR_PAD_LEFT)][] = $tgl;
+        }
+
+        $hasil = [];
+        foreach ($perMinggu as $kunci => $hari) {
+            $awal = $hari[0];
+            $akhir = $hari[count($hari) - 1];
+
+            $hasil[] = [
+                'tanggal' => $awal->toDateString(),
+                // Label pakai tanggal awal minggunya, bukan nomor minggu: nomor
+                // minggu ISO tidak dikenali orang produksi tanpa melihat kalender.
+                'label' => $awal->format('d-M'),
+                'achievement_pct' => $this->achievement($awal, $akhir)['pct'],
+                'oee_pct' => $this->oee($awal, $akhir)['oee_pct'],
+            ];
+        }
+
+        return $hasil;
+    }
+
+    /**
+     * Hari kerja MUNDUR dari sebuah tanggal, sebanyak $hari.
+     *
+     * @return list<Carbon>
+     */
+    private function hariKerjaMundur(Carbon $akhir, int $hari): array
+    {
+        $jelajahMaks = $hari * self::PENGALI_JELAJAH_TREN;
+        $adaProduksi = $this->tanggalAdaProduksi($akhir->copy()->subDays($jelajahMaks), $akhir);
+
+        $tanggal = [];
+        $kursor = $akhir->copy();
+
+        for ($langkah = 0; $langkah <= $jelajahMaks && count($tanggal) < $hari; $langkah++) {
+            if ($this->layakTampil($kursor, $adaProduksi)) {
+                $tanggal[] = $kursor->copy();
+            }
+            $kursor->subDay();
+        }
+
+        return array_reverse($tanggal);
+    }
+
+    /**
+     * Semua hari kerja DI DALAM sebuah rentang.
+     *
+     * @return list<Carbon>
+     */
+    private function hariKerjaDalamRentang(Carbon $from, Carbon $to): array
+    {
+        $adaProduksi = $this->tanggalAdaProduksi($from, $to);
+
+        $tanggal = [];
+        $kursor = $from->copy()->startOfDay();
+        $akhir = $to->copy()->startOfDay();
+
+        while ($kursor->lte($akhir)) {
+            if ($this->layakTampil($kursor, $adaProduksi)) {
+                $tanggal[] = $kursor->copy();
+            }
+            $kursor->addDay();
+        }
+
+        return $tanggal;
+    }
+
+    /**
+     * Hari libur yang PUNYA LHP tetap layak tampil.
+     *
+     * Lembur di hari libur itu nyata, dan menyembunyikan hari yang punya data
+     * membuat angkanya hilang dari tren tanpa jejak.
+     *
+     * @param  list<string>  $adaProduksi
+     */
+    private function layakTampil(Carbon $tgl, array $adaProduksi): bool
+    {
+        return self::hariKerja($tgl) || in_array($tgl->toDateString(), $adaProduksi, true);
+    }
+
+    /**
+     * Tanggal yang punya LHP dalam sebuah jendela — SATU query, bukan per hari.
+     *
+     * @return list<string>
+     */
+    private function tanggalAdaProduksi(Carbon $from, Carbon $to): array
+    {
+        return TransaksiProduksi::query()
+            ->whereBetween('tanggal_produksi', [$from->toDateString(), $to->toDateString()])
+            ->distinct()
+            ->pluck('tanggal_produksi')
+            ->map(fn ($t) => Carbon::parse($t)->toDateString())
+            ->all();
     }
 
     /**
@@ -424,11 +548,23 @@ class OverviewService
      *
      * @return array<string, list<array{jenis: string, menit: float}>>
      */
-    public function lossTimeSemuaScope(Carbon $acuan): array
+    public function lossTimeSemuaScope(Carbon $from, ?Carbon $to = null): array
     {
+        $to ??= $from;
+
+        /*
+         * DUA scope, bukan tiga. Dulu harian/bulanan/semua — tiga tombol yang
+         * masing-masing menetapkan rentangnya sendiri, terpisah dari rentang
+         * halaman. Setelah halaman punya filter tanggal, dua dari tiga tombol itu
+         * jadi kontrol kedua untuk dimensi yang sama, dan panel Pareto bisa
+         * menampilkan rentang berbeda dari tujuh panel lain di halaman yang sama.
+         *
+         * 'semua' DIPERTAHANKAN karena ia pertanyaan yang berbeda, bukan rentang
+         * yang berbeda: penyumbang loss terbesar sepanjang masa, lepas dari
+         * periode apa pun yang sedang dilihat.
+         */
         return [
-            'harian' => $this->lossTime($acuan, $acuan),
-            'bulanan' => $this->lossTime($acuan->copy()->startOfMonth(), $acuan->copy()->endOfMonth()),
+            'rentang' => $this->lossTime($from, $to),
             'semua' => $this->lossTime(),
         ];
     }

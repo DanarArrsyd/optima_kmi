@@ -101,14 +101,19 @@ class OverviewPageTest extends TestCase
         $this->assertStringContainsString('id="ovLineOee"', $html);
         $this->assertStringContainsString('id="ovPareto"', $html);
 
-        // Tanggal acuan ditulis eksplisit — tanpa ini "LAST 24 H" tak bisa
-        // diverifikasi mata: LHP sering masuk besoknya.
-        $this->assertStringContainsString('15 Jul 2026', $html);
+        // Rentang ditulis eksplisit di header panel. Label "LAST 24 H" yang
+        // di-hardcode dihapus: ia BOHONG begitu rentangnya lebih dari sehari.
+        $this->assertStringContainsString('15 JUL 2026', $html);
 
-        // Tiga tombol scope Pareto.
-        foreach (['Last 24 H', 'This Month', 'All Time'] as $label) {
+        // Filter tanggal terisi rentang yang sedang aktif, bukan kosong.
+        $this->assertStringContainsString('name="date_from" value="2026-07-15"', $html);
+        $this->assertStringContainsString('name="date_to" value="2026-07-15"', $html);
+
+        // DUA tombol scope Pareto, bukan tiga. Lihat lossTimeSemuaScope().
+        foreach (['Rentang', 'All Time'] as $label) {
             $this->assertStringContainsString($label, $html);
         }
+        $this->assertStringNotContainsString('This Month', $html);
 
         // css/chatbot.css TIDAK boleh ikut TERMUAT — dia menyetel #main jadi
         // kanvas penuh tanpa padding dan merusak grid halaman ini.
@@ -222,6 +227,89 @@ class OverviewPageTest extends TestCase
         // terpisah yang bisa melenceng.
         $this->assertStringContainsString('warnaAch', $html);
         $this->assertStringContainsString('background:#15803d', $html);
+    }
+
+    /* ═══ Filter tanggal ══════════════════════════════════════════ */
+
+    public function test_default_tanpa_filter_tetap_tanggal_lhp_terakhir(): void
+    {
+        // Papan di lantai produksi tidak boleh berubah artinya hanya karena
+        // filter ditambahkan. Default WAJIB sama seperti sebelum filter ada.
+        $this->seedPabrik();
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $html = $this->actingAs($admin)->get(route('overview'))->assertOk()->getContent();
+
+        $this->assertStringContainsString('name="date_from" value="2026-07-15"', $html);
+        $this->assertStringContainsString('15 JUL 2026', $html);
+        // Reset tidak ditampilkan saat tidak ada yang perlu direset.
+        $this->assertStringNotContainsString('>Reset<', $html);
+    }
+
+    public function test_filter_rentang_mengubah_label_dan_menampilkan_reset(): void
+    {
+        $this->seedPabrik();
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $html = $this->actingAs($admin)
+            ->get(route('overview', ['date_from' => '2026-07-01', 'date_to' => '2026-07-31']))
+            ->assertOk()->getContent();
+
+        // Rentang dalam satu bulan diringkas: "01–31 JUL 2026".
+        $this->assertStringContainsString('01–31 JUL 2026', $html);
+        $this->assertStringContainsString('>Reset<', $html);
+    }
+
+    public function test_tanggal_terbalik_ditukar_bukan_ditolak(): void
+    {
+        // Salah urutan itu salah ketik. Menolaknya dengan error hanya menghalangi
+        // hal yang jelas maksudnya.
+        $this->seedPabrik();
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $this->actingAs($admin)
+            ->get(route('overview', ['date_from' => '2026-07-31', 'date_to' => '2026-07-01']))
+            ->assertOk()
+            ->assertSee('01–31 JUL 2026', false);
+    }
+
+    public function test_tanggal_rusak_jatuh_ke_default_bukan_error(): void
+    {
+        /*
+         * Halaman ini dibuka guest dan dipajang di lantai produksi. Satu query
+         * string rusak tidak boleh mematikan papannya — yang salah diam-diam
+         * jatuh ke default, dan default-nya selalu masuk akal.
+         */
+        $this->seedPabrik();
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        foreach (['bukan-tanggal', '2026-13-45', '', '2026/07/15'] as $rusak) {
+            $this->actingAs($admin)
+                ->get(route('overview', ['date_from' => $rusak]))
+                ->assertOk()
+                ->assertSee('15 JUL 2026', false);
+        }
+    }
+
+    public function test_filter_ikut_dipakai_pareto_bukan_rentang_terpisah(): void
+    {
+        // Panel Pareto memakai rentang HALAMAN, bukan rentangnya sendiri. Dulu
+        // tombolnya menetapkan rentang terpisah, sehingga satu panel bisa
+        // menampilkan periode berbeda dari tujuh panel lain di halaman yang sama.
+        $this->seedPabrik();
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $html = $this->actingAs($admin)
+            ->get(route('overview', ['date_from' => '2026-07-01', 'date_to' => '2026-07-31']))
+            ->assertOk()->getContent();
+
+        /*
+         * @json() meng-escape en-dash jadi \u2013, jadi payload JS berisi
+         * "01\u201331 JUL 2026" — benar di browser, tapi tidak cocok kalau
+         * dicari sebagai en-dash literal. Yang diperiksa: kunci scope-nya ada
+         * dan berisi bulan yang diminta.
+         */
+        $this->assertMatchesRegularExpression('/rentang: "01\\\\u201331 JUL 2026"/', $html);
     }
 
     public function test_payload_tren_berisi_enam_titik(): void
