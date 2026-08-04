@@ -241,10 +241,19 @@ class OverviewServiceTest extends TestCase
 
     public function test_availability_pabrik_ditimbang_jam_jendela_bukan_dirata_rata(): void
     {
-        // Mesin lama: jendela penuh 3 hari (72 jam), downtime 0 → 100%.
-        // Mesin baru: instalasi di hari terakhir, jendela 24 jam, downtime 12 → 50%.
-        // Rata-rata polos = 75%. Pooled tertimbang = (96−12)/96 = 87,5%.
-        // Inilah sebabnya operating_hours dikeluarkan MaintenanceDashboardService.
+        /*
+         * Rentang 15–17 Jul 2026 = Rab, Kam, Jum — tiga hari kerja, 8 jam each.
+         *
+         * Mesin lama : instalasi lama  → jendela 3 hari = 24 jam, downtime 0  → 100%
+         * Mesin baru : instalasi 17 Jul → jendela 1 hari =  8 jam, downtime 4 →  50%
+         *
+         * Rata-rata polos = 75%. Pooled tertimbang = (32 − 4) / 32 = 87,5%.
+         * Inilah sebabnya operating_hours dikeluarkan MaintenanceDashboardService.
+         */
+        // Jam terjadwal WAJIB ada sejak penyebutnya bukan kalender lagi.
+        // Shift 1 06:00–14:00 = 8 jam per hari kerja.
+        $this->shift('Shift 1');
+
         $lama = $this->scaffold(install: '2026-01-01', kode: 'M-LAMA')['mesin'];
         $baru = $this->scaffold(install: '2026-07-17', kode: 'M-BARU')['mesin'];
 
@@ -252,10 +261,10 @@ class OverviewServiceTest extends TestCase
             'no_lkm' => 'LKM-OV', 'id_mesin' => $baru->id,
             'tanggal_breakdown' => '2026-07-17', 'jam_breakdown' => '08:00',
             'tanggal_mulai_perbaikan' => '2026-07-17', 'jam_mulai_perbaikan' => '08:00',
-            'tanggal_selesai_perbaikan' => '2026-07-17', 'jam_selesai_perbaikan' => '20:00',
+            'tanggal_selesai_perbaikan' => '2026-07-17', 'jam_selesai_perbaikan' => '12:00',
             'problem_mesin' => 'x', 'penyebab_breakdown' => 'x', 'tindakan_perbaikan' => 'x',
             'status_breakdown' => 'Sedang', 'pic_maintenance' => 'Budi',
-            'repair_time' => 12.0, 'total_downtime' => 12.0,
+            'repair_time' => 4.0, 'total_downtime' => 4.0,
         ]);
 
         $r = $this->svc()->oee($this->tgl('2026-07-15'), $this->tgl('2026-07-17'));
@@ -273,6 +282,7 @@ class OverviewServiceTest extends TestCase
         // MaintenanceDashboardService, tapi yang dilihat orang angkanya di
         // halaman Overview. Test ini yang memastikan perubahan itu benar-benar
         // sampai ke sana, bukan berhenti di service maintenance.
+        $this->shift('Shift 1');   // 8 jam terjadwal per hari kerja
         ['mesin' => $m, 'proses' => $p] = $this->scaffold(install: '2026-01-01');
 
         $tanpa = $this->svc()->oee($this->tgl('2026-07-15'), $this->tgl('2026-07-15'));
@@ -280,8 +290,9 @@ class OverviewServiceTest extends TestCase
 
         $this->dandori('Setting_Dies', 360.0, '2026-07-15', $m->id, $p->id);   // 6 jam
 
+        // 8 jam terjadwal − 6 jam dandori = 25%. Dulu 75% dengan penyebut 24 jam.
         $dengan = $this->svc()->oee($this->tgl('2026-07-15'), $this->tgl('2026-07-15'));
-        $this->assertEqualsWithDelta(75.0, $dengan['availability_pct'], 0.5);
+        $this->assertEqualsWithDelta(25.0, $dengan['availability_pct'], 0.5);
     }
 
     public function test_oee_null_kalau_salah_satu_komponen_tak_terhitung(): void

@@ -119,6 +119,32 @@
         </div>
     </div>
     @endforeach
+    {{-- Penanda apakah shift ini masuk penyebut Availability.
+         Bukan sekadar preferensi tampilan: jam shift yang dicentang di sini
+         DIJUMLAH jadi jam terjadwal, dan itu penyebut Availability di halaman
+         Overview + Availability. Mematikan shift yang memang tidak dijalankan
+         membuat penyebutnya benar; membiarkannya menyala menambah 8 jam per hari
+         yang tak pernah dikerjakan dan melambungkan Availability. --}}
+    <div class="erp-panel mb-3" style="max-width:680px">
+        <div class="erp-panel-header">
+            <i class="bi bi-graph-up me-1"></i>Perhitungan Availability
+        </div>
+        <div class="erp-panel-body">
+            <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="dihitung_availability"
+                       name="dihitung_availability" value="1"
+                       @checked(old('dihitung_availability', $shift->dihitung_availability))>
+                <label class="form-check-label" for="dihitung_availability">
+                    Hitung shift ini sebagai jam kerja terjadwal
+                </label>
+            </div>
+            <div class="ta-hint">
+                Matikan kalau shift ini terdaftar tapi tidak pernah dijalankan.
+                Shift yang dimatikan tidak ikut jadi penyebut Availability.
+            </div>
+        </div>
+    </div>
+
 
     <div class="d-flex gap-2 mb-4">
         <button type="submit" class="btn btn-primary btn-sm">

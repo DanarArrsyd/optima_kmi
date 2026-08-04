@@ -16,6 +16,10 @@ class MaintenanceDiesDashboardService
     /** Memo per-instance: kolom durasi_menit ada di DB? (hosting kadang telat migrasi) */
     private ?bool $durasiKolomAda = null;
 
+    public function __construct(
+        private KalenderKerjaService $kalender = new KalenderKerjaService,
+    ) {}
+
     private function durasiKolomAda(): bool
     {
         return $this->durasiKolomAda ??= Schema::hasColumn('transaksi_produksi', 'durasi_menit');
@@ -37,7 +41,23 @@ class MaintenanceDiesDashboardService
             ->sortBy(fn ($pr) => $pr->part->part_no ?? '');
 
         $stats = TransaksiBreakdownDies::query()
-            ->whereBetween('tanggal_breakdown', [$from->toDateString(), $to->toDateString()])
+            /*
+             * Rentang SETENGAH TERBUKA [from, to+1hari). Bug yang SAMA dengan
+             * yang sudah diperbaiki di MaintenanceDashboardService dan
+             * OverviewService — ini kemunculan KETIGA.
+             *
+             * Kolomnya DATE tapi cast model-nya 'date' TANPA format, jadi nilai
+             * yang ditulis berbentuk '2026-08-05 00:00:00'. MySQL memotong
+             * jamnya sehingga prod tidak bergejala; SQLite menyimpannya, dan
+             * '2026-08-05 00:00:00' <= '2026-08-05' itu FALSE secara
+             * leksikografis — breakdown di HARI TERAKHIR rentang hilang.
+             *
+             * Ketahuan hanya karena test availability dies akhirnya ditulis:
+             * angkanya 100% padahal ada downtime 2 jam. Sebelum itu halaman ini
+             * nol cakupan, jadi bug-nya tak punya cara untuk gagal.
+             */
+            ->where('tanggal_breakdown', '>=', $from->toDateString())
+            ->where('tanggal_breakdown', '<', $to->copy()->addDay()->toDateString())
             ->when($partId, fn ($q) => $q->whereHas('partProses', fn ($p) => $p->where('id_part', $partId)))
             ->get(['id_part_proses', 'repair_time', 'total_downtime'])
             ->groupBy('id_part_proses');
@@ -53,16 +73,35 @@ class MaintenanceDiesDashboardService
 
             $instalasi = $hasInstalasi ? $p?->tanggal_instalasi : null;
             $mtbfJam = $mtbfHari = $availPct = null;
+            $operatingHours = null;
             $instalasiSet = false;
 
             if ($instalasi) {
                 $instalasiSet = true;
                 $windowStart = Carbon::parse($instalasi)->max($from->copy()->startOfDay());
-                $operatingHours = max(0.0, $windowStart->diffInRealHours($to->copy()->endOfDay(), false));
+
+                /*
+                 * JAM TERJADWAL, sama seperti MaintenanceDashboardService.
+                 *
+                 * Sebuah dies memang tidak "dijadwalkan per shift" — ia dipasang
+                 * saat dibutuhkan. Tapi ia juga hanya bisa RUSAK dan MENGANGGUR
+                 * selama pabrik bekerja, jadi jam kerja terjadwal tetap penyebut
+                 * yang benar. Yang tidak benar adalah membiarkan halaman ini
+                 * memakai jam kalender sementara halaman Availability mesin
+                 * memakai jam shift: dua halaman berlabel "Availability" dengan
+                 * basis berbeda, dan tidak ada di layar yang memberi tahu.
+                 */
+                $operatingHours = $this->kalender->jamTerjadwal($windowStart, $to);
+
                 $uptime = max(0.0, $operatingHours - $sumDowntime);
                 $mtbfJam = $count > 0 ? round($uptime / $count, 2) : round($uptime, 2);
                 $mtbfHari = round($mtbfJam / 24, 2);
-                $availPct = $operatingHours > 0 ? round($uptime / $operatingHours * 100, 2) : 100.0;
+
+                // Nol jam terjadwal (rentang cuma Minggu/libur) → null, BUKAN
+                // 100%. "Tidak ada jam kerja" bukan berarti "sempurna".
+                $availPct = $operatingHours > 0
+                    ? round($uptime / $operatingHours * 100, 2)
+                    : null;
             }
 
             // Cuma tampilkan dies+proses yang punya breakdown atau instalasi diset (hindari list ribuan baris)
@@ -82,6 +121,15 @@ class MaintenanceDiesDashboardService
                 'mtbf_jam' => $mtbfJam,
                 'mtbf_hari' => $mtbfHari,
                 'availability_pct' => $availPct,
+                // Ikut dikeluarkan supaya bentuk barisnya senada service mesin:
+                // pemakai bisa memverifikasi availability dari penyebutnya
+                // sendiri, dan agregasi lintas-dies kelak tidak perlu menebak
+                // atau menghitung ulang jam jendelanya.
+                'operating_hours' => $operatingHours === null ? null : round($operatingHours, 2),
+                // Senada service mesin: downtime bisa melebihi jam terjadwal
+                // (perbaikan dijalankan hari Minggu). Ditandai supaya 0% tidak
+                // terbaca sebagai angka biasa.
+                'kerugian_melebihi_jam' => $operatingHours !== null && $sumDowntime > $operatingHours,
                 'instalasi_set' => $instalasiSet,
             ];
         }

@@ -185,8 +185,24 @@ class OverviewService
         if ($totalJam > 0) {
             $uptime = max(0.0, $totalJam - $totalLoss);
             $availabilityPct = round($uptime / $totalJam * 100, 2);
+
+            /*
+             * Kerugian melebihi jam terjadwal. Nyata, bukan teoretis: perbaikan
+             * dijalankan hari Minggu, atau dandori menembus batas shift. Angka
+             * 0% tanpa catatan terbaca seperti data biasa; dengan catatan,
+             * orang tahu penyebutnya yang perlu diperiksa, bukan mesinnya.
+             */
+            if ($totalLoss > $totalJam) {
+                $catatan[] = sprintf(
+                    'Kerugian (%.1f jam) melebihi jam terjadwal (%.1f jam) — Availability dijepit di 0%%. '
+                    .'Cek breakdown/dandori yang tercatat di luar jam kerja.',
+                    $totalLoss,
+                    $totalJam
+                );
+            }
         } else {
-            $catatan[] = 'Availability tak bisa dihitung: belum ada mesin dengan tanggal instalasi terisi.';
+            $catatan[] = 'Availability tak bisa dihitung: nol jam kerja terjadwal di rentang ini '
+                .'(hari Minggu/libur, atau belum ada mesin dengan tanggal instalasi terisi).';
         }
 
         if ($mesinTanpaInstalasi > 0 && $availabilityPct !== null) {
@@ -267,11 +283,11 @@ class OverviewService
      */
     public static function hariKerja(Carbon $tgl): bool
     {
-        if ($tgl->isSunday()) {
-            return false;
-        }
-
-        return ! in_array($tgl->toDateString(), config('hari_libur', []), true);
+        // Delegasi, bukan salinan: aturan yang sama kini juga menentukan jam
+        // terjadwal untuk Availability. Dua salinan akan melenceng, dan
+        // melencengnya senyap — tren menyembunyikan hari yang jam terjadwalnya
+        // tetap dihitung, atau sebaliknya.
+        return KalenderKerjaService::hariKerja($tgl);
     }
 
     /**

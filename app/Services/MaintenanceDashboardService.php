@@ -19,6 +19,10 @@ class MaintenanceDashboardService
     /** Memo per-instance: kolom durasi_menit ada di DB? (hosting kadang telat migrasi) */
     private ?bool $durasiKolomAda = null;
 
+    public function __construct(
+        private KalenderKerjaService $kalender = new KalenderKerjaService,
+    ) {}
+
     private function durasiKolomAda(): bool
     {
         return $this->durasiKolomAda ??= Schema::hasColumn('transaksi_produksi', 'durasi_menit');
@@ -106,7 +110,22 @@ class MaintenanceDashboardService
             if ($instalasi) {
                 $instalasiSet = true;
                 $windowStart = Carbon::parse($instalasi)->max($from->copy()->startOfDay());
-                $operatingHours = max(0.0, $windowStart->diffInRealHours($to->copy()->endOfDay(), false));
+
+                /*
+                 * JAM TERJADWAL, bukan jam kalender.
+                 *
+                 * Versi lama: $windowStart->diffInRealHours($to->endOfDay()) —
+                 * jam kalender 24/7. Itu memuat 8 jam per hari yang tidak pernah
+                 * dijadwalkan (pabrik hanya menjalankan Shift 1 & 2), plus
+                 * SELURUH hari Minggu dan hari libur. Akibatnya penyebutnya
+                 * terlalu besar dan Availability hampir selalu mendekati 100%
+                 * apa pun yang terjadi di lantai produksi.
+                 *
+                 * Sekarang: jumlah jam shift yang ditandai dihitung_availability,
+                 * dikurangi istirahat, hanya pada hari kerja. Lihat
+                 * KalenderKerjaService.
+                 */
+                $operatingHours = $this->kalender->jamTerjadwal($windowStart, $to);
 
                 /*
                  * DUA uptime, sengaja, karena kedua metrik menanyakan hal berbeda.
@@ -125,7 +144,23 @@ class MaintenanceDashboardService
 
                 $mtbfJam = $count > 0 ? round($uptimeBreakdown / $count, 2) : round($uptimeBreakdown, 2);
                 $mtbfHari = round($mtbfJam / 24, 2);
-                $availPct = $operatingHours > 0 ? round($uptimeTotal / $operatingHours * 100, 2) : 100.0;
+
+                /*
+                 * Nol jam terjadwal (rentang cuma Minggu / hari libur) → null,
+                 * BUKAN 100%. Versi lama mengembalikan 100.0 karena penyebut
+                 * kalender tidak pernah nol; sekarang bisa nol, dan "tidak ada
+                 * jam kerja" bukan berarti "sempurna".
+                 *
+                 * uptimeTotal sudah dijepit di 0 oleh max() di atas: kerugian
+                 * bisa MELEBIHI jam terjadwal (perbaikan dijalankan hari Minggu,
+                 * atau dandori menembus batas shift), dan availability negatif
+                 * tidak punya arti. Yang melebihi ditandai lewat
+                 * kerugian_melebihi_jam supaya terlihat, bukan tersembunyi di
+                 * balik angka 0% yang tampak seperti data biasa.
+                 */
+                $availPct = $operatingHours > 0
+                    ? round($uptimeTotal / $operatingHours * 100, 2)
+                    : null;
             }
 
             $rows[] = [
@@ -152,6 +187,11 @@ class MaintenanceDashboardService
                 // instalasinya jatuh di tengah rentang — penyebutnya beda.
                 // null = tanggal instalasi belum diset, sama seperti availability_pct.
                 'operating_hours' => $operatingHours === null ? null : round($operatingHours, 2),
+                // Ditandai eksplisit, tidak diserahkan ke pemakai untuk
+                // membandingkan sum_loss vs operating_hours sendiri — tiap
+                // pemakai yang lupa membandingkannya akan melaporkan 0% sebagai
+                // angka normal.
+                'kerugian_melebihi_jam' => $operatingHours !== null && $sumLoss > $operatingHours,
                 'instalasi_set' => $instalasiSet,
             ];
         }
