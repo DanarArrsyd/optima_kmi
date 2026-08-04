@@ -8,9 +8,18 @@ use Illuminate\Http\Request;
 
 class AnomalyController extends Controller
 {
-    private const PCT_THRESHOLD = 150;   // % achievement di atas ini dianggap anomali
+    /*
+     * Ambang pindah ke config/anomali_lhp.php karena sekarang dipakai DUA tempat:
+     * halaman ini dan SphTeoretisService yang membuang baris anomali sebelum
+     * menghitung kandidat SPH teoretis. Dua salinan angka akan melenceng, dan
+     * melencengnya senyap — baris yang ditandai di sini tetap dipakai di sana.
+     *
+     * Default dipertahankan sebagai fallback: kalau config hilang, perilakunya
+     * tidak berubah diam-diam.
+     */
+    private const PCT_THRESHOLD_DEFAULT = 150;
 
-    private const MIN_WKJ = 0.083; // 5 menit dalam jam
+    private const MIN_WKJ_DEFAULT = 0.083; // 5 menit dalam jam
 
     public function index(Request $request)
     {
@@ -35,11 +44,11 @@ class AnomalyController extends Controller
             $warnings = [];
             $types = [];
 
-            if ($pct !== null && $pct > self::PCT_THRESHOLD) {
+            if ($pct !== null && $pct > config('anomali_lhp.pct_maks', self::PCT_THRESHOLD_DEFAULT)) {
                 $warnings[] = "Achievement {$pct}% — terlalu tinggi";
                 $types[] = 'high_pct';
             }
-            if ($wkj < self::MIN_WKJ && $wkj > 0) {
+            if ($wkj < config('anomali_lhp.wkj_min', self::MIN_WKJ_DEFAULT) && $wkj > 0) {
                 $warnings[] = 'Waktu kerja < 5 menit — jam start/finish mungkin salah';
                 $types[] = 'short_wkj';
             }
