@@ -119,6 +119,49 @@ class OverviewPageTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('#<link[^>]+chatbot\.css#', $html);
     }
 
+    /**
+     * Mode lepas-kunci (layar sempit / pendek) harus mengembalikan panel ke
+     * tinggi-dari-konten.
+     *
+     * Ini test CSS, yang biasanya tidak layak diuji — dikecualikan karena bug
+     * persisnya sudah terjadi di prod: blok @media mengembalikan tinggi kotak
+     * grafik tapi LUPA .erp-panel-body yang masih flex: 1 1 0. flex-basis 0
+     * membuat kontribusi tinggi body ke panel runtuh, panel menyusut sebatas
+     * header (~30px), dan seluruh halaman rusak di layar 1366×768 — resolusi PC
+     * pabrik yang paling umum.
+     *
+     * Yang diasersikan cuma keberadaan aturannya, bukan hasil rendernya. Itu
+     * tidak membuktikan tampilannya benar, tapi cukup untuk mencegah baris ini
+     * hilang lagi tanpa ada yang sadar.
+     */
+    public function test_mode_lepas_kunci_mengembalikan_panel_ke_tinggi_konten(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $this->seedPabrik();
+
+        $html = $this->actingAs($admin)->get(route('overview'))->assertOk()->getContent();
+
+        // Ambil hanya blok @media lepas-kunci, supaya aturan mode terkunci
+        // (yang memang flex: 1 1 0) tidak ikut terhitung sebagai lolos.
+        $this->assertMatchesRegularExpression('/@media \(max-width: 1100px\)/', $html);
+
+        $awal = strpos($html, '@media (max-width: 1100px)');
+        $blok = substr($html, $awal, 2000);
+
+        foreach ([
+            '.ov-stack .erp-panel-body { flex: 0 0 auto; }' => 'body panel wajib tinggi-dari-konten',
+            '.ov-stack > .erp-panel    { flex: 0 0 auto; }' => 'panel di stack wajib tinggi-dari-konten',
+            '.ov-stack .erp-panel { overflow: visible; }' => 'overflow wajib dilepas supaya salah hitung terlihat, bukan tersembunyi',
+        ] as $aturan => $alasan) {
+            $this->assertStringContainsString($aturan, $blok, $alasan);
+        }
+
+        // Ambang 1400px pernah dipakai dan itu menyalakan mode ini di layar
+        // 1366px — layout satu-layar tidak pernah terpakai di layar yang
+        // paling butuh. Jangan naikkan lagi tanpa menghitung ulang.
+        $this->assertStringNotContainsString('max-width: 1400px', $html);
+    }
+
     public function test_oee_dan_apq_masing_masing_kotak_sendiri(): void
     {
         $this->seedPabrik();

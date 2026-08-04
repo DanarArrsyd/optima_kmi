@@ -245,7 +245,16 @@
        di-scroll lagi. Memaksa sepuluh panel masuk layar sempit atau pendek
        menghasilkan grafik yang tak terbaca — scroll lebih baik daripada
        angka setinggi 8px. */
-    @media (max-width: 1400px), (max-height: 620px) {
+    /* Ambang lebar 1100px, BUKAN 1400px.
+       1366×768 adalah resolusi PC pabrik yang paling umum, dan 1400px membuat
+       mode lepas-kunci ini menyala di sana — layout satu-layar tidak pernah
+       terpakai di layar yang justru paling butuh. 1366 sanggup: tinggi jendela
+       ~700px memberi 574px untuk grid (251px baris 1 + 315px baris 2), dan
+       lebar 1366 memberi kolom 208–249px untuk panel donat. Sempit, tapi muat.
+
+       Ambang TINGGI 620px tetap ada dan itu yang lebih sering menyala: Chrome
+       biasa dengan bar alamat + bookmark di layar 768px menyisakan ~620px. */
+    @media (max-width: 1100px), (max-height: 620px) {
         .ov-page {
             height: auto;
             overflow: visible;
@@ -254,6 +263,24 @@
         .ov-row-1 { grid-template-columns: 1fr 1fr; }
         .ov-row-2 { grid-template-columns: 1fr 1fr; }
         .ov-row-2 > .erp-panel:last-child { grid-column: 1 / -1; }
+
+        /* ⚠️ INI yang dulu terlewat dan merusak seluruh mode ini.
+           Tanpa induk bertinggi terdefinisi, .erp-panel-body yang masih
+           flex: 1 1 0 membuat kontribusi tingginya ke panel RUNTUH — panel
+           menyusut sebatas header (~30px) dan canvas Chart.js tumpah keluar
+           atau terklip. Di mode lepas-kunci, tinggi harus datang dari KONTEN,
+           jadi body dan panel wajib flex: 0 0 auto.
+           Kelas bug yang sama pernah memotong angka OEE; penalarannya tidak
+           ikut diterapkan ke blok ini. */
+        .ov-row .erp-panel-body,
+        .ov-stack .erp-panel-body { flex: 0 0 auto; }
+        .ov-stack > .erp-panel    { flex: 0 0 auto; }
+
+        /* overflow:hidden ikut dilepas: di mode terkunci ia mencegah bocor
+           jadi scroll, tapi di sini ia justru MENYEMBUNYIKAN grafik kalau ada
+           satu saja salah hitung tinggi — gagal senyap, bukan gagal terlihat. */
+        .ov-row .erp-panel,
+        .ov-stack .erp-panel { overflow: visible; }
 
         /* Kotak grafik kembali bertinggi tetap: tanpa tinggi induk yang
            terdefinisi, flex:1 1 0 runtuh jadi nol dan canvas-nya hilang. */
