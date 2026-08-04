@@ -17,6 +17,11 @@ class MasterShift extends Model
         'jam_start', 'jam_finish',
         'jam_start_jumat', 'jam_finish_jumat',
         'jam_start_sabtu', 'jam_finish_sabtu',
+        'dihitung_availability',
+    ];
+
+    protected $casts = [
+        'dihitung_availability' => 'boolean',
     ];
 
     /** Semua istirahat untuk shift ini. */

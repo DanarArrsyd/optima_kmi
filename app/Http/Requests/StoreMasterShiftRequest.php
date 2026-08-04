@@ -11,6 +11,18 @@ class StoreMasterShiftRequest extends FormRequest
         return $this->user()->hasRole('admin');
     }
 
+    /**
+     * Checkbox HTML tidak mengirim apa pun saat tidak dicentang. Tanpa normalisasi
+     * ini, mematikan sebuah shift diam-diam gagal: kuncinya absen, kolomnya tidak
+     * ikut ter-update, dan shift itu tetap masuk penyebut Availability.
+     */
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'dihitung_availability' => $this->boolean('dihitung_availability'),
+        ]);
+    }
+
     public function rules(): array
     {
         return [
@@ -24,6 +36,14 @@ class StoreMasterShiftRequest extends FormRequest
             // Sabtu (opsional)
             'jam_start_sabtu' => 'nullable|date_format:H:i',
             'jam_finish_sabtu' => 'nullable|date_format:H:i|required_with:jam_start_sabtu',
+            /*
+             * Checkbox: hadir = true, absen = tidak terkirim sama sekali.
+             * 'boolean' saja TIDAK cukup — checkbox yang tidak dicentang membuat
+             * kuncinya hilang dari request dan nilainya jadi null, bukan false,
+             * sehingga shift yang baru dimatikan tetap dihitung. Ditangani di
+             * prepareForValidation() supaya rule-nya tidak perlu tahu soal HTML.
+             */
+            'dihitung_availability' => 'boolean',
             // Istirahat rows
             'istirahat' => 'nullable|array',
             'istirahat.*' => 'array',

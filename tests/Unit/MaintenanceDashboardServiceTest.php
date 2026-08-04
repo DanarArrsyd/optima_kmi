@@ -20,6 +20,22 @@ class MaintenanceDashboardServiceTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * Shift yang menentukan JAM TERJADWAL — penyebut Availability.
+     *
+     * Wajib ada di tiap test yang memeriksa availability: sejak penyebutnya
+     * pindah dari jam kalender ke jam shift, DB tanpa master_shift berarti nol
+     * jam terjadwal dan availability null. Itu perilaku yang benar, bukan bug —
+     * tapi berarti fixture harus menyatakan jam kerjanya.
+     */
+    private function shiftKerja(string $nama = 'Shift 1', string $start = '06:00', string $finish = '14:00'): MasterShift
+    {
+        return MasterShift::firstOrCreate(
+            ['nama_shift' => $nama],
+            ['jam_start' => $start, 'jam_finish' => $finish]
+        );
+    }
+
     private function mesin(?string $instalasi): MasterMesin
     {
         return MasterMesin::create([
@@ -31,6 +47,7 @@ class MaintenanceDashboardServiceTest extends TestCase
 
     public function test_mttr_is_average_repair_time_over_breakdown_count(): void
     {
+        $this->shiftKerja();
         $m = $this->mesin('2026-01-01');
         foreach ([['2026-06-01', 2.0, 3.0], ['2026-06-10', 4.0, 5.0]] as [$tgl, $repair, $down]) {
             TransaksiBreakdownMesin::create([
@@ -56,12 +73,18 @@ class MaintenanceDashboardServiceTest extends TestCase
         $this->assertGreaterThan(0, $rows[0]['availability_pct']);
         $this->assertLessThanOrEqual(100, $rows[0]['availability_pct']);
 
-        // availability == (operating - sum_downtime) / operating * 100, computed from the same window
+        /*
+         * Diasersikan sebagai INVARIAN terhadap operating_hours yang dilaporkan
+         * service, bukan dihitung ulang dari kalender.
+         *
+         * Versi lama menghitung sendiri diffInRealHours(from, to) sebagai
+         * penyebut. Begitu penyebutnya pindah ke jam shift terjadwal, test itu
+         * membandingkan angka baru dengan rumus lama dan merah — padahal
+         * kodenya benar. Bentuk ini tetap berlaku apa pun basis penyebutnya.
+         */
         $row = $rows[0];
-        $operating = Carbon::parse('2026-01-01')
-            ->diffInRealHours(Carbon::parse('2026-06-30')->endOfDay(), false);
-        $expectedAvail = ($operating - $row['sum_downtime']) / $operating * 100;
-        $this->assertEqualsWithDelta($expectedAvail, $row['availability_pct'], 0.5);
+        $expectedAvail = ($row['operating_hours'] - $row['sum_loss']) / $row['operating_hours'] * 100;
+        $this->assertEqualsWithDelta($expectedAvail, $row['availability_pct'], 0.01);
     }
 
     public function test_null_instalasi_marks_row_and_nulls_mtbf_availability(): void
@@ -153,12 +176,19 @@ class MaintenanceDashboardServiceTest extends TestCase
             Carbon::parse('2026-07-15'), Carbon::parse('2026-07-15')
         );
 
-        // Jendela 1 hari = 24 jam. (24 − 6) / 24 = 75%.
+        /*
+         * Jendela 1 hari kerja = 8 jam TERJADWAL (Shift 1, 06:00–14:00), bukan
+         * 24 jam kalender. (8 − 6) / 8 = 25%.
+         *
+         * Dulu 75% karena penyebutnya 24 jam. Angka itu memang terlalu bagus:
+         * 6 jam ganti dies dari 8 jam kerja menyisakan seperempat kapasitas,
+         * bukan tiga perempat.
+         */
+        $this->assertSame(8.0, $rows[0]['operating_hours']);
         $this->assertSame(6.0, $rows[0]['sum_dandori']);
         $this->assertSame(0.0, $rows[0]['sum_downtime']);
         $this->assertSame(6.0, $rows[0]['sum_loss']);
-        $this->assertEqualsWithDelta(75.0, $rows[0]['availability_pct'], 0.5);
-        $this->assertNotSame(100.0, $rows[0]['availability_pct']);
+        $this->assertEqualsWithDelta(25.0, $rows[0]['availability_pct'], 0.5);
     }
 
     public function test_breakdown_dan_dandori_dijumlah_tapi_tetap_dilaporkan_terpisah(): void
@@ -184,7 +214,8 @@ class MaintenanceDashboardServiceTest extends TestCase
         $this->assertSame(3.0, $rows[0]['sum_downtime']);
         $this->assertSame(3.0, $rows[0]['sum_dandori']);
         $this->assertSame(6.0, $rows[0]['sum_loss']);
-        $this->assertEqualsWithDelta(75.0, $rows[0]['availability_pct'], 0.5);
+        // 8 jam terjadwal − 6 jam kerugian = 25%.
+        $this->assertEqualsWithDelta(25.0, $rows[0]['availability_pct'], 0.5);
     }
 
     public function test_mtbf_tidak_ikut_bergeser_karena_dandori(): void
