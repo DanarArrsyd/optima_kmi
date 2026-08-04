@@ -64,7 +64,11 @@ class OverviewPageTest extends TestCase
             'id_shift' => MasterShift::first()->id,
             'id_karyawan' => $kar->id, 'id_mesin' => $mesin->id, 'id_part_proses' => $proses->id,
             'id_losstime' => $lt->id,
-            'actual_menit' => 45.5, 'std_menit' => 0, 'over_menit' => 0,
+            // over = max(0, actual − std), sama seperti DandoriController saat
+            // input. Menulis over: 0 dengan std: 0 adalah data yang tak mungkin
+            // ada di prod, dan membuat Pareto ter-render bernilai nol tanpa satu
+            // assertion pun gagal.
+            'actual_menit' => 45.5, 'std_menit' => 0, 'over_menit' => 45.5,
             'created_by' => $user->id,
         ]);
     }
