@@ -349,7 +349,9 @@
         </div>
 
         <div class="erp-panel">
-            <div class="erp-panel-header"><span class="ov-h">Achievement</span><span class="ov-sub">- {{ $tren === [] ? '' : count($tren) }} LAST DAYS</span></div>
+            <div class="erp-panel-header"><span class="ov-h">Achievement</span>{{-- "HARI KERJA", bukan "LAST DAYS": Minggu & hari libur dilewati, jadi
+                     6 titik membentang lebih dari 6 hari kalender. --}}
+                <span class="ov-sub">- {{ $tren === [] ? '' : count($tren) }} HARI KERJA</span></div>
             <div class="erp-panel-body">
                 <div class="ov-chart-line"><canvas id="ovLineAch"></canvas></div>
             </div>
@@ -419,7 +421,7 @@
 
         {{-- Tengah: tren OEE --}}
         <div class="erp-panel">
-            <div class="erp-panel-header"><span class="ov-h">OEE</span><span class="ov-sub">- {{ count($tren) }} LAST DAYS</span></div>
+            <div class="erp-panel-header"><span class="ov-h">OEE</span><span class="ov-sub">- {{ count($tren) }} HARI KERJA</span></div>
             <div class="erp-panel-body">
                 <div class="ov-chart-line"><canvas id="ovLineOee"></canvas></div>
             </div>

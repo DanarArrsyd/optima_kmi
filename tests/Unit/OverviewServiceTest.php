@@ -320,20 +320,107 @@ class OverviewServiceTest extends TestCase
 
     public function test_tren_menghasilkan_enam_titik_mundur_dari_acuan(): void
     {
+        config(['hari_libur' => []]);
         ['mesin' => $m, 'proses' => $p] = $this->scaffold(sph: 400);
         $this->lhp($m->id, $p->id, qty: 3200, tgl: '2026-07-15');
 
         $tren = $this->svc()->tren($this->tgl('2026-07-15'));
 
+        /*
+         * Acuan Rabu 2026-07-15. Enam HARI KERJA ke belakang:
+         *   09 Kam · 10 Jum · 11 Sab · [12 MINGGU dilangkahi] · 13 Sen · 14 Sel · 15 Rab
+         *
+         * Titik pertama karena itu 07-09, bukan 07-10 seperti sebelum Minggu
+         * dilangkahi. Tanggalnya ditulis eksplisit dengan nama harinya supaya
+         * kalau assertion ini gagal, penyebabnya langsung terbaca — bukan
+         * bikin orang menghitung kalender sendiri.
+         */
         $this->assertCount(OverviewService::HARI_TREN, $tren);
-        $this->assertSame('2026-07-10', $tren[0]['tanggal']);
+        $this->assertSame('2026-07-09', $tren[0]['tanggal']);
         $this->assertSame('2026-07-15', $tren[5]['tanggal']);
+        $this->assertNotContains('2026-07-12', array_column($tren, 'tanggal'));
         $this->assertSame('15-Jul', $tren[5]['label']);
 
         // Hari tanpa LHP = null, BUKAN 0 — grafik memutus garisnya, dan 0
         // akan terbaca sebagai "produksi nol" padahal cuma tak ada data.
         $this->assertNull($tren[0]['achievement_pct']);
         $this->assertSame(100.0, $tren[5]['achievement_pct']);
+    }
+
+    /* ═══ Hari kerja & hari libur ═════════════════════════════════ */
+
+    public function test_minggu_bukan_hari_kerja_tanpa_perlu_didaftarkan(): void
+    {
+        // 2026-08-02 adalah Minggu. Tidak ada di config/hari_libur.php dan
+        // memang TIDAK BOLEH perlu ada — Minggu diturunkan dari tanggalnya.
+        config(['hari_libur' => []]);
+
+        $this->assertFalse(OverviewService::hariKerja($this->tgl('2026-08-02')));
+        $this->assertTrue(OverviewService::hariKerja($this->tgl('2026-08-03')));   // Senin
+        $this->assertTrue(OverviewService::hariKerja($this->tgl('2026-08-01')));   // Sabtu, pabrik jalan
+    }
+
+    public function test_tanggal_merah_dari_config_bukan_hari_kerja(): void
+    {
+        config(['hari_libur' => ['2026-08-17']]);
+
+        $this->assertFalse(OverviewService::hariKerja($this->tgl('2026-08-17')));
+        $this->assertTrue(OverviewService::hariKerja($this->tgl('2026-08-18')));
+    }
+
+    public function test_tren_melewati_minggu_dan_tetap_enam_titik(): void
+    {
+        config(['hari_libur' => []]);
+        ['mesin' => $m, 'proses' => $p] = $this->scaffold(sph: 400);
+        $this->lhp($m->id, $p->id, qty: 3200, tgl: '2026-08-03');
+
+        // Acuan Senin 03-Aug. Enam hari kerja ke belakang HARUS melangkahi
+        // Minggu 02-Aug dan Minggu 26-Jul.
+        $tren = $this->svc()->tren($this->tgl('2026-08-03'));
+
+        $this->assertCount(6, $tren, 'Jumlah titik tetap 6 walau ada hari yang dilangkahi.');
+        $this->assertNotContains('2026-08-02', array_column($tren, 'tanggal'), 'Minggu tidak boleh muncul.');
+        $this->assertNotContains('2026-07-26', array_column($tren, 'tanggal'), 'Minggu kedua juga tidak.');
+        $this->assertSame('2026-08-03', $tren[5]['tanggal'], 'Titik terakhir tetap tanggal acuan.');
+
+        // Rentang KALENDER-nya melebar melampaui 6 hari — itu konsekuensi yang
+        // disengaja, dan alasan label panel menyebut "hari kerja".
+        $rentang = $this->tgl($tren[0]['tanggal'])->diffInDays($this->tgl($tren[5]['tanggal']));
+        $this->assertGreaterThan(5, $rentang);
+    }
+
+    public function test_hari_libur_yang_punya_lhp_tetap_ditampilkan(): void
+    {
+        // Lembur di hari libur itu nyata. Menyembunyikan hari yang PUNYA data
+        // membuat angkanya hilang dari tren tanpa jejak — lebih buruk daripada
+        // menampilkan hari libur.
+        config(['hari_libur' => ['2026-08-05']]);
+        ['mesin' => $m, 'proses' => $p] = $this->scaffold(sph: 400);
+        $this->lhp($m->id, $p->id, qty: 1000, tgl: '2026-08-05');
+        $this->lhp($m->id, $p->id, qty: 3200, tgl: '2026-08-06');
+
+        $tren = $this->svc()->tren($this->tgl('2026-08-06'));
+
+        $this->assertContains('2026-08-05', array_column($tren, 'tanggal'));
+        $this->assertNotNull(
+            collect($tren)->firstWhere('tanggal', '2026-08-05')['achievement_pct'],
+            'Angka hari lembur harus ikut terhitung, bukan null.'
+        );
+    }
+
+    public function test_libur_panjang_tidak_membuat_pencarian_menggantung(): void
+    {
+        // Seluruh jendela jelajah ditandai libur. Yang benar: berhenti di batas
+        // dan mengembalikan lebih sedikit titik — bukan loop tanpa ujung.
+        $libur = [];
+        for ($i = 0; $i <= 40; $i++) {
+            $libur[] = $this->tgl('2026-08-06')->subDays($i)->toDateString();
+        }
+        config(['hari_libur' => $libur]);
+
+        $tren = $this->svc()->tren($this->tgl('2026-08-06'));
+
+        $this->assertSame([], $tren);
     }
 
     /* ═══ Loss time (Pareto) ══════════════════════════════════════ */
