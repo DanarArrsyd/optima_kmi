@@ -68,20 +68,41 @@ class KalenderKerjaService
      */
     public function jamTerjadwal(Carbon $from, Carbon $to): float
     {
+        return $this->jamTerjadwalRinci($from, $to)['jam'];
+    }
+
+    /**
+     * Jam terjadwal DAN jumlah hari kerjanya, dari satu penelusuran.
+     *
+     * Keduanya dikembalikan bersama dengan sengaja. Pemakai yang butuh
+     * "rata-rata jam per hari kerja" — mis. mengubah MTBF dari jam ke HARI KERJA —
+     * kalau menghitung sendiri jumlah harinya akan memakai aturan hari kerja
+     * versi sendiri, dan versi itu melenceng dari yang dipakai di sini tanpa
+     * ada yang tahu. Satu penelusuran, satu jawaban.
+     *
+     * @return array{jam: float, hari: int}
+     */
+    public function jamTerjadwalRinci(Carbon $from, Carbon $to): array
+    {
         if ($from->gt($to)) {
-            return 0.0;
+            return ['jam' => 0.0, 'hari' => 0];
         }
 
-        $total = 0.0;
+        $totalJam = 0.0;
+        $totalHari = 0;
         $kursor = $from->copy()->startOfDay();
         $akhir = $to->copy()->startOfDay();
 
         while ($kursor->lte($akhir)) {
-            $total += $this->jamHari($kursor);
+            $jam = $this->jamHari($kursor);
+            if ($jam > 0) {
+                $totalJam += $jam;
+                $totalHari++;
+            }
             $kursor->addDay();
         }
 
-        return round($total, 2);
+        return ['jam' => round($totalJam, 2), 'hari' => $totalHari];
     }
 
     /**

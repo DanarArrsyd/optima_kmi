@@ -127,6 +127,13 @@ function taField(items, initText = '', initVal = null) {
 
 let availChart = null;
 
+/* null ≠ 0 dan ≠ 100. Sejak penyebut Availability jadi jam TERJADWAL, nilainya
+   bisa null saat rentangnya nol jam kerja (Minggu/libur). Tanpa penjaga ini sel
+   tabel mencetak literal "null%" — bukan crash, tapi terbaca seperti data rusak
+   padahal maksudnya "tidak ada jam kerja untuk dinilai". */
+function fmtPct(v) { return v === null || v === undefined ? '—' : v + '%'; }
+function fmtNum(v) { return v === null || v === undefined ? '—' : v; }
+
 function availColor(pct) {
     if (pct === null) return '#9ca3af';
     if (pct >= 95) return '#15803d';
@@ -168,7 +175,7 @@ async function loadData() {
         }
         return `<tr><td>${escHtml(r.kode_mesin)}</td><td>${escHtml(r.nama_mesin)}</td><td class="text-end">${r.count}</td>
             <td class="text-end">${Number(r.sum_downtime).toLocaleString()}</td>
-            <td class="text-end"><strong>${r.availability_pct}%</strong></td></tr>`;
+            <td class="text-end"><strong>${fmtPct(r.availability_pct)}</strong></td></tr>`;
     }).join('');
 }
 

@@ -91,11 +91,27 @@ class MaintenanceDiesDashboardService
                  * memakai jam shift: dua halaman berlabel "Availability" dengan
                  * basis berbeda, dan tidak ada di layar yang memberi tahu.
                  */
-                $operatingHours = $this->kalender->jamTerjadwal($windowStart, $to);
+                $jadwal = $this->kalender->jamTerjadwalRinci($windowStart, $to);
+                $operatingHours = $jadwal['jam'];
 
                 $uptime = max(0.0, $operatingHours - $sumDowntime);
                 $mtbfJam = $count > 0 ? round($uptime / $count, 2) : round($uptime, 2);
-                $mtbfHari = round($mtbfJam / 24, 2);
+                /*
+                 * MTBF dalam HARI KERJA, bukan hari kalender.
+                 *
+                 * Pembaginya rata-rata jam terjadwal per hari kerja, BUKAN 24.
+                 * Sejak penyebutnya pindah ke jam terjadwal (~16 jam/hari kerja),
+                 * membagi 24 mengubah jam-TERJADWAL jadi hari KALENDER: "MTBF
+                 * 48 jam" tampil 2 hari padahal 48 jam terjadwal ≈ 3 hari kerja.
+                 * Salah 50%, dan salahnya tidak kelihatan karena angkanya tetap
+                 * masuk akal.
+                 *
+                 * Rata-ratanya diambil dari jendela yang SAMA dengan
+                 * operatingHours, jadi keduanya tidak bisa melenceng — dan itu
+                 * juga menangani Jumat/Sabtu yang jamnya berbeda.
+                 */
+                $jamPerHariKerja = $jadwal['hari'] > 0 ? $operatingHours / $jadwal['hari'] : 0.0;
+                $mtbfHari = $jamPerHariKerja > 0 ? round($mtbfJam / $jamPerHariKerja, 2) : null;
 
                 // Nol jam terjadwal (rentang cuma Minggu/libur) → null, BUKAN
                 // 100%. "Tidak ada jam kerja" bukan berarti "sempurna".
