@@ -6,9 +6,26 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'log = tail laravel.log, schema = cek kolom/tabel, migstatus = migrate:status, usersaudit = daftar akun, sphteoretis = kandidat SPH teoretis (semua read-only)'
-        required: false
+        # DROPDOWN, bukan teks bebas. Sebelumnya teks bebas, dan satu salah ketik
+        # (atau spasi yang ikut kepaste) membuat SEMUA step di-skip sementara
+        # run-nya tetap HIJAU — gagal senyap, kelas bug yang sudah tiga kali
+        # makan korban di repo ini. Dropdown menutupnya di sumbernya.
+        description: 'Mode probe (semua read-only kecuali markran)'
+        required: true
         default: 'log'
+        type: choice
+        options:
+          - log            # tail laravel.log
+          - lasterror      # pesan ERROR terakhir
+          - schema         # cek kolom/tabel tertentu
+          - migstatus      # migrate:status (breakdown & tanggal_instalasi)
+          - migstatusall   # migrate:status semua
+          - driftcheck     # cek objek schema migrasi Pending
+          - usersaudit     # daftar akun
+          - sphteoretis    # kandidat SPH teoretis (CSV)
+          - maxbatch       # max batch number di tabel migrations
+          - checkroute     # verifikasi route resolve
+          - markran        # ⚠️ MENULIS ke tabel migrations
 
 env:
   REMOTE_PATH: /home/u518638233/domains/optima.kencomanufactur.co.id/public_html
@@ -18,6 +35,33 @@ jobs:
   run:
     runs-on: ubuntu-latest
     steps:
+      # Gerbang: mode yang tidak punya step sama sekali harus MERAH, bukan hijau.
+      #
+      # Tanpa ini, mode tak dikenal menghasilkan run hijau dengan nol step jalan —
+      # dan orang yang menjalankannya menyimpulkan "probe-nya bilang tidak ada
+      # masalah", padahal probe-nya tidak pernah dijalankan. Itu lebih buruk
+      # daripada error.
+      #
+      # Dropdown di atas sudah menutup salah ketik; yang ini menutup DRIFT: opsi
+      # ditambah ke dropdown tapi step-nya lupa dibikin. Daftarnya tidak disalin —
+      # ia dibaca dari `if:` di file ini sendiri, jadi satu sumber.
+      - name: Checkout kode (buat gerbang mode)
+        uses: actions/checkout@v5
+
+      - name: Gerbang mode (mode tanpa step = merah)
+        run: |
+          mode="${{ github.event.inputs.mode }}"
+          berkas=.github/workflows/debug-log.yml
+
+          if ! grep -q "inputs.mode == '${mode}'" "$berkas"; then
+            echo "::error::Mode '${mode}' ada di dropdown tapi TIDAK ADA step yang menjalankannya."
+            echo "Mode yang punya step:"
+            grep -oE "inputs\.mode == '[a-z]+'" "$berkas" | cut -d"'" -f2 | sort -u | sed 's/^/  - /'
+            exit 1
+          fi
+
+          echo "Mode '${mode}' OK — step-nya ada."
+
       - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
