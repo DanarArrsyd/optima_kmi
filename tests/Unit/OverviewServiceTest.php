@@ -295,6 +295,75 @@ class OverviewServiceTest extends TestCase
         $this->assertEqualsWithDelta(25.0, $dengan['availability_pct'], 0.5);
     }
 
+    /* ═══ Dandori dikeluarkan dari penyebut Performance ═══════════ */
+
+    public function test_dandori_dikeluarkan_dari_penyebut_performance(): void
+    {
+        /*
+         * Konvensi: waktu ganti dies MASUK ke jam_start–jam_finish LHP.
+         * Kalau setup dibiarkan di penyebut, ia dihukum DUA KALI — menekan
+         * Performance DAN Availability.
+         *
+         * LHP 8 jam, SPH std 400 → teoretis mentah 3200. Diproduksi 3200.
+         *   TANPA pengurangan : 3200 / 3200        = 100,00%   (setup dihukum 2x)
+         *   DENGAN pengurangan: 3200 / (3200×6/8)  = 133,33%   (setup dihukum 1x)
+         */
+        $this->shift('Shift 1');
+        ['mesin' => $m, 'proses' => $p] = $this->scaffold(sph: 400, install: '2026-01-01');
+        $this->lhp($m->id, $p->id, qty: 3200, tgl: '2026-07-15', start: '06:00', finish: '14:00');
+        $this->dandori('Setting_Dies', 120.0, '2026-07-15', $m->id, $p->id);   // 2 jam
+
+        $r = $this->svc()->oee($this->tgl('2026-07-15'), $this->tgl('2026-07-15'));
+
+        $this->assertEqualsWithDelta(133.33, $r['performance_pct'], 0.05);
+        $this->assertNotEqualsWithDelta(100.0, $r['performance_pct'], 0.05, 'Setup tidak boleh dihukum dua kali.');
+    }
+
+    public function test_dandori_melebihi_jam_lhp_mesin_itu_diabaikan_bukan_dipaksa(): void
+    {
+        /*
+         * Data MUSTAHIL di konvensi "include": dandori tak bisa lebih lama dari
+         * jam LHP yang memuatnya. Berarti LHP mesin itu diisi TANPA memasukkan
+         * dandori — konvensi lama, tercampur.
+         *
+         * Test ini SEKALIGUS membuktikan pengurangannya PER MESIN, bukan rasio
+         * pabrik. Mesin A mustahil dan dibuang; mesin B utuh.
+         *   per mesin    : teoretis = 0 (A dibuang) + 3200 (B) = 3200 → P 106,25%
+         *   rasio pabrik : 4000 × (10−5)/10 = 2000              → P 170,00%
+         */
+        $this->shift('Shift 1');
+        ['mesin' => $a, 'proses' => $p] = $this->scaffold(sph: 400, install: '2026-01-01', kode: 'M-A');
+        $b = $this->scaffold(sph: 400, install: '2026-01-01', kode: 'M-B')['mesin'];
+
+        // A: LHP 2 jam tapi dandori 5 jam → mustahil.
+        $this->lhp($a->id, $p->id, qty: 200, tgl: '2026-07-15', start: '06:00', finish: '08:00');
+        $this->dandori('Setting_Dies', 300.0, '2026-07-15', $a->id, $p->id);
+
+        // B: LHP 8 jam, nol dandori.
+        $this->lhp($b->id, $p->id, qty: 3200, tgl: '2026-07-15', start: '06:00', finish: '14:00');
+
+        $r = $this->svc()->oee($this->tgl('2026-07-15'), $this->tgl('2026-07-15'));
+
+        $this->assertEqualsWithDelta(106.25, $r['performance_pct'], 0.05);
+        $this->assertNotEqualsWithDelta(170.0, $r['performance_pct'], 0.05, 'Bukan rasio pabrik — per mesin.');
+        $this->assertNotEmpty(array_filter(
+            $r['catatan'],
+            fn (string $c) => str_contains($c, 'melebihi jam LHP')
+        ));
+    }
+
+    public function test_nol_dandori_performance_tidak_bergeser(): void
+    {
+        // Penjaga arah lain: tanpa dandori, penyebutnya TIDAK boleh berubah.
+        $this->shift('Shift 1');
+        ['mesin' => $m, 'proses' => $p] = $this->scaffold(sph: 400, install: '2026-01-01');
+        $this->lhp($m->id, $p->id, qty: 3200, tgl: '2026-07-15', start: '06:00', finish: '14:00');
+
+        $r = $this->svc()->oee($this->tgl('2026-07-15'), $this->tgl('2026-07-15'));
+
+        $this->assertEqualsWithDelta(100.0, $r['performance_pct'], 0.05);
+    }
+
     public function test_oee_null_kalau_salah_satu_komponen_tak_terhitung(): void
     {
         // Ada mesin & breakdown (availability bisa), tapi nol LHP produksi →

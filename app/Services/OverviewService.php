@@ -158,6 +158,7 @@ class OverviewService
         $totalJam = 0.0;
         $totalLoss = 0.0;
         $mesinTanpaInstalasi = 0;
+        $dandoriPerMesin = [];
 
         foreach ($this->mesinDashboard->compute($from, $to) as $row) {
             $jam = $row['operating_hours'] ?? null;
@@ -179,6 +180,13 @@ class OverviewService
              * halaman saling bertentangan persis seperti yang dihindari.
              */
             $totalLoss += (float) $row['sum_loss'];
+
+            // Dandori PER MESIN, dipanen dari baris yang sudah di-loop — nol
+            // query tambahan. Dipakai mengeluarkan setup dari penyebut
+            // Performance di bawah, per mesin, bukan sebagai rasio pabrik:
+            // rasio pabrik salah begitu satu mesin banyak dandori dan yang lain
+            // tidak.
+            $dandoriPerMesin[(int) $row['id_mesin']] = (float) $row['sum_dandori'];
         }
 
         $availabilityPct = null;
@@ -212,12 +220,16 @@ class OverviewService
         /* ── Performance & Quality dari LHP produksi ───────────────────── */
         $rows = TransaksiProduksi::with('partProses:id,sph_standar_produksi')
             ->whereBetween('tanggal_produksi', [$from->toDateString(), $to->toDateString()])
-            ->get(['id_part_proses', 'qty_aktual', 'qty_ng', 'jam_start', 'jam_finish']);
+            ->get(['id_mesin', 'id_part_proses', 'qty_aktual', 'qty_ng', 'jam_start', 'jam_finish']);
 
         $totalQty = 0;
         $totalNg = 0;
-        $teoretis = 0.0;
         $tanpaStd = 0;
+
+        // Dikumpulkan PER MESIN, bukan langsung dijumlah: waktu dandori harus
+        // dikeluarkan dari penyebut menurut mesinnya sendiri.
+        $teoretisPerMesin = [];
+        $jamPerMesin = [];
 
         foreach ($rows as $r) {
             $totalQty += (int) $r->qty_aktual;
@@ -228,13 +240,60 @@ class OverviewService
             $std = (float) ($r->partProses->sph_standar_produksi ?? 0);
             $jam = (float) $r->waktu_kerja_jam;
             if ($std > 0 && $jam > 0) {
-                $teoretis += $std * $jam;
+                $mesin = (int) $r->id_mesin;
+                $teoretisPerMesin[$mesin] = ($teoretisPerMesin[$mesin] ?? 0.0) + $std * $jam;
+                $jamPerMesin[$mesin] = ($jamPerMesin[$mesin] ?? 0.0) + $jam;
             } elseif ($std <= 0) {
                 $tanpaStd++;
             }
         }
 
         $totalProduksi = $totalQty + $totalNg;
+
+        /*
+         * ── Waktu dandori dikeluarkan dari penyebut Performance ──
+         *
+         * Konvensi pencatatan yang disepakati: waktu ganti dies MASUK ke dalam
+         * jam_start–jam_finish LHP. Kalau setup dibiarkan di penyebut, ia dihukum
+         * DUA KALI — sekali menekan Performance (jam terpakai tanpa output) dan
+         * sekali menekan Availability. Di OEE standar penyebut Performance adalah
+         * Operating Time, yaitu waktu SETELAH setup dikeluarkan.
+         *
+         * Diskalakan proporsional per mesin, bukan dikurangi dari baris tertentu:
+         * SPH standar berbeda antar part_proses, jadi memilih baris mana yang
+         * "kehilangan" jam berarti memilih part mana yang dihukum.
+         */
+        $teoretis = 0.0;
+        $mesinDataMustahil = 0;
+
+        foreach ($teoretisPerMesin as $mesin => $teoretisMesin) {
+            $jamMesin = $jamPerMesin[$mesin];
+            $dandoriMesin = $dandoriPerMesin[$mesin] ?? 0.0;
+            $jamBersih = $jamMesin - $dandoriMesin;
+
+            if ($dandoriMesin <= 0) {
+                $teoretis += $teoretisMesin;
+
+                continue;
+            }
+
+            if ($jamBersih <= 0) {
+                /*
+                 * MUSTAHIL di konvensi "include": dandori tak bisa lebih lama dari
+                 * jam LHP yang memuatnya. Berarti LHP mesin ini diisi TANPA
+                 * memasukkan dandori — konvensi lama, tercampur.
+                 *
+                 * Kontribusinya dibuang, bukan dipaksa: memakai angka apa pun di
+                 * sini menghasilkan Performance yang optimis dan SALAH, dan angka
+                 * optimis yang salah menyembunyikan masalah.
+                 */
+                $mesinDataMustahil++;
+
+                continue;
+            }
+
+            $teoretis += $teoretisMesin * ($jamBersih / $jamMesin);
+        }
 
         $performancePct = $teoretis > 0 ? round($totalProduksi / $teoretis * 100, 2) : null;
         $qualityPct = $totalProduksi > 0 ? round($totalQty / $totalProduksi * 100, 2) : null;
@@ -245,6 +304,11 @@ class OverviewService
             $catatan[] = 'Performance tak bisa dihitung: SPH standar proses belum diset.';
         } elseif ($tanpaStd > 0) {
             $catatan[] = "{$tanpaStd} LHP diabaikan dari Performance karena SPH standar belum diset.";
+        }
+
+        if ($mesinDataMustahil > 0) {
+            $catatan[] = "{$mesinDataMustahil} mesin diabaikan dari Performance: waktu dandori melebihi jam LHP-nya. "
+                .'Kemungkinan LHP diisi TANPA memasukkan waktu dandori (konvensi lama, tercampur).';
         }
 
         $oeePct = ($availabilityPct !== null && $performancePct !== null && $qualityPct !== null)
