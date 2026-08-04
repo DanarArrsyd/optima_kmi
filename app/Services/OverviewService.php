@@ -35,6 +35,7 @@ class OverviewService
 
     public function __construct(
         private MaintenanceDashboardService $mesinDashboard = new MaintenanceDashboardService,
+        private KalenderKerjaService $kalender = new KalenderKerjaService,
     ) {}
 
     /**
@@ -158,7 +159,7 @@ class OverviewService
         $totalJam = 0.0;
         $totalLoss = 0.0;
         $mesinTanpaInstalasi = 0;
-        $dandoriPerMesin = [];
+        $mesinPunyaJadwal = [];
 
         foreach ($this->mesinDashboard->compute($from, $to) as $row) {
             $jam = $row['operating_hours'] ?? null;
@@ -186,7 +187,7 @@ class OverviewService
             // Performance di bawah, per mesin, bukan sebagai rasio pabrik:
             // rasio pabrik salah begitu satu mesin banyak dandori dan yang lain
             // tidak.
-            $dandoriPerMesin[(int) $row['id_mesin']] = (float) $row['sum_dandori'];
+            $mesinPunyaJadwal[(int) $row['id_mesin']] = true;
         }
 
         $availabilityPct = null;
@@ -220,16 +221,38 @@ class OverviewService
         /* ── Performance & Quality dari LHP produksi ───────────────────── */
         $rows = TransaksiProduksi::with('partProses:id,sph_standar_produksi')
             ->whereBetween('tanggal_produksi', [$from->toDateString(), $to->toDateString()])
-            ->get(['id_mesin', 'id_part_proses', 'qty_aktual', 'qty_ng', 'jam_start', 'jam_finish']);
+            ->get(['id_mesin', 'id_part_proses', 'tanggal_produksi', 'qty_aktual', 'qty_ng', 'jam_start', 'jam_finish']);
+
+        /*
+         * Dandori per MESIN + TANGGAL, bukan per mesin.
+         *
+         * Rumus overlap (KalenderKerjaService::jamProduktif) hanya valid harian:
+         * pada rentang sebulan, jam terjadwalnya ~216 jam sementara jam LHP sehari
+         * cuma 8 — batas "jadwal − setup" tak pernah mengikat dan pengurangannya
+         * mati diam-diam. Itu sudah terjadi sekali di OeeService.
+         *
+         * Sejak halaman ini punya filter rentang tanggal, memakai granularitas
+         * rentang berarti fix-nya mati untuk setiap rentang lebih dari sehari.
+         */
+        $dandoriPerMesinTgl = TransaksiDandoriRincian::query()
+            ->where('tanggal', '>=', $from->toDateString())
+            ->where('tanggal', '<', $to->copy()->addDay()->toDateString())
+            ->groupBy('id_mesin', 'tanggal')
+            ->selectRaw('id_mesin, tanggal, SUM(actual_menit) as menit')
+            ->get()
+            ->mapWithKeys(fn ($r) => [
+                $r->id_mesin.'|'.Carbon::parse($r->tanggal)->toDateString() => ((float) $r->menit) / 60,
+            ])
+            ->all();
 
         $totalQty = 0;
         $totalNg = 0;
         $tanpaStd = 0;
 
-        // Dikumpulkan PER MESIN, bukan langsung dijumlah: waktu dandori harus
-        // dikeluarkan dari penyebut menurut mesinnya sendiri.
-        $teoretisPerMesin = [];
-        $jamPerMesin = [];
+        // Dikumpulkan per MESIN + TANGGAL: setup dikeluarkan menurut mesinnya
+        // sendiri DAN harinya sendiri.
+        $teoretisPerKunci = [];
+        $jamPerKunci = [];
 
         foreach ($rows as $r) {
             $totalQty += (int) $r->qty_aktual;
@@ -240,9 +263,9 @@ class OverviewService
             $std = (float) ($r->partProses->sph_standar_produksi ?? 0);
             $jam = (float) $r->waktu_kerja_jam;
             if ($std > 0 && $jam > 0) {
-                $mesin = (int) $r->id_mesin;
-                $teoretisPerMesin[$mesin] = ($teoretisPerMesin[$mesin] ?? 0.0) + $std * $jam;
-                $jamPerMesin[$mesin] = ($jamPerMesin[$mesin] ?? 0.0) + $jam;
+                $kunci = $r->id_mesin.'|'.Carbon::parse($r->tanggal_produksi)->toDateString();
+                $teoretisPerKunci[$kunci] = ($teoretisPerKunci[$kunci] ?? 0.0) + $std * $jam;
+                $jamPerKunci[$kunci] = ($jamPerKunci[$kunci] ?? 0.0) + $jam;
             } elseif ($std <= 0) {
                 $tanpaStd++;
             }
@@ -253,46 +276,62 @@ class OverviewService
         /*
          * ── Waktu dandori dikeluarkan dari penyebut Performance ──
          *
-         * Konvensi pencatatan yang disepakati: waktu ganti dies MASUK ke dalam
-         * jam_start–jam_finish LHP. Kalau setup dibiarkan di penyebut, ia dihukum
-         * DUA KALI — sekali menekan Performance (jam terpakai tanpa output) dan
-         * sekali menekan Availability. Di OEE standar penyebut Performance adalah
-         * Operating Time, yaitu waktu SETELAH setup dikeluarkan.
+         * Di OEE standar (Nakajima/TPM, ISO 22400-2) penyebut Performance adalah
+         * Operating Time = Loading Time − downtime − SETUP. Jadi waktu dandori
+         * harus keluar dari penyebut; kalau tidak, setup dihukum DUA KALI —
+         * sekali menekan Performance, sekali menekan Availability.
+         *
+         * ⚠️ MASALAHNYA: berapa banyak dandori yang BERADA DI DALAM jam LHP tidak
+         * tercatat. transaksi_dandori_rincian cuma menyimpan DURASI, tanpa jam
+         * mulai/selesai, jadi tumpang-tindihnya tak bisa dideteksi langsung.
+         * Sebagian operator memasukkan setup ke jam_start–jam_finish, sebagian
+         * memisahkannya — dan versi sebelumnya SELALU mengurangi, sehingga baris
+         * konvensi "pisah" dikurangi dua kali dan Performance-nya menggelembung
+         * (sumber OEE >100% yang dilaporkan).
+         *
+         * Tumpang-tindihnya DITURUNKAN, bukan ditebak:
+         *
+         *     overlap = clamp( jam_LHP − (jam_terjadwal − dandori), 0, dandori )
+         *
+         * Dua batas fisik yang mendasarinya: produksi tak bisa melebihi jam LHP,
+         * dan tak bisa melebihi jam terjadwal dikurangi setup. Hasilnya kedua
+         * konvensi mendarat di angka yang SAMA — perhitungan jadi kebal konvensi
+         * pencatatan, jadi SOP tidak lagi jadi prasyarat dan baris historis
+         * langsung benar tanpa dibersihkan:
+         *
+         *   include shift penuh : LHP 16, jadwal 16, dandori 2 → penyebut 14 ✓
+         *   pisah               : LHP 14, jadwal 16, dandori 2 → penyebut 14 ✓
+         *   include + lembur    : LHP 18, jadwal 16, dandori 2 → penyebut 16 ✓
+         *   hari sebagian       : LHP  4, jadwal 16, dandori 1 → penyebut  4
+         *                         (pesimis: mungkin 3, tapi arah aman)
          *
          * Diskalakan proporsional per mesin, bukan dikurangi dari baris tertentu:
          * SPH standar berbeda antar part_proses, jadi memilih baris mana yang
          * "kehilangan" jam berarti memilih part mana yang dihukum.
          */
         $teoretis = 0.0;
-        $mesinDataMustahil = 0;
+        $hariMustahil = 0;
 
-        foreach ($teoretisPerMesin as $mesin => $teoretisMesin) {
-            $jamMesin = $jamPerMesin[$mesin];
-            $dandoriMesin = $dandoriPerMesin[$mesin] ?? 0.0;
-            $jamBersih = $jamMesin - $dandoriMesin;
+        foreach ($teoretisPerKunci as $kunci => $teoretisKunci) {
+            $jamKunci = $jamPerKunci[$kunci];
+            $dandoriKunci = $dandoriPerMesinTgl[$kunci] ?? 0.0;
+            [, $tgl] = explode('|', $kunci, 2);
 
-            if ($dandoriMesin <= 0) {
-                $teoretis += $teoretisMesin;
+            $produktif = $this->kalender->jamProduktif($jamKunci, $dandoriKunci, Carbon::parse($tgl));
 
-                continue;
-            }
-
-            if ($jamBersih <= 0) {
+            if ($produktif <= 0) {
                 /*
-                 * MUSTAHIL di konvensi "include": dandori tak bisa lebih lama dari
-                 * jam LHP yang memuatnya. Berarti LHP mesin ini diisi TANPA
-                 * memasukkan dandori — konvensi lama, tercampur.
-                 *
-                 * Kontribusinya dibuang, bukan dipaksa: memakai angka apa pun di
-                 * sini menghasilkan Performance yang optimis dan SALAH, dan angka
-                 * optimis yang salah menyembunyikan masalah.
+                 * Setup memakan SELURUH jam LHP mesin itu di hari itu — tak ada
+                 * waktu produksi yang bisa dinilai. Kontribusinya dibuang, bukan
+                 * dipaksa: angka apa pun di sini menghasilkan Performance optimis
+                 * yang SALAH, dan optimis yang salah menyembunyikan masalah.
                  */
-                $mesinDataMustahil++;
+                $hariMustahil++;
 
                 continue;
             }
 
-            $teoretis += $teoretisMesin * ($jamBersih / $jamMesin);
+            $teoretis += $teoretisKunci * ($produktif / $jamKunci);
         }
 
         $performancePct = $teoretis > 0 ? round($totalProduksi / $teoretis * 100, 2) : null;
@@ -306,9 +345,26 @@ class OverviewService
             $catatan[] = "{$tanpaStd} LHP diabaikan dari Performance karena SPH standar belum diset.";
         }
 
-        if ($mesinDataMustahil > 0) {
-            $catatan[] = "{$mesinDataMustahil} mesin diabaikan dari Performance: waktu dandori melebihi jam LHP-nya. "
-                .'Kemungkinan LHP diisi TANPA memasukkan waktu dandori (konvensi lama, tercampur).';
+        /*
+         * Performance di atas 100% itu SINYAL, bukan prestasi. Di OEE standar
+         * Ideal Cycle Time adalah kecepatan DESAIN mesin; kalau output melebihi
+         * itu, yang salah standarnya. sph_standar_produksi di app ini dipakai
+         * dua tujuan yang bertentangan — target (untuk Achievement) dan kecepatan
+         * teoretis (untuk Performance) — dan satu kolom tidak bisa jadi keduanya.
+         * Catatan ini mencegah angka >100% dibaca sebagai "kami super efisien".
+         */
+        if ($performancePct !== null && $performancePct > 100) {
+            $catatan[] = sprintf(
+                'Performance %.1f%% melebihi 100%% — di OEE standar itu berarti SPH standar '
+                .'terlalu rendah (dipakai sebagai target, bukan kecepatan teoretis mesin), '
+                .'bukan mesin melampaui kemampuannya.',
+                $performancePct
+            );
+        }
+
+        if ($hariMustahil > 0) {
+            $catatan[] = "{$hariMustahil} mesin-hari diabaikan dari Performance: waktu dandori memakan "
+                .'seluruh jam LHP-nya. Cek pencatatan dandori.';
         }
 
         $oeePct = ($availabilityPct !== null && $performancePct !== null && $qualityPct !== null)

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\TransaksiDandoriRincian;
 use App\Models\TransaksiProduksi;
 use Illuminate\Support\Carbon;
 
@@ -38,6 +39,7 @@ class OeeService
 {
     public function __construct(
         private MaintenanceDashboardService $mesinDashboard = new MaintenanceDashboardService,
+        private KalenderKerjaService $kalender = new KalenderKerjaService,
     ) {}
 
     /**
@@ -62,13 +64,34 @@ class OeeService
         $rows = TransaksiProduksi::with('partProses:id,sph_standar_produksi')
             ->where('id_mesin', $mesinId)
             ->whereBetween('tanggal_produksi', [$from->toDateString(), $to->toDateString()])
-            ->get(['id_part_proses', 'id_mesin', 'qty_aktual', 'qty_ng', 'jam_start', 'jam_finish']);
+            ->get(['id_part_proses', 'id_mesin', 'tanggal_produksi', 'qty_aktual', 'qty_ng', 'jam_start', 'jam_finish']);
+
+        /*
+         * Waktu dandori PER TANGGAL, bukan total rentang.
+         *
+         * Rumus overlap (KalenderKerjaService::jamProduktif) hanya valid di
+         * granularitas harian: pada rentang sebulan, jam terjadwalnya ~216 jam
+         * sementara jam LHP sehari cuma 8 — batas "jadwal − setup" tak pernah
+         * mengikat dan pengurangannya mati diam-diam.
+         */
+        $dandoriPerTanggal = TransaksiDandoriRincian::query()
+            ->where('id_mesin', $mesinId)
+            ->where('tanggal', '>=', $from->toDateString())
+            ->where('tanggal', '<', $to->copy()->addDay()->toDateString())
+            ->groupBy('tanggal')
+            ->selectRaw('tanggal, SUM(actual_menit) as menit')
+            ->pluck('menit', 'tanggal')
+            ->mapWithKeys(fn ($menit, $tgl) => [Carbon::parse($tgl)->toDateString() => ((float) $menit) / 60])
+            ->all();
 
         $totalQty = 0;
         $totalNg = 0;
-        $theoretical = 0.0;
-        $jamLhp = 0.0;
         $rowsNoStd = 0;
+
+        // Dikumpulkan PER TANGGAL supaya rumus overlap dipakai di granularitas
+        // yang benar.
+        $teoretisPerTgl = [];
+        $jamPerTgl = [];
 
         foreach ($rows as $r) {
             $totalQty += (int) $r->qty_aktual;
@@ -77,8 +100,9 @@ class OeeService
             $std = (float) ($r->partProses->sph_standar_produksi ?? 0);
             $wkj = $r->waktu_kerja_jam; // accessor: desimal jam, handle overnight
             if ($std > 0 && $wkj > 0) {
-                $theoretical += $std * $wkj;
-                $jamLhp += $wkj;
+                $tgl = Carbon::parse($r->tanggal_produksi)->toDateString();
+                $teoretisPerTgl[$tgl] = ($teoretisPerTgl[$tgl] ?? 0.0) + $std * $wkj;
+                $jamPerTgl[$tgl] = ($jamPerTgl[$tgl] ?? 0.0) + $wkj;
             } elseif ($std <= 0) {
                 $rowsNoStd++;
             }
@@ -110,30 +134,39 @@ class OeeService
          * Availability — nol query tambahan, dan angkanya dijamin sama dengan yang
          * dipakai Availability.
          */
-        $dandoriJam = (float) ($avRow['sum_dandori'] ?? 0);
-        $jamBersih = $jamLhp - $dandoriJam;
+        /*
+         * Setup dikeluarkan dari penyebut PER TANGGAL. Lihat
+         * KalenderKerjaService::jamProduktif() untuk penurunan rumusnya dan
+         * alasan granularitas harian itu wajib.
+         *
+         * Diskalakan proporsional dalam tiap hari, bukan dikurangi dari baris
+         * tertentu: SPH standar berbeda antar part_proses, jadi memilih baris mana
+         * yang "kehilangan" jam berarti memilih part mana yang dihukum.
+         */
+        $theoretical = 0.0;
+        $hariMustahil = 0;
 
-        if ($jamLhp > 0 && $dandoriJam > 0) {
-            if ($jamBersih <= 0) {
-                /*
-                 * Data MUSTAHIL di konvensi "include": dandori tidak bisa lebih
-                 * lama dari jam LHP yang memuatnya. Berarti baris ini diisi dengan
-                 * konvensi lama (dandori DI LUAR jam LHP) dan tercampur.
-                 *
-                 * Penyebut dinolkan supaya Performance jadi null + bercatatan,
-                 * BUKAN diam-diam menghasilkan angka besar. Angka optimis yang
-                 * salah menyembunyikan masalah; null memaksa orang melihat.
-                 */
-                $theoretical = 0.0;
-                $catatan[] = sprintf(
-                    'Waktu dandori (%.1f jam) melebihi jam LHP (%.1f jam) — Performance tak bisa dihitung. '
-                    .'Kemungkinan LHP diisi TANPA memasukkan waktu dandori, bercampur dengan konvensi baru.',
-                    $dandoriJam,
-                    $jamLhp
-                );
-            } else {
-                $theoretical *= $jamBersih / $jamLhp;
+        foreach ($teoretisPerTgl as $tgl => $teoretisHari) {
+            $jamHari = $jamPerTgl[$tgl];
+            $dandoriHari = $dandoriPerTanggal[$tgl] ?? 0.0;
+            $produktif = $this->kalender->jamProduktif($jamHari, $dandoriHari, Carbon::parse($tgl));
+
+            if ($produktif <= 0) {
+                // Setup memakan SELURUH jam LHP hari itu — tak ada waktu produksi
+                // yang bisa dinilai. Kontribusinya dibuang, bukan dipaksa: angka
+                // apa pun di sini menghasilkan Performance optimis yang SALAH, dan
+                // optimis yang salah menyembunyikan masalah.
+                $hariMustahil++;
+
+                continue;
             }
+
+            $theoretical += $teoretisHari * ($produktif / $jamHari);
+        }
+
+        if ($hariMustahil > 0) {
+            $catatan[] = "{$hariMustahil} hari diabaikan dari Performance: waktu dandori memakan "
+                .'seluruh jam LHP hari itu. Cek pencatatan dandori.';
         }
 
         /*
@@ -159,6 +192,21 @@ class OeeService
          * Quality NEGATIF, yang lalu masuk ke perkalian OEE.
          */
         $qualityPct = $totalProduksi > 0 ? round($totalQty / $totalProduksi * 100, 2) : null;
+
+        /*
+         * Performance di atas 100% itu SINYAL, bukan prestasi: di OEE standar
+         * Ideal Cycle Time adalah kecepatan DESAIN mesin, jadi output yang
+         * melebihinya berarti standarnya yang salah set. sph_standar_produksi
+         * dipakai dua tujuan yang bertentangan — target (Achievement) dan
+         * kecepatan teoretis (Performance) — dan satu kolom tak bisa jadi keduanya.
+         */
+        if ($performancePct !== null && $performancePct > 100) {
+            $catatan[] = sprintf(
+                'Performance %.1f%% melebihi 100%% — SPH standar terlalu rendah (dipakai sebagai '
+                .'target, bukan kecepatan teoretis mesin), bukan mesin melampaui kemampuannya.',
+                $performancePct
+            );
+        }
 
         if ($rows->isEmpty()) {
             $catatan[] = 'Tidak ada LHP produksi di rentang ini: Performance & Quality tak bisa dihitung.';
