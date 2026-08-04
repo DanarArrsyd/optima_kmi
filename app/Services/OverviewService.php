@@ -274,10 +274,22 @@ class OverviewService
     /**
      * Pareto loss time dandori per jenis, urut menurun.
      *
-     * Sumbernya transaksi_dandori_rincian.actual_menit — satuan MENIT, bukan
-     * jam. Diagregasi di DB (GROUP BY), bukan di PHP: all-time bisa puluhan
-     * ribu baris dan memuat semuanya ke memori pernah membunuh suite lokal
-     * secara diam-diam.
+     * Yang DIGRAFIKKAN adalah over_menit — waktu yang LEWAT DARI STANDAR —
+     * supaya sama dengan halaman VCB Dandori. Satuan MENIT, bukan jam.
+     *
+     *     over_menit = max(0, actual_menit − std_menit)
+     *
+     * actual_menit tetap dibawa serta di kunci 'aktual', dan itu bukan hiasan:
+     * Availability mengurangi actual_menit, bukan over_menit (lihat
+     * MaintenanceDashboardService). Tanpa angka aktual di sini, halaman ini
+     * memajang Pareto yang jumlahnya tidak pernah bisa direkonsiliasi dengan
+     * angka OEE di sebelahnya — dan orang wajar menyimpulkan salah satunya
+     * salah hitung. Aktual ditampilkan di tooltip: nol biaya ruang di layout
+     * yang sudah terkunci setinggi viewport.
+     *
+     * Diagregasi di DB (GROUP BY), bukan di PHP: all-time bisa puluhan ribu
+     * baris dan memuat semuanya ke memori pernah membunuh suite lokal secara
+     * diam-diam.
      *
      * leftJoin + deleted_at IS NULL meniru eager-load ->with('losstime'):
      * losstime yang sudah dihapus jangan menghilangkan barisnya, tapi juga
@@ -285,7 +297,7 @@ class OverviewService
      *
      * @param  Carbon|null  $from  null = tanpa batas bawah (ALL TIME)
      * @param  Carbon|null  $to  null = tanpa batas atas
-     * @return list<array{jenis: string, menit: float}>
+     * @return list<array{jenis: string, menit: float, aktual: float}>
      */
     public function lossTime(?Carbon $from = null, ?Carbon $to = null): array
     {
@@ -299,7 +311,8 @@ class OverviewService
             ->groupBy('master_losstime.jenis_losstime')
             ->select([
                 DB::raw("COALESCE(master_losstime.jenis_losstime, 'Tidak diketahui') as jenis"),
-                DB::raw('SUM(transaksi_dandori_rincian.actual_menit) as menit'),
+                DB::raw('SUM(transaksi_dandori_rincian.over_menit) as menit'),
+                DB::raw('SUM(transaksi_dandori_rincian.actual_menit) as aktual'),
             ])
             ->orderByDesc('menit')
             ->get()
@@ -308,6 +321,7 @@ class OverviewService
                 // Penggantian di lapisan tampilan, bukan di data.
                 'jenis' => str_replace('_', ' ', (string) $r->jenis),
                 'menit' => round((float) $r->menit, 1),
+                'aktual' => round((float) $r->aktual, 1),
             ])
             ->values()
             ->all();

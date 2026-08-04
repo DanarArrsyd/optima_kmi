@@ -430,15 +430,18 @@
             <div class="erp-panel-header">
                 <span class="ov-h">Loss Time</span>
                 <span class="ov-sub" x-text="'- ' + labelScope()"></span>
-                {{-- "aktual" ditulis eksplisit, bukan sekadar "menit".
-                     Halaman VCB Dandori menggrafikkan over_menit (actual − std)
-                     untuk jenis yang punya standar, jadi angkanya lebih kecil
-                     di sana. Tanpa kata ini, dua halaman menampilkan "Loss
-                     Time" dengan angka berbeda dan orang wajar menyimpulkan
-                     salah satunya salah hitung. Aktual juga yang dikurangkan
-                     dari Availability, jadi Pareto ini rekonsiliasi dengan
-                     angka OEE di halaman yang sama. --}}
-                <span class="ov-sub" style="margin-left:auto;text-transform:none;letter-spacing:0">menit &middot; aktual</span>
+                {{-- "over standar" ditulis eksplisit, bukan sekadar "menit".
+                     Batangnya over_menit (actual − std), sama dengan halaman
+                     VCB Dandori. Tanpa kata ini, Pareto ini tidak bisa
+                     dibedakan dari versi aktual yang jumlahnya jauh lebih
+                     besar.
+
+                     ⚠️ Availability di panel sebelah mengurangi AKTUAL, bukan
+                     over. Jadi jumlah Pareto ini memang tidak sama dengan
+                     kerugian yang dipakai OEE — angka aktual ikut dibawa ke
+                     tooltip supaya selisih itu bisa ditelusuri, bukan jadi
+                     kontradiksi senyap di satu halaman. --}}
+                <span class="ov-sub" style="margin-left:auto;text-transform:none;letter-spacing:0">menit &middot; over standar</span>
             </div>
             <div class="erp-panel-body">
                 <div class="ov-scope">
@@ -631,6 +634,8 @@ function ovPareto(scope) {
             datasets: [{
                 label: 'Menit',
                 data: rows.map(r => r.menit),
+                // Dibawa serta supaya tooltip bisa menyebut aktualnya.
+                aktual: rows.map(r => r.aktual),
                 backgroundColor: OV_BIRU,
                 borderColor: '#255a75',
                 borderWidth: 1,
@@ -668,7 +673,19 @@ function ovPareto(scope) {
                     formatter: v => ovNum(v, 1),
                 },
                 tooltip: {
-                    callbacks: { label: c => ovNum(c.parsed.y, 1) + ' menit' },
+                    /* Dua angka sekaligus. Batangnya over standar, tapi
+                       Availability memakai aktual — tanpa aktual di sini,
+                       selisihnya tak punya tempat untuk dijelaskan. */
+                    callbacks: {
+                        label: c => {
+                            const akt = c.dataset.aktual?.[c.dataIndex];
+                            const over = ovNum(c.parsed.y, 1) + ' mnt over standar';
+
+                            return akt === undefined
+                                ? over
+                                : [over, ovNum(akt, 1) + ' mnt aktual'];
+                        },
+                    },
                 },
             },
         },

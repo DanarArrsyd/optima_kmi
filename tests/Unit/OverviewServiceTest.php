@@ -116,7 +116,15 @@ class OverviewServiceTest extends TestCase
             'id_losstime' => $lt->id,
             'actual_menit' => $menit,
             'std_menit' => 0,
-            'over_menit' => 0,
+            /*
+             * over = max(0, actual − std), sama seperti yang dihitung
+             * DandoriController saat input. Versi lama menulis 0 mati-matian
+             * padahal std-nya juga 0 — data yang tak mungkin ada di prod, dan
+             * ia menyembunyikan bahwa Pareto berpindah ke kolom over: seluruh
+             * assertion tetap hijau sampai kolomnya benar-benar dipakai.
+             * Fixture yang tidak mungkin terjadi = test yang tidak menguji apa pun.
+             */
+            'over_menit' => $menit,
             'created_by' => $this->user()->id,
         ]);
     }
@@ -384,20 +392,22 @@ class OverviewServiceTest extends TestCase
     }
 
     /**
-     * Overview memakai actual_menit, VCB Dandori memakai over_menit.
+     * Pareto Overview menggrafikkan over_menit, SAMA dengan VCB Dandori, dan
+     * tetap membawa actual_menit di kunci 'aktual'.
      *
-     * Keduanya benar tapi mengukur hal berbeda, dan pernah SAMA-SAMA dilabeli
-     * "Loss Time" sehingga terlihat seperti salah satunya salah hitung: di prod,
-     * Setting Dies muncul 372,0 di Overview dan 55,0 di VCB Dandori.
+     * Keduanya wajib ada, dan alasannya bukan kelengkapan data:
+     *   - 'menit' (over) yang digrafikkan — keputusan user, supaya kedua halaman
+     *     tidak lagi menampilkan angka berbeda untuk hal yang tampak sama.
+     *   - 'aktual' dibawa serta karena Availability mengurangi actual_menit
+     *     (MaintenanceDashboardService), BUKAN over. Jumlah Pareto ini karena itu
+     *     memang tidak sama dengan kerugian yang dipakai OEE di panel sebelah.
+     *     Tanpa aktual, selisih itu tak punya tempat untuk dijelaskan dan jadi
+     *     kontradiksi senyap di satu halaman.
      *
-     * Test ini mengunci maknanya, bukan angkanya: Overview HARUS aktual. Kalau
-     * kelak ada yang "menyeragamkan" halaman ini ke over_menit, Pareto-nya
-     * berhenti rekonsiliasi dengan Availability di halaman yang sama —
-     * Availability mengurangi actual_menit (lihat MaintenanceDashboardService),
-     * jadi panel loss dan panel OEE akan saling bertentangan DI SATU HALAMAN.
-     * Itu lebih buruk daripada beda antar-halaman.
+     * Selisih 90 vs 80 dipilih supaya kolom yang tertukar gagal telak, bukan
+     * marginal.
      */
-    public function test_loss_time_overview_pakai_aktual_bukan_over_standar(): void
+    public function test_loss_time_overview_pakai_over_standar_dan_membawa_aktual(): void
     {
         ['mesin' => $m, 'proses' => $p] = $this->scaffold();
 
@@ -425,8 +435,8 @@ class OverviewServiceTest extends TestCase
 
         $rows = $this->svc()->lossTime($this->tgl('2026-07-15'), $this->tgl('2026-07-15'));
 
-        $this->assertSame(90.0, $rows[0]['menit'], 'Overview harus memakai actual_menit.');
-        $this->assertNotSame(80.0, $rows[0]['menit'], 'Overview TIDAK boleh memakai over_menit.');
+        $this->assertSame(80.0, $rows[0]['menit'], 'Batang Pareto harus over_menit.');
+        $this->assertSame(90.0, $rows[0]['aktual'], 'actual_menit wajib tetap dibawa untuk tooltip.');
     }
 
     /* ═══ Warna donut ═════════════════════════════════════════════ */
