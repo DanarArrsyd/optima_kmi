@@ -306,7 +306,7 @@ class OeeServiceTest extends TestCase
         $this->assertNotEqualsWithDelta(100.0, $r['performance_pct'], 0.05);
     }
 
-    public function test_dandori_melebihi_jam_lhp_performance_null_bercatatan(): void
+    public function test_setup_memakan_seluruh_jam_lhp_performance_null_bercatatan(): void
     {
         // Data mustahil di konvensi "include" → null + catatan, BUKAN angka
         // optimis yang salah. Angka optimis menyembunyikan masalah.
@@ -320,7 +320,7 @@ class OeeServiceTest extends TestCase
         $this->assertNull($r['performance_pct']);
         $this->assertNotEmpty(array_filter(
             $r['catatan'],
-            fn (string $c) => str_contains($c, 'melebihi jam LHP')
+            fn (string $c) => str_contains($c, 'memakan')
         ));
     }
 }

@@ -319,36 +319,83 @@ class OverviewServiceTest extends TestCase
         $this->assertNotEqualsWithDelta(100.0, $r['performance_pct'], 0.05, 'Setup tidak boleh dihukum dua kali.');
     }
 
-    public function test_dandori_melebihi_jam_lhp_mesin_itu_diabaikan_bukan_dipaksa(): void
+    public function test_dua_konvensi_pencatatan_menghasilkan_performance_sama(): void
     {
         /*
-         * Data MUSTAHIL di konvensi "include": dandori tak bisa lebih lama dari
-         * jam LHP yang memuatnya. Berarti LHP mesin itu diisi TANPA memasukkan
-         * dandori — konvensi lama, tercampur.
+         * INI INTI PERBAIKANNYA. Tumpang-tindih dandori dengan jam LHP tidak
+         * tercatat (transaksi_dandori_rincian cuma menyimpan durasi), jadi
+         * disimpulkan dari batas fisik:
          *
-         * Test ini SEKALIGUS membuktikan pengurangannya PER MESIN, bukan rasio
-         * pabrik. Mesin A mustahil dan dibuang; mesin B utuh.
-         *   per mesin    : teoretis = 0 (A dibuang) + 3200 (B) = 3200 → P 106,25%
-         *   rasio pabrik : 4000 × (10−5)/10 = 2000              → P 170,00%
+         *     overlap = clamp( jam_LHP − (jam_terjadwal − dandori), 0, dandori )
+         *
+         * Shift 1 = 8 jam terjadwal. Dua mesin, waktu produksi bersih SAMA (6 jam),
+         * dicatat dengan konvensi BERBEDA:
+         *
+         *   A "include" : LHP 8j (06–14), dandori 2j → overlap 2 → bersih 6j
+         *   B "pisah"   : LHP 6j (06–12), dandori 2j → overlap 0 → bersih 6j
+         *
+         * Keduanya HARUS memberi kontribusi identik. Sebelum perbaikan ini, B
+         * dikurangi dua kali (6−2=4) dan Performance total menggelembung jadi
+         * 120% — itu sumber OEE >100% yang dilaporkan.
          */
-        $this->shift('Shift 1');
-        ['mesin' => $a, 'proses' => $p] = $this->scaffold(sph: 400, install: '2026-01-01', kode: 'M-A');
-        $b = $this->scaffold(sph: 400, install: '2026-01-01', kode: 'M-B')['mesin'];
+        $this->shift('Shift 1', '06:00', '14:00');
+        ['mesin' => $a, 'proses' => $p] = $this->scaffold(sph: 400, install: '2026-01-01', kode: 'M-INC');
+        $b = $this->scaffold(sph: 400, install: '2026-01-01', kode: 'M-PSH')['mesin'];
 
-        // A: LHP 2 jam tapi dandori 5 jam → mustahil.
-        $this->lhp($a->id, $p->id, qty: 200, tgl: '2026-07-15', start: '06:00', finish: '08:00');
-        $this->dandori('Setting_Dies', 300.0, '2026-07-15', $a->id, $p->id);
+        $this->lhp($a->id, $p->id, qty: 2400, tgl: '2026-07-15', start: '06:00', finish: '14:00');
+        $this->dandori('Setting_Dies', 120.0, '2026-07-15', $a->id, $p->id);
 
-        // B: LHP 8 jam, nol dandori.
-        $this->lhp($b->id, $p->id, qty: 3200, tgl: '2026-07-15', start: '06:00', finish: '14:00');
+        $this->lhp($b->id, $p->id, qty: 2400, tgl: '2026-07-15', start: '06:00', finish: '12:00');
+        $this->dandori('Setting_Dies', 120.0, '2026-07-15', $b->id, $p->id);
 
         $r = $this->svc()->oee($this->tgl('2026-07-15'), $this->tgl('2026-07-15'));
 
-        $this->assertEqualsWithDelta(106.25, $r['performance_pct'], 0.05);
-        $this->assertNotEqualsWithDelta(170.0, $r['performance_pct'], 0.05, 'Bukan rasio pabrik — per mesin.');
+        // teoretis A = 400×8×(6/8) = 2400 ; teoretis B = 400×6×(6/6) = 2400
+        // diproduksi 4800 dari teoretis 4800 → tepat 100%.
+        $this->assertEqualsWithDelta(100.0, $r['performance_pct'], 0.05);
+        $this->assertNotEqualsWithDelta(120.0, $r['performance_pct'], 0.05, 'Konvensi pisah tidak boleh dikurangi dua kali.');
+    }
+
+    public function test_setup_memakan_seluruh_jam_lhp_hari_itu_diabaikan(): void
+    {
+        /*
+         * Penjaga versi lama menuduh MUSTAHIL setiap kali dandori > jam LHP —
+         * padahal itu justru bentuk normal konvensi "pisah" (LHP 2j produksi +
+         * 5j setup dari shift 8j itu sah). Sekarang yang mustahil hanya kalau
+         * dandori melebihi JAM TERJADWAL-nya: waktu setup tak bisa lebih panjang
+         * dari jam kerja yang tersedia.
+         */
+        $this->shift('Shift 1', '06:00', '14:00');   // 8 jam terjadwal
+        ['mesin' => $m, 'proses' => $p] = $this->scaffold(sph: 400, install: '2026-01-01');
+        $this->lhp($m->id, $p->id, qty: 3200, tgl: '2026-07-15', start: '06:00', finish: '14:00');
+        $this->dandori('Setting_Dies', 600.0, '2026-07-15', $m->id, $p->id);   // 10 jam > 8 jam
+
+        $r = $this->svc()->oee($this->tgl('2026-07-15'), $this->tgl('2026-07-15'));
+
+        $this->assertNull($r['performance_pct']);
         $this->assertNotEmpty(array_filter(
             $r['catatan'],
-            fn (string $c) => str_contains($c, 'melebihi jam LHP')
+            fn (string $c) => str_contains($c, 'memakan')
+        ));
+    }
+
+    public function test_konvensi_pisah_tidak_lagi_dituduh_mustahil(): void
+    {
+        // Regresi langsung dari verdict lama: LHP 2j + dandori 5j dalam shift 8j
+        // itu SAH (2j produksi + 5j setup = 7j dari 8j). Harus terhitung, bukan
+        // dibuang dengan catatan "mustahil".
+        $this->shift('Shift 1', '06:00', '14:00');
+        ['mesin' => $m, 'proses' => $p] = $this->scaffold(sph: 400, install: '2026-01-01');
+        $this->lhp($m->id, $p->id, qty: 800, tgl: '2026-07-15', start: '06:00', finish: '08:00');
+        $this->dandori('Setting_Dies', 300.0, '2026-07-15', $m->id, $p->id);   // 5 jam
+
+        $r = $this->svc()->oee($this->tgl('2026-07-15'), $this->tgl('2026-07-15'));
+
+        // overlap 0 → penyebut tetap 2 jam → 800 / (400×2) = 100%.
+        $this->assertEqualsWithDelta(100.0, $r['performance_pct'], 0.05);
+        $this->assertEmpty(array_filter(
+            $r['catatan'],
+            fn (string $c) => str_contains($c, 'memakan')
         ));
     }
 

@@ -59,6 +59,55 @@ class KalenderKerjaService
     }
 
     /**
+     * Jam PRODUKTIF sebuah LHP setelah waktu setup yang tumpang-tindih dikeluarkan.
+     *
+     * Ini penyebut Performance menurut OEE standar: Operating Time = waktu setelah
+     * downtime dan setup dikeluarkan (Nakajima/TPM, ISO 22400-2).
+     *
+     * Masalahnya berapa banyak setup yang BERADA DI DALAM jam LHP tidak tercatat —
+     * transaksi_dandori_rincian cuma menyimpan DURASI, tanpa jam mulai/selesai.
+     * Sebagian operator memasukkan setup ke jam_start–jam_finish, sebagian
+     * memisahkannya. Tumpang-tindihnya karena itu DITURUNKAN dari dua batas fisik:
+     *
+     *   1. produksi tak bisa melebihi jam LHP
+     *   2. produksi tak bisa melebihi jam terjadwal dikurangi setup
+     *
+     *   overlap = clamp( jam_LHP − (jam_terjadwal − dandori), 0, dandori )
+     *
+     * Hasilnya kedua konvensi mendarat di angka yang SAMA, jadi perhitungan kebal
+     * konvensi pencatatan — SOP tidak jadi prasyarat, dan baris historis langsung
+     * benar tanpa dibersihkan:
+     *
+     *   include shift penuh : LHP 8, jadwal 8, dandori 2 → produktif 6 ✓
+     *   pisah               : LHP 6, jadwal 8, dandori 2 → produktif 6 ✓
+     *   include + lembur    : LHP 9, jadwal 8, dandori 2 → produktif 7 ✓
+     *   hari sebagian       : LHP 2, jadwal 8, dandori 1 → produktif 2
+     *                         (pesimis: mungkin 1, tapi arah aman)
+     *
+     * ⚠️ WAJIB dipanggil PER TANGGAL, bukan per rentang. Pada rentang sebulan,
+     * jam terjadwalnya ~216 jam sementara jam LHP sehari cuma 8 — batas kedua tak
+     * pernah mengikat dan pengurangannya mati diam-diam. Itu sudah terjadi sekali.
+     *
+     * Hari tanpa jadwal (lembur di hari libur) → jadwalnya nol, jadi batas kedua
+     * tak bisa dipakai; jatuh ke asumsi konvensi yang disepakati: setup ada DI
+     * DALAM jam LHP.
+     */
+    public function jamProduktif(float $jamLhp, float $dandoriJam, Carbon $tgl): float
+    {
+        if ($dandoriJam <= 0 || $jamLhp <= 0) {
+            return max(0.0, $jamLhp);
+        }
+
+        $jadwal = $this->jamHari($tgl);
+
+        $overlap = $jadwal <= 0
+            ? $dandoriJam
+            : max(0.0, min($dandoriJam, $jamLhp - max(0.0, $jadwal - $dandoriJam)));
+
+        return max(0.0, $jamLhp - $overlap);
+    }
+
+    /**
      * Total jam terjadwal pada satu rentang tanggal, inklusif kedua ujung.
      *
      * Ini PENYEBUT Availability. Menggantikan jam kalender 24/7 yang dipakai
