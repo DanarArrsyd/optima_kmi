@@ -233,7 +233,7 @@
                     <span style="font-size:0.75rem;color:#5d7283;background:#f0f2f5;
                                  border:1px solid #d4dbe3;padding:4px 10px;white-space:nowrap">
                         <span x-show="loading"><i class="bi bi-arrow-repeat spin me-1"></i>Memuat...</span>
-                        <span x-show="!loading" x-text="'Aktual ' + fmt(summary.total_actual) + ' mnt \u00b7 over standar ' + fmt(summary.total_over) + ' mnt'">—</span>
+                        <span x-show="!loading" x-text="'Total over standar: ' + fmt(summary.total_over) + ' mnt'">—</span>
                     </span>
                 </div>
             </form>
@@ -322,18 +322,15 @@
     {{-- ── RIGHT PANEL — KPI + ranking ────────────────────────── --}}
     <aside class="vcbd-right">
 
-        {{-- DUA angka, sengaja. Halaman ini menggrafikkan over_menit
-             (actual − std), sementara halaman Overview menggrafikkan
-             actual_menit. Keduanya benar tapi mengukur hal berbeda, dan dulu
-             SAMA-SAMA dilabeli "Loss Time" — orang wajar menyimpulkan salah
-             satunya salah hitung. Menampilkan keduanya di sini membuat kedua
-             halaman bisa direkonsiliasi tanpa membuka kode. --}}
-        <div class="vcbd-kpi-box">
-            <div class="vcbd-kpi-label">Total Aktual</div>
-            <div class="vcbd-kpi-value" x-text="fmt(summary.total_actual)">—</div>
-            <div class="vcbd-kpi-sub">menit &mdash; sama dengan Overview</div>
-        </div>
+        {{-- SATU angka: over standar. Kotak "Total Aktual" sempat ada di sini
+             untuk merekonsiliasi dengan Overview yang waktu itu memakai
+             actual_menit. Sejak Overview ikut memakai over_menit, kedua halaman
+             sudah menampilkan angka yang sama dan kotak itu jadi mubazir.
 
+             total_actual masih ada di payload getVcbDandori() dan sengaja tidak
+             dibuang dari service — Availability/OEE tetap memakai actual_menit,
+             jadi angkanya masih dipakai di tempat lain. Yang dihapus di sini
+             cuma tampilannya. --}}
         <div class="vcbd-kpi-box">
             <div class="vcbd-kpi-label">Total Over Standar</div>
             <div class="vcbd-kpi-value" x-text="fmt(summary.total_over)">—</div>
@@ -494,7 +491,6 @@ function vcbDandori() {
         hasData: false,
 
         summary: {
-            total_actual: 0,
             total_over: 0,
             by_jenis: [], by_mesin: [], by_week: [], by_month: [],
         },
