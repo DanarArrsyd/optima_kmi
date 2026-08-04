@@ -11,22 +11,22 @@ use Illuminate\Support\Carbon;
  *
  * Definisi tiap komponen SENGAJA konsisten dengan angka yang sudah dipakai di
  * app, supaya chatbot & dashboard tak saling bertentangan:
- *   - Availability : dari MaintenanceDashboardService (jam kalender − downtime
- *     breakdown − waktu dandori). Waktu dandori ikut dikurangi karena setup /
- *     ganti dies adalah kerugian availability di OEE standar: mesinnya sehat
- *     tapi tidak memproduksi.
- *     ⚠️ CATATAN BASIS: penyebutnya jam KALENDER (24/7), bukan jam shift
- *     terjadwal. Pabrik dikonfirmasi hanya menjalankan Shift 1 & 2 (16 jam),
- *     jadi penyebut ini memuat 8 jam per hari yang tidak pernah dijadwalkan
- *     dan availability-nya condong tinggi. Dipertahankan supaya angka di sini
- *     tidak bertentangan dengan halaman Availability/MTBF. Kalau kelak diganti
- *     ke basis shift, ganti di MaintenanceDashboardService — jangan di sini.
+ *   - Availability : dari MaintenanceDashboardService (jam shift TERJADWAL −
+ *     downtime breakdown − waktu dandori). Jam terjadwal = jumlah jam shift yang
+ *     ditandai master_shift.dihitung_availability, dikurangi istirahat, hanya
+ *     pada hari kerja. Kalau basisnya diubah, ubah di MaintenanceDashboardService
+ *     — jangan di sini.
  *   - Performance  : total diproduksi (qty_aktual + qty_ng) ÷ output teoretis
- *     pada SPH standar (sph_standar_produksi × waktu kerja), tertimbang waktu.
+ *     pada SPH standar, DIKURANGI waktu dandori dari penyebutnya.
+ *     Konvensi pencatatan: waktu ganti dies MASUK ke jam_start–jam_finish LHP,
+ *     jadi kalau setup dibiarkan di penyebut ia dihukum DUA KALI — sekali di
+ *     Performance, sekali di Availability. Di OEE standar penyebut Performance
+ *     adalah Operating Time, yaitu waktu SETELAH setup dikeluarkan.
  *     SENGAJA BEDA dari "Achievement %" di AnomalyController dan VCB Produksi,
- *     yang memakai barang baik saja: keduanya menilai output OPERATOR, dan
- *     mengkredit operator atas barang NG itu salah. Performance di sini menilai
- *     kecepatan MESIN, yang tetap menekan untuk barang NG.
+ *     yang memakai barang baik saja DAN tidak mengurangi dandori: keduanya
+ *     menilai output OPERATOR atas jam yang dia pegang. Mengkredit operator atas
+ *     barang NG itu salah, dan apakah setup tanggung jawabnya adalah pertanyaan
+ *     bisnis — bukan efek samping perubahan rumus OEE.
  *   - Quality      : qty_aktual ÷ (qty_aktual + qty_ng). qty_aktual berisi
  *     barang BAIK saja; NG dicatat terpisah, jadi penyebutnya total diproduksi.
  *
@@ -67,6 +67,7 @@ class OeeService
         $totalQty = 0;
         $totalNg = 0;
         $theoretical = 0.0;
+        $jamLhp = 0.0;
         $rowsNoStd = 0;
 
         foreach ($rows as $r) {
@@ -77,12 +78,63 @@ class OeeService
             $wkj = $r->waktu_kerja_jam; // accessor: desimal jam, handle overnight
             if ($std > 0 && $wkj > 0) {
                 $theoretical += $std * $wkj;
+                $jamLhp += $wkj;
             } elseif ($std <= 0) {
                 $rowsNoStd++;
             }
         }
 
         $totalProduksi = $totalQty + $totalNg;
+
+        /*
+         * ── Waktu dandori dikeluarkan dari penyebut Performance ──
+         *
+         * Konvensi pencatatan yang disepakati: waktu ganti dies MASUK ke dalam
+         * jam_start–jam_finish LHP. Operator mencatat jendela shift apa adanya,
+         * jadi jam LHP memuat setup.
+         *
+         * Kalau setup dibiarkan di penyebut, ia dihukum DUA KALI: sekali menekan
+         * Performance (jam terpakai tanpa output) dan sekali menekan Availability
+         * (dandori sudah dikurangi di MaintenanceDashboardService). Pemisahan tiga
+         * komponen OEE ada justru untuk mencegah hukuman ganda itu — di OEE
+         * standar penyebut Performance adalah Operating Time, yaitu waktu SETELAH
+         * setup dikeluarkan.
+         *
+         * Diskalakan proporsional, bukan dikurangi dari satu baris: SPH standar
+         * berbeda antar part_proses, jadi mengurangi jam dari baris tertentu akan
+         * memilih part mana yang "kehilangan" kapasitas. Rasio membagi
+         * pengurangannya menurut kontribusi jam tiap baris, tertimbang SPH-nya
+         * sendiri.
+         *
+         * sum_dandori diambil dari baris compute() yang SUDAH di-query untuk
+         * Availability — nol query tambahan, dan angkanya dijamin sama dengan yang
+         * dipakai Availability.
+         */
+        $dandoriJam = (float) ($avRow['sum_dandori'] ?? 0);
+        $jamBersih = $jamLhp - $dandoriJam;
+
+        if ($jamLhp > 0 && $dandoriJam > 0) {
+            if ($jamBersih <= 0) {
+                /*
+                 * Data MUSTAHIL di konvensi "include": dandori tidak bisa lebih
+                 * lama dari jam LHP yang memuatnya. Berarti baris ini diisi dengan
+                 * konvensi lama (dandori DI LUAR jam LHP) dan tercampur.
+                 *
+                 * Penyebut dinolkan supaya Performance jadi null + bercatatan,
+                 * BUKAN diam-diam menghasilkan angka besar. Angka optimis yang
+                 * salah menyembunyikan masalah; null memaksa orang melihat.
+                 */
+                $theoretical = 0.0;
+                $catatan[] = sprintf(
+                    'Waktu dandori (%.1f jam) melebihi jam LHP (%.1f jam) — Performance tak bisa dihitung. '
+                    .'Kemungkinan LHP diisi TANPA memasukkan waktu dandori, bercampur dengan konvensi baru.',
+                    $dandoriJam,
+                    $jamLhp
+                );
+            } else {
+                $theoretical *= $jamBersih / $jamLhp;
+            }
+        }
 
         /*
          * Performance mengukur KECEPATAN MESIN, jadi pembilangnya total yang

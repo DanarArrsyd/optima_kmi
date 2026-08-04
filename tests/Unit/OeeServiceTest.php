@@ -3,10 +3,12 @@
 namespace Tests\Unit;
 
 use App\Models\MasterKaryawan;
+use App\Models\MasterLosstime;
 use App\Models\MasterMesin;
 use App\Models\MasterPart;
 use App\Models\MasterPartProses;
 use App\Models\MasterShift;
+use App\Models\TransaksiDandoriRincian;
 use App\Models\TransaksiProduksi;
 use App\Models\User;
 use App\Services\ChatbotTools;
@@ -45,6 +47,24 @@ class OeeServiceTest extends TestCase
             'id_mesin' => $mesinId, 'id_part_proses' => $prosesId,
             'jam_start' => '08:00', 'jam_finish' => '16:00', 'qty_aktual' => $qty, 'qty_ng' => $ng,
             'created_by' => $user->id,
+        ]);
+    }
+
+    /** Dandori untuk mesin ini — masuk ke penyebut Performance sebagai pengurang. */
+    private function dandori(int $mesinId, int $prosesId, float $menit, string $tgl = '2026-07-15'): void
+    {
+        $shift = MasterShift::firstOrCreate(['nama_shift' => 'S1'], ['jam_start' => '08:00', 'jam_finish' => '16:00']);
+        $kar = MasterKaryawan::firstOrCreate(['nik' => 'K-OEE'], ['nama_karyawan' => 'A', 'departemen' => 'Produksi', 'is_aktif' => true]);
+        $lt = MasterLosstime::firstOrCreate(
+            ['kode' => 'SD'],
+            ['jenis_losstime' => 'Setting_Dies', 'std_menit_default' => null, 'std_menit_progressive' => null]
+        );
+
+        TransaksiDandoriRincian::create([
+            'tanggal' => $tgl, 'id_shift' => $shift->id, 'id_karyawan' => $kar->id,
+            'id_mesin' => $mesinId, 'id_part_proses' => $prosesId, 'id_losstime' => $lt->id,
+            'actual_menit' => $menit, 'std_menit' => 0, 'over_menit' => $menit,
+            'created_by' => User::factory()->create()->id,
         ]);
     }
 
@@ -260,5 +280,47 @@ class OeeServiceTest extends TestCase
         $this->assertSame(3200, $r['output_teoretis']);
         $this->assertStringContainsString('3400 ÷ 3200', $r['metodologi']['performance']);
         $this->assertStringContainsString('3200 ÷ 3400', $r['metodologi']['quality']);
+    }
+
+    /* ═══ Dandori dikeluarkan dari penyebut Performance ═══════════ */
+
+    public function test_dandori_dikeluarkan_dari_penyebut_performance(): void
+    {
+        /*
+         * Konvensi: waktu ganti dies MASUK ke jam_start–jam_finish LHP. Kalau
+         * setup dibiarkan di penyebut, ia dihukum DUA KALI — menekan Performance
+         * DAN Availability.
+         *
+         * LHP 8 jam, SPH std 400 → teoretis mentah 3200. Diproduksi 3200 baik.
+         *   TANPA pengurangan : 3200 / 3200       = 100,00%
+         *   DENGAN pengurangan: 3200 / (3200×6/8) = 133,33%
+         */
+        ['mesin' => $mesin, 'proses' => $proses] = $this->scaffold(sph: 400);
+        $this->lhp($mesin->id, $proses->id, qty: 3200, ng: 0);
+        $this->dandori($mesin->id, $proses->id, menit: 120.0);   // 2 jam
+
+        [$from, $to] = $this->july();
+        $r = (new OeeService)->computeMesin($mesin->id, $from, $to);
+
+        $this->assertEqualsWithDelta(133.33, $r['performance_pct'], 0.05);
+        $this->assertNotEqualsWithDelta(100.0, $r['performance_pct'], 0.05);
+    }
+
+    public function test_dandori_melebihi_jam_lhp_performance_null_bercatatan(): void
+    {
+        // Data mustahil di konvensi "include" → null + catatan, BUKAN angka
+        // optimis yang salah. Angka optimis menyembunyikan masalah.
+        ['mesin' => $mesin, 'proses' => $proses] = $this->scaffold(sph: 400);
+        $this->lhp($mesin->id, $proses->id, qty: 3200, ng: 0);
+        $this->dandori($mesin->id, $proses->id, menit: 600.0);   // 10 jam > 8 jam LHP
+
+        [$from, $to] = $this->july();
+        $r = (new OeeService)->computeMesin($mesin->id, $from, $to);
+
+        $this->assertNull($r['performance_pct']);
+        $this->assertNotEmpty(array_filter(
+            $r['catatan'],
+            fn (string $c) => str_contains($c, 'melebihi jam LHP')
+        ));
     }
 }
