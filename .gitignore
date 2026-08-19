@@ -30,3 +30,7 @@ Thumbs.db
 # Dump database tetap terblokir oleh aturan *.sql di atas.
 !docs/probes/*.sql
 .env.production.example
+
+# Naskah laporan KP (PDF/xlsx, ~38MB). Bukan artefak runtime — kalau ikut ke-commit
+# dia ikut ke-rsync ke hosting prod tiap deploy dan nempel permanen di history.
+/docs/doc/

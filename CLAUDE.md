@@ -56,7 +56,7 @@ dijamin tiba bersamaan.
 ## Perintah
 
 ```bash
-php artisan test                          # 471 test, SQLite in-memory (tidak butuh DB lokal)
+php artisan test                          # 762 test, SQLite in-memory (tidak butuh DB lokal)
 ./scripts/check-migration-coverage.sh     # gerbang cakupan migrasi
 vendor/bin/pint app tests                 # format (scope Pint = app/ + tests/ saja)
 ```

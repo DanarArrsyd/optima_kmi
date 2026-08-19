@@ -1,0 +1,1728 @@
+<meta charset="utf-8">
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>Diagram UML — Laporan KP OPTIMA</title>
+<style>
+  :root{
+    --bg:#f6f6f4; --fg:#1b1b1b; --muted:#5c5c5c; --line:#d3d3cd;
+    --card:#ffffff; --accent:#1f3a5f; --code-bg:#f0efec;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{ --bg:#16181c; --fg:#e8e8e6; --muted:#a0a0a0; --line:#33363c;
+           --card:#1e2126; --accent:#8fb4e0; --code-bg:#22252b; }
+  }
+  :root[data-theme="light"]{
+    --bg:#f6f6f4; --fg:#1b1b1b; --muted:#5c5c5c; --line:#d3d3cd;
+    --card:#ffffff; --accent:#1f3a5f; --code-bg:#f0efec;
+  }
+  :root[data-theme="dark"]{
+    --bg:#16181c; --fg:#e8e8e6; --muted:#a0a0a0; --line:#33363c;
+    --card:#1e2126; --accent:#8fb4e0; --code-bg:#22252b;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; padding:32px 20px 80px;
+    background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    line-height:1.6; font-size:15px;
+  }
+  .wrap{max-width:1080px;margin:0 auto}
+  h1{font-size:1.55rem;line-height:1.25;margin:0 0 6px;letter-spacing:-.01em}
+  .sub{color:var(--muted);font-size:.9rem;margin:0 0 28px}
+  h2{font-size:1.1rem;margin:44px 0 4px;padding-top:20px;border-top:1px solid var(--line)}
+  .meta{color:var(--muted);font-size:.85rem;margin:0 0 16px}
+  .fig{
+    background:#fff; border:1px solid var(--line); border-radius:6px;
+    padding:18px 14px 10px; overflow-x:auto;
+  }
+  .fig svg{display:block;width:100%;height:auto;min-width:620px}
+  .cap{
+    text-align:center;font-family:"Times New Roman",Times,serif;
+    font-weight:700;font-size:.95rem;color:#1b1b1b;
+    padding:12px 8px 4px;background:#fff;
+  }
+  details{margin:14px 0 0;border:1px solid var(--line);border-radius:6px;background:var(--card)}
+  summary{cursor:pointer;padding:10px 14px;font-size:.88rem;font-weight:600}
+  pre{
+    margin:0;padding:14px;background:var(--code-bg);overflow-x:auto;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:12.5px;line-height:1.55;border-radius:0 0 6px 6px;
+  }
+  .note{
+    background:var(--card);border:1px solid var(--line);border-left:3px solid var(--accent);
+    border-radius:4px;padding:14px 16px;margin:22px 0;font-size:.92rem;
+  }
+  .note b{color:var(--accent)}
+  ol,ul{padding-left:22px}
+  li{margin:5px 0}
+  code{background:var(--code-bg);padding:1px 5px;border-radius:3px;font-size:.88em}
+  table{border-collapse:collapse;width:100%;margin:14px 0;font-size:.9rem}
+  th,td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+  th{background:var(--card);font-weight:600}
+  .figbar{
+    display:flex;gap:8px;align-items:center;flex-wrap:wrap;
+    margin:8px 0 0;font-size:.85rem;
+  }
+  .btn{
+    appearance:none;cursor:pointer;font:inherit;font-size:.85rem;font-weight:600;
+    padding:7px 14px;border-radius:5px;border:1px solid var(--line);
+    background:var(--card);color:var(--fg);transition:border-color .12s,transform .06s;
+  }
+  .btn:hover{border-color:var(--accent)}
+  .btn:active{transform:translateY(1px)}
+  .btn-utama{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn:disabled{opacity:.55;cursor:progress}
+  .figbar .ket{color:var(--muted)}
+  .figbar .gagal{color:#b3261e;font-weight:600}
+  @media (prefers-color-scheme:dark){ .figbar .gagal{color:#f2b8b5} }
+  @media print{ .figbar{display:none} }
+</style>
+
+<div class="wrap">
+
+<h1>Diagram UML — Laporan Kerja Praktek OPTIMA</h1>
+<p class="sub">Rancang Bangun Sistem Informasi Manajemen Produksi dan Pengukuran Overall Equipment Effectiveness Berbasis Web pada PT. Kenco Manufactur Indonesia · Bagian 3.6.1 Use Case Diagram</p>
+
+<div class="note">
+<b>Cara mengunduh untuk ditempel di Word.</b> Setiap diagram memiliki dua tombol di bawahnya.
+<ol>
+<li><b>Unduh PNG 4×</b> menghasilkan berkas raster berlatar putih pada empat kali ukuran asli, sekitar 3.400 sampai 4.000 piksel lebar. Ukuran itu memadai untuk dicetak pada 300 dpi. Pakai ini untuk pemakaian biasa.</li>
+<li><b>Unduh SVG</b> menghasilkan berkas vektor tanpa batas resolusi. Microsoft Word mendukung penyisipan SVG secara langsung, dan hasil cetaknya lebih tajam daripada PNG. Pakai ini apabila dokumen akhirnya dicetak.</li>
+</ol>
+Berkas yang terunduh <b>hanya memuat gambar</b>. Nomor dan judul gambar yang tampil di bawah diagram pada halaman ini tidak disertakan, karena keduanya harus ditulis sebagai teks di Word agar masuk Daftar Gambar secara otomatis.
+</div>
+
+<div class="note">
+<b>Peringatan sebelum memakai plantuml.com.</b> Merender melalui server publik berarti mengirim sumber diagram ke pihak ketiga. Isinya rancangan sistem internal: nama peran, alur data, dan struktur modul. Untuk menghindarinya, render lokal dengan <code>plantuml.jar</code> atau ekstensi PlantUML di VS Code yang dikonfigurasi memakai server lokal.
+</div>
+
+<h2>Gambar 3.2 — Alur Pencatatan pada Sistem yang Berjalan</h2>
+<p class="meta">Melengkapi 3.4.2. Dua jalur menunjukkan perpindahan tanggung jawab dari operator ke fungsi penyusun rekapitulasi, sekaligus memperlihatkan bahwa setiap data ditulis dua kali.</p>
+
+<div class="fig">
+<svg viewBox="0 0 860 740" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Alur pencatatan pada sistem yang berjalan">
+  <defs>
+    <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1b1b1b"/>
+    </marker>
+  </defs>
+  <g font-family="Times New Roman,serif" fill="#1b1b1b">
+    <g fill="none" stroke="#1b1b1b" stroke-width="1.2">
+      <rect x="20" y="20" width="410" height="36"/>
+      <rect x="430" y="20" width="410" height="36"/>
+      <line x1="430" y1="56" x2="430" y2="720"/>
+      <line x1="20" y1="56" x2="20" y2="720"/>
+      <line x1="840" y1="56" x2="840" y2="720"/>
+      <line x1="20" y1="720" x2="840" y2="720"/>
+    </g>
+    <text x="225" y="44" text-anchor="middle" font-size="14" font-weight="700">Operator</text>
+    <text x="635" y="44" text-anchor="middle" font-size="14" font-weight="700">Fungsi Penyusun Rekapitulasi</text>
+
+    <circle cx="225" cy="95" r="11" fill="#1b1b1b"/>
+
+    <g fill="#fff" stroke="#1b1b1b" stroke-width="1.3">
+      <rect x="90" y="140" width="270" height="58" rx="9"/>
+      <rect x="90" y="248" width="270" height="58" rx="9"/>
+      <rect x="490" y="356" width="290" height="58" rx="9"/>
+      <rect x="490" y="464" width="290" height="70" rx="9"/>
+      <rect x="490" y="584" width="290" height="58" rx="9"/>
+    </g>
+    <g text-anchor="middle" font-size="13.5">
+      <text x="225" y="164">Menulis hasil produksi pada</text><text x="225" y="181">formulir kertas</text>
+      <text x="225" y="272">Menyerahkan formulir setelah</text><text x="225" y="289">shift berakhir</text>
+      <text x="635" y="380">Mengetik ulang isi formulir ke</text><text x="635" y="397">berkas spreadsheet</text>
+      <text x="635" y="488">Menghitung Achievement, kerugian</text><text x="635" y="505">waktu, dan akumulasi stroke</text><text x="635" y="522">secara manual</text>
+      <text x="635" y="608">Menyusun rekapitulasi dan</text><text x="635" y="625">memasang pada Performance Board</text>
+    </g>
+
+    <g fill="none" stroke="#1b1b1b" stroke-width="1.2" marker-end="url(#a1)">
+      <line x1="225" y1="106" x2="225" y2="136"/>
+      <line x1="225" y1="198" x2="225" y2="244"/>
+      <line x1="225" y1="306" x2="486" y2="380"/>
+      <line x1="635" y1="414" x2="635" y2="460"/>
+      <line x1="635" y1="534" x2="635" y2="580"/>
+      <line x1="635" y1="642" x2="635" y2="672"/>
+    </g>
+    <circle cx="635" cy="690" r="13" fill="none" stroke="#1b1b1b" stroke-width="1.3"/>
+    <circle cx="635" cy="690" r="7" fill="#1b1b1b"/>
+  </g>
+</svg>
+<div class="cap">Gambar 3.2 Alur Pencatatan pada Sistem yang Berjalan</div>
+</div>
+
+<details>
+<summary>Sumber PlantUML — Gambar 3.2</summary>
+<pre>@startuml
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName Times New Roman
+skinparam defaultFontSize 13
+
+|Operator|
+start
+:Menulis hasil produksi pada
+formulir kertas;
+:Menyerahkan formulir setelah
+shift berakhir;
+|Fungsi Penyusun Rekapitulasi|
+:Mengetik ulang isi formulir ke
+berkas spreadsheet;
+:Menghitung Achievement, kerugian
+waktu, dan akumulasi stroke
+secara manual;
+:Menyusun rekapitulasi dan
+memasang pada Performance Board;
+stop
+@enduml</pre>
+</details>
+
+<h2>Gambar 3.3 — Use Case Diagram Pemasukan Data</h2>
+<p class="meta">Aktor penghasil data operasional. Memenuhi KF-03 dan KF-11. Use case UC-01 berlaku bagi seluruh peran, digambarkan sekali melalui aktor gabungan.</p>
+
+<div class="fig">
+<svg viewBox="0 0 960 620" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Use case diagram pemasukan data">
+  <g fill="none" stroke="#1b1b1b" stroke-width="1.3">
+    <rect x="280" y="30" width="400" height="560" rx="4"/>
+  </g>
+  <text x="480" y="22" text-anchor="middle" font-family="Times New Roman,serif" font-size="15" font-weight="700" fill="#1b1b1b">Sistem OPTIMA</text>
+
+  <!-- garis relasi -->
+  <g stroke="#1b1b1b" stroke-width="1.1" fill="none">
+    <line x1="128" y1="90"  x2="315" y2="90"/>
+    <line x1="128" y1="220" x2="315" y2="180"/>
+    <line x1="128" y1="220" x2="315" y2="260"/>
+    <line x1="128" y1="340" x2="315" y2="340"/>
+    <line x1="128" y1="460" x2="315" y2="420"/>
+    <line x1="128" y1="460" x2="315" y2="500"/>
+    <line x1="832" y1="340" x2="645" y2="180"/>
+    <line x1="832" y1="340" x2="645" y2="260"/>
+    <line x1="832" y1="340" x2="645" y2="340"/>
+    <line x1="832" y1="340" x2="645" y2="420"/>
+    <line x1="832" y1="340" x2="645" y2="500"/>
+  </g>
+
+  <!-- use case -->
+  <g fill="#fff" stroke="#1b1b1b" stroke-width="1.3">
+    <ellipse cx="480" cy="90"  rx="162" ry="27"/>
+    <ellipse cx="480" cy="180" rx="162" ry="27"/>
+    <ellipse cx="480" cy="260" rx="162" ry="27"/>
+    <ellipse cx="480" cy="340" rx="162" ry="27"/>
+    <ellipse cx="480" cy="420" rx="162" ry="27"/>
+    <ellipse cx="480" cy="500" rx="162" ry="27"/>
+  </g>
+  <g text-anchor="middle" font-family="Times New Roman,serif" font-size="13.5" fill="#1b1b1b">
+    <text x="480" y="86">UC-01</text><text x="480" y="101">Masuk ke sistem</text>
+    <text x="480" y="176">UC-04 Memasukkan</text><text x="480" y="191">Laporan Hasil Produksi</text>
+    <text x="480" y="256">UC-05 Memasukkan data</text><text x="480" y="271">penggantian dies</text>
+    <text x="480" y="336">UC-06 Memasukkan</text><text x="480" y="351">LHP Quality</text>
+    <text x="480" y="416">UC-07 Memasukkan data</text><text x="480" y="431">kerusakan mesin</text>
+    <text x="480" y="496">UC-08 Memasukkan data</text><text x="480" y="511">kerusakan dies</text>
+  </g>
+
+  <!-- aktor kiri -->
+  <g stroke="#1b1b1b" stroke-width="1.4" fill="none">
+    <g transform="translate(110,90)">
+      <circle cx="0" cy="-26" r="9" fill="#fff"/><line x1="0" y1="-17" x2="0" y2="6"/>
+      <line x1="-14" y1="-8" x2="14" y2="-8"/><line x1="0" y1="6" x2="-11" y2="26"/><line x1="0" y1="6" x2="11" y2="26"/>
+    </g>
+    <g transform="translate(110,220)">
+      <circle cx="0" cy="-26" r="9" fill="#fff"/><line x1="0" y1="-17" x2="0" y2="6"/>
+      <line x1="-14" y1="-8" x2="14" y2="-8"/><line x1="0" y1="6" x2="-11" y2="26"/><line x1="0" y1="6" x2="11" y2="26"/>
+    </g>
+    <g transform="translate(110,340)">
+      <circle cx="0" cy="-26" r="9" fill="#fff"/><line x1="0" y1="-17" x2="0" y2="6"/>
+      <line x1="-14" y1="-8" x2="14" y2="-8"/><line x1="0" y1="6" x2="-11" y2="26"/><line x1="0" y1="6" x2="11" y2="26"/>
+    </g>
+    <g transform="translate(110,460)">
+      <circle cx="0" cy="-26" r="9" fill="#fff"/><line x1="0" y1="-17" x2="0" y2="6"/>
+      <line x1="-14" y1="-8" x2="14" y2="-8"/><line x1="0" y1="6" x2="-11" y2="26"/><line x1="0" y1="6" x2="11" y2="26"/>
+    </g>
+    <g transform="translate(850,340)">
+      <circle cx="0" cy="-26" r="9" fill="#fff"/><line x1="0" y1="-17" x2="0" y2="6"/>
+      <line x1="-14" y1="-8" x2="14" y2="-8"/><line x1="0" y1="6" x2="-11" y2="26"/><line x1="0" y1="6" x2="11" y2="26"/>
+    </g>
+  </g>
+  <g text-anchor="middle" font-family="Times New Roman,serif" font-size="13" fill="#1b1b1b">
+    <text x="110" y="132">Seluruh Peran</text>
+    <text x="110" y="262">Staf Produksi</text>
+    <text x="110" y="382">Staf Quality</text>
+    <text x="110" y="502">Staf Maintenance</text>
+    <text x="850" y="382">Administrator</text>
+  </g>
+</svg>
+<div class="cap">Gambar 3.3 Use Case Diagram Pemasukan Data</div>
+</div>
+
+<details>
+<summary>Sumber PlantUML — Gambar 3.3</summary>
+<pre>@startuml
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName Times New Roman
+skinparam defaultFontSize 13
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+left to right direction
+
+actor "Seluruh Peran" as SEMUA
+actor "Staf Produksi" as PROD
+actor "Staf Quality" as QC
+actor "Staf Maintenance" as MTC
+actor "Administrator" as ADM
+
+rectangle "Sistem OPTIMA" {
+  usecase "UC-01\nMasuk ke sistem" as UC01
+  usecase "UC-04 Memasukkan\nLaporan Hasil Produksi" as UC04
+  usecase "UC-05 Memasukkan data\npenggantian dies" as UC05
+  usecase "UC-06 Memasukkan\nLHP Quality" as UC06
+  usecase "UC-07 Memasukkan data\nkerusakan mesin" as UC07
+  usecase "UC-08 Memasukkan data\nkerusakan dies" as UC08
+}
+
+SEMUA -- UC01
+PROD -- UC04
+PROD -- UC05
+QC   -- UC06
+MTC  -- UC07
+MTC  -- UC08
+ADM  -- UC04
+ADM  -- UC05
+ADM  -- UC06
+ADM  -- UC07
+ADM  -- UC08
+@enduml</pre>
+</details>
+
+<h2>Gambar 3.4 — Use Case Diagram Rekapitulasi dan Analitik</h2>
+<p class="meta">Aktor pembaca rekapitulasi. Memenuhi KF-04 sampai KF-09 dan KF-12. Peran Manajer, Administrator, dan Guest digambarkan sebagai pewarisan terhadap aktor Pembaca Rekapitulasi karena ketiganya mengakses seluruh use case pada kelompok ini.</p>
+
+<div class="fig">
+<svg viewBox="0 0 1040 700" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Use case diagram rekapitulasi dan analitik">
+  <g fill="none" stroke="#1b1b1b" stroke-width="1.3">
+    <rect x="272" y="30" width="420" height="640" rx="4"/>
+  </g>
+  <text x="482" y="22" text-anchor="middle" font-family="Times New Roman,serif" font-size="15" font-weight="700" fill="#1b1b1b">Sistem OPTIMA</text>
+
+  <g stroke="#1b1b1b" stroke-width="1.1" fill="none">
+    <line x1="128" y1="140" x2="302" y2="90"/>
+    <line x1="128" y1="140" x2="302" y2="175"/>
+    <line x1="128" y1="260" x2="302" y2="260"/>
+    <line x1="128" y1="430" x2="302" y2="345"/>
+    <line x1="128" y1="430" x2="302" y2="430"/>
+    <line x1="128" y1="430" x2="302" y2="515"/>
+    <line x1="772" y1="345" x2="662" y2="90"/>
+    <line x1="772" y1="345" x2="662" y2="175"/>
+    <line x1="772" y1="345" x2="662" y2="260"/>
+    <line x1="772" y1="345" x2="662" y2="345"/>
+    <line x1="772" y1="345" x2="662" y2="430"/>
+    <line x1="772" y1="345" x2="662" y2="515"/>
+    <line x1="772" y1="345" x2="662" y2="600"/>
+  </g>
+
+  <g fill="#fff" stroke="#1b1b1b" stroke-width="1.3">
+    <ellipse cx="482" cy="90"  rx="178" ry="27"/>
+    <ellipse cx="482" cy="175" rx="178" ry="27"/>
+    <ellipse cx="482" cy="260" rx="178" ry="27"/>
+    <ellipse cx="482" cy="345" rx="178" ry="27"/>
+    <ellipse cx="482" cy="430" rx="178" ry="27"/>
+    <ellipse cx="482" cy="515" rx="178" ry="27"/>
+    <ellipse cx="482" cy="600" rx="178" ry="27"/>
+  </g>
+  <g text-anchor="middle" font-family="Times New Roman,serif" font-size="13.5" fill="#1b1b1b">
+    <text x="482" y="86">UC-09 Melihat rekapitulasi</text><text x="482" y="101">Achievement produksi</text>
+    <text x="482" y="171">UC-10 Melihat rekapitulasi</text><text x="482" y="186">kerugian waktu</text>
+    <text x="482" y="256">UC-11 Melihat rekapitulasi</text><text x="482" y="271">produk cacat</text>
+    <text x="482" y="341">UC-12 Melihat nilai</text><text x="482" y="356">MTTR dan MTBF</text>
+    <text x="482" y="426">UC-13 Melihat nilai</text><text x="482" y="441">Availability</text>
+    <text x="482" y="511">UC-14 Melihat akumulasi</text><text x="482" y="526">stroke mesin dan dies</text>
+    <text x="482" y="596">UC-15 Melihat nilai OEE</text><text x="482" y="611">beserta ketiga faktornya</text>
+  </g>
+
+  <!-- pewarisan aktor kanan -->
+  <g stroke="#1b1b1b" stroke-width="1.1" fill="none">
+    <line x1="905" y1="150" x2="812" y2="325"/>
+    <line x1="905" y1="345" x2="812" y2="345"/>
+    <line x1="905" y1="540" x2="812" y2="365"/>
+  </g>
+  <g fill="#fff" stroke="#1b1b1b" stroke-width="1.1">
+    <polygon points="812,325 826,318 828,333"/>
+    <polygon points="812,345 826,338 826,352"/>
+    <polygon points="812,365 828,357 826,372"/>
+  </g>
+
+  <g stroke="#1b1b1b" stroke-width="1.4" fill="none">
+    <g transform="translate(110,140)"><circle cx="0" cy="-26" r="9" fill="#fff"/><line x1="0" y1="-17" x2="0" y2="6"/><line x1="-14" y1="-8" x2="14" y2="-8"/><line x1="0" y1="6" x2="-11" y2="26"/><line x1="0" y1="6" x2="11" y2="26"/></g>
+    <g transform="translate(110,260)"><circle cx="0" cy="-26" r="9" fill="#fff"/><line x1="0" y1="-17" x2="0" y2="6"/><line x1="-14" y1="-8" x2="14" y2="-8"/><line x1="0" y1="6" x2="-11" y2="26"/><line x1="0" y1="6" x2="11" y2="26"/></g>
+    <g transform="translate(110,430)"><circle cx="0" cy="-26" r="9" fill="#fff"/><line x1="0" y1="-17" x2="0" y2="6"/><line x1="-14" y1="-8" x2="14" y2="-8"/><line x1="0" y1="6" x2="-11" y2="26"/><line x1="0" y1="6" x2="11" y2="26"/></g>
+    <g transform="translate(790,345)"><circle cx="0" cy="-26" r="9" fill="#fff"/><line x1="0" y1="-17" x2="0" y2="6"/><line x1="-14" y1="-8" x2="14" y2="-8"/><line x1="0" y1="6" x2="-11" y2="26"/><line x1="0" y1="6" x2="11" y2="26"/></g>
+    <g transform="translate(925,150)"><circle cx="0" cy="-26" r="9" fill="#fff"/><line x1="0" y1="-17" x2="0" y2="6"/><line x1="-14" y1="-8" x2="14" y2="-8"/><line x1="0" y1="6" x2="-11" y2="26"/><line x1="0" y1="6" x2="11" y2="26"/></g>
+    <g transform="translate(925,345)"><circle cx="0" cy="-26" r="9" fill="#fff"/><line x1="0" y1="-17" x2="0" y2="6"/><line x1="-14" y1="-8" x2="14" y2="-8"/><line x1="0" y1="6" x2="-11" y2="26"/><line x1="0" y1="6" x2="11" y2="26"/></g>
+    <g transform="translate(925,540)"><circle cx="0" cy="-26" r="9" fill="#fff"/><line x1="0" y1="-17" x2="0" y2="6"/><line x1="-14" y1="-8" x2="14" y2="-8"/><line x1="0" y1="6" x2="-11" y2="26"/><line x1="0" y1="6" x2="11" y2="26"/></g>
+  </g>
+  <g text-anchor="middle" font-family="Times New Roman,serif" font-size="13" fill="#1b1b1b">
+    <text x="110" y="182">Staf Produksi</text>
+    <text x="110" y="302">Staf Quality</text>
+    <text x="110" y="472">Staf Maintenance</text>
+    <text x="790" y="387">Pembaca</text><text x="790" y="402">Rekapitulasi</text>
+    <text x="925" y="192">Manajer</text>
+    <text x="925" y="387">Administrator</text>
+    <text x="925" y="582">Guest</text>
+  </g>
+</svg>
+<div class="cap">Gambar 3.4 Use Case Diagram Rekapitulasi dan Analitik</div>
+</div>
+
+<details>
+<summary>Sumber PlantUML — Gambar 3.4</summary>
+<pre>@startuml
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName Times New Roman
+skinparam defaultFontSize 13
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+left to right direction
+
+actor "Staf Produksi" as PROD
+actor "Staf Quality" as QC
+actor "Staf Maintenance" as MTC
+actor "Pembaca Rekapitulasi" as BACA
+actor "Manajer" as MGR
+actor "Administrator" as ADM
+actor "Guest" as GST
+
+MGR --|> BACA
+ADM --|> BACA
+GST --|> BACA
+
+rectangle "Sistem OPTIMA" {
+  usecase "UC-09 Melihat rekapitulasi\nAchievement produksi" as UC09
+  usecase "UC-10 Melihat rekapitulasi\nkerugian waktu" as UC10
+  usecase "UC-11 Melihat rekapitulasi\nproduk cacat" as UC11
+  usecase "UC-12 Melihat nilai\nMTTR dan MTBF" as UC12
+  usecase "UC-13 Melihat nilai\nAvailability" as UC13
+  usecase "UC-14 Melihat akumulasi\nstroke mesin dan dies" as UC14
+  usecase "UC-15 Melihat nilai OEE\nbeserta ketiga faktornya" as UC15
+}
+
+PROD -- UC09
+PROD -- UC10
+QC   -- UC11
+MTC  -- UC12
+MTC  -- UC13
+MTC  -- UC14
+BACA -- UC09
+BACA -- UC10
+BACA -- UC11
+BACA -- UC12
+BACA -- UC13
+BACA -- UC14
+BACA -- UC15
+@enduml</pre>
+</details>
+
+<h2>Gambar 3.5 — Use Case Diagram Administrasi Sistem</h2>
+<p class="meta">Kewenangan pengelolaan. Memenuhi KF-01, KF-10, KF-12, KF-13, dan KNF-01. Seluruh use case pada kelompok ini tertutup bagi peran penghasil data dan peran Guest.</p>
+
+<div class="fig">
+<svg viewBox="0 0 900 500" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Use case diagram administrasi sistem">
+  <g fill="none" stroke="#1b1b1b" stroke-width="1.3">
+    <rect x="266" y="30" width="392" height="440" rx="4"/>
+  </g>
+  <text x="462" y="22" text-anchor="middle" font-family="Times New Roman,serif" font-size="15" font-weight="700" fill="#1b1b1b">Sistem OPTIMA</text>
+
+  <g stroke="#1b1b1b" stroke-width="1.1" fill="none">
+    <line x1="128" y1="250" x2="296" y2="90"/>
+    <line x1="128" y1="250" x2="296" y2="170"/>
+    <line x1="128" y1="250" x2="296" y2="250"/>
+    <line x1="128" y1="250" x2="296" y2="330"/>
+    <line x1="128" y1="250" x2="296" y2="410"/>
+    <line x1="772" y1="330" x2="628" y2="330"/>
+  </g>
+
+  <g fill="#fff" stroke="#1b1b1b" stroke-width="1.3">
+    <ellipse cx="462" cy="90"  rx="166" ry="27"/>
+    <ellipse cx="462" cy="170" rx="166" ry="27"/>
+    <ellipse cx="462" cy="250" rx="166" ry="27"/>
+    <ellipse cx="462" cy="330" rx="166" ry="27"/>
+    <ellipse cx="462" cy="410" rx="166" ry="27"/>
+  </g>
+  <g text-anchor="middle" font-family="Times New Roman,serif" font-size="13.5" fill="#1b1b1b">
+    <text x="462" y="86">UC-02 Mengelola</text><text x="462" y="101">data master</text>
+    <text x="462" y="166">UC-03 Mengelola akun</text><text x="462" y="181">dan peran pengguna</text>
+    <text x="462" y="246">UC-16 Melihat data</text><text x="462" y="261">yang ditandai menyimpang</text>
+    <text x="462" y="326">UC-17 Mengunduh</text><text x="462" y="341">rekapitulasi sebagai berkas</text>
+    <text x="462" y="406">UC-18 Memindahkan</text><text x="462" y="421">data historis</text>
+  </g>
+
+  <g stroke="#1b1b1b" stroke-width="1.4" fill="none">
+    <g transform="translate(110,250)"><circle cx="0" cy="-26" r="9" fill="#fff"/><line x1="0" y1="-17" x2="0" y2="6"/><line x1="-14" y1="-8" x2="14" y2="-8"/><line x1="0" y1="6" x2="-11" y2="26"/><line x1="0" y1="6" x2="11" y2="26"/></g>
+    <g transform="translate(790,330)"><circle cx="0" cy="-26" r="9" fill="#fff"/><line x1="0" y1="-17" x2="0" y2="6"/><line x1="-14" y1="-8" x2="14" y2="-8"/><line x1="0" y1="6" x2="-11" y2="26"/><line x1="0" y1="6" x2="11" y2="26"/></g>
+  </g>
+  <g text-anchor="middle" font-family="Times New Roman,serif" font-size="13" fill="#1b1b1b">
+    <text x="110" y="292">Administrator</text>
+    <text x="790" y="372">Manajer</text>
+  </g>
+</svg>
+<div class="cap">Gambar 3.5 Use Case Diagram Administrasi Sistem</div>
+</div>
+
+<details>
+<summary>Sumber PlantUML — Gambar 3.5</summary>
+<pre>@startuml
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName Times New Roman
+skinparam defaultFontSize 13
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+left to right direction
+
+actor "Administrator" as ADM
+actor "Manajer" as MGR
+
+rectangle "Sistem OPTIMA" {
+  usecase "UC-02 Mengelola\ndata master" as UC02
+  usecase "UC-03 Mengelola akun\ndan peran pengguna" as UC03
+  usecase "UC-16 Melihat data\nyang ditandai menyimpang" as UC16
+  usecase "UC-17 Mengunduh\nrekapitulasi sebagai berkas" as UC17
+  usecase "UC-18 Memindahkan\ndata historis" as UC18
+}
+
+ADM -- UC02
+ADM -- UC03
+ADM -- UC16
+ADM -- UC17
+ADM -- UC18
+MGR -- UC17
+@enduml</pre>
+</details>
+
+<h2>Cakupan ketiga diagram</h2>
+<p class="meta">Pemeriksaan agar tidak ada use case pada Tabel 3.10 yang terlewat.</p>
+
+<table>
+<tr><th>Gambar</th><th>Use case</th><th>Jumlah</th></tr>
+<tr><td>Gambar 3.3</td><td>UC-01, UC-04, UC-05, UC-06, UC-07, UC-08</td><td>6</td></tr>
+<tr><td>Gambar 3.4</td><td>UC-09, UC-10, UC-11, UC-12, UC-13, UC-14, UC-15</td><td>7</td></tr>
+<tr><td>Gambar 3.5</td><td>UC-02, UC-03, UC-16, UC-17, UC-18</td><td>5</td></tr>
+<tr><th colspan="2">Total</th><th>18</th></tr>
+</table>
+
+<h2>Gambar 3.6 — Activity Diagram Pemasukan Laporan Hasil Produksi</h2>
+<p class="meta">Menggambarkan UC-04. Memenuhi KF-02, KF-06, dan KF-10. Bandingkan dengan Gambar 3.2: pemeriksaan kewajaran dan penandaan anomali tidak memiliki padanan pada sistem yang berjalan.</p>
+
+<div class="fig">
+<svg viewBox="0 0 1000 1035" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Activity diagram pemasukan laporan hasil produksi">
+  <defs>
+    <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1b1b1b"/>
+    </marker>
+  </defs>
+  <g font-family="Times New Roman,serif" fill="#1b1b1b">
+    <g fill="none" stroke="#1b1b1b" stroke-width="1.2">
+      <rect x="20" y="20" width="400" height="36"/>
+      <rect x="420" y="20" width="560" height="36"/>
+      <line x1="420" y1="56" x2="420" y2="1005"/>
+      <line x1="20" y1="56" x2="20" y2="1005"/>
+      <line x1="980" y1="56" x2="980" y2="1005"/>
+      <line x1="20" y1="1005" x2="980" y2="1005"/>
+    </g>
+    <text x="220" y="44" text-anchor="middle" font-size="14" font-weight="700">Staf Produksi</text>
+    <text x="700" y="44" text-anchor="middle" font-size="14" font-weight="700">Sistem</text>
+
+    <circle cx="215" cy="95" r="11" fill="#1b1b1b"/>
+
+    <g fill="#fff" stroke="#1b1b1b" stroke-width="1.3">
+      <rect x="90" y="140" width="250" height="58" rx="9"/>
+      <rect x="90" y="248" width="250" height="58" rx="9"/>
+      <rect x="90" y="356" width="250" height="48" rx="9"/>
+      <rect x="90" y="520" width="250" height="48" rx="9"/>
+      <rect x="540" y="440" width="300" height="58" rx="9"/>
+      <rect x="540" y="650" width="300" height="58" rx="9"/>
+      <rect x="540" y="740" width="300" height="48" rx="9"/>
+      <rect x="830" y="836" width="150" height="48" rx="9"/>
+      <polygon points="690,532 785,570 690,608 595,570"/>
+      <polygon points="690,822 790,860 690,898 590,860"/>
+    </g>
+
+    <g text-anchor="middle" font-size="13.5">
+      <text x="215" y="164">Membuka formulir Laporan</text><text x="215" y="181">Hasil Produksi</text>
+      <text x="215" y="272">Mengisi data produksi</text><text x="215" y="289">pada formulir</text>
+      <text x="215" y="385">Mengirimkan formulir</text>
+      <text x="215" y="549">Memperbaiki masukan</text>
+      <text x="690" y="464">Memeriksa acuan data master</text><text x="690" y="481">dan kewajaran masukan</text>
+      <text x="690" y="674">Menyimpan data dan memperbarui</text><text x="690" y="691">akumulasi stroke</text>
+      <text x="690" y="769">Memeriksa kewajaran SPH aktual</text>
+      <text x="905" y="856">Menandai data</text><text x="905" y="873">sebagai anomali</text>
+      <text x="690" y="566">Masukan</text><text x="690" y="581">sah?</text>
+      <text x="690" y="856">Melewati</text><text x="690" y="871">ambang?</text>
+    </g>
+
+    <g fill="none" stroke="#1b1b1b" stroke-width="1.2" marker-end="url(#a2)">
+      <line x1="215" y1="106" x2="215" y2="136"/>
+      <line x1="215" y1="198" x2="215" y2="244"/>
+      <line x1="215" y1="306" x2="215" y2="352"/>
+      <line x1="340" y1="380" x2="536" y2="458"/>
+      <line x1="690" y1="498" x2="690" y2="528"/>
+      <polyline points="595,570 470,570 470,544 344,544"/>
+      <polyline points="90,544 55,544 55,277 86,277"/>
+      <line x1="690" y1="608" x2="690" y2="646"/>
+      <line x1="690" y1="708" x2="690" y2="736"/>
+      <line x1="690" y1="788" x2="690" y2="818"/>
+      <line x1="790" y1="860" x2="826" y2="860"/>
+      <line x1="690" y1="925" x2="690" y2="940"/>
+    </g>
+    <g fill="none" stroke="#1b1b1b" stroke-width="1.2">
+      <line x1="690" y1="898" x2="690" y2="925"/>
+      <polyline points="905,884 905,925 690,925"/>
+    </g>
+
+    <g font-size="12.5" font-style="italic">
+      <text x="500" y="562" text-anchor="middle">Tidak</text>
+      <text x="702" y="632">Ya</text>
+      <text x="806" y="851">Ya</text>
+      <text x="702" y="916">Tidak</text>
+    </g>
+
+    <circle cx="690" cy="955" r="13" fill="none" stroke="#1b1b1b" stroke-width="1.3"/>
+    <circle cx="690" cy="955" r="7" fill="#1b1b1b"/>
+  </g>
+</svg>
+<div class="cap">Gambar 3.6 Activity Diagram Pemasukan Laporan Hasil Produksi</div>
+</div>
+
+<details>
+<summary>Sumber PlantUML — Gambar 3.6</summary>
+<pre>@startuml
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName Times New Roman
+skinparam defaultFontSize 13
+
+|Staf Produksi|
+start
+:Membuka formulir Laporan
+Hasil Produksi;
+repeat
+  :Mengisi data produksi
+  pada formulir;
+  :Mengirimkan formulir;
+  |Sistem|
+  :Memeriksa acuan data master
+  dan kewajaran masukan;
+backward:Memperbaiki masukan;
+repeat while (Masukan sah?) is (Tidak) not (Ya)
+:Menyimpan data dan memperbarui
+akumulasi stroke;
+:Memeriksa kewajaran SPH aktual;
+if (Melewati ambang?) then (Ya)
+  :Menandai data sebagai anomali;
+else (Tidak)
+endif
+stop
+@enduml</pre>
+</details>
+
+<h2>Gambar 3.7 — Activity Diagram Perhitungan dan Penyajian OEE</h2>
+<p class="meta">Menggambarkan UC-15. Memenuhi KF-07, KF-09, dan KF-12. Dua lajur menunjukkan pihak yang meminta dan pihak yang menghitung. Cabang pemeriksaan jam terjadwal menjawab keadaan ketika seluruh hari dalam rentang bukan hari kerja, sehingga penyebut bernilai nol, dan hasil cabang itu tetap disampaikan kepada peminta.</p>
+
+<div class="fig">
+<svg viewBox="0 0 1060 1330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Activity diagram perhitungan dan penyajian OEE">
+  <defs>
+    <marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1b1b1b"/>
+    </marker>
+  </defs>
+  <g font-family="Times New Roman,serif" fill="#1b1b1b">
+
+    <g fill="none" stroke="#1b1b1b" stroke-width="1.2">
+      <rect x="20" y="20" width="380" height="36"/>
+      <rect x="400" y="20" width="640" height="36"/>
+      <line x1="20" y1="56" x2="20" y2="1300"/>
+      <line x1="400" y1="56" x2="400" y2="1300"/>
+      <line x1="1040" y1="56" x2="1040" y2="1300"/>
+      <line x1="20" y1="1300" x2="1040" y2="1300"/>
+    </g>
+    <text x="210" y="44" text-anchor="middle" font-size="14" font-weight="700">Manajer</text>
+    <text x="720" y="44" text-anchor="middle" font-size="14" font-weight="700">Sistem</text>
+
+    <circle cx="210" cy="95" r="11" fill="#1b1b1b"/>
+
+    <g fill="#fff" stroke="#1b1b1b" stroke-width="1.3">
+      <rect x="85" y="130" width="250" height="58" rx="9"/>
+      <rect x="85" y="218" width="250" height="44" rx="9"/>
+      <rect x="85" y="1150" width="250" height="58" rx="9"/>
+      <rect x="540" y="290" width="320" height="58" rx="9"/>
+      <rect x="540" y="378" width="320" height="58" rx="9"/>
+      <rect x="890" y="476" width="145" height="48" rx="9"/>
+      <rect x="540" y="570" width="320" height="58" rx="9"/>
+      <rect x="540" y="658" width="320" height="44" rx="9"/>
+      <rect x="540" y="732" width="320" height="58" rx="9"/>
+      <rect x="540" y="820" width="320" height="44" rx="9"/>
+      <rect x="540" y="894" width="320" height="58" rx="9"/>
+      <rect x="540" y="982" width="320" height="58" rx="9"/>
+      <rect x="540" y="1070" width="320" height="48" rx="9"/>
+      <polygon points="700,460 805,500 700,540 595,500"/>
+    </g>
+
+    <g text-anchor="middle" font-size="13.5">
+      <text x="210" y="154">Memilih rentang tanggal</text><text x="210" y="171">yang akan ditampilkan</text>
+      <text x="210" y="245">Mengirim permintaan</text>
+      <text x="210" y="1174">Menerima dan membaca</text><text x="210" y="1191">nilai OEE per mesin</text>
+
+      <text x="700" y="313">Menentukan hari kerja, mengecualikan</text><text x="700" y="330">hari Minggu dan hari libur</text>
+      <text x="700" y="401">Menghitung jam kerja terjadwal</text><text x="700" y="418">dari data master shift</text>
+      <text x="700" y="496">Jam terjadwal</text><text x="700" y="511">lebih dari nol?</text>
+      <text x="962" y="496">Menyatakan nilai</text><text x="962" y="513">tidak tersedia</text>
+      <text x="700" y="593">Menjumlahkan waktu henti perbaikan</text><text x="700" y="610">dan waktu penggantian dies</text>
+      <text x="700" y="685">Menghitung Availability</text>
+      <text x="700" y="755">Menghitung jam produktif</text><text x="700" y="772">per mesin per tanggal</text>
+      <text x="700" y="847">Menghitung Performance</text>
+      <text x="700" y="917">Menghitung Quality dari jumlah</text><text x="700" y="934">produk baik dan produk cacat</text>
+      <text x="700" y="1005">Mengalikan ketiga faktor</text><text x="700" y="1022">menjadi nilai OEE</text>
+      <text x="700" y="1099">Menyajikan nilai OEE per mesin</text>
+    </g>
+
+    <g fill="none" stroke="#1b1b1b" stroke-width="1.2" marker-end="url(#a3)">
+      <line x1="210" y1="106" x2="210" y2="126"/>
+      <line x1="210" y1="188" x2="210" y2="214"/>
+      <line x1="335" y1="240" x2="536" y2="310"/>
+      <line x1="700" y1="348" x2="700" y2="374"/>
+      <line x1="700" y1="436" x2="700" y2="456"/>
+      <line x1="805" y1="500" x2="886" y2="500"/>
+      <line x1="700" y1="540" x2="700" y2="566"/>
+      <line x1="700" y1="628" x2="700" y2="654"/>
+      <line x1="700" y1="702" x2="700" y2="728"/>
+      <line x1="700" y1="790" x2="700" y2="816"/>
+      <line x1="700" y1="864" x2="700" y2="890"/>
+      <line x1="700" y1="952" x2="700" y2="978"/>
+      <line x1="700" y1="1040" x2="700" y2="1066"/>
+      <line x1="536" y1="1094" x2="339" y2="1188"/>
+      <polyline points="962,524 962,1160 343,1160"/>
+      <line x1="210" y1="1208" x2="210" y2="1241"/>
+    </g>
+
+    <g font-size="12.5" font-style="italic">
+      <text x="845" y="492">Tidak</text>
+      <text x="712" y="558">Ya</text>
+    </g>
+
+    <circle cx="210" cy="1258" r="13" fill="none" stroke="#1b1b1b" stroke-width="1.3"/>
+    <circle cx="210" cy="1258" r="7" fill="#1b1b1b"/>
+  </g>
+</svg>
+<div class="cap">Gambar 3.7 Activity Diagram Perhitungan dan Penyajian OEE</div>
+</div>
+
+<details>
+<summary>Sumber PlantUML — Gambar 3.7</summary>
+<pre>@startuml
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName Times New Roman
+skinparam defaultFontSize 13
+
+|Manajer|
+start
+:Memilih rentang tanggal
+yang akan ditampilkan;
+:Mengirim permintaan;
+|Sistem|
+:Menentukan hari kerja, mengecualikan
+hari Minggu dan hari libur;
+:Menghitung jam kerja terjadwal
+dari data master shift;
+if (Jam terjadwal lebih dari nol?) then (Ya)
+  :Menjumlahkan waktu henti perbaikan
+  dan waktu penggantian dies;
+  :Menghitung Availability;
+  :Menghitung jam produktif
+  per mesin per tanggal;
+  :Menghitung Performance;
+  :Menghitung Quality dari jumlah
+  produk baik dan produk cacat;
+  :Mengalikan ketiga faktor
+  menjadi nilai OEE;
+  :Menyajikan nilai OEE per mesin;
+else (Tidak)
+  :Menyatakan nilai
+  tidak tersedia;
+endif
+|Manajer|
+:Menerima dan membaca
+nilai OEE per mesin;
+stop
+@enduml</pre>
+</details>
+
+<h2>Gambar 3.8 — Sequence Diagram Pemasukan Laporan Hasil Produksi</h2>
+<p class="meta">Urutan interaksi pada UC-04. Pemeriksaan berlangsung di <i>Controller</i> sebelum data mencapai <i>Model</i>, sehingga masukan yang tidak sah tidak pernah menyentuh basis data.</p>
+
+<div class="fig">
+<svg viewBox="0 0 1040 680" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Sequence diagram pemasukan laporan hasil produksi">
+  <defs>
+    <marker id="s1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1b1b1b"/>
+    </marker>
+    <marker id="s1o" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10" fill="none" stroke="#1b1b1b" stroke-width="1.4"/>
+    </marker>
+  </defs>
+  <g font-family="Times New Roman,serif" fill="#1b1b1b">
+
+    <!-- aktor -->
+    <g stroke="#1b1b1b" stroke-width="1.4" fill="none" transform="translate(80,60)">
+      <circle cx="0" cy="-24" r="9" fill="#fff"/><line x1="0" y1="-15" x2="0" y2="6"/>
+      <line x1="-13" y1="-7" x2="13" y2="-7"/><line x1="0" y1="6" x2="-10" y2="24"/><line x1="0" y1="6" x2="10" y2="24"/>
+    </g>
+    <text x="80" y="103" text-anchor="middle" font-size="13">Staf Produksi</text>
+
+    <!-- objek -->
+    <g fill="#fff" stroke="#1b1b1b" stroke-width="1.3">
+      <rect x="200" y="52" width="150" height="42" rx="3"/>
+      <rect x="405" y="52" width="185" height="42" rx="3"/>
+      <rect x="645" y="52" width="185" height="42" rx="3"/>
+      <rect x="880" y="52" width="140" height="42" rx="3"/>
+    </g>
+    <g text-anchor="middle" font-size="13">
+      <text x="275" y="78">Antarmuka</text>
+      <text x="497" y="78">ProduksiController</text>
+      <text x="737" y="78">TransaksiProduksi</text>
+      <text x="950" y="78">Basis Data</text>
+    </g>
+
+    <!-- garis hayat -->
+    <g stroke="#1b1b1b" stroke-width="1" stroke-dasharray="5 5">
+      <line x1="80" y1="112" x2="80" y2="650"/>
+      <line x1="275" y1="94" x2="275" y2="650"/>
+      <line x1="497" y1="94" x2="497" y2="650"/>
+      <line x1="737" y1="94" x2="737" y2="650"/>
+      <line x1="950" y1="94" x2="950" y2="650"/>
+    </g>
+
+    <!-- pesan -->
+    <g stroke="#1b1b1b" stroke-width="1.2" fill="none" marker-end="url(#s1)">
+      <line x1="80" y1="150" x2="271" y2="150"/>
+      <line x1="275" y1="200" x2="493" y2="200"/>
+      <line x1="497" y1="330" x2="733" y2="330"/>
+      <line x1="737" y1="380" x2="946" y2="380"/>
+      <line x1="737" y1="480" x2="946" y2="480"/>
+    </g>
+    <!-- pesan balik, garis putus -->
+    <g stroke="#1b1b1b" stroke-width="1.2" fill="none" stroke-dasharray="6 4" marker-end="url(#s1o)">
+      <line x1="497" y1="285" x2="279" y2="285"/>
+      <line x1="950" y1="430" x2="741" y2="430"/>
+      <line x1="497" y1="540" x2="279" y2="540"/>
+      <line x1="275" y1="590" x2="84" y2="590"/>
+    </g>
+    <!-- pesan ke diri sendiri -->
+    <g stroke="#1b1b1b" stroke-width="1.2" fill="none">
+      <polyline points="497,240 560,240 560,262 501,262" marker-end="url(#s1)"/>
+    </g>
+
+    <g font-size="12.5">
+      <text x="175" y="144" text-anchor="middle">mengisi dan mengirim formulir</text>
+      <text x="386" y="194" text-anchor="middle">kirim data produksi</text>
+      <text x="568" y="236">periksa acuan data master</text>
+      <text x="568" y="251">dan kewajaran masukan</text>
+      <text x="388" y="279" text-anchor="middle">[tidak sah] pesan kesalahan</text>
+      <text x="615" y="324" text-anchor="middle">[sah] simpan data</text>
+      <text x="841" y="374" text-anchor="middle">simpan transaksi produksi</text>
+      <text x="845" y="424" text-anchor="middle">konfirmasi penyimpanan</text>
+      <text x="841" y="474" text-anchor="middle">perbarui akumulasi stroke</text>
+      <text x="388" y="534" text-anchor="middle">hasil penyimpanan</text>
+      <text x="179" y="584" text-anchor="middle">tampilkan konfirmasi</text>
+    </g>
+  </g>
+</svg>
+<div class="cap">Gambar 3.8 Sequence Diagram Pemasukan Laporan Hasil Produksi</div>
+</div>
+
+<details>
+<summary>Sumber PlantUML — Gambar 3.8</summary>
+<pre>@startuml
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName Times New Roman
+skinparam defaultFontSize 13
+skinparam sequenceMessageAlign left
+
+actor "Staf Produksi" as SP
+participant "Antarmuka" as UI
+participant "ProduksiController" as PC
+participant "TransaksiProduksi" as TP
+database "Basis Data" as DB
+
+SP -> UI : mengisi dan mengirim formulir
+UI -> PC : kirim data produksi
+PC -> PC : periksa acuan data master\ndan kewajaran masukan
+PC --> UI : [tidak sah] pesan kesalahan
+PC -> TP : [sah] simpan data
+TP -> DB : simpan transaksi produksi
+DB --> TP : konfirmasi penyimpanan
+TP -> DB : perbarui akumulasi stroke
+PC --> UI : hasil penyimpanan
+UI --> SP : tampilkan konfirmasi
+@enduml</pre>
+</details>
+
+<h2>Gambar 3.9 — Sequence Diagram Perhitungan OEE</h2>
+<p class="meta">Urutan interaksi pada UC-15. Seluruh perhitungan berlangsung di lapisan <i>Service</i>, bukan di <i>Controller</i>, sehingga satu definisi perhitungan dipakai setiap halaman yang memerlukannya. Memenuhi KNF-06.</p>
+
+<div class="fig">
+<svg viewBox="0 0 1080 720" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Sequence diagram perhitungan OEE">
+  <defs>
+    <marker id="s2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1b1b1b"/>
+    </marker>
+    <marker id="s2o" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10" fill="none" stroke="#1b1b1b" stroke-width="1.4"/>
+    </marker>
+  </defs>
+  <g font-family="Times New Roman,serif" fill="#1b1b1b">
+
+    <g stroke="#1b1b1b" stroke-width="1.4" fill="none" transform="translate(70,60)">
+      <circle cx="0" cy="-24" r="9" fill="#fff"/><line x1="0" y1="-15" x2="0" y2="6"/>
+      <line x1="-13" y1="-7" x2="13" y2="-7"/><line x1="0" y1="6" x2="-10" y2="24"/><line x1="0" y1="6" x2="10" y2="24"/>
+    </g>
+    <text x="70" y="103" text-anchor="middle" font-size="13">Manajer</text>
+
+    <g fill="#fff" stroke="#1b1b1b" stroke-width="1.3">
+      <rect x="170" y="52" width="180" height="42" rx="3"/>
+      <rect x="400" y="52" width="150" height="42" rx="3"/>
+      <rect x="600" y="52" width="215" height="42" rx="3"/>
+      <rect x="870" y="52" width="150" height="42" rx="3"/>
+    </g>
+    <g text-anchor="middle" font-size="13">
+      <text x="260" y="78">OverviewController</text>
+      <text x="475" y="78">OeeService</text>
+      <text x="707" y="78">KalenderKerjaService</text>
+      <text x="945" y="78">Basis Data</text>
+    </g>
+
+    <g stroke="#1b1b1b" stroke-width="1" stroke-dasharray="5 5">
+      <line x1="70" y1="112" x2="70" y2="690"/>
+      <line x1="260" y1="94" x2="260" y2="690"/>
+      <line x1="475" y1="94" x2="475" y2="690"/>
+      <line x1="707" y1="94" x2="707" y2="690"/>
+      <line x1="945" y1="94" x2="945" y2="690"/>
+    </g>
+
+    <g stroke="#1b1b1b" stroke-width="1.2" fill="none" marker-end="url(#s2)">
+      <line x1="70" y1="150" x2="256" y2="150"/>
+      <line x1="260" y1="200" x2="471" y2="200"/>
+      <line x1="475" y1="250" x2="703" y2="250"/>
+      <line x1="707" y1="300" x2="941" y2="300"/>
+      <line x1="475" y1="450" x2="941" y2="450"/>
+    </g>
+    <g stroke="#1b1b1b" stroke-width="1.2" fill="none" stroke-dasharray="6 4" marker-end="url(#s2o)">
+      <line x1="945" y1="350" x2="711" y2="350"/>
+      <line x1="707" y1="400" x2="479" y2="400"/>
+      <line x1="945" y1="500" x2="479" y2="500"/>
+      <line x1="475" y1="620" x2="264" y2="620"/>
+      <line x1="260" y1="665" x2="74" y2="665"/>
+    </g>
+    <g stroke="#1b1b1b" stroke-width="1.2" fill="none">
+      <polyline points="475,545 545,545 545,575 479,575" marker-end="url(#s2)"/>
+    </g>
+
+    <g font-size="12.5">
+      <text x="163" y="144" text-anchor="middle">meminta nilai OEE (rentang tanggal)</text>
+      <text x="366" y="194" text-anchor="middle">hitung OEE (rentang)</text>
+      <text x="589" y="244" text-anchor="middle">minta jam kerja terjadwal</text>
+      <text x="824" y="294" text-anchor="middle">ambil data master shift</text>
+      <text x="828" y="344" text-anchor="middle">data shift dan hari libur</text>
+      <text x="593" y="394" text-anchor="middle">jam kerja terjadwal</text>
+      <text x="708" y="444" text-anchor="middle">ambil data produksi, dandori, dan waktu henti</text>
+      <text x="712" y="494" text-anchor="middle">data transaksi</text>
+      <text x="553" y="541">hitung Availability, Performance,</text>
+      <text x="553" y="556">dan Quality per mesin</text>
+      <text x="370" y="614" text-anchor="middle">nilai OEE per mesin</text>
+      <text x="167" y="659" text-anchor="middle">tampilkan nilai OEE</text>
+    </g>
+  </g>
+</svg>
+<div class="cap">Gambar 3.9 Sequence Diagram Perhitungan OEE</div>
+</div>
+
+<details>
+<summary>Sumber PlantUML — Gambar 3.9</summary>
+<pre>@startuml
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName Times New Roman
+skinparam defaultFontSize 13
+skinparam sequenceMessageAlign left
+
+actor "Manajer" as MGR
+participant "OverviewController" as OC
+participant "OeeService" as OS
+participant "KalenderKerjaService" as KS
+database "Basis Data" as DB
+
+MGR -> OC : meminta nilai OEE (rentang tanggal)
+OC -> OS : hitung OEE (rentang)
+OS -> KS : minta jam kerja terjadwal
+KS -> DB : ambil data master shift
+DB --> KS : data shift dan hari libur
+KS --> OS : jam kerja terjadwal
+OS -> DB : ambil data produksi, dandori, dan waktu henti
+DB --> OS : data transaksi
+OS -> OS : hitung Availability, Performance,\ndan Quality per mesin
+OS --> OC : nilai OEE per mesin
+OC --> MGR : tampilkan nilai OEE
+@enduml</pre>
+</details>
+
+<h2>Gambar 3.10 — Sequence Diagram Penolakan Akses Peran Guest</h2>
+<p class="meta">Menggambarkan penerapan KNF-01 pada tingkat interaksi. <i>Controller</i> tidak pernah tercapai, sehingga penolakan tidak bergantung pada pemeriksaan di dalamnya.</p>
+
+<div class="fig">
+<svg viewBox="0 0 1000 620" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Sequence diagram penolakan akses peran guest">
+  <defs>
+    <marker id="s3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1b1b1b"/>
+    </marker>
+    <marker id="s3o" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10" fill="none" stroke="#1b1b1b" stroke-width="1.4"/>
+    </marker>
+  </defs>
+  <g font-family="Times New Roman,serif" fill="#1b1b1b">
+
+    <g stroke="#1b1b1b" stroke-width="1.4" fill="none" transform="translate(70,60)">
+      <circle cx="0" cy="-24" r="9" fill="#fff"/><line x1="0" y1="-15" x2="0" y2="6"/>
+      <line x1="-13" y1="-7" x2="13" y2="-7"/><line x1="0" y1="6" x2="-10" y2="24"/><line x1="0" y1="6" x2="10" y2="24"/>
+    </g>
+    <text x="70" y="103" text-anchor="middle" font-size="13">Pengguna Guest</text>
+
+    <g fill="#fff" stroke="#1b1b1b" stroke-width="1.3">
+      <rect x="230" y="52" width="190" height="42" rx="3"/>
+      <rect x="500" y="52" width="200" height="42" rx="3"/>
+      <rect x="790" y="52" width="180" height="42" rx="3"/>
+    </g>
+    <g text-anchor="middle" font-size="13">
+      <text x="325" y="78">Middleware Peran</text>
+      <text x="600" y="78">DenyGuestWrite</text>
+      <text x="880" y="78">Controller</text>
+    </g>
+
+    <g stroke="#1b1b1b" stroke-width="1" stroke-dasharray="5 5">
+      <line x1="70" y1="112" x2="70" y2="590"/>
+      <line x1="325" y1="94" x2="325" y2="590"/>
+      <line x1="600" y1="94" x2="600" y2="590"/>
+      <line x1="880" y1="94" x2="880" y2="590"/>
+    </g>
+
+    <!-- skenario 1 -->
+    <text x="40" y="140" font-size="12.5" font-style="italic">Lapis pertama</text>
+    <g stroke="#1b1b1b" stroke-width="1.2" fill="none" marker-end="url(#s3)">
+      <line x1="70" y1="175" x2="321" y2="175"/>
+      <polyline points="325,215 395,215 395,240 329,240"/>
+    </g>
+    <g stroke="#1b1b1b" stroke-width="1.2" fill="none" stroke-dasharray="6 4" marker-end="url(#s3o)">
+      <line x1="325" y1="285" x2="74" y2="285"/>
+    </g>
+
+    <!-- skenario 2 -->
+    <text x="40" y="335" font-size="12.5" font-style="italic">Lapis kedua</text>
+    <g stroke="#1b1b1b" stroke-width="1.2" fill="none" marker-end="url(#s3)">
+      <line x1="70" y1="375" x2="321" y2="375"/>
+      <line x1="325" y1="420" x2="596" y2="420"/>
+      <polyline points="600,460 670,460 670,485 604,485"/>
+    </g>
+    <g stroke="#1b1b1b" stroke-width="1.2" fill="none" stroke-dasharray="6 4" marker-end="url(#s3o)">
+      <line x1="600" y1="530" x2="74" y2="530"/>
+    </g>
+
+    <g font-size="12.5">
+      <text x="195" y="169" text-anchor="middle">membuka halaman pemasukan data</text>
+      <text x="403" y="211">periksa peran terhadap</text>
+      <text x="403" y="226">daftar peran berhak</text>
+      <text x="199" y="279" text-anchor="middle">tolak akses, alihkan ke halaman awal</text>
+      <text x="195" y="369" text-anchor="middle">kirim permintaan pengubahan data</text>
+      <text x="460" y="414" text-anchor="middle">teruskan permintaan</text>
+      <text x="678" y="456">periksa metode permintaan</text>
+      <text x="678" y="471">dan peran pengirim</text>
+      <text x="337" y="524" text-anchor="middle">tolak permintaan pengubahan data</text>
+    </g>
+
+    <text x="880" y="575" text-anchor="middle" font-size="12" font-style="italic">tidak pernah tercapai</text>
+  </g>
+</svg>
+<div class="cap">Gambar 3.10 Sequence Diagram Penolakan Akses Peran Guest</div>
+</div>
+
+<details>
+<summary>Sumber PlantUML — Gambar 3.10</summary>
+<pre>@startuml
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName Times New Roman
+skinparam defaultFontSize 13
+skinparam sequenceMessageAlign left
+
+actor "Pengguna Guest" as GST
+participant "Middleware Peran" as MW
+participant "DenyGuestWrite" as DGW
+participant "Controller" as CTRL
+
+group Lapis pertama
+  GST -> MW : membuka halaman pemasukan data
+  MW -> MW : periksa peran terhadap\ndaftar peran berhak
+  MW --> GST : tolak akses, alihkan ke halaman awal
+end
+
+group Lapis kedua
+  GST -> MW : kirim permintaan pengubahan data
+  MW -> DGW : teruskan permintaan
+  DGW -> DGW : periksa metode permintaan\ndan peran pengirim
+  DGW --> GST : tolak permintaan pengubahan data
+end
+
+note over CTRL : tidak pernah tercapai
+@enduml</pre>
+</details>
+
+<h2>Gambar 3.11 — Class Diagram Lapisan Model</h2>
+<p class="meta">Susunan kelas penyimpanan beserta relasinya. Memenuhi KF-01 dan KF-03. Kelas master di kolom kiri, kelas transaksi di kolom tengah, kelas rincian produk cacat di kolom kanan.</p>
+
+<div class="fig">
+<svg viewBox="0 0 1320 1040" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Class diagram lapisan model">
+  <g font-family="Times New Roman,serif" fill="#1b1b1b">
+    <g stroke="#1b1b1b" stroke-width="1.1" fill="none">
+    <line x1="150" y1="121" x2="150" y2="176"/>
+    <line x1="150" y1="708" x2="150" y2="768"/>
+    <line x1="260" y1="190" x2="530" y2="88"/>
+    <line x1="260" y1="206" x2="530" y2="238"/>
+    <line x1="260" y1="222" x2="530" y2="380"/>
+    <line x1="260" y1="238" x2="530" y2="650"/>
+    <line x1="260" y1="254" x2="530" y2="898"/>
+    <line x1="260" y1="340" x2="530" y2="100"/>
+    <line x1="260" y1="360" x2="530" y2="250"/>
+    <line x1="260" y1="380" x2="530" y2="515"/>
+    <line x1="260" y1="400" x2="530" y2="778"/>
+    <line x1="260" y1="490" x2="530" y2="112"/>
+    <line x1="260" y1="506" x2="530" y2="262"/>
+    <line x1="260" y1="522" x2="530" y2="392"/>
+    <line x1="260" y1="538" x2="530" y2="790"/>
+    <line x1="260" y1="554" x2="530" y2="910"/>
+    <line x1="260" y1="632" x2="530" y2="124"/>
+    <line x1="260" y1="652" x2="530" y2="274"/>
+    <line x1="260" y1="672" x2="530" y2="404"/>
+    <line x1="260" y1="940" x2="530" y2="282"/>
+    <line x1="810" y1="100" x2="1050" y2="96"/>
+    <line x1="810" y1="400" x2="1050" y2="520"/>
+    <line x1="1165" y1="300" x2="1165" y2="126"/>
+    <line x1="1165" y1="381" x2="1165" y2="490"/>
+    </g>
+    <rect x="40" y="40" width="220" height="81" fill="#fff" stroke="#1b1b1b" stroke-width="1.3"/>
+    <line x1="40" y1="66" x2="260" y2="66" stroke="#1b1b1b" stroke-width="1.3"/>
+    <text x="150.0" y="58" text-anchor="middle" font-size="12.5" font-weight="700">MasterPart</text>
+    <text x="48" y="83" font-size="11.5">- part_no</text>
+    <text x="48" y="98" font-size="11.5">- part_name</text>
+    <text x="48" y="113" font-size="11.5">- customer</text>
+    <rect x="40" y="176" width="220" height="81" fill="#fff" stroke="#1b1b1b" stroke-width="1.3"/>
+    <line x1="40" y1="202" x2="260" y2="202" stroke="#1b1b1b" stroke-width="1.3"/>
+    <text x="150.0" y="194" text-anchor="middle" font-size="12.5" font-weight="700">MasterPartProses</text>
+    <text x="48" y="219" font-size="11.5">- id_part</text>
+    <text x="48" y="234" font-size="11.5">- nama_proses</text>
+    <text x="48" y="249" font-size="11.5">- sph_standar_produksi</text>
+    <rect x="40" y="326" width="220" height="81" fill="#fff" stroke="#1b1b1b" stroke-width="1.3"/>
+    <line x1="40" y1="352" x2="260" y2="352" stroke="#1b1b1b" stroke-width="1.3"/>
+    <text x="150.0" y="344" text-anchor="middle" font-size="12.5" font-weight="700">MasterMesin</text>
+    <text x="48" y="369" font-size="11.5">- id_mesin</text>
+    <text x="48" y="384" font-size="11.5">- nama_mesin</text>
+    <text x="48" y="399" font-size="11.5">- kapasitas_max_stroke</text>
+    <rect x="40" y="476" width="220" height="81" fill="#fff" stroke="#1b1b1b" stroke-width="1.3"/>
+    <line x1="40" y1="502" x2="260" y2="502" stroke="#1b1b1b" stroke-width="1.3"/>
+    <text x="150.0" y="494" text-anchor="middle" font-size="12.5" font-weight="700">MasterKaryawan</text>
+    <text x="48" y="519" font-size="11.5">- nik</text>
+    <text x="48" y="534" font-size="11.5">- nama_karyawan</text>
+    <text x="48" y="549" font-size="11.5">- departemen</text>
+    <rect x="40" y="612" width="220" height="96" fill="#fff" stroke="#1b1b1b" stroke-width="1.3"/>
+    <line x1="40" y1="638" x2="260" y2="638" stroke="#1b1b1b" stroke-width="1.3"/>
+    <text x="150.0" y="630" text-anchor="middle" font-size="12.5" font-weight="700">MasterShift</text>
+    <text x="48" y="655" font-size="11.5">- nama_shift</text>
+    <text x="48" y="670" font-size="11.5">- jam_start</text>
+    <text x="48" y="685" font-size="11.5">- jam_finish</text>
+    <text x="48" y="700" font-size="11.5">- dihitung_availability</text>
+    <rect x="40" y="768" width="220" height="81" fill="#fff" stroke="#1b1b1b" stroke-width="1.3"/>
+    <line x1="40" y1="794" x2="260" y2="794" stroke="#1b1b1b" stroke-width="1.3"/>
+    <text x="150.0" y="786" text-anchor="middle" font-size="12.5" font-weight="700">MasterShiftIstirahat</text>
+    <text x="48" y="811" font-size="11.5">- kelompok_hari</text>
+    <text x="48" y="826" font-size="11.5">- jam_start</text>
+    <text x="48" y="841" font-size="11.5">- jam_finish</text>
+    <rect x="40" y="904" width="220" height="81" fill="#fff" stroke="#1b1b1b" stroke-width="1.3"/>
+    <line x1="40" y1="930" x2="260" y2="930" stroke="#1b1b1b" stroke-width="1.3"/>
+    <text x="150.0" y="922" text-anchor="middle" font-size="12.5" font-weight="700">MasterLosstime</text>
+    <text x="48" y="947" font-size="11.5">- kode</text>
+    <text x="48" y="962" font-size="11.5">- jenis_losstime</text>
+    <text x="48" y="977" font-size="11.5">- std_menit_default</text>
+    <rect x="530" y="40" width="280" height="96" fill="#fff" stroke="#1b1b1b" stroke-width="1.3"/>
+    <line x1="530" y1="66" x2="810" y2="66" stroke="#1b1b1b" stroke-width="1.3"/>
+    <text x="670.0" y="58" text-anchor="middle" font-size="12.5" font-weight="700">TransaksiProduksi</text>
+    <text x="538" y="83" font-size="11.5">- tanggal_produksi</text>
+    <text x="538" y="98" font-size="11.5">- jam_start / jam_finish</text>
+    <text x="538" y="113" font-size="11.5">- qty_aktual</text>
+    <text x="538" y="128" font-size="11.5">- qty_ng</text>
+    <rect x="530" y="190" width="280" height="96" fill="#fff" stroke="#1b1b1b" stroke-width="1.3"/>
+    <line x1="530" y1="216" x2="810" y2="216" stroke="#1b1b1b" stroke-width="1.3"/>
+    <text x="670.0" y="208" text-anchor="middle" font-size="12.5" font-weight="700">TransaksiDandoriRincian</text>
+    <text x="538" y="233" font-size="11.5">- tanggal</text>
+    <text x="538" y="248" font-size="11.5">- id_losstime</text>
+    <text x="538" y="263" font-size="11.5">- actual_menit</text>
+    <text x="538" y="278" font-size="11.5">- over_menit</text>
+    <rect x="530" y="340" width="280" height="81" fill="#fff" stroke="#1b1b1b" stroke-width="1.3"/>
+    <line x1="530" y1="366" x2="810" y2="366" stroke="#1b1b1b" stroke-width="1.3"/>
+    <text x="670.0" y="358" text-anchor="middle" font-size="12.5" font-weight="700">TransaksiQc</text>
+    <text x="538" y="383" font-size="11.5">- tgl_pengecekan</text>
+    <text x="538" y="398" font-size="11.5">- qty_ok</text>
+    <text x="538" y="413" font-size="11.5">- qty_ng</text>
+    <rect x="530" y="475" width="280" height="81" fill="#fff" stroke="#1b1b1b" stroke-width="1.3"/>
+    <line x1="530" y1="501" x2="810" y2="501" stroke="#1b1b1b" stroke-width="1.3"/>
+    <text x="670.0" y="493" text-anchor="middle" font-size="12.5" font-weight="700">TransaksiBreakdownMesin</text>
+    <text x="538" y="518" font-size="11.5">- tanggal_breakdown</text>
+    <text x="538" y="533" font-size="11.5">- repair_time</text>
+    <text x="538" y="548" font-size="11.5">- total_downtime</text>
+    <rect x="530" y="610" width="280" height="81" fill="#fff" stroke="#1b1b1b" stroke-width="1.3"/>
+    <line x1="530" y1="636" x2="810" y2="636" stroke="#1b1b1b" stroke-width="1.3"/>
+    <text x="670.0" y="628" text-anchor="middle" font-size="12.5" font-weight="700">TransaksiBreakdownDies</text>
+    <text x="538" y="653" font-size="11.5">- tanggal_breakdown</text>
+    <text x="538" y="668" font-size="11.5">- repair_time</text>
+    <text x="538" y="683" font-size="11.5">- total_downtime</text>
+    <rect x="530" y="745" width="280" height="66" fill="#fff" stroke="#1b1b1b" stroke-width="1.3"/>
+    <line x1="530" y1="771" x2="810" y2="771" stroke="#1b1b1b" stroke-width="1.3"/>
+    <text x="670.0" y="763" text-anchor="middle" font-size="12.5" font-weight="700">MesinPreventiveLog</text>
+    <text x="538" y="788" font-size="11.5">- tanggal_preventive</text>
+    <text x="538" y="803" font-size="11.5">- stroke_at_preventive</text>
+    <rect x="530" y="865" width="280" height="66" fill="#fff" stroke="#1b1b1b" stroke-width="1.3"/>
+    <line x1="530" y1="891" x2="810" y2="891" stroke="#1b1b1b" stroke-width="1.3"/>
+    <text x="670.0" y="883" text-anchor="middle" font-size="12.5" font-weight="700">DiesPreventiveLog</text>
+    <text x="538" y="908" font-size="11.5">- tanggal_preventive</text>
+    <text x="538" y="923" font-size="11.5">- stroke_at_preventive</text>
+    <rect x="1050" y="60" width="230" height="66" fill="#fff" stroke="#1b1b1b" stroke-width="1.3"/>
+    <line x1="1050" y1="86" x2="1280" y2="86" stroke="#1b1b1b" stroke-width="1.3"/>
+    <text x="1165.0" y="78" text-anchor="middle" font-size="12.5" font-weight="700">TransaksiProduksiNg</text>
+    <text x="1058" y="103" font-size="11.5">- id_jenis_ng</text>
+    <text x="1058" y="118" font-size="11.5">- qty</text>
+    <rect x="1050" y="300" width="230" height="81" fill="#fff" stroke="#1b1b1b" stroke-width="1.3"/>
+    <line x1="1050" y1="326" x2="1280" y2="326" stroke="#1b1b1b" stroke-width="1.3"/>
+    <text x="1165.0" y="318" text-anchor="middle" font-size="12.5" font-weight="700">MasterJenisNg</text>
+    <text x="1058" y="343" font-size="11.5">- kode</text>
+    <text x="1058" y="358" font-size="11.5">- nama_ng</text>
+    <text x="1058" y="373" font-size="11.5">- kategori</text>
+    <rect x="1050" y="490" width="230" height="66" fill="#fff" stroke="#1b1b1b" stroke-width="1.3"/>
+    <line x1="1050" y1="516" x2="1280" y2="516" stroke="#1b1b1b" stroke-width="1.3"/>
+    <text x="1165.0" y="508" text-anchor="middle" font-size="12.5" font-weight="700">TransaksiQcNg</text>
+    <text x="1058" y="533" font-size="11.5">- id_jenis_ng</text>
+    <text x="1058" y="548" font-size="11.5">- qty</text>
+    <text x="40" y="1000" font-size="11.5" font-style="italic">Seluruh relasi bersifat satu ke banyak (1 &#8212; *) dengan arah dari kelas master ke kelas transaksi.</text>
+    <text x="40" y="1016" font-size="11.5" font-style="italic">Atribut dibatasi pada yang dipakai perhitungan; kolom kunci tamu, kolom penelusuran, dan penghapusan bertanda tidak digambarkan.</text>
+  </g>
+</svg><div class="cap">Gambar 3.11 Class Diagram Lapisan Model</div>
+</div>
+
+<h2>Gambar 3.12 — Class Diagram Lapisan Service</h2>
+<p class="meta">Pembagian tanggung jawab perhitungan beserta ketergantungan antarkelas. Memenuhi KNF-06. Disusun berlapis: kelas pada lapis atas bersandar pada kelas di bawahnya, dan tidak berlaku sebaliknya.</p>
+
+<div class="fig">
+<svg viewBox="0 0 1180 625" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Class diagram lapisan service">
+  <defs>
+    <marker id="cd1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10" fill="none" stroke="#1b1b1b" stroke-width="1.4"/>
+    </marker>
+  </defs>
+  <g font-family="Times New Roman,serif" fill="#1b1b1b">
+    <g stroke="#1b1b1b" stroke-width="1.1" fill="none" stroke-dasharray="7 5" marker-end="url(#cd1)">
+      <line x1="590" y1="100" x2="330" y2="196"/>
+      <line x1="590" y1="100" x2="590" y2="196"/>
+      <line x1="590" y1="100" x2="850" y2="196"/>
+      <line x1="640" y1="100" x2="1010" y2="336"/>
+      <line x1="540" y1="100" x2="150" y2="336"/>
+      <line x1="300" y1="256" x2="230" y2="336"/>
+      <line x1="560" y1="256" x2="330" y2="336"/>
+      <line x1="620" y1="256" x2="520" y2="336"/>
+      <line x1="880" y1="256" x2="720" y2="336"/>
+      <line x1="330" y1="396" x2="500" y2="486"/>
+      <line x1="560" y1="396" x2="560" y2="486"/>
+      <line x1="720" y1="396" x2="620" y2="486"/>
+      <line x1="150" y1="396" x2="480" y2="486"/>
+      <line x1="1010" y1="396" x2="640" y2="486"/>
+    </g>
+    <g font-size="11.5" font-style="italic">
+      <text x="40" y="72">Lapis pemakai</text>
+      <text x="40" y="228">Lapis penyaji</text>
+      <text x="40" y="368">Lapis perhitungan</text>
+      <text x="40" y="518">Lapis dasar</text>
+    </g>
+    <rect x="490" y="40" width="200" height="60" rx="4" fill="#fff" stroke="#1b1b1b" stroke-width="1.3"/><text x="590.0" y="63" text-anchor="middle" font-size="12.5" font-weight="700">ChatbotTools</text><text x="590.0" y="81" text-anchor="middle" font-size="11">perkakas chatbot</text>
+    <rect x="240" y="196" width="180" height="60" rx="4" fill="#fff" stroke="#1b1b1b" stroke-width="1.3"/><text x="330.0" y="219" text-anchor="middle" font-size="12.5" font-weight="700">OeeService</text><text x="330.0" y="237" text-anchor="middle" font-size="11">OEE per mesin</text>
+    <rect x="490" y="196" width="200" height="60" rx="4" fill="#fff" stroke="#1b1b1b" stroke-width="1.3"/><text x="590.0" y="219" text-anchor="middle" font-size="12.5" font-weight="700">OverviewService</text><text x="590.0" y="237" text-anchor="middle" font-size="11">angka halaman Overview</text>
+    <rect x="760" y="196" width="240" height="60" rx="4" fill="#fff" stroke="#1b1b1b" stroke-width="1.3"/><text x="880.0" y="219" text-anchor="middle" font-size="12.5" font-weight="700">SphTeoretisService</text><text x="880.0" y="237" text-anchor="middle" font-size="11">kandidat SPH teoretis</text>
+    <rect x="120" y="336" width="220" height="60" rx="4" fill="#fff" stroke="#1b1b1b" stroke-width="1.3"/><text x="230.0" y="359" text-anchor="middle" font-size="12.5" font-weight="700">MaintenanceDashboard</text><text x="230.0" y="377" text-anchor="middle" font-size="11">Availability &amp; OEE mesin</text>
+    <rect x="400" y="336" width="240" height="60" rx="4" fill="#fff" stroke="#1b1b1b" stroke-width="1.3"/><text x="520.0" y="359" text-anchor="middle" font-size="12.5" font-weight="700">MaintenanceDiesDashboard</text><text x="520.0" y="377" text-anchor="middle" font-size="11">Availability dies</text>
+    <rect x="700" y="336" width="180" height="60" rx="4" fill="#fff" stroke="#1b1b1b" stroke-width="1.3"/><text x="790.0" y="359" text-anchor="middle" font-size="12.5" font-weight="700">NgDashboardService</text><text x="790.0" y="377" text-anchor="middle" font-size="11">rekap NG</text>
+    <rect x="910" y="336" width="200" height="60" rx="4" fill="#fff" stroke="#1b1b1b" stroke-width="1.3"/><text x="1010.0" y="359" text-anchor="middle" font-size="12.5" font-weight="700">NgListService</text><text x="1010.0" y="377" text-anchor="middle" font-size="11">daftar NG</text>
+    <rect x="430" y="486" width="320" height="70" rx="4" fill="#fff" stroke="#1b1b1b" stroke-width="1.3"/><text x="590.0" y="509" text-anchor="middle" font-size="12.5" font-weight="700">KalenderKerjaService</text><text x="590.0" y="527" text-anchor="middle" font-size="11">hari kerja &#183; jam terjadwal &#183; jam produktif</text>
+    <text x="590" y="605" text-anchor="middle" font-size="11.5" font-style="italic">Panah putus menyatakan ketergantungan. Lima service bersandar pada KalenderKerjaService.</text>
+  </g>
+</svg><div class="cap">Gambar 3.12 Class Diagram Lapisan Service</div>
+</div>
+
+<h2>Gambar 3.13 &#8212; Deployment Diagram Penerapan Sistem</h2>
+<p class="meta">Melengkapi 3.6.5. Menggambarkan penempatan artefak pada simpul perangkat keras beserta jalur komunikasinya, dari komputer pengembang sampai peramban pemakai.</p>
+
+<div class="fig">
+<svg viewBox="0 0 1210 640" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Deployment diagram penerapan sistem">
+  <defs>
+    <marker id="dp1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1b1b1b"/>
+    </marker>
+  </defs>
+  <g font-family="Times New Roman,serif" fill="#1b1b1b">
+    <g stroke="#1b1b1b" stroke-width="1.2" fill="none">
+    <polyline points="300,91 380,91" marker-end="url(#dp1)"/>
+    <polyline points="500,142 500,190" marker-end="url(#dp1)"/>
+    <polyline points="620,285 690,285" marker-end="url(#dp1)"/>
+    <polyline points="300,478 690,420" marker-end="url(#dp1)"/>
+    <polyline points="910,300 910,330" marker-end="url(#dp1)"/>
+    </g>
+    <rect x="40" y="40" width="260" height="132" fill="#fff" stroke="#1b1b1b" stroke-width="1.3"/>
+    <text x="170.0" y="57" text-anchor="middle" font-size="10.5" font-style="italic">&#171;perangkat&#187;</text>
+    <text x="170.0" y="73" text-anchor="middle" font-size="12.5" font-weight="700">Komputer Pengembang</text>
+    <line x1="40" y1="83" x2="300" y2="83" stroke="#1b1b1b" stroke-width="1.3"/>
+    <text x="52" y="101" font-size="11">XAMPP: PHP 8.5.4 dan MySQL</text>
+    <text x="52" y="117" font-size="11">Salinan kerja repositori Git</text>
+    <text x="52" y="133" font-size="11">Basis data pengembangan lokal</text>
+    <rect x="380" y="40" width="240" height="102" fill="#fff" stroke="#1b1b1b" stroke-width="1.3"/>
+    <text x="500.0" y="57" text-anchor="middle" font-size="10.5" font-style="italic">&#171;peladen&#187;</text>
+    <text x="500.0" y="73" text-anchor="middle" font-size="12.5" font-weight="700">GitHub</text>
+    <line x1="380" y1="83" x2="620" y2="83" stroke="#1b1b1b" stroke-width="1.3"/>
+    <text x="392" y="101" font-size="11">Repositori kode, cabang main</text>
+    <text x="392" y="117" font-size="11">Penyimpan secret penerapan</text>
+    <rect x="380" y="190" width="240" height="190" fill="#fff" stroke="#1b1b1b" stroke-width="1.3"/>
+    <text x="500.0" y="207" text-anchor="middle" font-size="10.5" font-style="italic">&#171;lingkungan eksekusi&#187;</text>
+    <text x="500.0" y="223" text-anchor="middle" font-size="12.5" font-weight="700">GitHub Actions</text>
+    <line x1="380" y1="233" x2="620" y2="233" stroke="#1b1b1b" stroke-width="1.3"/>
+    <text x="392" y="251" font-size="11">Runner ubuntu-latest</text>
+    <text x="392" y="267" font-size="11">PHP 8.4 dan Composer</text>
+    <text x="392" y="283" font-size="11">Tugas 1: gerbang pengujian</text>
+    <text x="392" y="299" font-size="11">762 pengujian, SQLite dalam memori</text>
+    <text x="392" y="315" font-size="11">Tugas 2: gerbang sintaksis</text>
+    <text x="392" y="331" font-size="11">dan pengiriman ke peladen</text>
+    <rect x="690" y="40" width="480" height="400" fill="#fff" stroke="#1b1b1b" stroke-width="1.3"/>
+    <text x="930.0" y="57" text-anchor="middle" font-size="10.5" font-style="italic">&#171;perangkat&#187;</text>
+    <text x="930.0" y="73" text-anchor="middle" font-size="12.5" font-weight="700">Peladen Hostinger</text>
+    <line x1="690" y1="83" x2="1170" y2="83" stroke="#1b1b1b" stroke-width="1.3"/>
+    <text x="702" y="101" font-size="11">optima.kencomanufactur.co.id</text>
+    <rect x="710" y="110" width="440" height="190" fill="#fff" stroke="#1b1b1b" stroke-width="1.1"/>
+    <text x="930.0" y="127" text-anchor="middle" font-size="10.5" font-style="italic">&#171;lingkungan eksekusi&#187;</text>
+    <text x="930.0" y="143" text-anchor="middle" font-size="12.5" font-weight="700">Penafsir PHP 8.4</text>
+    <line x1="710" y1="153" x2="1150" y2="153" stroke="#1b1b1b" stroke-width="1.1"/>
+    <text x="722" y="171" font-size="10.5">Berkas penafsir /opt/alt/php84/usr/bin/php</text>
+    <text x="722" y="187" font-size="10.5"></text>
+    <text x="722" y="203" font-size="10.5">Artefak yang ditempatkan:</text>
+    <text x="722" y="219" font-size="10.5">Aplikasi Laravel 13 pada public_html</text>
+    <text x="722" y="235" font-size="10.5">Direktori vendor, dibangun di peladen</text>
+    <text x="722" y="251" font-size="10.5">Berkas .env dan direktori storage, persisten</text>
+    <rect x="710" y="330" width="440" height="92" fill="#fff" stroke="#1b1b1b" stroke-width="1.1"/>
+    <text x="930.0" y="347" text-anchor="middle" font-size="10.5" font-style="italic">&#171;lingkungan eksekusi&#187;</text>
+    <text x="930.0" y="363" text-anchor="middle" font-size="12.5" font-weight="700">MySQL</text>
+    <line x1="710" y1="373" x2="1150" y2="373" stroke="#1b1b1b" stroke-width="1.1"/>
+    <text x="722" y="391" font-size="10.5">Basis data optima_db</text>
+    <text x="722" y="407" font-size="10.5">Menyimpan pula sesi, tembolok, dan antrean</text>
+    <rect x="40" y="430" width="260" height="92" fill="#fff" stroke="#1b1b1b" stroke-width="1.3"/>
+    <text x="170.0" y="447" text-anchor="middle" font-size="10.5" font-style="italic">&#171;perangkat&#187;</text>
+    <text x="170.0" y="463" text-anchor="middle" font-size="12.5" font-weight="700">Komputer Pengguna</text>
+    <line x1="40" y1="473" x2="300" y2="473" stroke="#1b1b1b" stroke-width="1.3"/>
+    <text x="52" y="491" font-size="11">Peramban web</text>
+    <text x="52" y="507" font-size="11">Enam peran pemakai sistem</text>
+    <text x="340" y="84" text-anchor="middle" font-size="10.5" font-style="italic">&#171;git push&#187;</text>
+    <text x="508" y="172" text-anchor="start" font-size="10.5" font-style="italic">&#171;pemicu alur kerja&#187;</text>
+    <text x="655" y="278" text-anchor="middle" font-size="10.5" font-style="italic">&#171;SSH&#187;</text>
+    <text x="470" y="470" text-anchor="middle" font-size="10.5" font-style="italic">&#171;HTTPS&#187;</text>
+    <text x="918" y="322" text-anchor="start" font-size="10.5" font-style="italic">&#171;PDO&#187;</text>
+    <text x="40" y="575" font-size="11" font-style="italic">Anak panah dari GitHub Actions ke peladen mewakili empat perintah berurutan: pengiriman kode sumber melalui rsync, pemasangan pustaka pihak ketiga</text>
+    <text x="40" y="591" font-size="11" font-style="italic">dengan Composer, penerapan migrasi terpilih, dan penyuntingan berkas .env. Direktori vendor, direktori storage, dan berkas .env dikecualikan dari</text>
+    <text x="40" y="607" font-size="11" font-style="italic">pengiriman. Direktori vendor dibangun di peladen, sedangkan storage dan .env dipertahankan agar unggahan pengguna dan konfigurasi tidak tertimpa.</text>
+  </g>
+</svg><div class="cap">Gambar 3.13 Deployment Diagram Penerapan Sistem</div>
+</div>
+
+<h2>Gambar 3.14 &#8212; Model Data Perhitungan OEE</h2>
+<p class="meta">Melengkapi 3.6.6. Cakupannya dibatasi pada tabel yang nilainya masuk ke dalam perhitungan Availability, Performance, dan Quality. Tiga belas tabel dari dua puluh tiga tabel bisnis. Tabel master di kolom kiri dan kanan, tabel transaksi di kolom tengah.</p>
+
+<div class="fig">
+<svg viewBox="0 0 1380 840" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Model data perhitungan Overall Equipment Effectiveness">
+  <g font-family="Times New Roman,serif" fill="#1b1b1b">
+    <g stroke="#1b1b1b" stroke-width="1.1" fill="none">
+    <polyline points="165,162 165,200"/>
+    <polyline points="290,260 390,152"/>
+    <polyline points="290,300 390,418"/>
+    <polyline points="290,400 390,137"/>
+    <polyline points="290,450 390,404"/>
+    <polyline points="290,500 390,628"/>
+    <polyline points="290,600 390,122"/>
+    <polyline points="290,650 390,392"/>
+    <polyline points="790,110 720,107"/>
+    <polyline points="790,160 720,377"/>
+    <polyline points="915,222 915,262"/>
+    <polyline points="790,470 720,437"/>
+    <polyline points="555,40 555,22 1215,22 1215,40"/>
+    <polyline points="1215,180 1215,132"/>
+    <polyline points="1090,380 760,380 760,242 720,242"/>
+    <polyline points="1090,400 745,400 745,497 720,497"/>
+    </g>
+    <rect x="40" y="40" width="250" height="122" fill="#fff" stroke="#1b1b1b" stroke-width="1.3"/>
+    <line x1="40" y1="66" x2="290" y2="66" stroke="#1b1b1b" stroke-width="1.3"/>
+    <text x="165.0" y="58" text-anchor="middle" font-size="12.5" font-weight="700">master_part</text>
+    <text x="48" y="77" font-size="9" font-weight="700" fill="#5c5c5c">PK</text>
+    <text x="76" y="77" font-size="11">id</text>
+    <text x="48" y="92" font-size="9" font-weight="700" fill="#5c5c5c">UQ</text>
+    <text x="76" y="92" font-size="11">part_no</text>
+    <text x="76" y="107" font-size="11">part_name</text>
+    <text x="76" y="122" font-size="11">customer</text>
+    <text x="76" y="137" font-size="11">tanggal_instalasi</text>
+    <text x="76" y="152" font-size="11">deleted_at</text>
+    <rect x="40" y="200" width="250" height="137" fill="#fff" stroke="#1b1b1b" stroke-width="1.3"/>
+    <line x1="40" y1="226" x2="290" y2="226" stroke="#1b1b1b" stroke-width="1.3"/>
+    <text x="165.0" y="218" text-anchor="middle" font-size="12.5" font-weight="700">master_part_proses</text>
+    <text x="48" y="237" font-size="9" font-weight="700" fill="#5c5c5c">PK</text>
+    <text x="76" y="237" font-size="11">id</text>
+    <text x="48" y="252" font-size="9" font-weight="700" fill="#5c5c5c">FK</text>
+    <text x="76" y="252" font-size="11">id_part</text>
+    <text x="76" y="267" font-size="11">id_proses</text>
+    <text x="76" y="282" font-size="11">nama_proses</text>
+    <text x="76" y="297" font-size="11">sph_standar_produksi</text>
+    <text x="76" y="312" font-size="11">std_setting_dies_menit</text>
+    <text x="76" y="327" font-size="11">deleted_at</text>
+    <rect x="40" y="375" width="250" height="152" fill="#fff" stroke="#1b1b1b" stroke-width="1.3"/>
+    <line x1="40" y1="401" x2="290" y2="401" stroke="#1b1b1b" stroke-width="1.3"/>
+    <text x="165.0" y="393" text-anchor="middle" font-size="12.5" font-weight="700">master_mesin</text>
+    <text x="48" y="412" font-size="9" font-weight="700" fill="#5c5c5c">PK</text>
+    <text x="76" y="412" font-size="11">id</text>
+    <text x="48" y="427" font-size="9" font-weight="700" fill="#5c5c5c">UQ</text>
+    <text x="76" y="427" font-size="11">id_mesin</text>
+    <text x="76" y="442" font-size="11">nama_mesin</text>
+    <text x="76" y="457" font-size="11">line</text>
+    <text x="76" y="472" font-size="11">tipe_mesin</text>
+    <text x="76" y="487" font-size="11">kapasitas_max_stroke</text>
+    <text x="76" y="502" font-size="11">tanggal_instalasi</text>
+    <text x="76" y="517" font-size="11">deleted_at</text>
+    <rect x="40" y="565" width="250" height="122" fill="#fff" stroke="#1b1b1b" stroke-width="1.3"/>
+    <line x1="40" y1="591" x2="290" y2="591" stroke="#1b1b1b" stroke-width="1.3"/>
+    <text x="165.0" y="583" text-anchor="middle" font-size="12.5" font-weight="700">master_karyawan</text>
+    <text x="48" y="602" font-size="9" font-weight="700" fill="#5c5c5c">PK</text>
+    <text x="76" y="602" font-size="11">id</text>
+    <text x="48" y="617" font-size="9" font-weight="700" fill="#5c5c5c">UQ</text>
+    <text x="76" y="617" font-size="11">nik</text>
+    <text x="76" y="632" font-size="11">nama_karyawan</text>
+    <text x="76" y="647" font-size="11">departemen</text>
+    <text x="76" y="662" font-size="11">is_aktif</text>
+    <text x="76" y="677" font-size="11">deleted_at</text>
+    <rect x="390" y="40" width="330" height="227" fill="#fff" stroke="#1b1b1b" stroke-width="1.3"/>
+    <line x1="390" y1="66" x2="720" y2="66" stroke="#1b1b1b" stroke-width="1.3"/>
+    <text x="555.0" y="58" text-anchor="middle" font-size="12.5" font-weight="700">transaksi_produksi</text>
+    <text x="398" y="77" font-size="9" font-weight="700" fill="#5c5c5c">PK</text>
+    <text x="426" y="77" font-size="11">id</text>
+    <text x="426" y="92" font-size="11">tanggal_produksi</text>
+    <text x="398" y="107" font-size="9" font-weight="700" fill="#5c5c5c">FK</text>
+    <text x="426" y="107" font-size="11">id_shift</text>
+    <text x="398" y="122" font-size="9" font-weight="700" fill="#5c5c5c">FK</text>
+    <text x="426" y="122" font-size="11">id_karyawan</text>
+    <text x="398" y="137" font-size="9" font-weight="700" fill="#5c5c5c">FK</text>
+    <text x="426" y="137" font-size="11">id_mesin</text>
+    <text x="398" y="152" font-size="9" font-weight="700" fill="#5c5c5c">FK</text>
+    <text x="426" y="152" font-size="11">id_part_proses</text>
+    <text x="426" y="167" font-size="11">jam_start</text>
+    <text x="426" y="182" font-size="11">jam_finish</text>
+    <text x="426" y="197" font-size="11">durasi_menit</text>
+    <text x="426" y="212" font-size="11">qty_aktual</text>
+    <text x="426" y="227" font-size="11">qty_ng</text>
+    <text x="398" y="242" font-size="9" font-weight="700" fill="#5c5c5c">FK</text>
+    <text x="426" y="242" font-size="11">created_by</text>
+    <text x="426" y="257" font-size="11">deleted_at</text>
+    <rect x="390" y="310" width="330" height="212" fill="#fff" stroke="#1b1b1b" stroke-width="1.3"/>
+    <line x1="390" y1="336" x2="720" y2="336" stroke="#1b1b1b" stroke-width="1.3"/>
+    <text x="555.0" y="328" text-anchor="middle" font-size="12.5" font-weight="700">transaksi_dandori_rincian</text>
+    <text x="398" y="347" font-size="9" font-weight="700" fill="#5c5c5c">PK</text>
+    <text x="426" y="347" font-size="11">id</text>
+    <text x="426" y="362" font-size="11">tanggal</text>
+    <text x="398" y="377" font-size="9" font-weight="700" fill="#5c5c5c">FK</text>
+    <text x="426" y="377" font-size="11">id_shift</text>
+    <text x="398" y="392" font-size="9" font-weight="700" fill="#5c5c5c">FK</text>
+    <text x="426" y="392" font-size="11">id_karyawan</text>
+    <text x="398" y="407" font-size="9" font-weight="700" fill="#5c5c5c">FK</text>
+    <text x="426" y="407" font-size="11">id_mesin</text>
+    <text x="398" y="422" font-size="9" font-weight="700" fill="#5c5c5c">FK</text>
+    <text x="426" y="422" font-size="11">id_part_proses</text>
+    <text x="398" y="437" font-size="9" font-weight="700" fill="#5c5c5c">FK</text>
+    <text x="426" y="437" font-size="11">id_losstime</text>
+    <text x="426" y="452" font-size="11">actual_menit</text>
+    <text x="426" y="467" font-size="11">std_menit</text>
+    <text x="426" y="482" font-size="11">over_menit</text>
+    <text x="398" y="497" font-size="9" font-weight="700" fill="#5c5c5c">FK</text>
+    <text x="426" y="497" font-size="11">created_by</text>
+    <text x="426" y="512" font-size="11">deleted_at</text>
+    <rect x="390" y="565" width="330" height="182" fill="#fff" stroke="#1b1b1b" stroke-width="1.3"/>
+    <line x1="390" y1="591" x2="720" y2="591" stroke="#1b1b1b" stroke-width="1.3"/>
+    <text x="555.0" y="583" text-anchor="middle" font-size="12.5" font-weight="700">transaksi_breakdown_mesin</text>
+    <text x="398" y="602" font-size="9" font-weight="700" fill="#5c5c5c">PK</text>
+    <text x="426" y="602" font-size="11">id</text>
+    <text x="398" y="617" font-size="9" font-weight="700" fill="#5c5c5c">UQ</text>
+    <text x="426" y="617" font-size="11">no_lkm</text>
+    <text x="398" y="632" font-size="9" font-weight="700" fill="#5c5c5c">FK</text>
+    <text x="426" y="632" font-size="11">id_mesin</text>
+    <text x="426" y="647" font-size="11">tanggal_breakdown</text>
+    <text x="426" y="662" font-size="11">jam_breakdown</text>
+    <text x="426" y="677" font-size="11">tanggal_selesai_perbaikan</text>
+    <text x="426" y="692" font-size="11">repair_time</text>
+    <text x="426" y="707" font-size="11">total_downtime</text>
+    <text x="426" y="722" font-size="11">status_breakdown</text>
+    <text x="426" y="737" font-size="11">deleted_at</text>
+    <rect x="790" y="40" width="250" height="182" fill="#fff" stroke="#1b1b1b" stroke-width="1.3"/>
+    <line x1="790" y1="66" x2="1040" y2="66" stroke="#1b1b1b" stroke-width="1.3"/>
+    <text x="915.0" y="58" text-anchor="middle" font-size="12.5" font-weight="700">master_shift</text>
+    <text x="798" y="77" font-size="9" font-weight="700" fill="#5c5c5c">PK</text>
+    <text x="826" y="77" font-size="11">id</text>
+    <text x="826" y="92" font-size="11">nama_shift</text>
+    <text x="826" y="107" font-size="11">jam_start</text>
+    <text x="826" y="122" font-size="11">jam_finish</text>
+    <text x="826" y="137" font-size="11">jam_start_jumat</text>
+    <text x="826" y="152" font-size="11">jam_finish_jumat</text>
+    <text x="826" y="167" font-size="11">jam_start_sabtu</text>
+    <text x="826" y="182" font-size="11">jam_finish_sabtu</text>
+    <text x="826" y="197" font-size="11">dihitung_availability</text>
+    <text x="826" y="212" font-size="11">deleted_at</text>
+    <rect x="790" y="262" width="250" height="107" fill="#fff" stroke="#1b1b1b" stroke-width="1.3"/>
+    <line x1="790" y1="288" x2="1040" y2="288" stroke="#1b1b1b" stroke-width="1.3"/>
+    <text x="915.0" y="280" text-anchor="middle" font-size="12.5" font-weight="700">master_shift_istirahat</text>
+    <text x="798" y="299" font-size="9" font-weight="700" fill="#5c5c5c">PK</text>
+    <text x="826" y="299" font-size="11">id</text>
+    <text x="798" y="314" font-size="9" font-weight="700" fill="#5c5c5c">FK</text>
+    <text x="826" y="314" font-size="11">id_shift</text>
+    <text x="826" y="329" font-size="11">kelompok_hari</text>
+    <text x="826" y="344" font-size="11">jam_start</text>
+    <text x="826" y="359" font-size="11">jam_finish</text>
+    <rect x="790" y="410" width="250" height="122" fill="#fff" stroke="#1b1b1b" stroke-width="1.3"/>
+    <line x1="790" y1="436" x2="1040" y2="436" stroke="#1b1b1b" stroke-width="1.3"/>
+    <text x="915.0" y="428" text-anchor="middle" font-size="12.5" font-weight="700">master_losstime</text>
+    <text x="798" y="447" font-size="9" font-weight="700" fill="#5c5c5c">PK</text>
+    <text x="826" y="447" font-size="11">id</text>
+    <text x="798" y="462" font-size="9" font-weight="700" fill="#5c5c5c">UQ</text>
+    <text x="826" y="462" font-size="11">kode</text>
+    <text x="826" y="477" font-size="11">jenis_losstime</text>
+    <text x="826" y="492" font-size="11">std_menit_default</text>
+    <text x="826" y="507" font-size="11">std_menit_progressive</text>
+    <text x="826" y="522" font-size="11">deleted_at</text>
+    <rect x="1090" y="40" width="250" height="92" fill="#fff" stroke="#1b1b1b" stroke-width="1.3"/>
+    <line x1="1090" y1="66" x2="1340" y2="66" stroke="#1b1b1b" stroke-width="1.3"/>
+    <text x="1215.0" y="58" text-anchor="middle" font-size="12.5" font-weight="700">transaksi_produksi_ng</text>
+    <text x="1098" y="77" font-size="9" font-weight="700" fill="#5c5c5c">PK</text>
+    <text x="1126" y="77" font-size="11">id</text>
+    <text x="1098" y="92" font-size="9" font-weight="700" fill="#5c5c5c">FK</text>
+    <text x="1126" y="92" font-size="11">id_transaksi_produksi</text>
+    <text x="1098" y="107" font-size="9" font-weight="700" fill="#5c5c5c">FK</text>
+    <text x="1126" y="107" font-size="11">id_jenis_ng</text>
+    <text x="1126" y="122" font-size="11">qty</text>
+    <rect x="1090" y="180" width="250" height="107" fill="#fff" stroke="#1b1b1b" stroke-width="1.3"/>
+    <line x1="1090" y1="206" x2="1340" y2="206" stroke="#1b1b1b" stroke-width="1.3"/>
+    <text x="1215.0" y="198" text-anchor="middle" font-size="12.5" font-weight="700">master_jenis_ng</text>
+    <text x="1098" y="217" font-size="9" font-weight="700" fill="#5c5c5c">PK</text>
+    <text x="1126" y="217" font-size="11">id</text>
+    <text x="1098" y="232" font-size="9" font-weight="700" fill="#5c5c5c">UQ</text>
+    <text x="1126" y="232" font-size="11">kode</text>
+    <text x="1126" y="247" font-size="11">nama_ng</text>
+    <text x="1126" y="262" font-size="11">kategori</text>
+    <text x="1126" y="277" font-size="11">deleted_at</text>
+    <rect x="1090" y="340" width="250" height="92" fill="#fff" stroke="#1b1b1b" stroke-width="1.3"/>
+    <line x1="1090" y1="366" x2="1340" y2="366" stroke="#1b1b1b" stroke-width="1.3"/>
+    <text x="1215.0" y="358" text-anchor="middle" font-size="12.5" font-weight="700">users</text>
+    <text x="1098" y="377" font-size="9" font-weight="700" fill="#5c5c5c">PK</text>
+    <text x="1126" y="377" font-size="11">id</text>
+    <text x="1126" y="392" font-size="11">name</text>
+    <text x="1098" y="407" font-size="9" font-weight="700" fill="#5c5c5c">UQ</text>
+    <text x="1126" y="407" font-size="11">email</text>
+    <text x="1126" y="422" font-size="11">role</text>
+    <text x="172" y="176" font-size="11" font-weight="700">1</text>
+    <text x="172" y="197" font-size="12" font-weight="700">*</text>
+    <text x="296" y="256" font-size="11" font-weight="700">1</text>
+    <text x="378" y="148" font-size="12" font-weight="700">*</text>
+    <text x="296" y="305" font-size="11" font-weight="700">1</text>
+    <text x="378" y="415" font-size="12" font-weight="700">*</text>
+    <text x="296" y="396" font-size="11" font-weight="700">1</text>
+    <text x="378" y="133" font-size="12" font-weight="700">*</text>
+    <text x="296" y="447" font-size="11" font-weight="700">1</text>
+    <text x="378" y="400" font-size="12" font-weight="700">*</text>
+    <text x="296" y="505" font-size="11" font-weight="700">1</text>
+    <text x="378" y="625" font-size="12" font-weight="700">*</text>
+    <text x="296" y="596" font-size="11" font-weight="700">1</text>
+    <text x="378" y="118" font-size="12" font-weight="700">*</text>
+    <text x="296" y="647" font-size="11" font-weight="700">1</text>
+    <text x="378" y="388" font-size="12" font-weight="700">*</text>
+    <text x="778" y="106" font-size="11" font-weight="700">1</text>
+    <text x="728" y="103" font-size="12" font-weight="700">*</text>
+    <text x="778" y="157" font-size="11" font-weight="700">1</text>
+    <text x="728" y="374" font-size="12" font-weight="700">*</text>
+    <text x="922" y="236" font-size="11" font-weight="700">1</text>
+    <text x="922" y="258" font-size="12" font-weight="700">*</text>
+    <text x="778" y="467" font-size="11" font-weight="700">1</text>
+    <text x="728" y="433" font-size="12" font-weight="700">*</text>
+    <text x="562" y="36" font-size="11" font-weight="700">1</text>
+    <text x="1222" y="36" font-size="12" font-weight="700">*</text>
+    <text x="1222" y="176" font-size="11" font-weight="700">1</text>
+    <text x="1222" y="144" font-size="12" font-weight="700">*</text>
+    <text x="1078" y="376" font-size="11" font-weight="700">1</text>
+    <text x="728" y="238" font-size="12" font-weight="700">*</text>
+    <text x="1078" y="412" font-size="11" font-weight="700">1</text>
+    <text x="728" y="493" font-size="12" font-weight="700">*</text>
+    <text x="40" y="772" font-size="11" font-style="italic">PK menyatakan kunci utama, FK kunci tamu, UQ kunci unik. Setiap relasi bersifat satu ke banyak (1 — *) dengan arah dari tabel induk ke tabel transaksi.</text>
+    <text x="40" y="788" font-size="11" font-style="italic">master_part_proses memakai kunci unik gabungan (id_part, id_proses); transaksi_produksi_ng memakai kunci unik gabungan (id_transaksi_produksi, id_jenis_ng).</text>
+    <text x="40" y="804" font-size="11" font-style="italic">Kolom deleted_at menandai penghapusan bertanda. Tabel master_shift_istirahat dan transaksi_produksi_ng tidak memilikinya karena umurnya terikat pada baris induk melalui penghapusan berantai.</text>
+    <text x="40" y="820" font-size="11" font-style="italic">Kolom catatan staf, penandaan anomali, dan updated_by tidak digambarkan karena tidak masuk ke dalam perhitungan Overall Equipment Effectiveness.</text>
+  </g>
+</svg><div class="cap">Gambar 3.14 Model Data Perhitungan OEE</div>
+</div>
+
+
+
+</div>
+
+<script>
+(function(){
+  var SKALA = 4;
+
+  function unduh(href, namaBerkas){
+    var a = document.createElement('a');
+    a.href = href;
+    a.download = namaBerkas;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
+  function namaDari(fig){
+    var cap = fig.querySelector('.cap');
+    var t = cap ? cap.textContent : 'diagram';
+    return t.replace(/[^\w\s.-]/g, '').trim().replace(/\s+/g, '_');
+  }
+
+  // SVG mandiri: viewBox disalin ke width/height supaya punya ukuran intrinsik,
+  // tanpa itu Safari menolak meraster ke kanvas.
+  function svgMandiri(svg){
+    var vb = svg.viewBox.baseVal;
+    var klon = svg.cloneNode(true);
+    klon.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    klon.setAttribute('width', vb.width);
+    klon.setAttribute('height', vb.height);
+    klon.removeAttribute('role');
+    klon.removeAttribute('aria-label');
+    return new XMLSerializer().serializeToString(klon);
+  }
+
+  function pesan(bar, teks, gagal){
+    var el = bar.querySelector('.ket');
+    el.textContent = teks;
+    el.className = gagal ? 'gagal' : 'ket';
+  }
+
+  function unduhPNG(svg, nama, bar, tombol){
+    var vb = svg.viewBox.baseVal;
+    var lebar = Math.round(vb.width * SKALA);
+    var tinggi = Math.round(vb.height * SKALA);
+
+    tombol.disabled = true;
+    pesan(bar, 'Menyiapkan ' + lebar + '×' + tinggi + ' piksel…', false);
+
+    var sumber = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgMandiri(svg));
+    var img = new Image();
+
+    img.onload = function(){
+      try {
+        var c = document.createElement('canvas');
+        c.width = lebar;
+        c.height = tinggi;
+        var ctx = c.getContext('2d');
+        // Latar putih: SVG tidak punya latar, tanpa ini PNG-nya transparan
+        // dan tampak kotor ketika ditempel ke dokumen.
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, lebar, tinggi);
+        ctx.drawImage(img, 0, 0, lebar, tinggi);
+
+        if (c.toBlob) {
+          c.toBlob(function(b){
+            if (!b) { gagalRaster(bar, tombol); return; }
+            var u = URL.createObjectURL(b);
+            unduh(u, nama + '.png');
+            setTimeout(function(){ URL.revokeObjectURL(u); }, 4000);
+            selesai(bar, tombol, lebar, tinggi);
+          }, 'image/png');
+        } else {
+          unduh(c.toDataURL('image/png'), nama + '.png');
+          selesai(bar, tombol, lebar, tinggi);
+        }
+      } catch (e) {
+        gagalRaster(bar, tombol);
+      }
+    };
+
+    img.onerror = function(){ gagalRaster(bar, tombol); };
+    img.src = sumber;
+  }
+
+  function selesai(bar, tombol, l, t){
+    tombol.disabled = false;
+    pesan(bar, 'Terunduh pada ' + l + '×' + t + ' piksel.', false);
+  }
+
+  function gagalRaster(bar, tombol){
+    tombol.disabled = false;
+    pesan(bar, 'Peramban menolak meraster. Pakai tombol Unduh SVG, lalu buka di Preview dan ekspor PNG 300 dpi.', true);
+  }
+
+  function unduhSVG(svg, nama, bar){
+    var b = new Blob([svgMandiri(svg)], {type: 'image/svg+xml;charset=utf-8'});
+    var u = URL.createObjectURL(b);
+    unduh(u, nama + '.svg');
+    setTimeout(function(){ URL.revokeObjectURL(u); }, 4000);
+    pesan(bar, 'Terunduh sebagai SVG. Ukurannya tak terbatas, cocok disisipkan langsung ke Word.', false);
+  }
+
+  document.querySelectorAll('.fig').forEach(function(fig){
+    var svg = fig.querySelector('svg');
+    if (!svg) return;
+
+    var nama = namaDari(fig);
+    var vb = svg.viewBox.baseVal;
+
+    var bar = document.createElement('div');
+    bar.className = 'figbar';
+
+    var bPng = document.createElement('button');
+    bPng.className = 'btn btn-utama';
+    bPng.type = 'button';
+    bPng.textContent = 'Unduh PNG ' + SKALA + '×';
+    bPng.title = Math.round(vb.width * SKALA) + '×' + Math.round(vb.height * SKALA) + ' piksel, latar putih';
+
+    var bSvg = document.createElement('button');
+    bSvg.className = 'btn';
+    bSvg.type = 'button';
+    bSvg.textContent = 'Unduh SVG';
+    bSvg.title = 'Vektor, tanpa batas resolusi';
+
+    var ket = document.createElement('span');
+    ket.className = 'ket';
+    ket.textContent = 'Berisi gambar saja, tanpa nomor dan judul.';
+
+    bPng.addEventListener('click', function(){ unduhPNG(svg, nama, bar, bPng); });
+    bSvg.addEventListener('click', function(){ unduhSVG(svg, nama, bar); });
+
+    bar.appendChild(bPng);
+    bar.appendChild(bSvg);
+    bar.appendChild(ket);
+    fig.insertAdjacentElement('afterend', bar);
+  });
+})();
+</script>
