@@ -792,8 +792,242 @@
 
         /* Separator kolom freeze terakhir sebagai box-shadow → digambar oleh sticky
            cell sendiri, selalu menempel & tak pernah ter-clip / bergeser saat scroll. */
-        .tbl-freeze .sc-sep { border-right: none; box-shadow: 2px 0 0 0 #9ca3af; }
-        .tbl-freeze thead th.sc-sep { box-shadow: 2px 0 0 0 #6b7280; }
+        .tbl-freeze .sc-sep { border-right: none; box-shadow: 2px 0 0 0 #9ca3af !important; }
+        .tbl-freeze thead th.sc-sep { box-shadow: 2px 0 0 0 #6b7280 !important; }
+
+
+        /* ══ ERP Workspace ══════════════════════════════════════════
+           Pola halaman bergaya ACCURATE: strip toolbar di atas, dock
+           filter tegak di kiri, grid rapat, status bar di bawah.
+
+           Semua aturan sengaja di-scope ke .erp-ws. Halaman yang belum
+           dimigrasi tidak ikut berubah sedikit pun, jadi migrasinya bisa
+           satu halaman per PR tanpa halaman lain jadi korban.
+
+           Ukuran diatur lewat token di .erp-ws, bukan angka tersebar.
+           Ganti satu token = seluruh halaman ikut. Font tetap Arial dari
+           aturan global — tidak ada keluarga huruf baru di sini.
+        ══════════════════════════════════════════════════════════════ */
+        /* margin-top #main ikut runtuh keluar dari <body>, sehingga body
+           terdorong 46px dan dokumen jadi lebih tinggi dari layar — halaman
+           tergulung di belakang ruang kerja yang seharusnya terkunci.
+           Dipakai padding, bukan margin: padding tidak pernah runtuh. */
+        #main.erp-flush {
+            margin-top: 0;
+            padding: var(--tb-h) 0 0 0 !important;
+            min-height: 0;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .erp-ws {
+            --erp-fs:     12px;
+            --erp-fs-sm:  11px;
+            --erp-row-h:  24px;
+            --erp-ctl-h:  26px;
+            --erp-tb-h:   28px;
+            --erp-st-h:   22px;
+            --erp-dock-w: 210px;
+
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - var(--tb-h));
+            font-size: var(--erp-fs);
+        }
+
+        /* Tablet & layar sentuh: layout sama persis, target sentuh membesar.
+           Dibaca dari JENIS PENUNJUK, bukan lebar layar — tablet 1280px tetap
+           dapat target besar, laptop 1280px tetap rapat. */
+        @media (pointer: coarse) {
+            .erp-ws {
+                --erp-fs:    13px;
+                --erp-row-h: 40px;
+                --erp-ctl-h: 40px;
+                --erp-tb-h:  44px;
+                --erp-st-h:  28px;
+            }
+        }
+
+        /* ── Strip toolbar ── */
+        .erp-tb {
+            display: flex; align-items: stretch;
+            height: var(--erp-tb-h); flex: 0 0 auto;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+        }
+        .erp-tb-btn {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 0 10px; white-space: nowrap; cursor: pointer;
+            font-size: var(--erp-fs); font-family: inherit; line-height: 1;
+            color: var(--text-2); background: none; text-decoration: none;
+            border: none; border-right: 1px solid var(--border-3);
+        }
+        .erp-tb-btn:hover { background: var(--surface-3); color: var(--text); }
+        .erp-tb-btn[disabled] { color: var(--text-4); cursor: default; }
+        .erp-tb-btn[disabled]:hover { background: none; color: var(--text-4); }
+        .erp-tb-btn.is-on { background: var(--surface-3); color: var(--text); font-weight: 700; }
+        .erp-tb-btn.is-new { background: #dcfce7; color: #14532d; font-weight: 700; }
+        .erp-tb-btn.is-new:hover { background: #bbf7d0; color: #14532d; }
+        .erp-tb-btn.is-anom { background: #fef08a; color: #713f12; font-weight: 700; }
+        .erp-tb-btn.is-anom:hover { background: #fde047; color: #713f12; }
+        .erp-tb-sp { flex: 1 1 auto; }
+
+        /* ── Badan: dock + isi ── */
+        .erp-ws-body { display: flex; flex: 1 1 auto; min-height: 0; }
+
+        .erp-dock {
+            width: var(--erp-dock-w); flex: 0 0 var(--erp-dock-w);
+            background: var(--surface); border-right: 1px solid var(--border);
+            display: flex; flex-direction: column; min-height: 0;
+        }
+        .erp-dock-hd {
+            display: flex; align-items: center; justify-content: space-between;
+            height: var(--erp-row-h); flex: 0 0 auto; padding: 0 8px;
+            background: #e5e7eb; border-bottom: 1px solid var(--border);
+            font-size: var(--erp-fs-sm); font-weight: 700;
+            letter-spacing: 0.08em; text-transform: uppercase;
+        }
+        .erp-dock-x {
+            background: none; border: none; cursor: pointer; padding: 0 2px;
+            color: var(--text-2); font-size: 14px; line-height: 1;
+        }
+        .erp-dock-body {
+            flex: 1 1 auto; overflow-y: auto; min-height: 0;
+            padding: 8px; display: flex; flex-direction: column; gap: 10px;
+        }
+        .erp-grp { display: flex; flex-direction: column; gap: 4px; }
+        .erp-grp > b {
+            font-size: var(--erp-fs-sm); font-weight: 700;
+            letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3);
+        }
+        .erp-in {
+            height: var(--erp-ctl-h); width: 100%; box-sizing: border-box;
+            border: 1px solid var(--border); background: var(--surface);
+            color: var(--text); font-family: inherit; font-size: var(--erp-fs);
+            padding: 0 6px; border-radius: 2px; outline: none;
+        }
+        .erp-in:focus { border-color: #6b7280; }
+        .erp-in[readonly] { background: var(--surface-3); color: var(--text-3); }
+        .erp-in.is-set { border-color: #334155; border-width: 1.5px; font-weight: 700; }
+        .erp-in::placeholder { color: var(--text-4); }
+        .erp-dock-row { display: grid; grid-template-columns: 34px 1fr; align-items: center; gap: 6px; }
+        .erp-dock-row > span { font-size: var(--erp-fs-sm); color: var(--text-3); }
+        .erp-btn {
+            height: var(--erp-ctl-h); padding: 0 12px; cursor: pointer;
+            border: 1px solid var(--border); background: var(--surface-2);
+            color: var(--text); font-family: inherit; font-size: var(--erp-fs);
+            border-radius: 2px; text-decoration: none;
+            display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+        }
+        .erp-btn:hover { background: var(--surface-3); color: var(--text); }
+        .erp-btn.is-pri { background: #374151; border-color: #374151; color: #fff; font-weight: 700; }
+        .erp-btn.is-pri:hover { background: #1f2937; color: #fff; }
+
+        /* ── Wilayah grid ── */
+        .erp-ws-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+        .erp-scroll { flex: 1 1 auto; overflow: auto; min-height: 0; background: var(--surface); }
+
+        .erp-ws .erp-table { font-size: var(--erp-fs); }
+        .erp-ws .erp-table thead th {
+            height: var(--erp-row-h); padding: 0 6px;
+            font-size: var(--erp-fs-sm); letter-spacing: 0.03em;
+        }
+        /* .erp-table tbody td memasang font-size 14px sendiri, jadi mewarisi
+           dari .erp-table saja tidak cukup — harus ditimpa di selector td. */
+        .erp-ws .erp-table tbody td {
+            height: var(--erp-row-h); padding: 0 6px; white-space: nowrap;
+            font-size: var(--erp-fs);
+        }
+        .erp-ws .erp-table .btn-sm { padding: 0 6px; font-size: var(--erp-fs-sm); line-height: 1.6; }
+
+        /* ── Status bar ── */
+        .erp-status {
+            flex: 0 0 auto; height: var(--erp-st-h);
+            display: flex; align-items: center; gap: 14px; padding: 0 10px;
+            background: #dbe4f0; border-top: 1px solid var(--border);
+            font-size: var(--erp-fs-sm); color: var(--text);
+        }
+        .erp-status .sp { flex: 1 1 auto; }
+        .erp-status b { font-weight: 700; }
+
+        /* Di layar sempit dock jadi lapisan menumpang — berdampingan tidak
+           menyisakan lebar yang layak untuk grid apa pun. */
+        @media (max-width: 900px) {
+            .erp-dock {
+                position: absolute; top: 0; bottom: var(--erp-st-h); left: 0;
+                z-index: 40; border-right: 1px solid var(--border);
+            }
+            .erp-ws-body { position: relative; }
+        }
+
+
+        /* ── Dropdown ketik-cari di dalam dock ──
+           Dulu disalin per halaman sebagai .fbar-*; dua salinannya sudah
+           menyimpang satu sama lain. Sekarang satu definisi di sini. */
+        .erp-dd {
+            position: absolute; top: calc(100% + 2px); left: 0; right: 0;
+            min-width: 100%; background: var(--surface);
+            border: 1px solid var(--border); border-radius: 2px;
+            z-index: 600; max-height: 220px; overflow-y: auto;
+        }
+        .erp-dd-item {
+            padding: 5px 8px; cursor: pointer; font-size: var(--erp-fs, 12px);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text);
+        }
+        .erp-dd-item:hover { background: var(--surface-3); }
+        .erp-clr {
+            position: absolute; right: 5px; top: 50%; transform: translateY(-50%);
+            background: none; border: none; color: var(--text-4);
+            cursor: pointer; padding: 0; font-size: 14px; line-height: 1;
+        }
+
+        /* ── Pemilih mesin di dalam dock ──
+           Memanjang ke bawah, bukan melayang: dock hanya 210px, panel
+           melayang akan keluar dari tepi layar. */
+        .erp-mesin-pick {
+            border: 1px solid var(--border-2); background: var(--surface-2);
+            padding: 6px; display: flex; flex-direction: column; gap: 4px;
+            max-height: 190px; overflow-y: auto;
+        }
+        .erp-mesin-line {
+            font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
+            text-transform: uppercase; color: var(--text-4);
+        }
+        .erp-mesin-chips { display: flex; flex-wrap: wrap; gap: 3px; }
+        .erp-chip {
+            height: 22px; padding: 0 7px; cursor: pointer;
+            border: 1px solid var(--border); background: var(--surface);
+            color: var(--text-2); font-family: inherit; font-size: 11px;
+            font-weight: 700; border-radius: 2px; white-space: nowrap;
+        }
+        .erp-chip:hover { background: var(--surface-3); }
+        .erp-chip.is-on { background: #1f2937; border-color: #1f2937; color: #fff; }
+        .erp-mesin-clear {
+            align-self: flex-start; background: none; border: none; cursor: pointer;
+            color: var(--c-danger); font-family: inherit; font-size: 11px; padding: 2px 0;
+        }
+        @media (pointer: coarse) {
+            .erp-chip { height: 34px; padding: 0 12px; font-size: 12px; }
+            .erp-mesin-pick { max-height: 260px; }
+        }
+
+        /* ── Baris navigasi halaman di bawah grid ── */
+        .erp-pg {
+            flex: 0 0 auto; padding: 3px 8px;
+            border-top: 1px solid var(--border-2); background: var(--surface);
+        }
+        .erp-pg .pagination { margin: 0; }
+        .erp-ws .erp-pg .page-link { padding: 2px 8px; font-size: var(--erp-fs-sm); }
+
+
+        /* ── Strip peringatan tipis di atas grid ── */
+        .erp-warnstrip {
+            flex: 0 0 auto; display: flex; align-items: center; gap: 7px;
+            padding: 4px 9px; background: #fefce8;
+            border-bottom: 1px solid #fde047;
+            font-size: var(--erp-fs-sm, 11px); color: #713f12; line-height: 1.4;
+        }
+        .erp-warnstrip i { color: #ca8a04; flex-shrink: 0; }
 
         /* ══ Notification Bell ══════════════════════════════════ */
         .notif-btn { background: none; border: none; color: #9ca3af; font-size: 1.05rem; position: relative; cursor: pointer; padding: 5px 7px; border-radius: 4px; display:flex;align-items:center; }
@@ -915,7 +1149,7 @@
 @include('partials.sidebar')
 
 {{-- ═══ MAIN ══════════════════════════════════════════════════════════ --}}
-<main id="main">
+<main id="main" class="@yield('main_mod')">
     @unless(View::hasSection('suppress_layout_flash'))
         @if(session('success'))
             <div class="alert alert-success alert-dismissible" role="alert">

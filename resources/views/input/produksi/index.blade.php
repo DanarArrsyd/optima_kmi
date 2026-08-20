@@ -1,6 +1,9 @@
 @extends('layouts.app')
 @section('title', 'LHP Produksi')
 @section('suppress_layout_flash', 'yes')
+{{-- Ruang kerja ERP mengelola tingginya sendiri sampai tepi layar,
+     jadi padding bawaan #main dilepas untuk halaman ini. --}}
+@section('main_mod', 'erp-flush')
 
 @php
 $oldKaryawanId  = old('id_karyawan');
@@ -241,35 +244,260 @@ $oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->n
 @endif
 
 {{-- ══ KONTEN HALAMAN ══════════════════════════════════════════ --}}
+@php
+$mesinByLine  = $mesin->groupBy('line');
+$_mesinForJs  = $mesin->map(fn($m) => ['id' => $m->id, 'code' => $m->id_mesin, 'name' => $m->nama_mesin, 'line' => $m->line])->values();
+$_partsForFilter = $parts->map(fn($p) => ['id' => $p->id, 'part_no' => $p->part_no, 'part_name' => $p->part_name, 'customer' => $p->customer, 'proses' => $p->proses->map(fn($pr) => ['id' => $pr->id, 'label' => $pr->id_proses.' – '.$pr->nama_proses])->values()])->values();
+$_karForFilter = $karyawan->map(fn($k) => ['id' => $k->id, 'nama' => $k->nama_karyawan])->values();
+$_allProsesForFilter = $parts->flatMap(fn($p) => $p->proses)->unique('id')->map(fn($pr) => ['id' => $pr->id, 'label' => $pr->id_proses.' – '.$pr->nama_proses])->values();
+$_customersTA = $customers->map(fn($c) => ['v' => $c, 't' => $c])->values();
+$_partsTA     = $_partsForFilter->map(fn($p) => ['v' => $p['id'], 't' => $p['part_name'], 'sub' => $p['part_no'], 'pno' => $p['part_no']])->values();
+$_prosesTA    = $_allProsesForFilter->map(fn($pr) => ['v' => $pr['id'], 't' => $pr['label']])->values();
+$_operatorTA  = $_karForFilter->map(fn($k) => ['v' => $k['id'], 't' => $k['nama']])->values();
+$hasAdvFilter = $filterCustomer || $filterPartId || $filterKarId || $filterProsesId;
+$filterActive = !empty($mesinIds) || ($search ?? '') !== '' || $hasAdvFilter;
+$advCount = array_sum([$filterCustomer?1:0, $filterPartId?1:0, $filterKarId?1:0, $filterProsesId?1:0]);
 
-<div class="page-header">
-    <h1 class="page-title"><i class="bi bi-clipboard-data"></i>Input LHP Produksi</h1>
-    <div class="action-btns">
-        @if(! auth()->user()->isGuest())
-        <button class="btn btn-primary btn-sm" @click="drawerOpen = true">
-            <i class="bi bi-plus-lg me-1"></i>Input Baru
-        </button>
+// Label aktif untuk display
+$filterPartLabel = $filterPartId ? ($parts->firstWhere('id', $filterPartId)?->part_name ?? '') : '';
+$filterKarLabel  = $filterKarId  ? ($karyawan->firstWhere('id', $filterKarId)?->nama_karyawan ?? '') : '';
+$_fpObj = $filterProsesId ? $parts->flatMap(fn($p) => $p->proses)->firstWhere('id', $filterProsesId) : null;
+$filterProsesLabel = $_fpObj ? ($_fpObj->id_proses.' – '.$_fpObj->nama_proses) : '';
+
+/* ── Hitung anomali pada halaman ini ──
+   Ambang dibaca dari config/anomali_lhp.php, BUKAN ditulis ulang di sini.
+   Halaman Anomali dan SphTeoretisService memakai config yang sama; angka
+   yang disalin ke view akan menyimpang diam-diam saat ambangnya diubah. */
+$_anomPctMaks = config('anomali_lhp.pct_maks');
+$_anomWkjMin  = config('anomali_lhp.wkj_min');
+$anomalyCount = 0;
+foreach ($transaksi as $_t) {
+    $_sphStd = $_t->partProses?->sph_standar_produksi ?? 0;
+    $_sphAct = $_t->sph_aktual;
+    $_pct    = $_sphStd > 0 ? round($_sphAct / $_sphStd * 100, 1) : null;
+    $_wkj    = $_t->waktu_kerja_jam;
+    if ($_pct > $_anomPctMaks || $_wkj < $_anomWkjMin || ($_sphStd == 0 && $_sphAct > 0)) {
+        $anomalyCount++;
+    }
+}
+
+/* Tautan "Last Input": kalau baris terakhir milik user tidak ada di halaman
+   ini, lompat ke tanggalnya, bukan ke jangkar yang tidak akan ketemu. */
+$lastUrl = $myLastRecord
+    ? route('input.produksi.index', [
+        'date_from' => $myLastRecord->tanggal_produksi,
+        'date_to'   => $myLastRecord->tanggal_produksi,
+      ]).'#last-input'
+    : null;
+@endphp
+
+
+{{-- ══════════════════════════════════════════════════════════════
+     Ruang kerja ERP: strip toolbar, dock filter kiri, grid, status bar.
+     Kelas .erp-* didefinisikan sekali di layouts/app.blade.php dan
+     di-scope ke .erp-ws, jadi halaman lain tidak ikut berubah.
+══════════════════════════════════════════════════════════════ --}}
+<div class="erp-ws">
+
+{{-- ── Strip toolbar ─────────────────────────────────────────── --}}
+<div class="erp-tb">
+    @if(! auth()->user()->isGuest())
+    <button type="button" class="erp-tb-btn is-new" @click="drawerOpen = true">
+        <i class="bi bi-plus-lg"></i>Input Baru
+    </button>
+    @endif
+
+    <button type="button" class="erp-tb-btn" :class="filterOpen ? 'is-on' : ''"
+            @click="filterOpen = !filterOpen">
+        <i class="bi bi-funnel"></i>Filter
+        @if($filterActive)<span aria-hidden="true">&bull;</span>@endif
+    </button>
+
+    @if(! auth()->user()->isGuest())
+    <button type="button" class="erp-tb-btn"
+            onclick="document.getElementById('import-produksi-panel').classList.toggle('d-none')">
+        <i class="bi bi-file-earmark-arrow-up"></i>Import Excel
+    </button>
+    <button type="button" class="erp-tb-btn"
+            onclick="document.getElementById('exportProduksiPanel').classList.toggle('d-none')">
+        <i class="bi bi-file-earmark-excel"></i>Export Excel
+    </button>
+    @endif
+
+    <a href="{{ route('input.produksi.index') }}" class="erp-tb-btn">
+        <i class="bi bi-arrow-clockwise"></i>Refresh
+    </a>
+
+    @if($anomalyCount > 0)
+        @php $_anomTitle = 'Baris dengan achievement di atas 150% atau waktu kerja di bawah 5 menit'; @endphp
+        @if(auth()->user()->role === 'admin')
+        <a href="{{ route('admin.anomali') }}" class="erp-tb-btn is-anom" title="{{ $_anomTitle }}">
+            <i class="bi bi-exclamation-triangle-fill"></i>{{ $anomalyCount }} anomali
+        </a>
+        @else
+        {{-- Halaman anomali dijaga role:admin. Angkanya tetap ditampilkan,
+             tapi tanpa tautan supaya tidak mengantar staf ke 403. --}}
+        <span class="erp-tb-btn is-anom" title="{{ $_anomTitle }}">
+            <i class="bi bi-exclamation-triangle-fill"></i>{{ $anomalyCount }} anomali
+        </span>
         @endif
-        <button type="button" @click="filterOpen = !filterOpen"
-                :class="filterOpen ? 'btn-secondary' : 'btn-outline-secondary'"
-                class="btn btn-sm" style="position:relative">
-            <i class="bi bi-funnel me-1"></i>Filter
-            @if($filterActive)
-            <span style="position:absolute;top:-5px;right:-5px;width:8px;height:8px;background:#ef4444;border-radius:50%;border:1.5px solid #fff"></span>
-            @endif
-        </button>
-        @if(! auth()->user()->isGuest())
-        <button class="btn btn-outline-success btn-sm"
-                onclick="document.getElementById('import-produksi-panel').classList.toggle('d-none')">
-            <i class="bi bi-file-earmark-arrow-up me-1"></i>Import Excel
-        </button>
-        <button class="btn btn-outline-secondary btn-sm"
-                onclick="document.getElementById('exportProduksiPanel').classList.toggle('d-none')">
-            <i class="bi bi-file-earmark-excel me-1"></i>Export Excel
-        </button>
-        @endif
-    </div>
+    @endif
+
+    @if($myLastRecord)
+    <a href="{{ $myLastOnPage ? '#last-input' : $lastUrl }}" class="erp-tb-btn"
+       title="Input terakhir Anda: {{ \Carbon\Carbon::parse($myLastRecord->tanggal_produksi)->format('d/m/Y') }} &middot; {{ $myLastRecord->partProses?->part?->part_name ?? '—' }} &middot; {{ number_format($myLastRecord->qty_aktual) }} pcs">
+        <i class="bi bi-clock-history"></i>Last Input
+    </a>
+    @endif
+
+    <span class="erp-tb-sp"></span>
 </div>
+
+<div class="erp-ws-body">
+
+{{-- ── Dock filter (kiri) ────────────────────────────────────── --}}
+<aside class="erp-dock" x-show="filterOpen" x-cloak>
+    <div class="erp-dock-hd">
+        <span>Filter</span>
+        <button type="button" class="erp-dock-x" @click="filterOpen = false" title="Tutup filter">&times;</button>
+    </div>
+
+    <form method="GET" action="{{ route('input.produksi.index') }}" id="filterForm"
+          x-data="mesinFilterComp()" class="erp-dock-body">
+
+        <template x-for="id in selected" :key="id">
+            <input type="hidden" name="mesin_ids[]" :value="id">
+        </template>
+
+        {{-- ══ Find ══ --}}
+        <div class="erp-grp">
+            <b>Find</b>
+
+            <div x-data="filterSearchComp(_operatorTA,{{ $filterKarId ?: 0 }},'{{ addslashes($filterKarLabel) }}')"
+                 @click.outside="open=false" style="position:relative">
+                <input type="hidden" name="filter_karyawan_id" :value="val">
+                <input type="text" x-model="query" @focus="open=true" @input="open=true"
+                       @keydown.escape="open=false" placeholder="Nama Operator"
+                       class="erp-in" :class="val ? 'is-set' : ''">
+                <button type="button" x-show="val" @mousedown.prevent="clear()" class="erp-clr">&times;</button>
+                <div x-show="open && filtered.length > 0" x-cloak class="erp-dd">
+                    <template x-for="item in filtered" :key="item.v">
+                        <div @mousedown.prevent="pick(item)" class="erp-dd-item" x-text="item.t"></div>
+                    </template>
+                </div>
+            </div>
+
+            <button type="button" @click="mesinOpen = !mesinOpen" class="erp-in is-mesin"
+                    :class="selected.length > 0 ? 'is-set' : ''"
+                    style="text-align:left;cursor:pointer;display:flex;align-items:center;gap:5px">
+                <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                    <span x-show="selected.length === 0">Semua Mesin</span>
+                    <span x-show="selected.length === 1" x-text="labelSingle"></span>
+                    <span x-show="selected.length > 1"><span x-text="selected.length"></span> mesin</span>
+                </span>
+                <i class="bi" :class="mesinOpen ? 'bi-chevron-up' : 'bi-chevron-down'" style="font-size:.6rem;opacity:.5"></i>
+            </button>
+
+            {{-- Daftar mesin: memanjang ke bawah di dalam dock, bukan melayang.
+                 Dock cuma 210px — panel melayang akan keluar layar. --}}
+            <div x-show="mesinOpen" x-cloak class="erp-mesin-pick">
+                @foreach($mesinByLine as $line => $mesinGroup)
+                <div class="erp-mesin-line">{{ $line }}</div>
+                <div class="erp-mesin-chips">
+                    @foreach($mesinGroup as $m)
+                    <button type="button" @click="toggle({{ $m->id }})"
+                            class="erp-chip" :class="isSelected({{ $m->id }}) ? 'is-on' : ''"
+                            title="{{ $m->nama_mesin }}">{{ $m->id_mesin }}</button>
+                    @endforeach
+                </div>
+                @endforeach
+                <button type="button" x-show="selected.length > 0" @click="clearAll()"
+                        class="erp-mesin-clear">&times; Hapus semua</button>
+            </div>
+        </div>
+
+        {{-- ══ Part & Customer ══ --}}
+        <div class="erp-grp">
+            <b>Part &amp; Customer</b>
+
+            <div x-data="filterSearchComp(_customersTA,'{{ $filterCustomer }}','{{ $filterCustomer }}')"
+                 @click.outside="open=false" style="position:relative">
+                <input type="hidden" name="filter_customer" :value="val">
+                <input type="text" x-model="query" @focus="open=true" @input="open=true"
+                       @keydown.escape="open=false" placeholder="Nama Customer"
+                       class="erp-in" :class="val ? 'is-set' : ''">
+                <button type="button" x-show="val" @mousedown.prevent="clear()" class="erp-clr">&times;</button>
+                <div x-show="open && filtered.length > 0" x-cloak class="erp-dd">
+                    <template x-for="item in filtered" :key="item.v">
+                        <div @mousedown.prevent="pick(item)" class="erp-dd-item" x-text="item.t"></div>
+                    </template>
+                </div>
+            </div>
+
+            <div x-data="partGroupComp({{ $filterPartId ?: 0 }},'{{ addslashes($filterPartLabel) }}',{{ $filterProsesId ?: 0 }},'{{ addslashes($filterProsesLabel) }}')"
+                 style="display:flex;flex-direction:column;gap:4px">
+
+                <div @click.outside="partOpen=false" style="position:relative">
+                    <input type="hidden" name="filter_part_id" :value="partVal">
+                    <input type="text" x-model="partQuery" @focus="partOpen=true"
+                           @input="partOpen=true;partVal='';prosesVal='';prosesQuery=''"
+                           @keydown.escape="partOpen=false" placeholder="Nama Part"
+                           class="erp-in" :class="partVal ? 'is-set' : ''">
+                    <button type="button" x-show="partVal"
+                            @mousedown.prevent="partVal='';partQuery='';prosesVal='';prosesQuery=''"
+                            class="erp-clr">&times;</button>
+                    <div x-show="partOpen && filteredParts.length > 0" x-cloak class="erp-dd">
+                        <template x-for="item in filteredParts" :key="item.v">
+                            <div @mousedown.prevent="pickPart(item)" class="erp-dd-item">
+                                <div x-text="item.t" style="font-weight:700"></div>
+                                <div x-text="item.sub" style="font-size:.72rem;color:#9ca3af"></div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <div @click.outside="prosesOpen=false" style="position:relative">
+                    <input type="hidden" name="filter_proses_id" :value="prosesVal">
+                    <input type="text" x-model="prosesQuery" @focus="prosesOpen=true"
+                           @input="prosesOpen=true;prosesVal=''" @keydown.escape="prosesOpen=false"
+                           placeholder="Proses" class="erp-in" :class="prosesVal ? 'is-set' : ''">
+                    <button type="button" x-show="prosesVal" @mousedown.prevent="prosesVal='';prosesQuery=''" class="erp-clr">&times;</button>
+                    <div x-show="prosesOpen && filteredProses.length > 0" x-cloak class="erp-dd">
+                        <template x-for="item in filteredProses" :key="item.v">
+                            <div @mousedown.prevent="prosesVal=item.v;prosesQuery=item.t;prosesOpen=false"
+                                 class="erp-dd-item" x-text="item.t"></div>
+                        </template>
+                    </div>
+                </div>
+
+                {{-- Nomor part tidak diketik: dia turunan dari Nama Part.
+                     Dua isian terpisah pernah bisa tidak sinkron. --}}
+                <input type="text" class="erp-in" readonly tabindex="-1"
+                       :value="partNo || 'Nomor Part'" :title="partNo">
+            </div>
+        </div>
+
+        {{-- ══ Filter by Date ══ --}}
+        <div class="erp-grp">
+            <b>Filter by Date</b>
+            <div class="erp-dock-row">
+                <span>From</span>
+                <input type="date" name="date_from" value="{{ $dateFrom }}" class="erp-in">
+            </div>
+            <div class="erp-dock-row">
+                <span>To</span>
+                <input type="date" name="date_to" value="{{ $dateTo }}" class="erp-in">
+            </div>
+        </div>
+
+        <div class="erp-grp">
+            <button type="submit" class="erp-btn is-pri"><i class="bi bi-funnel"></i>Tampilkan</button>
+            <a href="{{ route('input.produksi.index') }}" class="erp-btn">Reset</a>
+        </div>
+    </form>
+</aside>
+
+<div class="erp-ws-main">
 
 @if(! auth()->user()->isGuest())
 {{-- Export Panel --}}
@@ -339,327 +567,22 @@ $oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->n
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 @endif
-
-{{-- Filter --}}
-@php
-$mesinByLine  = $mesin->groupBy('line');
-$_mesinForJs  = $mesin->map(fn($m) => ['id' => $m->id, 'code' => $m->id_mesin, 'name' => $m->nama_mesin, 'line' => $m->line])->values();
-$_partsForFilter = $parts->map(fn($p) => ['id' => $p->id, 'part_no' => $p->part_no, 'part_name' => $p->part_name, 'customer' => $p->customer, 'proses' => $p->proses->map(fn($pr) => ['id' => $pr->id, 'label' => $pr->id_proses.' – '.$pr->nama_proses])->values()])->values();
-$_karForFilter = $karyawan->map(fn($k) => ['id' => $k->id, 'nama' => $k->nama_karyawan])->values();
-$_allProsesForFilter = $parts->flatMap(fn($p) => $p->proses)->unique('id')->map(fn($pr) => ['id' => $pr->id, 'label' => $pr->id_proses.' – '.$pr->nama_proses])->values();
-$_customersTA = $customers->map(fn($c) => ['v' => $c, 't' => $c])->values();
-$_partsTA     = $_partsForFilter->map(fn($p) => ['v' => $p['id'], 't' => $p['part_name'], 'sub' => $p['part_no'], 'pno' => $p['part_no']])->values();
-$_prosesTA    = $_allProsesForFilter->map(fn($pr) => ['v' => $pr['id'], 't' => $pr['label']])->values();
-$_operatorTA  = $_karForFilter->map(fn($k) => ['v' => $k['id'], 't' => $k['nama']])->values();
-$hasAdvFilter = $filterCustomer || $filterPartId || $filterKarId || $filterProsesId;
-$filterActive = !empty($mesinIds) || ($search ?? '') !== '' || $hasAdvFilter;
-$advCount = array_sum([$filterCustomer?1:0, $filterPartId?1:0, $filterKarId?1:0, $filterProsesId?1:0]);
-
-// Label aktif untuk display
-$filterPartLabel = $filterPartId ? ($parts->firstWhere('id', $filterPartId)?->part_name ?? '') : '';
-$filterKarLabel  = $filterKarId  ? ($karyawan->firstWhere('id', $filterKarId)?->nama_karyawan ?? '') : '';
-$_fpObj = $filterProsesId ? $parts->flatMap(fn($p) => $p->proses)->firstWhere('id', $filterProsesId) : null;
-$filterProsesLabel = $_fpObj ? ($_fpObj->id_proses.' – '.$_fpObj->nama_proses) : '';
-@endphp
-
-{{-- ── Filter bar ── --}}
-<style>
-/* Sticky freeze columns → CSS bersama di layouts/app.blade.php */
-/* ── Filter bar ── */
-.fbar-lbl{font-size:.67rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8;margin-bottom:4px}
-.fbar-inp{height:34px;width:100%;border-radius:3px;padding:0 26px 0 8px;font-size:.83rem;background:#fff;outline:none;transition:border-color 100ms;box-sizing:border-box}
-.fbar-inp:focus{border-color:#64748b !important}
-.fbar-dd{position:absolute;top:calc(100% + 2px);left:0;min-width:210px;background:#fff;border:1px solid #d1d5db;border-radius:3px;z-index:600;max-height:220px;overflow-y:auto;filter:drop-shadow(0 4px 12px rgba(0,0,0,.08))}
-.fbar-dd-item{padding:7px 10px;cursor:pointer;font-size:.82rem;white-space:nowrap;color:#374151;transition:background 60ms}
-.fbar-dd-item:hover{background:#f1f5f9}
-.fbar-clr{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;color:#94a3b8;cursor:pointer;padding:0;font-size:.95rem;line-height:1}
-@keyframes fbarFade{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
-</style>
-<div x-show="filterOpen" x-cloak
-     x-transition:enter="transition ease-out duration-150"
-     x-transition:enter-start="opacity-0 -translate-y-1"
-     x-transition:enter-end="opacity-100 translate-y-0"
-     x-transition:leave="transition ease-in duration-100"
-     x-transition:leave-start="opacity-100 translate-y-0"
-     x-transition:leave-end="opacity-0 -translate-y-1">
-<div class="filter-bar mb-3">
-<form method="GET" action="{{ route('input.produksi.index') }}" id="filterForm" x-data="mesinFilterComp()" style="width:100%">
-
-    <template x-for="id in selected" :key="id">
-        <input type="hidden" name="mesin_ids[]" :value="id">
-    </template>
-
-    {{-- ══ Row 1: Tanggal · Mesin · Aksi · Record ══ --}}
-    <div style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap;margin-bottom:8px">
-
-        {{-- Dari Tanggal --}}
-        <div style="flex:1;min-width:110px;max-width:160px">
-            <div class="fbar-lbl">Dari Tanggal</div>
-            <input type="date" name="date_from" value="{{ $dateFrom }}"
-                   style="height:34px;border:1px solid #e2e8f0;border-radius:3px;padding:0 8px;font-size:.83rem;color:#1e293b;width:100%;outline:none;transition:border-color 100ms;box-sizing:border-box"
-                   onfocus="this.style.borderColor='#64748b'" onblur="this.style.borderColor='#e2e8f0'">
-        </div>
-
-        {{-- Sampai Tanggal --}}
-        <div style="flex:1;min-width:110px;max-width:160px">
-            <div class="fbar-lbl">Sampai Tanggal</div>
-            <input type="date" name="date_to" value="{{ $dateTo }}"
-                   style="height:34px;border:1px solid #e2e8f0;border-radius:3px;padding:0 8px;font-size:.83rem;color:#1e293b;width:100%;outline:none;transition:border-color 100ms;box-sizing:border-box"
-                   onfocus="this.style.borderColor='#64748b'" onblur="this.style.borderColor='#e2e8f0'">
-        </div>
-
-        {{-- Mesin --}}
-        <div style="flex:1;min-width:120px">
-            <div class="fbar-lbl">Mesin</div>
-            <button type="button" @click="mesinOpen=!mesinOpen"
-                    style="height:34px;display:flex;align-items:center;gap:6px;padding:0 10px;border-radius:3px;font-size:.83rem;white-space:nowrap;cursor:pointer;transition:all 100ms;width:100%"
-                    :style="selected.length > 0 ? 'border:1.5px solid #334155;background:#f8fafc;color:#1e293b;font-weight:600' : 'border:1px solid #e2e8f0;background:#fff;color:#64748b'">
-                <i class="bi bi-cpu" style="font-size:.72rem;opacity:.55;flex-shrink:0"></i>
-                <span style="flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis">
-                    <span x-show="selected.length === 0">Semua Mesin</span>
-                    <span x-show="selected.length === 1" x-text="labelSingle"></span>
-                    <span x-show="selected.length > 1"><span x-text="selected.length"></span> mesin</span>
-                </span>
-                <i class="bi" :class="mesinOpen?'bi-chevron-up':'bi-chevron-down'" style="font-size:.62rem;opacity:.45;flex-shrink:0"></i>
-            </button>
-        </div>
-
-        <div style="width:1px;height:34px;background:#e2e8f0;align-self:flex-end;flex-shrink:0"></div>
-
-        {{-- Tampilkan + Reset + Record --}}
-        <div style="display:flex;gap:6px;align-items:flex-end;flex-shrink:0">
-            <button type="submit"
-                    style="height:34px;padding:0 16px;border-radius:3px;border:none;background:#1e293b;color:#fff;font-size:.82rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap;transition:background 100ms"
-                    onmouseenter="this.style.background='#334155'"
-                    onmouseleave="this.style.background='#1e293b'">
-                <i class="bi bi-funnel" style="font-size:.72rem"></i>Tampilkan
-            </button>
-            <a href="{{ route('input.produksi.index') }}"
-               style="height:34px;padding:0 14px;border-radius:3px;border:1px solid #d1d5db;background:#fff;color:#64748b;font-size:.82rem;font-weight:500;cursor:pointer;display:flex;align-items:center;text-decoration:none;white-space:nowrap;transition:all 100ms"
-               onmouseenter="this.style.background='#f8fafc'"
-               onmouseleave="this.style.background='#fff'">
-                Reset
-            </a>
-            <span style="display:inline-flex;align-items:center;height:34px;padding:0 12px;border-radius:3px;background:#f8fafc;border:1px solid #e2e8f0;font-size:.78rem;color:#64748b;white-space:nowrap;font-weight:500">
-                {{ number_format($transaksi->total()) }} record{{ $filterActive ? ' · filter aktif' : '' }}
-            </span>
-        </div>
-    </div>{{-- end row 1 --}}
-
-    {{-- ══ Row 2: Entity filters ══ --}}
-    <div style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap">
-
-        {{-- Customer --}}
-        <div style="flex:1;min-width:120px" x-data="filterSearchComp(_customersTA,'{{ $filterCustomer }}','{{ $filterCustomer }}')" @click.outside="open=false">
-            <div class="fbar-lbl">Customer</div>
-            <input type="hidden" name="filter_customer" :value="val">
-            <div style="position:relative">
-                <input type="text" x-model="query" @focus="open=true" @input="open=true" @keydown.escape="open=false"
-                       placeholder="Semua customer…" class="fbar-inp"
-                       :style="val?'border:1.5px solid #334155;font-weight:500;color:#1e293b':'border:1px solid #e2e8f0;color:#64748b'">
-                <button type="button" x-show="val" @mousedown.prevent="clear()" class="fbar-clr">×</button>
-                <div x-show="open && filtered.length > 0" x-cloak class="fbar-dd">
-                    <template x-for="item in filtered" :key="item.v">
-                        <div @mousedown.prevent="pick(item)" class="fbar-dd-item" x-text="item.t"></div>
-                    </template>
-                </div>
-            </div>
-        </div>
-
-        {{-- Part Name + Part No + Proses (shared scope) --}}
-        <div style="flex:4;min-width:0;display:flex;gap:8px;align-items:flex-end"
-             x-data="partGroupComp({{ $filterPartId ?: 0 }},'{{ addslashes($filterPartLabel) }}',{{ $filterProsesId ?: 0 }},'{{ addslashes($filterProsesLabel) }}')">
-
-            <div style="flex:2;min-width:140px" @click.outside="partOpen=false">
-                <div class="fbar-lbl">Part Name</div>
-                <input type="hidden" name="filter_part_id" :value="partVal">
-                <div style="position:relative">
-                    <input type="text" x-model="partQuery"
-                           @focus="partOpen=true" @input="partOpen=true;partVal='';prosesVal='';prosesQuery=''"
-                           @keydown.escape="partOpen=false" placeholder="Semua part…" class="fbar-inp"
-                           :style="partVal?'border:1.5px solid #334155;font-weight:500;color:#1e293b':'border:1px solid #e2e8f0;color:#64748b'">
-                    <button type="button" x-show="partVal" @mousedown.prevent="partVal='';partQuery='';prosesVal='';prosesQuery=''" class="fbar-clr">×</button>
-                    <div x-show="partOpen && filteredParts.length > 0" x-cloak class="fbar-dd">
-                        <template x-for="item in filteredParts" :key="item.v">
-                            <div @mousedown.prevent="pickPart(item)" class="fbar-dd-item">
-                                <div x-text="item.t" style="font-weight:500;color:#1e293b"></div>
-                                <div x-text="item.sub" style="font-size:.73rem;color:#94a3b8;margin-top:1px"></div>
-                            </div>
-                        </template>
-                    </div>
-                </div>
-            </div>
-
-            <div style="width:94px">
-                <div class="fbar-lbl">Part No</div>
-                <div :title="partNo" x-text="partNo || '—'"
-                     style="height:34px;border:1px solid #e2e8f0;border-radius:3px;padding:0 8px;font-size:.82rem;color:#64748b;background:#f8fafc;display:flex;align-items:center;overflow:hidden;white-space:nowrap;text-overflow:ellipsis"></div>
-            </div>
-
-            <div style="flex:2;min-width:140px" @click.outside="prosesOpen=false">
-                <div class="fbar-lbl">Proses</div>
-                <input type="hidden" name="filter_proses_id" :value="prosesVal">
-                <div style="position:relative">
-                    <input type="text" x-model="prosesQuery"
-                           @focus="prosesOpen=true" @input="prosesOpen=true;prosesVal=''"
-                           @keydown.escape="prosesOpen=false" placeholder="Semua proses…" class="fbar-inp"
-                           :style="prosesVal?'border:1.5px solid #334155;font-weight:500;color:#1e293b':'border:1px solid #e2e8f0;color:#64748b'">
-                    <button type="button" x-show="prosesVal" @mousedown.prevent="prosesVal='';prosesQuery=''" class="fbar-clr">×</button>
-                    <div x-show="prosesOpen && filteredProses.length > 0" x-cloak class="fbar-dd">
-                        <template x-for="item in filteredProses" :key="item.v">
-                            <div @mousedown.prevent="prosesVal=item.v;prosesQuery=item.t;prosesOpen=false" class="fbar-dd-item" x-text="item.t"></div>
-                        </template>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        {{-- Operator --}}
-        <div style="flex:1.5;min-width:130px" x-data="filterSearchComp(_operatorTA,{{ $filterKarId ?: 0 }},'{{ addslashes($filterKarLabel) }}')" @click.outside="open=false">
-            <div class="fbar-lbl">Operator</div>
-            <input type="hidden" name="filter_karyawan_id" :value="val">
-            <div style="position:relative">
-                <input type="text" x-model="query" @focus="open=true" @input="open=true" @keydown.escape="open=false"
-                       placeholder="Semua operator…" class="fbar-inp"
-                       :style="val?'border:1.5px solid #334155;font-weight:500;color:#1e293b':'border:1px solid #e2e8f0;color:#64748b'">
-                <button type="button" x-show="val" @mousedown.prevent="clear()" class="fbar-clr">×</button>
-                <div x-show="open && filtered.length > 0" x-cloak class="fbar-dd">
-                    <template x-for="item in filtered" :key="item.v">
-                        <div @mousedown.prevent="pick(item)" class="fbar-dd-item" x-text="item.t"></div>
-                    </template>
-                </div>
-            </div>
-        </div>
-
-    </div>{{-- end row 2 --}}
-
-    {{-- ══ Mesin panel (below rows) ══ --}}
-    <div x-show="mesinOpen" x-cloak
-         style="margin-top:8px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:3px;padding:12px 14px;animation:fbarFade 140ms cubic-bezier(.4,0,.2,1)">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-            <span class="fbar-lbl" style="margin:0">
-                <i class="bi bi-cpu me-1"></i>Pilih Mesin
-                <span x-show="selected.length > 0"
-                      style="background:#1e293b;color:#fff;border-radius:10px;padding:1px 7px;margin-left:4px;font-size:.7rem"
-                      x-text="selected.length"></span>
-            </span>
-            <div style="display:flex;gap:12px;align-items:center">
-                <button type="button" x-show="selected.length > 0" @click="clearAll()"
-                        style="font-size:.75rem;color:#ef4444;background:none;border:none;padding:0;cursor:pointer;font-weight:500">
-                    × Hapus semua
-                </button>
-                <button type="button" @click="mesinOpen=false"
-                        style="background:none;border:none;color:#94a3b8;cursor:pointer;padding:2px 6px;border-radius:2px;font-size:.78rem;transition:background 100ms"
-                        onmouseenter="this.style.background='#e2e8f0'" onmouseleave="this.style.background='transparent'">
-                    <i class="bi bi-chevron-up"></i>
-                </button>
-            </div>
-        </div>
-        <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
-            @foreach($mesinByLine as $line => $mesinGroup)
-            <span style="font-size:.63rem;font-weight:800;color:#cbd5e1;letter-spacing:.12em;text-transform:uppercase;padding:0 2px">{{ $line }}</span>
-            @foreach($mesinGroup as $m)
-            <button type="button" @click="toggle({{ $m->id }})"
-                    :style="isSelected({{ $m->id }}) ? 'background:#1e293b;color:#fff;border-color:#1e293b' : 'background:#fff;color:#475569;border-color:#e2e8f0'"
-                    style="height:28px;padding:0 10px;border-radius:3px;border:1px solid;font-size:.75rem;font-weight:600;cursor:pointer;white-space:nowrap;transition:all 100ms"
-                    title="{{ $m->nama_mesin }}">{{ $m->id_mesin }}</button>
-            @endforeach
-            <span style="width:1px;height:18px;background:#e2e8f0;margin:0 2px"></span>
-            @endforeach
-        </div>
-        <div style="margin-top:12px;padding-top:10px;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end">
-            <button type="submit"
-                    style="height:30px;padding:0 14px;border-radius:3px;border:none;background:#1e293b;color:#fff;font-size:.78rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;transition:background 100ms"
-                    onmouseenter="this.style.background='#334155'" onmouseleave="this.style.background='#1e293b'">
-                <i class="bi bi-funnel" style="font-size:.7rem"></i>Terapkan
-            </button>
-        </div>
-    </div>
-
-</form>
-</div>
-</div>{{-- /filterOpen wrapper --}}
-
-@php
-/* ── Hitung anomali per halaman untuk banner ── */
-$anomalyCount = 0;
-foreach ($transaksi as $_t) {
-    $_pp      = $_t->partProses;
-    $_sphStd  = $_pp?->sph_standar_produksi ?? 0;
-    $_sphAct  = $_t->sph_aktual;
-    $_pct     = $_sphStd > 0 ? round($_sphAct / $_sphStd * 100, 1) : null;
-    $_wkj     = $_t->waktu_kerja_jam;
-    if ($_pct > 150 || $_wkj < 0.083 || ($_sphStd == 0 && $_sphAct > 0)) $anomalyCount++;
-}
-@endphp
-
 @if($anomalyCount > 0)
-<div style="background:#fefce8;border:1px solid #fde047;border-radius:2px;padding:10px 14px;margin-bottom:10px;display:flex;align-items:flex-start;gap:10px">
-    <i class="bi bi-exclamation-triangle-fill" style="color:#ca8a04;font-size:1.1rem;flex-shrink:0;margin-top:1px"></i>
-    <div>
-        <div style="font-weight:700;font-size:0.88rem;color:#713f12">
-            {{ $anomalyCount }} baris perlu diperiksa pada halaman ini
-        </div>
-        <div style="font-size:0.82rem;color:#92400e;margin-top:2px">
-            Baris yang disorot kuning menunjukkan data yang mungkin salah input —
-            achievement &gt;150%, waktu kerja &lt;5 menit, atau SPH standar belum diset.
-            Harap cek kembali qty aktual dan jam start/finish.
-        </div>
-    </div>
+{{-- Penjelasan singkat arti sorot kuning. Jumlahnya sudah ada di toolbar,
+     jadi strip ini cukup satu baris. --}}
+<div class="erp-warnstrip">
+    <i class="bi bi-exclamation-triangle-fill"></i>
+    <span>Baris bersorot kuning mungkin salah input &mdash; achievement di atas
+          {{ $_anomPctMaks }}%, waktu kerja di bawah {{ round($_anomWkjMin * 60) }} menit,
+          atau SPH standar belum diisi. Cek ulang qty aktual dan jam start/finish.</span>
 </div>
 @endif
 
-@if($myLastRecord)
-@php
-    $lastUrl = route('input.produksi.index', [
-        'date_from' => $myLastRecord->tanggal_produksi,
-        'date_to'   => $myLastRecord->tanggal_produksi,
-    ]) . '#last-input';
-@endphp
-<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:2px;padding:9px 14px;margin-bottom:10px;display:flex;align-items:center;gap:10px">
-    <i class="bi bi-clock-history" style="color:#0284c7;font-size:1rem;flex-shrink:0"></i>
-    <div style="flex:1;font-size:0.83rem;min-width:0;color:#0c4a6e">
-        <strong style="color:#075985">{{ auth()->user()->name }}</strong>
-        <span style="color:#94a3b8;margin:0 3px">·</span>
-        <span style="color:#94a3b8;font-size:0.75rem">{{ auth()->user()->email }}</span>
-        <span style="color:#cbd5e1;margin:0 6px">|</span>
-        <span style="color:#64748b;font-size:0.78rem">{{ \Carbon\Carbon::parse($myLastRecord->tanggal_produksi)->format('d/m/Y') }}</span>
-        <span style="color:#94a3b8;margin:0 4px">·</span>
-        <span style="color:#374151">{{ $myLastRecord->karyawan?->nama_karyawan ?? '—' }}</span>
-        <span style="color:#94a3b8"> — </span>
-        <span style="color:#374151">{{ $myLastRecord->partProses?->part?->part_name ?? '—' }}</span>
-        <span style="color:#94a3b8;margin:0 4px">·</span>
-        <span style="color:#374151;font-weight:600">{{ number_format($myLastRecord->qty_aktual) }} pcs</span>
-        <span style="color:#94a3b8;margin:0 5px">·</span>
-        <span style="color:#64748b;font-size:0.78rem">{{ $myLastRecord->created_at->diffForHumans() }}</span>
-    </div>
-    @if($myLastOnPage)
-    <a href="#last-input"
-       style="display:inline-flex;align-items:center;gap:4px;height:26px;padding:0 10px;border-radius:2px;background:#0284c7;color:#fff;font-size:0.78rem;font-weight:600;text-decoration:none;white-space:nowrap;flex-shrink:0;transition:background 100ms"
-       onmouseenter="this.style.background='#0369a1'" onmouseleave="this.style.background='#0284c7'">
-        <i class="bi bi-arrow-down" style="font-size:0.7rem"></i>Lihat
-    </a>
-    @else
-    <a href="{{ $lastUrl }}"
-       style="display:inline-flex;align-items:center;gap:4px;height:26px;padding:0 10px;border-radius:2px;border:1px solid #bae6fd;background:#fff;color:#0284c7;font-size:0.78rem;font-weight:600;text-decoration:none;white-space:nowrap;flex-shrink:0;transition:all 100ms"
-       onmouseenter="this.style.background='#e0f2fe'" onmouseleave="this.style.background='#fff'">
-        <i class="bi bi-box-arrow-up-right" style="font-size:0.7rem"></i>Buka
-    </a>
-    @endif
-</div>
-@endif
-
-<div class="erp-panel">
-    <div class="erp-panel-header">
-        Daftar LHP Produksi
-        @if($anomalyCount > 0)
-        <span style="margin-left:8px;background:#fde047;color:#713f12;font-size:10px;font-weight:700;
-                     padding:2px 8px;border-radius:999px;letter-spacing:0.3px">
-            {{ $anomalyCount }} anomali
-        </span>
-        @endif
-    </div>
-    <div style="overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 210px);min-height:200px">
+{{-- Judul halaman sudah ada di topbar dan jumlah anomali sudah ada di
+     toolbar, jadi kepala panel dihapus — dia cuma memakan tinggi.
+     Penggulungan dipegang .erp-scroll saja; wadah bertumpuk membuat
+     kepala tabel yang menempel berhenti bekerja. --}}
+<div class="erp-scroll">
         <table id="produksiTable" class="erp-table tbl-freeze" style="min-width:1520px">
             <thead style="position:sticky;top:0;z-index:10">
                 <tr>
@@ -797,9 +720,30 @@ foreach ($transaksi as $_t) {
             @endforelse
             </tbody>
         </table>
-    </div>
+</div>{{-- /erp-scroll --}}
+
+<div class="erp-pg"><div class="mt-3">{{ $transaksi->links() }}</div></div>
+
+</div>{{-- /erp-ws-main --}}
+</div>{{-- /erp-ws-body --}}
+
+{{-- ── Status bar: cakupan data yang sedang dilihat, selalu terlihat.
+     Dock filter bisa ditutup; tanpa baris ini data tersaring gampang
+     terbaca sebagai data penuh. ── --}}
+<div class="erp-status">
+    <span>Period {{ \Carbon\Carbon::parse($dateFrom)->format('M Y') }} &mdash;
+          From {{ \Carbon\Carbon::parse($dateFrom)->format('d M Y') }}
+          To {{ \Carbon\Carbon::parse($dateTo)->format('d M Y') }}</span>
+    <span><b>{{ number_format($transaksi->total()) }}</b> record</span>
+    @if($filterActive)
+    <span>Filter aktif @if($advCount > 0)&middot; {{ $advCount }} kolom @endif</span>
+    @endif
+    <span class="sp"></span>
+    <span>Login as {{ auth()->user()->name }}</span>
 </div>
-<div class="mt-3">{{ $transaksi->links() }}</div>
+
+</div>{{-- /erp-ws --}}
+
 
 {{-- ── Note Drawer (Alpine, no blocking backdrop) ───────────────── --}}
 <div x-data="{
