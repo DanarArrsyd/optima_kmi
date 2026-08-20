@@ -109,9 +109,6 @@
 <div class="erp-ws-main">
 <div class="erp-scroll erp-scroll-pad">
 
-        </div>
-    </div>
-
     {{-- ── Galat muat data ──────────────────────── --}}
     <div class="text-danger mb-3" x-show="loadError" x-cloak>
         Gagal memuat data NG dari server. Ringkasan dan grafik di bawah mungkin tidak lengkap atau tidak tampil — coba klik "Tampilkan" lagi.
