@@ -24,11 +24,18 @@
 
 /* Berkas ini HANYA dimuat di halaman AI Assistant, jadi menyetel #main di sini
    sudah otomatis terbatas ke halaman ini — tidak perlu kelas di <body>.
-   Padding dan min-height dinolkan supaya kanvas benar-benar menyentuh tepi;
-   margin negatif tidak cukup, min-height #main tetap menyisakan pita abu-abu
-   di bawah composer. */
+   Padding samping/bawah dan min-height dinolkan supaya kanvas benar-benar
+   menyentuh tepi; margin negatif tidak cukup, min-height #main tetap
+   menyisakan pita abu-abu di bawah composer.
+
+   Padding ATAS wajib setinggi topbar. Layout dulu mendorong isi ke bawah
+   topbar lewat margin-top pada #main, dan `padding: 0` di sini tidak
+   mengganggunya. Sejak margin itu diganti padding — supaya tidak runtuh
+   keluar <body> dan menyisakan gulungan hantu di semua halaman — `padding: 0`
+   ikut menghapus dorongannya, dan kanvas chat naik ke belakang topbar sampai
+   gelembung teratas terpotong. */
 #main {
-    padding: 0;
+    padding: var(--tb-h, 46px) 0 0 0;
     min-height: 0;
 }
 
