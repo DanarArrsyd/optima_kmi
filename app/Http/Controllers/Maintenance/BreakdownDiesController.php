@@ -73,9 +73,33 @@ class BreakdownDiesController extends Controller
         $dateTo = $request->input('date_to', date('Y-m-d'));
         $partId = (int) $request->input('part_id', 0);
 
+        /* Rentang tanggal bisa dimatikan lewat centang di dock; bawaannya
+         * nyala supaya halaman tidak membuka seluruh riwayat tanpa diminta. */
+        $pakaiTanggal = $request->boolean('pakai_tanggal', ! $request->has('filter_apply'));
+        $filterPic = trim((string) $request->input('filter_pic', ''));
+        $filterStatus = trim((string) $request->input('filter_status', ''));
+        $filterCustomer = trim((string) $request->input('filter_customer', ''));
+        $filterProsesId = (int) $request->input('filter_proses_id', 0);
+
         $breakdowns = TransaksiBreakdownDies::with('partProses.part')
-            ->whereBetween('tanggal_breakdown', [$dateFrom, $dateTo])
+            /* whereDate, BUKAN whereBetween.
+
+             Laravel menulis "2026-08-20 00:00:00" ke kolom bertipe date.
+             MySQL memotongnya jadi "2026-08-20" sehingga whereBetween dengan
+             batas tanggal-saja bekerja; SQLite menyimpannya apa adanya,
+             sehingga baris di hari TERAKHIR rentang terbuang.
+
+             Akibatnya bukan sekadar beda hasil: fitur ini jadi tidak mungkin
+             diuji, karena suite berjalan di SQLite. whereDate membandingkan
+             bagian tanggalnya saja di kedua dialek. */
+            ->when($pakaiTanggal, fn ($q) => $q
+                ->whereDate('tanggal_breakdown', '>=', $dateFrom)
+                ->whereDate('tanggal_breakdown', '<=', $dateTo))
             ->when($partId, fn ($q) => $q->whereHas('partProses', fn ($p) => $p->where('id_part', $partId)))
+            ->when($filterProsesId, fn ($q) => $q->where('id_part_proses', $filterProsesId))
+            ->when($filterPic !== '', fn ($q) => $q->where('pic_maintenance', $filterPic))
+            ->when($filterStatus !== '', fn ($q) => $q->where('status_breakdown', $filterStatus))
+            ->when($filterCustomer !== '', fn ($q) => $q->whereHas('partProses.part', fn ($p) => $p->where('customer', $filterCustomer)))
             ->orderByDesc('tanggal_breakdown')->orderByDesc('id')
             ->paginate(50)->withQueryString();
 
@@ -86,6 +110,12 @@ class BreakdownDiesController extends Controller
             'dateFrom' => $dateFrom,
             'dateTo' => $dateTo,
             'partId' => $partId,
+            'customers' => MasterPart::distinct()->orderBy('customer')->pluck('customer')->filter()->values(),
+            'pakaiTanggal' => $pakaiTanggal,
+            'filterPic' => $filterPic,
+            'filterStatus' => $filterStatus,
+            'filterCustomer' => $filterCustomer,
+            'filterProsesId' => $filterProsesId,
             'nextNomor' => $this->svc->nextNomorUrut(),
         ]);
     }

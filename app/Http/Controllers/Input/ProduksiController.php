@@ -42,10 +42,21 @@ class ProduksiController extends Controller
         $filterPartId = (int) $request->input('filter_part_id', 0);
         $filterKarId = (int) $request->input('filter_karyawan_id', 0);
         $filterProsesId = (int) $request->input('filter_proses_id', 0);
+        $filterJenisNgId = (int) $request->input('filter_jenis_ng_id', 0);
 
-        $q = TransaksiProduksi::with(['karyawan', 'mesin', 'partProses.part', 'shift', 'ngDetails.jenisNg', 'noteResolvedBy'])
-            ->whereDate('tanggal_produksi', '>=', $dateFrom)
-            ->whereDate('tanggal_produksi', '<=', $dateTo);
+        /* Rentang tanggal bisa dimatikan lewat centang di dock; bawaannya
+         * nyala supaya halaman tidak membuka seluruh riwayat tanpa diminta. */
+        $pakaiTanggal = $request->boolean('pakai_tanggal', ! $request->has('filter_apply'));
+
+        $q = TransaksiProduksi::with(['karyawan', 'mesin', 'partProses.part', 'shift', 'ngDetails.jenisNg', 'noteResolvedBy']);
+
+        if ($pakaiTanggal) {
+            $q->whereDate('tanggal_produksi', '>=', $dateFrom)
+                ->whereDate('tanggal_produksi', '<=', $dateTo);
+        }
+        if ($filterJenisNgId > 0) {
+            $q->whereHas('ngDetails', fn ($d) => $d->where('id_jenis_ng', $filterJenisNgId));
+        }
 
         if (! empty($mesinIds)) {
             $q->whereIn('id_mesin', $mesinIds);
@@ -125,6 +136,7 @@ class ProduksiController extends Controller
         return view('input.produksi.index', compact(
             'transaksi', 'dateFrom', 'dateTo', 'search', 'mesinIds',
             'filterCustomer', 'filterPartId', 'filterKarId', 'filterProsesId',
+            'filterJenisNgId', 'pakaiTanggal',
             'shifts', 'karyawan', 'mesin', 'parts', 'jenisNg', 'customers',
             'myLastRecord', 'myLastOnPage', 'filterActive'
         ));
