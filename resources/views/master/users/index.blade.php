@@ -137,18 +137,6 @@
     </button>
 </div>
 
-@if(session('success'))
-    <div class="alert alert-success alert-dismissible fade show mb-3">
-        <i class="bi bi-check-circle-fill me-1"></i>{{ session('success') }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-@endif
-@if(session('error'))
-    <div class="alert alert-danger alert-dismissible fade show mb-3">
-        {{ session('error') }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-@endif
 
 <div class="erp-panel">
     <div class="erp-panel-header">Daftar User Sistem</div>

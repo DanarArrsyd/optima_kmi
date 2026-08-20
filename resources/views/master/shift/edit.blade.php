@@ -9,12 +9,6 @@
     </a>
 </div>
 
-@if(session('success'))
-    <div class="alert alert-success alert-dismissible fade show mb-3">
-        <i class="bi bi-check-circle-fill me-1"></i>{{ session('success') }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-@endif
 @if($errors->any())
     <div class="alert alert-danger mb-3">
         <ul class="mb-0">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>

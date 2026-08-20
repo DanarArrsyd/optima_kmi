@@ -329,16 +329,27 @@ $lastUrl = $myLastRecord
     </a>
 
     @if($anomalyCount > 0)
-        @php $_anomTitle = 'Baris dengan achievement di atas 150% atau waktu kerja di bawah 5 menit'; @endphp
+        {{-- Ambang ikut config, bukan angka yang ditulis ulang di sini —
+             kalau config diubah, kalimatnya ikut, tidak menyimpang diam-diam.
+
+             Lingkupnya disebut TEGAS "halaman ini": $transaksi adalah hasil
+             paginate(30), jadi angkanya hanya menghitung baris yang sedang
+             tampil. Banner lama menyebutkannya; badge ini sempat tidak, dan
+             "4 anomali" jadi terbaca seperti total seluruh data. --}}
+        @php
+            $_anomTitle = $anomalyCount.' dari '.$transaksi->count().' baris pada HALAMAN INI perlu diperiksa'
+                .' — achievement di atas '.$_anomPctMaks.'%, waktu kerja di bawah '.round($_anomWkjMin * 60).' menit,'
+                .' atau SPH standar belum diisi. Angka ini bukan total seluruh data.';
+        @endphp
         @if(auth()->user()->role === 'admin')
         <a href="{{ route('admin.anomali') }}" class="erp-tb-btn is-anom" title="{{ $_anomTitle }}">
-            <i class="bi bi-exclamation-triangle-fill"></i>{{ $anomalyCount }} anomali
+            <i class="bi bi-exclamation-triangle-fill"></i>{{ $anomalyCount }} anomali <span style="font-weight:400;opacity:.75">di halaman ini</span>
         </a>
         @else
         {{-- Halaman anomali dijaga role:admin. Angkanya tetap ditampilkan,
              tapi tanpa tautan supaya tidak mengantar staf ke 403. --}}
         <span class="erp-tb-btn is-anom" title="{{ $_anomTitle }}">
-            <i class="bi bi-exclamation-triangle-fill"></i>{{ $anomalyCount }} anomali
+            <i class="bi bi-exclamation-triangle-fill"></i>{{ $anomalyCount }} anomali <span style="font-weight:400;opacity:.75">di halaman ini</span>
         </span>
         @endif
     @endif
@@ -544,18 +555,6 @@ $lastUrl = $myLastRecord
 </div>
 @endif
 
-@if(session('success'))
-    <div class="alert alert-success alert-dismissible fade show mb-3">
-        <i class="bi bi-check-circle-fill me-1"></i>{{ session('success') }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-@endif
-@if(session('import_success'))
-    <div class="alert alert-success alert-dismissible fade show mb-3">
-        <i class="bi bi-check-circle-fill me-1"></i>{{ session('import_success') }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-@endif
 @if(session('import_errors') && count(session('import_errors')) > 0)
     <div class="alert alert-warning alert-dismissible fade show mb-3">
         <div class="d-flex align-items-start gap-2">

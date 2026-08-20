@@ -418,19 +418,7 @@ $oldMesinTxt = $oldMesinObj ? "{$oldMesinObj->id_mesin} - {$oldMesinObj->nama_me
 
 <div class="erp-ws-main">
 
-@if(session('success'))
-    <div class="alert alert-success alert-dismissible fade show mb-3">
-        <i class="bi bi-check-circle-fill me-1"></i>{{ session('success') }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-@endif
 
-@if(session('import_success'))
-    <div class="alert alert-success alert-dismissible fade show mb-3">
-        <i class="bi bi-check-circle-fill me-1"></i>{{ session('import_success') }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-@endif
 
 @if(session('import_errors') && count(session('import_errors')) > 0)
     <div class="alert alert-warning alert-dismissible fade show mb-3">

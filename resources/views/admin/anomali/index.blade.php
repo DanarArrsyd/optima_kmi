@@ -7,12 +7,6 @@
     <h1 class="page-title"><i class="bi bi-exclamation-triangle"></i>Anomali LHP Produksi</h1>
 </div>
 
-@if(session('success'))
-<div class="alert alert-success alert-dismissible fade show mb-3" style="font-size:0.88rem">
-    <i class="bi bi-check-circle-fill me-1"></i>{{ session('success') }}
-    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-</div>
-@endif
 
 {{-- ── Filter ──────────────────────────────────────────────────── --}}
 <div class="filter-bar mb-3">

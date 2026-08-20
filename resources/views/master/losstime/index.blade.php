@@ -120,18 +120,6 @@
     </div>
 </div>
 
-@if(session('success'))
-    <div class="alert alert-success alert-dismissible fade show mb-3" role="alert">
-        {{ session('success') }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-@endif
-@if(session('error'))
-    <div class="alert alert-danger alert-dismissible fade show mb-3" role="alert">
-        {{ session('error') }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-@endif
 
 <div id="import-panel" class="erp-panel mb-3 d-none">
     <div class="erp-panel-header" style="display:flex;justify-content:space-between;align-items:center">
