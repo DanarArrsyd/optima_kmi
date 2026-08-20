@@ -31,11 +31,50 @@ class DandoriController extends Controller
         $dateTo = $request->input('date_to', date('Y-m-d'));
         $search = trim((string) $request->input('q', ''));
 
+        /* Filter per kolom, sejajar dengan halaman LHP Produksi. Dandori punya
+         * dua yang khas: mesin (satu pilihan, bukan jamak seperti produksi)
+         * dan jenis loss time — pertanyaan paling sering di halaman ini adalah
+         * "loss time jenis apa yang paling sering di mesin mana". */
+        $filterKarId = (int) $request->input('filter_karyawan_id', 0);
+        $filterMesinId = (int) $request->input('filter_mesin_id', 0);
+        $filterLosstimeId = (int) $request->input('filter_losstime_id', 0);
+        $filterCustomer = trim((string) $request->input('filter_customer', ''));
+        $filterPartId = (int) $request->input('filter_part_id', 0);
+        $filterProsesId = (int) $request->input('filter_proses_id', 0);
+
+        /* Rentang tanggal bisa dimatikan lewat centang di dock. Saat mati,
+         * seluruh riwayat ikut tersaring — tetap dipaginasi 50, jadi tidak
+         * ada satu kueri raksasa. Bawaannya tetap NYALA supaya halaman tidak
+         * membuka seluruh riwayat tanpa diminta. */
+        $pakaiTanggal = $request->boolean('pakai_tanggal', ! $request->has('filter_apply'));
+
         $q = TransaksiDandoriRincian::with([
             'shift', 'karyawan', 'mesin', 'partProses.part', 'losstime', 'noteResolvedBy',
-        ])
-            ->whereDate('tanggal', '>=', $dateFrom)
-            ->whereDate('tanggal', '<=', $dateTo);
+        ]);
+
+        if ($pakaiTanggal) {
+            $q->whereDate('tanggal', '>=', $dateFrom)
+                ->whereDate('tanggal', '<=', $dateTo);
+        }
+
+        if ($filterKarId > 0) {
+            $q->where('id_karyawan', $filterKarId);
+        }
+        if ($filterMesinId > 0) {
+            $q->where('id_mesin', $filterMesinId);
+        }
+        if ($filterLosstimeId > 0) {
+            $q->where('id_losstime', $filterLosstimeId);
+        }
+        if ($filterCustomer !== '') {
+            $q->whereHas('partProses.part', fn ($p) => $p->where('customer', $filterCustomer));
+        }
+        if ($filterPartId > 0) {
+            $q->whereHas('partProses', fn ($pp) => $pp->where('id_part', $filterPartId));
+        }
+        if ($filterProsesId > 0) {
+            $q->where('id_part_proses', $filterProsesId);
+        }
 
         if ($search !== '') {
             $like = '%'.$search.'%';
@@ -106,7 +145,15 @@ class DandoriController extends Controller
             ? $rincian->getCollection()->contains('id', $myLastRecord->id)
             : false;
 
-        return view('input.dandori.index', compact('rincian', 'dateFrom', 'dateTo', 'search', 'shifts', 'karyawan', 'mesin', 'parts', 'losstimes', 'myLastRecord', 'myLastOnPage'));
+        $customers = MasterPart::distinct()->orderBy('customer')->pluck('customer')->filter()->values();
+
+        return view('input.dandori.index', compact(
+            'rincian', 'dateFrom', 'dateTo', 'search',
+            'shifts', 'karyawan', 'mesin', 'parts', 'losstimes', 'customers',
+            'filterKarId', 'filterMesinId', 'filterLosstimeId',
+            'filterCustomer', 'filterPartId', 'filterProsesId', 'pakaiTanggal',
+            'myLastRecord', 'myLastOnPage'
+        ));
     }
 
     public function create()

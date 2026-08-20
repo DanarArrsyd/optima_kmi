@@ -922,6 +922,9 @@
         .erp-in::placeholder { color: var(--text-4); }
         .erp-dock-row { display: grid; grid-template-columns: 34px 1fr; align-items: center; gap: 6px; }
         .erp-dock-row > span { font-size: var(--erp-fs-sm); color: var(--text-3); }
+        .erp-chk { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+        .erp-chk input { margin: 0; }
+        .erp-in:disabled { background: var(--surface-3); color: var(--text-4); }
         .erp-btn {
             height: var(--erp-ctl-h); padding: 0 12px; cursor: pointer;
             border: 1px solid var(--border); background: var(--surface-2);
@@ -1449,6 +1452,79 @@ if (!isMobile() && localStorage.getItem(SB_KEY) === '1') {
         });
     });
 })();
+
+/* ══ Komponen ketik-cari bersama ═══════════════════════════════════
+   Dipakai dock filter di beberapa halaman. Ditaruh di layout, BUKAN
+   disalin per halaman: salinan .fbar-* dan toggleDock() yang dulu
+   dikembarkan sudah membuktikan bahwa salinan pasti menyimpang.
+
+   filterSearchComp — satu kotak ketik-cari sederhana.
+   partGroupComp    — Part + Proses + Nomor Part dalam satu ikatan: memilih
+                      part mengisi nomornya dan mengosongkan proses.
+                      Halaman yang memakainya WAJIB menyediakan _partsTA,
+                      _prosesTA, dan _partsFullData.
+══════════════════════════════════════════════════════════════════ */
+function filterSearchComp(items, initVal, initLabel, onPick) {
+    return {
+        items,
+        query: initLabel || '',
+        val:   (initVal !== undefined && initVal !== null && initVal !== 0 && initVal !== '0') ? initVal : '',
+        open:  false,
+        get filtered() {
+            if (!this.query.trim()) return this.items.slice(0, 40);
+            const q = this.query.toLowerCase();
+            return this.items.filter(i => i.t.toLowerCase().includes(q)).slice(0, 40);
+        },
+        pick(item) {
+            this.val = item.v; this.query = item.t; this.open = false;
+            if (typeof onPick === 'function') onPick(item);
+        },
+        clear()   { this.val = ''; this.query = ''; },
+        onInput() { this.val = ''; this.open = true; },
+    };
+}
+
+function partGroupComp(initPartId, initPartLabel, initProsesId, initProsesLabel) {
+    return {
+        partQuery:   initPartLabel   || '',
+        partVal:     initPartId      || '',
+        partOpen:    false,
+        prosesQuery: initProsesLabel || '',
+        prosesVal:   initProsesId    || '',
+        prosesOpen:  false,
+        get partNo() {
+            const v = this.partVal;
+            if (!v) return '';
+            const p = _partsTA.find(x => x.v == v);
+            return p ? (p.pno || '') : '';
+        },
+        get prosesItems() {
+            const v = this.partVal;
+            if (!v) return _prosesTA;
+            const part = _partsFullData.find(x => x.id == v);
+            if (!part || !part.proses || !part.proses.length) return _prosesTA;
+            return part.proses.map(pr => ({v: pr.id, t: pr.label}));
+        },
+        get filteredParts() {
+            const q = this.partQuery.trim().toLowerCase();
+            if (!q) return _partsTA.slice(0, 40);
+            return _partsTA.filter(i => i.t.toLowerCase().includes(q)).slice(0, 40);
+        },
+        get filteredProses() {
+            const items = this.prosesItems;
+            const q = this.prosesQuery.trim().toLowerCase();
+            if (!q) return items.slice(0, 40);
+            return items.filter(i => i.t.toLowerCase().includes(q)).slice(0, 40);
+        },
+        pickPart(item) {
+            this.partVal     = item.v;
+            this.partQuery   = item.t;
+            this.partOpen    = false;
+            this.prosesVal   = '';
+            this.prosesQuery = '';
+        },
+    };
+}
 
 function erpToggleDock(dockId, btnId) {
     const d = document.getElementById(dockId);

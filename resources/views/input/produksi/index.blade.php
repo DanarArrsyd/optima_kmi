@@ -1005,67 +1005,7 @@ const _partsFullData = @json($_partsForFilter);
 const _prosesTA      = @json($_prosesTA);
 const _operatorTA    = @json($_operatorTA);
 
-function partGroupComp(initPartId, initPartLabel, initProsesId, initProsesLabel) {
-    return {
-        partQuery:   initPartLabel   || '',
-        partVal:     initPartId      || '',
-        partOpen:    false,
-        prosesQuery: initProsesLabel || '',
-        prosesVal:   initProsesId    || '',
-        prosesOpen:  false,
-        get partNo() {
-            const v = this.partVal;
-            if (!v) return '';
-            const p = _partsTA.find(x => x.v == v);
-            return p ? (p.pno || '') : '';
-        },
-        get prosesItems() {
-            const v = this.partVal;
-            if (!v) return _prosesTA;
-            const part = _partsFullData.find(x => x.id == v);
-            if (!part || !part.proses || !part.proses.length) return _prosesTA;
-            return part.proses.map(pr => ({v: pr.id, t: pr.label}));
-        },
-        get filteredParts() {
-            const q = this.partQuery.trim().toLowerCase();
-            if (!q) return _partsTA.slice(0, 40);
-            return _partsTA.filter(i => i.t.toLowerCase().includes(q)).slice(0, 40);
-        },
-        get filteredProses() {
-            const items = this.prosesItems;
-            const q = this.prosesQuery.trim().toLowerCase();
-            if (!q) return items.slice(0, 40);
-            return items.filter(i => i.t.toLowerCase().includes(q)).slice(0, 40);
-        },
-        pickPart(item) {
-            this.partVal     = item.v;
-            this.partQuery   = item.t;
-            this.partOpen    = false;
-            this.prosesVal   = '';
-            this.prosesQuery = '';
-        },
-    };
-}
-
-function filterSearchComp(items, initVal, initLabel, onPick) {
-    return {
-        items,
-        query: initLabel || '',
-        val:   (initVal !== undefined && initVal !== null && initVal !== 0 && initVal !== '0') ? initVal : '',
-        open:  false,
-        get filtered() {
-            if (!this.query.trim()) return this.items.slice(0, 40);
-            const q = this.query.toLowerCase();
-            return this.items.filter(i => i.t.toLowerCase().includes(q)).slice(0, 40);
-        },
-        pick(item) {
-            this.val = item.v; this.query = item.t; this.open = false;
-            if (typeof onPick === 'function') onPick(item);
-        },
-        clear()   { this.val = ''; this.query = ''; },
-        onInput() { this.val = ''; this.open = true; },
-    };
-}
+/* filterSearchComp & partGroupComp kini di layouts/app.blade.php. */
 
 function taField(items, initText='', initVal=null) {
     return {
