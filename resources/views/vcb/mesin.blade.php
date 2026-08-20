@@ -1,68 +1,91 @@
 @extends('layouts.app')
 @section('title', 'VCB Mesin')
+{{-- Ruang kerja ERP mengelola tingginya sendiri sampai tepi layar. --}}
+@section('main_mod', 'erp-flush')
+
 @section('content')
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h4 class="mb-0"><i class="bi bi-gear me-2"></i>VCB Mesin — Machine Achievement</h4>
+<div class="erp-ws">
+
+<div class="erp-tb">
+    <button type="button" id="btnDock" class="erp-tb-btn is-on"
+            onclick="erpToggleDock('mesinDock','btnDock')">
+        <i class="bi bi-funnel"></i>Filter
+    </button>
+    @if(! auth()->user()->isGuest())
+    <a id="exportExcel" href="#" class="erp-tb-btn"><i class="bi bi-file-earmark-excel"></i>Export Excel</a>
+    @endif
+    <span class="erp-tb-sp"></span>
 </div>
 
-<div class="erp-panel mb-4">
-    <div class="card-body py-3">
-        <form id="filterForm" class="row g-2 align-items-end">
-            <div class="col-md-3">
-                <label class="form-label small mb-1">Tanggal Dari</label>
-                <input type="date" id="date_from" name="date_from" class="form-control form-control-sm" value="{{ date('Y-m-01') }}">
-            </div>
-            <div class="col-md-3">
-                <label class="form-label small mb-1">Tanggal Sampai</label>
-                <input type="date" id="date_to" name="date_to" class="form-control form-control-sm" value="{{ date('Y-m-d') }}">
-            </div>
-            <div class="col-md-2">
-                <label class="form-label small mb-1">Bulan</label>
-                <input type="month" id="bulan_filter" class="form-control form-control-sm">
-            </div>
-            <div class="col-md-2">
-                <label class="form-label small mb-1">Shift</label>
-                <select id="shift_id" name="shift_id" class="form-select form-select-sm">
-                    <option value="">Semua Shift</option>
-                    @foreach($shifts as $shift)
-                        <option value="{{ $shift->id }}">{{ $shift->nama_shift }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="col-md-2">
-                <button type="submit" class="btn btn-primary btn-sm w-100"><i class="bi bi-search me-1"></i>Tampilkan</button>
-            </div>
-            @if(! auth()->user()->isGuest())
-            <div class="col-md-2">
-                <a id="exportExcel" href="#" class="btn btn-success btn-sm w-100">
-                    <i class="bi bi-file-earmark-excel me-1"></i>Export Excel
-                </a>
-            </div>
-            @endif
-        </form>
+<div class="erp-ws-body">
+
+<aside class="erp-dock" id="mesinDock">
+    <div class="erp-dock-hd">
+        <span>Filter</span>
+        <button type="button" class="erp-dock-x" onclick="erpToggleDock('mesinDock','btnDock')" title="Tutup filter">&times;</button>
     </div>
-</div>
+    <form id="filterForm" class="erp-dock-body">
+        <div class="erp-grp">
+            <b>Tanggal Dari</b>
+            <input type="date" id="date_from" name="date_from" class="erp-in" value="{{ date('Y-m-01') }}">
+        </div>
+        <div class="erp-grp">
+            <b>Tanggal Sampai</b>
+            <input type="date" id="date_to" name="date_to" class="erp-in" value="{{ date('Y-m-d') }}">
+        </div>
+        <div class="erp-grp">
+            <b>Bulan</b>
+            <input type="month" id="bulan_filter" class="erp-in">
+        </div>
+        <div class="erp-grp">
+            <b>Shift</b>
+            <select id="shift_id" name="shift_id" class="erp-in">
+                <option value="">Semua Shift</option>
+                @foreach($shifts as $shift)
+                    <option value="{{ $shift->id }}">{{ $shift->nama_shift }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div class="erp-grp">
+            <button type="submit" class="erp-btn is-pri"><i class="bi bi-search"></i>Tampilkan</button>
+        </div>
+    </form>
+</aside>
 
-<div class="erp-panel mb-4">
-    <div class="card-body"><canvas id="vcbChart" height="100"></canvas></div>
+<div class="erp-ws-main">
+<div class="erp-scroll erp-scroll-pad">
+
+<div class="erp-panel">
+    <div class="erp-panel-body" style="padding:12px"><canvas id="vcbChart" height="100"></canvas></div>
 </div>
 
 <div class="erp-panel">
     <div class="erp-panel-header">Detail per Mesin</div>
-    <div class="erp-panel-body p-0">
-        <div class="table-responsive">
-            <table class="erp-table">
-                <thead>
-                    <tr><th>Mesin</th><th>ID</th><th>Line</th><th>Tipe</th><th>Target QTY</th><th>Actual QTY</th><th>Duration (jam)</th><th>Achievement %</th><th>Avg SPH</th></tr>
-                </thead>
-                <tbody id="vcbTableBody">
-                    <tr><td colspan="9" class="text-center text-muted py-3">Klik Tampilkan untuk melihat data.</td></tr>
-                </tbody>
-            </table>
-        </div>
+    <div style="overflow-x:auto">
+        <table class="erp-table">
+            <thead>
+                <tr><th>Mesin</th><th>ID</th><th>Line</th><th>Tipe</th><th>Target QTY</th><th>Actual QTY</th><th>Duration (jam)</th><th>Achievement %</th><th>Avg SPH</th></tr>
+            </thead>
+            <tbody id="vcbTableBody">
+                <tr><td colspan="9" style="text-align:center;color:#9ca3af;padding:20px">Klik Tampilkan untuk melihat data.</td></tr>
+            </tbody>
+        </table>
     </div>
 </div>
+
+</div>{{-- /erp-scroll --}}
+</div>{{-- /erp-ws-main --}}
+</div>{{-- /erp-ws-body --}}
+
+<div class="erp-status">
+    <span>VCB Mesin &mdash; Machine Achievement</span>
+    <span class="sp"></span>
+    <span>Login as {{ auth()->user()->name }}</span>
+</div>
+
+</div>{{-- /erp-ws --}}
 @endsection
+
 
 @push('scripts')
 <script>

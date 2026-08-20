@@ -1116,6 +1116,21 @@
             white-space: pre-wrap; color: var(--text);
         }
 
+
+        /* Halaman VCB menumpuk KPI, grafik, dan tabel di dalam .erp-scroll.
+           Berbeda dari grid input yang menempel tepi, isi di sini butuh
+           napas — jadi variannya diberi padding. */
+        .erp-scroll-pad { padding: 10px; background: var(--bg); }
+        .erp-scroll-pad .erp-panel { margin-bottom: 10px; }
+        .erp-scroll-pad .erp-panel:last-child { margin-bottom: 0; }
+
+        /* Form filter di dalam dock: tegak, satu kolom. */
+        .erp-dock-form { display: flex; flex-direction: column; gap: 10px; }
+        .erp-dock-body > div > .erp-dock-form > .erp-grp > b {
+            font-size: var(--erp-fs-sm); font-weight: 700;
+            letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3);
+        }
+
         /* ══ Notification Bell ══════════════════════════════════ */
         .notif-btn { background: none; border: none; color: #9ca3af; font-size: 1.05rem; position: relative; cursor: pointer; padding: 5px 7px; border-radius: 4px; display:flex;align-items:center; }
         .notif-btn:hover { color: #fff; background: rgba(255,255,255,.08); }
@@ -1343,6 +1358,18 @@ if (!isMobile() && localStorage.getItem(SB_KEY) === '1') {
 }
 
 /* ─ Toggle: hidden (0px) ↔ expanded (220px) ─────────────────── */
+/* Buka-tutup dock filter untuk halaman tanpa Alpine (VCB, daftar NG).
+   Ditaruh di layout supaya tidak disalin lagi per halaman — salinan
+   .fbar-* yang dulu menyimpang berawal persis dari kebiasaan itu. */
+function erpToggleDock(dockId, btnId) {
+    const d = document.getElementById(dockId);
+    if (!d) return;
+    const on = d.style.display === 'none';
+    d.style.display = on ? '' : 'none';
+    const b = document.getElementById(btnId);
+    if (b) b.classList.toggle('is-on', on);
+}
+
 function sbToggle() {
     if (isMobile()) {
         $body.classList.toggle('sb-mobile-open');

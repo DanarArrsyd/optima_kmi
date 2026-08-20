@@ -19,91 +19,96 @@
 
 @push('styles')
 <style>
-    /* ══ Daftar NG — mengikuti /input/produksi ═══════════════════════════
-     * Kelas .fbar-* dan .sc-* TIDAK ada di layout bersama; keduanya lokal di
-     * input/produksi. Disalin ke sini supaya halaman tidak bergantung pada
-     * berkas lain yang bisa berubah tanpa sepengetahuan halaman ini.
-     * Kelas panel yang benar .erp-panel-header — .erp-panel-head tidak ada.
+    /* Isian dan dropdown ketik-cari kini memakai kelas layout (.erp-in,
+     * .erp-dd, .erp-clr). Salinan .fbar-* lokal dibuang: halaman input
+     * sudah pindah ke kelas layout, jadi alasan menyalinnya hilang — dan
+     * salinan itulah yang dulu menyimpang diam-diam dari aslinya.
      */
-    .fbar-lbl { font-size:.67rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:#94a3b8; margin-bottom:4px; }
-    .fbar-inp { height:34px; width:100%; border-radius:3px; padding:0 26px 0 8px; font-size:.83rem; background:#fff; outline:none; transition:border-color 100ms; box-sizing:border-box; }
-    .fbar-inp:focus { border-color:#64748b !important; }
-    .fbar-dd { position:absolute; top:calc(100% + 2px); left:0; min-width:210px; background:#fff; border:1px solid #d1d5db; border-radius:3px; z-index:600; max-height:220px; overflow-y:auto; filter:drop-shadow(0 4px 12px rgba(0,0,0,.08)); }
-    .fbar-dd-item { padding:7px 10px; cursor:pointer; font-size:.82rem; white-space:nowrap; color:#374151; transition:background 60ms; }
-    .fbar-dd-item:hover { background:#f1f5f9; }
-    .fbar-clr { position:absolute; right:6px; top:50%; transform:translateY(-50%); background:none; border:none; color:#94a3b8; cursor:pointer; padding:0; font-size:.95rem; line-height:1; }
-    .fbar-date { height:34px; border:1px solid #e2e8f0; border-radius:3px; padding:0 8px; font-size:.83rem; color:#1e293b; width:100%; outline:none; transition:border-color 100ms; box-sizing:border-box; }
-    .fbar-date:focus { border-color:#64748b; }
-
     /* Kolom memanjang mengikuti isi teks: nol pembungkusan, lebar dari konten. */
     #ngListTable td, #ngListTable th { white-space: nowrap; }
     .ngl-num { text-align:right; font-variant-numeric:tabular-nums; font-weight:600; }
-    .ngl-mut { font-size:.88rem; color:#5d7283; }
+    .ngl-mut { color:#5d7283; }
     .ngl-kosong { padding:28px 14px; text-align:center; color:#5d7283; font-size:13px; white-space:normal; }
     .ngl-ringkas { font-size:12px; color:#5d7283; font-variant-numeric:tabular-nums; font-weight:400; }
 </style>
 @endpush
 
+{{-- Ruang kerja ERP mengelola tingginya sendiri sampai tepi layar. --}}
+@section('main_mod', 'erp-flush')
+
 @section('content')
-<div class="page-head">
-    <h1 class="page-title">{{ $judul }}</h1>
-    <p class="page-sub">Satu baris = satu jenis NG dalam satu sesi. Satu LHP dengan tiga jenis NG tampil sebagai tiga baris.</p>
+<div class="erp-ws">
+
+<div class="erp-tb">
+    <button type="button" id="btnDock" class="erp-tb-btn is-on"
+            onclick="erpToggleDock('nglDock','btnDock')">
+        <i class="bi bi-funnel"></i>Filter
+        @if($filterAktif)<span aria-hidden="true">&bull;</span>@endif
+    </button>
+    @if(auth()->user()->role !== 'guest')
+    {{-- Guest sengaja tidak punya tombol export: route-nya juga menolak. --}}
+    <a href="{{ $routeExport }}?{{ http_build_query(array_filter($filter, fn ($v) => $v !== null && $v !== '')) }}"
+       class="erp-tb-btn"><i class="bi bi-file-earmark-excel"></i>Export Excel</a>
+    @endif
+    <a href="{{ $routeDaftar }}" class="erp-tb-btn"><i class="bi bi-arrow-clockwise"></i>Refresh</a>
+    <span class="erp-tb-sp"></span>
 </div>
 
-{{-- ── FILTER ─────────────────────────────────────────────────────── --}}
-<div class="erp-panel mb-3">
-    <div class="erp-panel-header">Filter</div>
-    <div class="erp-panel-body">
-        <form method="GET" action="{{ $routeDaftar }}">
-            <div style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap">
+<div class="erp-ws-body">
 
-                <div style="flex:1;min-width:120px;max-width:160px">
-                    <div class="fbar-lbl">Tanggal Mulai</div>
+<aside class="erp-dock" id="nglDock">
+    <div class="erp-dock-hd">
+        <span>Filter</span>
+        <button type="button" class="erp-dock-x" onclick="erpToggleDock('nglDock','btnDock')" title="Tutup filter">&times;</button>
+    </div>
+    <form method="GET" action="{{ $routeDaftar }}" class="erp-dock-body">
+            
+
+                <div class="erp-grp">
+                    <b>Tanggal Mulai</b>
                     <input type="date" name="date_from" value="{{ $filter['date_from'] }}"
-                           class="fbar-date @error('date_from') is-invalid @enderror">
+                           class="erp-in @error('date_from') is-invalid @enderror">
                     @error('date_from')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                 </div>
 
-                <div style="flex:1;min-width:120px;max-width:160px">
-                    <div class="fbar-lbl">Tanggal Akhir</div>
+                <div class="erp-grp">
+                    <b>Tanggal Akhir</b>
                     <input type="date" name="date_to" value="{{ $filter['date_to'] }}"
-                           class="fbar-date @error('date_to') is-invalid @enderror">
+                           class="erp-in @error('date_to') is-invalid @enderror">
                     @error('date_to')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                 </div>
 
                 {{-- Jenis NG — typeahead --}}
-                <div style="flex:1.5;min-width:170px"
+                <div class="erp-grp"
                      x-data="filterSearchComp(_jenisNgTA, {{ $filter['jenis_ng_id'] ?: 0 }}, '{{ addslashes($_jenisLabel) }}')"
                      @click.outside="open=false">
-                    <div class="fbar-lbl">Jenis NG</div>
+                    <b>Jenis NG</b>
                     <input type="hidden" name="jenis_ng_id" :value="val">
                     <div style="position:relative">
                         <input type="text" x-model="query" @focus="open=true" @input="onInput()" @keydown.escape="open=false"
-                               placeholder="Semua jenis…" class="fbar-inp"
-                               :style="val ? 'border:1.5px solid #334155;font-weight:500;color:#1e293b' : 'border:1px solid #e2e8f0;color:#64748b'">
-                        <button type="button" x-show="val" @mousedown.prevent="clear()" class="fbar-clr">&times;</button>
-                        <div x-show="open && filtered.length > 0" x-cloak class="fbar-dd">
+                               placeholder="Semua jenis…" class="erp-in" :class="val ? 'is-set' : ''">
+                        <button type="button" x-show="val" @mousedown.prevent="clear()" class="erp-clr">&times;</button>
+                        <div x-show="open && filtered.length > 0" x-cloak class="erp-dd">
                             <template x-for="item in filtered" :key="item.v">
-                                <div @mousedown.prevent="pick(item)" class="fbar-dd-item" x-text="item.t"></div>
+                                <div @mousedown.prevent="pick(item)" class="erp-dd-item" x-text="item.t"></div>
                             </template>
                         </div>
                     </div>
                 </div>
 
                 {{-- Operator / Inspector — typeahead --}}
-                <div style="flex:1.5;min-width:150px"
+                <div class="erp-grp"
                      x-data="filterSearchComp(_orangTA, {{ $filter['karyawan_id'] ?: 0 }}, '{{ addslashes($_orangLabel) }}')"
                      @click.outside="open=false">
-                    <div class="fbar-lbl">{{ $labelOrang }}</div>
+                    <b>{{ $labelOrang }}</b>
                     <input type="hidden" name="karyawan_id" :value="val">
                     <div style="position:relative">
                         <input type="text" x-model="query" @focus="open=true" @input="onInput()" @keydown.escape="open=false"
-                               placeholder="Semua {{ strtolower($labelOrang) }}…" class="fbar-inp"
-                               :style="val ? 'border:1.5px solid #334155;font-weight:500;color:#1e293b' : 'border:1px solid #e2e8f0;color:#64748b'">
-                        <button type="button" x-show="val" @mousedown.prevent="clear()" class="fbar-clr">&times;</button>
-                        <div x-show="open && filtered.length > 0" x-cloak class="fbar-dd">
+                               placeholder="Semua {{ strtolower($labelOrang) }}…" class="erp-in" :class="val ? 'is-set' : ''">
+                        <button type="button" x-show="val" @mousedown.prevent="clear()" class="erp-clr">&times;</button>
+                        <div x-show="open && filtered.length > 0" x-cloak class="erp-dd">
                             <template x-for="item in filtered" :key="item.v">
-                                <div @mousedown.prevent="pick(item)" class="fbar-dd-item" x-text="item.t"></div>
+                                <div @mousedown.prevent="pick(item)" class="erp-dd-item" x-text="item.t"></div>
                             </template>
                         </div>
                     </div>
@@ -112,47 +117,28 @@
                 {{-- Part / Customer SENGAJA tetap teks bebas, bukan typeahead: satu
                      input ini mencari tiga kolom sekaligus (part_no, part_name,
                      customer), jadi tidak ada satu daftar yang bisa dipilih. --}}
-                <div style="flex:1.5;min-width:160px">
-                    <div class="fbar-lbl">Part / Customer</div>
+                <div class="erp-grp">
+                    <b>Part / Customer</b>
                     <input type="text" name="q" value="{{ $filter['q'] }}" maxlength="100"
-                           placeholder="Part no, nama, customer…" class="fbar-inp"
-                           style="{{ $filter['q'] ? 'border:1.5px solid #334155;font-weight:500;color:#1e293b' : 'border:1px solid #e2e8f0;color:#64748b' }}">
+                           placeholder="Part no, nama, customer…" class="erp-in">
                     @error('q')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                 </div>
 
-                <div style="display:flex;gap:6px;align-items:flex-end">
-                    <button type="submit" class="btn btn-dark btn-sm" style="height:34px">
+                <div class="erp-grp">
+                    <button type="submit" class="erp-btn is-pri">
                         <i class="bi bi-funnel"></i> Terapkan
                     </button>
-                    <a href="{{ $routeDaftar }}" class="btn btn-outline-secondary btn-sm" style="height:34px;display:inline-flex;align-items:center">Reset</a>
+                    <a href="{{ $routeDaftar }}" class="erp-btn">Reset</a>
                 </div>
-            </div>
-        </form>
-    </div>
-</div>
+    </form>
+</aside>
 
-{{-- ── DAFTAR ─────────────────────────────────────────────────────── --}}
-<div class="erp-panel">
-    <div class="erp-panel-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <span>
-            Daftar Baris NG
-            <span class="ngl-ringkas">&mdash; {{ number_format($rows->total(), 0, ',', '.') }} baris{{ $filterAktif ? ' · filter aktif' : '' }}</span>
-        </span>
-        {{-- Guest sengaja tidak punya tombol export: route-nya juga menolak. --}}
-        @if(auth()->user()->role !== 'guest')
-        <a href="{{ $routeExport }}?{{ http_build_query(array_filter($filter, fn ($v) => $v !== null && $v !== '')) }}"
-           class="btn btn-outline-dark btn-sm">
-            <i class="bi bi-file-earmark-excel"></i> Export Excel
-        </a>
-        @endif
-    </div>
+<div class="erp-ws-main">
+<div class="erp-scroll">
+@if($rows->isEmpty())
+    <div class="ngl-kosong">{{ $catatanKosong }}</div>
+@else
 
-    @if($rows->isEmpty())
-        <div class="ngl-kosong">{{ $catatanKosong }}</div>
-    @else
-    {{-- Tanpa min-height: daftar ini sering menyusut jadi beberapa baris setelah
-         difilter, dan tinggi minimum menyisakan kotak kosong yang terbaca rusak. --}}
-    <div style="overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 320px)">
         <table id="ngListTable" class="erp-table">
             <thead style="position:sticky;top:0;z-index:10">
                 <tr>
@@ -187,14 +173,26 @@
                 @endforeach
             </tbody>
         </table>
-    </div>
-    @endif
+@endif
+</div>{{-- /erp-scroll --}}
+
+@if($rows->hasPages())
+{{-- Paginasi mempertahankan filter aktif lewat withQueryString() di service. --}}
+<div class="erp-pg">{{ $rows->links() }}</div>
+@endif
+
+</div>{{-- /erp-ws-main --}}
+</div>{{-- /erp-ws-body --}}
+
+<div class="erp-status">
+    <span>{{ $judul }}</span>
+    <span><b>{{ number_format($rows->total(), 0, ',', '.') }}</b> baris</span>
+    @if($filterAktif)<span>Filter aktif</span>@endif
+    <span class="sp"></span>
+    <span>Login as {{ auth()->user()->name }}</span>
 </div>
 
-{{-- Paginasi mempertahankan filter aktif lewat withQueryString() di service. --}}
-@if($rows->hasPages())
-<div class="mt-3">{{ $rows->links() }}</div>
-@endif
+</div>{{-- /erp-ws --}}
 @endsection
 
 @push('scripts')

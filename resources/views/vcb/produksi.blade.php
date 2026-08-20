@@ -1,63 +1,121 @@
 @extends('layouts.app')
 @section('title', 'VCB Produksi')
+{{-- Ruang kerja ERP mengelola tingginya sendiri sampai tepi layar. --}}
+@section('main_mod', 'erp-flush')
+
 @section('content')
 
-<div class="page-header">
-    <h1 class="page-title"><i class="bi bi-bar-chart"></i>VCB Produksi — Achievement Operator</h1>
-    {{-- Mode tabs --}}
-    <div style="display:flex;gap:0;border:1px solid #d1d5db;border-radius:2px;overflow:hidden">
-        <button id="tabAll" onclick="switchMode('all')"
-            style="padding:5px 14px;font-size:11.5px;font-weight:700;border:none;cursor:pointer;
-                   background:#4b5563;color:#fff;letter-spacing:0.3px">
-            <i class="bi bi-people me-1"></i>Semua Operator
-        </button>
-        <button id="tabOne" onclick="switchMode('one')"
-            style="padding:5px 14px;font-size:11.5px;font-weight:700;border:none;cursor:pointer;
-                   background:#f3f4f6;color:#6b7280;letter-spacing:0.3px;border-left:1px solid #d1d5db">
-            <i class="bi bi-person me-1"></i>Per Operator
-        </button>
-    </div>
+{{-- ══════════════════════════════════════════════════════════════
+     Ruang kerja ERP. Berbeda dari halaman input: isinya KPI + grafik +
+     tabel yang memang perlu digulung, jadi .erp-scroll dibiarkan
+     menggulung tegak — bukan dikunci satu layar.
+══════════════════════════════════════════════════════════════ --}}
+<div class="erp-ws">
+
+<div class="erp-tb">
+    <button type="button" id="tabAll" class="erp-tb-btn is-on" onclick="switchMode('all')">
+        <i class="bi bi-people"></i>Semua Operator
+    </button>
+    <button type="button" id="tabOne" class="erp-tb-btn" onclick="switchMode('one')">
+        <i class="bi bi-person"></i>Per Operator
+    </button>
+    <button type="button" id="btnDock" class="erp-tb-btn is-on" onclick="erpToggleDock('vcbDock','btnDock')">
+        <i class="bi bi-funnel"></i>Filter
+    </button>
+    <span class="erp-tb-sp"></span>
 </div>
 
-{{-- ══════════════════════════════════════════════════
-     MODE 1 — SEMUA OPERATOR
-══════════════════════════════════════════════════ --}}
-<div id="modeAll">
+<div class="erp-ws-body">
 
-    {{-- Filter --}}
-    <div class="filter-bar mb-3">
-        <form id="formAll" style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;width:100%">
-            <div class="filter-group">
-                <label>Dari Tanggal</label>
-                <input type="date" id="all_date_from" class="form-control form-control-sm" value="{{ date('Y-m-01') }}">
+<aside class="erp-dock" id="vcbDock">
+    <div class="erp-dock-hd">
+        <span>Filter</span>
+        <button type="button" class="erp-dock-x" onclick="erpToggleDock('vcbDock','btnDock')" title="Tutup filter">&times;</button>
+    </div>
+    <div class="erp-dock-body">
+        <div id="dockAll">
+    <form id="formAll" class="erp-dock-form">
+            <div class="erp-grp">
+                <b>Dari Tanggal</b>
+                <input type="date" id="all_date_from" class="erp-in" value="{{ date('Y-m-01') }}">
             </div>
-            <div class="filter-group">
-                <label>Sampai Tanggal</label>
-                <input type="date" id="all_date_to" class="form-control form-control-sm" value="{{ date('Y-m-d') }}">
+            <div class="erp-grp">
+                <b>Sampai Tanggal</b>
+                <input type="date" id="all_date_to" class="erp-in" value="{{ date('Y-m-d') }}">
             </div>
-            <div class="filter-group">
-                <label>Bulan</label>
-                <input type="month" id="all_bulan_filter" class="form-control form-control-sm">
+            <div class="erp-grp">
+                <b>Bulan</b>
+                <input type="month" id="all_bulan_filter" class="erp-in">
             </div>
-            <div class="filter-group">
-                <label>Shift</label>
-                <select id="all_shift_id" class="form-select form-select-sm" style="min-width:120px">
+            <div class="erp-grp">
+                <b>Shift</b>
+                <select id="all_shift_id" class="erp-in">
                     <option value="">Semua Shift</option>
                     @foreach($shifts as $s)
                         <option value="{{ $s->id }}">{{ $s->nama_shift }}</option>
                     @endforeach
                 </select>
             </div>
-            <div class="filter-group" style="flex-direction:row;gap:6px;align-items:flex-end">
-                <button type="submit" class="btn btn-secondary btn-sm">
+            <div class="erp-grp">
+                <button type="submit" class="erp-btn is-pri">
                     <i class="bi bi-funnel me-1"></i>Tampilkan
                 </button>
             </div>
-            <div style="margin-left:auto;display:flex;align-items:flex-end">
-                <span id="allPeriodLabel" style="font-size:0.75rem;color:#5d7283;background:#f0f2f5;border:1px solid #d4dbe3;padding:4px 10px;white-space:nowrap"></span>
+        </form>
+        </div>
+        <div id="dockOne" style="display:none">
+    <form id="formOne" class="erp-dock-form">
+            <div class="erp-grp">
+                <b>Dari Tanggal</b>
+                <input type="date" id="one_date_from" class="erp-in" value="{{ date('Y-m-01') }}">
+            </div>
+            <div class="erp-grp">
+                <b>Sampai Tanggal</b>
+                <input type="date" id="one_date_to" class="erp-in" value="{{ date('Y-m-d') }}">
+            </div>
+            <div class="erp-grp">
+                <b>Bulan</b>
+                <input type="month" id="one_bulan_filter" class="erp-in">
+            </div>
+            <div class="erp-grp">
+                <b>Operator <span class="text-danger">*</span></b>
+                <select id="one_karyawan_id" class="erp-in">
+                    <option value="">— Pilih Operator —</option>
+                    @foreach($karyawan as $k)
+                        <option value="{{ $k->id }}">{{ $k->nama_karyawan }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="erp-grp">
+                <b>Shift</b>
+                <select id="one_shift_id" class="erp-in">
+                    <option value="">Semua Shift</option>
+                    @foreach($shifts as $s)
+                        <option value="{{ $s->id }}">{{ $s->nama_shift }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="erp-grp">
+                <button type="submit" class="erp-btn is-pri">
+                    <i class="bi bi-search me-1"></i>Search
+                </button>
+                @if(! auth()->user()->isGuest())
+                <a id="oneExportBtn" href="#" class="erp-btn">
+                    <i class="bi bi-file-earmark-excel me-1"></i>Export
+                </a>
+                @endif
             </div>
         </form>
+        </div>
     </div>
+</aside>
+
+<div class="erp-ws-main">
+<div class="erp-scroll erp-scroll-pad">
+
+<div id="modeAll">
+
+    {{-- Filter --}}
 
     {{-- KPI Cards --}}
     <div id="allKpi" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px"></div>
@@ -111,57 +169,9 @@
     </div>
 
 </div>{{-- /modeAll --}}
-
-{{-- ══════════════════════════════════════════════════
-     MODE 2 — PER OPERATOR (DRILL-DOWN)
-══════════════════════════════════════════════════ --}}
 <div id="modeOne" style="display:none">
 
     {{-- Filter --}}
-    <div class="filter-bar mb-3">
-        <form id="formOne" style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;width:100%">
-            <div class="filter-group">
-                <label>Dari Tanggal</label>
-                <input type="date" id="one_date_from" class="form-control form-control-sm" value="{{ date('Y-m-01') }}">
-            </div>
-            <div class="filter-group">
-                <label>Sampai Tanggal</label>
-                <input type="date" id="one_date_to" class="form-control form-control-sm" value="{{ date('Y-m-d') }}">
-            </div>
-            <div class="filter-group">
-                <label>Bulan</label>
-                <input type="month" id="one_bulan_filter" class="form-control form-control-sm">
-            </div>
-            <div class="filter-group">
-                <label>Operator <span class="text-danger">*</span></label>
-                <select id="one_karyawan_id" class="form-select form-select-sm" style="min-width:180px">
-                    <option value="">— Pilih Operator —</option>
-                    @foreach($karyawan as $k)
-                        <option value="{{ $k->id }}">{{ $k->nama_karyawan }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="filter-group">
-                <label>Shift</label>
-                <select id="one_shift_id" class="form-select form-select-sm" style="min-width:120px">
-                    <option value="">Semua Shift</option>
-                    @foreach($shifts as $s)
-                        <option value="{{ $s->id }}">{{ $s->nama_shift }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="filter-group" style="flex-direction:row;gap:6px;align-items:flex-end">
-                <button type="submit" class="btn btn-secondary btn-sm">
-                    <i class="bi bi-search me-1"></i>Search
-                </button>
-                @if(! auth()->user()->isGuest())
-                <a id="oneExportBtn" href="#" class="btn btn-outline-secondary btn-sm">
-                    <i class="bi bi-file-earmark-excel me-1"></i>Export
-                </a>
-                @endif
-            </div>
-        </form>
-    </div>
 
     {{-- Prompt state --}}
     <div id="oneEmpty" class="erp-panel" style="text-align:center;padding:40px;color:#9ca3af">
@@ -213,6 +223,18 @@
     </div>
 
 </div>{{-- /modeOne --}}
+</div>{{-- /erp-scroll --}}
+</div>{{-- /erp-ws-main --}}
+</div>{{-- /erp-ws-body --}}
+
+<div class="erp-status">
+    <span id="allPeriodLabel"></span>
+    <span id="onePeriodLabel" style="display:none"></span>
+    <span class="sp"></span>
+    <span>Login as {{ auth()->user()->name }}</span>
+</div>
+
+</div>{{-- /erp-ws --}}
 
 @endsection
 
@@ -258,10 +280,14 @@ function switchMode(mode, karyawanId = null) {
     document.getElementById('modeAll').style.display = isAll ? '' : 'none';
     document.getElementById('modeOne').style.display = isAll ? 'none' : '';
 
-    document.getElementById('tabAll').style.background = isAll ? '#4b5563' : '#f3f4f6';
-    document.getElementById('tabAll').style.color      = isAll ? '#fff'    : '#6b7280';
-    document.getElementById('tabOne').style.background = isAll ? '#f3f4f6' : '#4b5563';
-    document.getElementById('tabOne').style.color      = isAll ? '#6b7280' : '#fff';
+    /* Tab dan isi dock ikut mode. Warnanya tidak lagi ditulis inline —
+       kelas .is-on milik toolbar yang mengurusnya. */
+    document.getElementById('tabAll').classList.toggle('is-on', isAll);
+    document.getElementById('tabOne').classList.toggle('is-on', !isAll);
+    document.getElementById('dockAll').style.display = isAll ? '' : 'none';
+    document.getElementById('dockOne').style.display = isAll ? 'none' : '';
+    document.getElementById('allPeriodLabel').style.display = isAll ? '' : 'none';
+    document.getElementById('onePeriodLabel').style.display = isAll ? 'none' : '';
 
     if (!isAll && karyawanId) {
         // Pre-select operator and carry over dates
