@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreBreakdownMesinRequest;
 use App\Http\Requests\UpdateBreakdownMesinRequest;
 use App\Imports\BreakdownMesinImport;
+use App\Models\MasterKaryawan;
 use App\Models\MasterMesin;
 use App\Models\TransaksiBreakdownMesin;
 use App\Services\BreakdownMesinService;
@@ -72,15 +73,39 @@ class BreakdownMesinController extends Controller
         $dateTo = $request->input('date_to', date('Y-m-d'));
         $mesinId = (int) $request->input('mesin_id', 0);
 
+        /* Rentang tanggal bisa dimatikan lewat centang di dock; bawaannya
+         * nyala supaya halaman tidak membuka seluruh riwayat tanpa diminta. */
+        $pakaiTanggal = $request->boolean('pakai_tanggal', ! $request->has('filter_apply'));
+        $filterPic = trim((string) $request->input('filter_pic', ''));
+        $filterStatus = trim((string) $request->input('filter_status', ''));
+
         $breakdowns = TransaksiBreakdownMesin::with('mesin')
-            ->whereBetween('tanggal_breakdown', [$dateFrom, $dateTo])
+            /* whereDate, BUKAN whereBetween.
+
+             Laravel menulis "2026-08-20 00:00:00" ke kolom bertipe date.
+             MySQL memotongnya jadi "2026-08-20" sehingga whereBetween dengan
+             batas tanggal-saja bekerja; SQLite menyimpannya apa adanya,
+             sehingga baris di hari TERAKHIR rentang terbuang.
+
+             Akibatnya bukan sekadar beda hasil: fitur ini jadi tidak mungkin
+             diuji, karena suite berjalan di SQLite. whereDate membandingkan
+             bagian tanggalnya saja di kedua dialek. */
+            ->when($pakaiTanggal, fn ($q) => $q
+                ->whereDate('tanggal_breakdown', '>=', $dateFrom)
+                ->whereDate('tanggal_breakdown', '<=', $dateTo))
             ->when($mesinId, fn ($q) => $q->where('id_mesin', $mesinId))
+            ->when($filterPic !== '', fn ($q) => $q->where('pic_maintenance', $filterPic))
+            ->when($filterStatus !== '', fn ($q) => $q->where('status_breakdown', $filterStatus))
             ->orderByDesc('tanggal_breakdown')->orderByDesc('id')
             ->paginate(50)->withQueryString();
 
         return view('maintenance.breakdown.index', [
             'breakdowns' => $breakdowns,
             'mesinList' => MasterMesin::orderBy('id_mesin')->get(),
+            'picList' => MasterKaryawan::where('departemen', 'Maintenance')->aktif()->orderBy('nama_karyawan')->get(),
+            'pakaiTanggal' => $pakaiTanggal,
+            'filterPic' => $filterPic,
+            'filterStatus' => $filterStatus,
             'dateFrom' => $dateFrom,
             'dateTo' => $dateTo,
             'mesinId' => $mesinId,
@@ -92,6 +117,10 @@ class BreakdownMesinController extends Controller
     {
         return view('maintenance.breakdown.create', [
             'mesinList' => MasterMesin::orderBy('id_mesin')->get(),
+            'picList' => MasterKaryawan::where('departemen', 'Maintenance')->aktif()->orderBy('nama_karyawan')->get(),
+            'pakaiTanggal' => $pakaiTanggal,
+            'filterPic' => $filterPic,
+            'filterStatus' => $filterStatus,
             'nextNomor' => $this->svc->nextNomorUrut(),
         ]);
     }
@@ -135,6 +164,10 @@ class BreakdownMesinController extends Controller
         return view('maintenance.breakdown.edit', [
             'b' => $breakdown,
             'mesinList' => MasterMesin::orderBy('id_mesin')->get(),
+            'picList' => MasterKaryawan::where('departemen', 'Maintenance')->aktif()->orderBy('nama_karyawan')->get(),
+            'pakaiTanggal' => $pakaiTanggal,
+            'filterPic' => $filterPic,
+            'filterStatus' => $filterStatus,
         ]);
     }
 

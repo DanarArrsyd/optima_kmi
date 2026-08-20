@@ -37,9 +37,38 @@ class QcController extends Controller
         $dateTo = $request->input('date_to', date('Y-m-d'));
         $search = trim((string) $request->input('q', ''));
 
-        $q = TransaksiQc::with(['karyawanQc', 'partProses.part', 'shift', 'ngDetails.jenisNg', 'noteResolvedBy'])
-            ->whereDate('tgl_pengecekan', '>=', $dateFrom)
-            ->whereDate('tgl_pengecekan', '<=', $dateTo);
+        /* Filter per kolom di dock. Rentang tanggal bisa dimatikan lewat
+         * centang; bawaannya nyala supaya halaman tidak membuka seluruh
+         * riwayat tanpa diminta. Yang disaring tgl_pengecekan, bukan
+         * tgl_produksi_part — pertanyaan di halaman ini "diperiksa kapan". */
+        $pakaiTanggal = $request->boolean('pakai_tanggal', ! $request->has('filter_apply'));
+        $filterKarId = (int) $request->input('filter_karyawan_id', 0);
+        $filterJenisNgId = (int) $request->input('filter_jenis_ng_id', 0);
+        $filterCustomer = trim((string) $request->input('filter_customer', ''));
+        $filterPartId = (int) $request->input('filter_part_id', 0);
+        $filterProsesId = (int) $request->input('filter_proses_id', 0);
+
+        $q = TransaksiQc::with(['karyawanQc', 'partProses.part', 'shift', 'ngDetails.jenisNg', 'noteResolvedBy']);
+
+        if ($pakaiTanggal) {
+            $q->whereDate('tgl_pengecekan', '>=', $dateFrom)
+                ->whereDate('tgl_pengecekan', '<=', $dateTo);
+        }
+        if ($filterKarId > 0) {
+            $q->where('id_karyawan_qc', $filterKarId);
+        }
+        if ($filterJenisNgId > 0) {
+            $q->whereHas('ngDetails', fn ($d) => $d->where('id_jenis_ng', $filterJenisNgId));
+        }
+        if ($filterCustomer !== '') {
+            $q->whereHas('partProses.part', fn ($p) => $p->where('customer', $filterCustomer));
+        }
+        if ($filterPartId > 0) {
+            $q->whereHas('partProses', fn ($pp) => $pp->where('id_part', $filterPartId));
+        }
+        if ($filterProsesId > 0) {
+            $q->where('id_part_proses', $filterProsesId);
+        }
 
         if ($search !== '') {
             $like = '%'.$search.'%';
@@ -100,7 +129,15 @@ class QcController extends Controller
             ? $transaksi->getCollection()->contains('id', $myLastRecord->id)
             : false;
 
-        return view('input.qc.index', compact('transaksi', 'dateFrom', 'dateTo', 'search', 'shifts', 'karyawan', 'parts', 'jenisNg', 'myLastRecord', 'myLastOnPage'));
+        $customers = MasterPart::distinct()->orderBy('customer')->pluck('customer')->filter()->values();
+
+        return view('input.qc.index', compact(
+            'transaksi', 'dateFrom', 'dateTo', 'search',
+            'shifts', 'karyawan', 'parts', 'jenisNg', 'customers',
+            'pakaiTanggal', 'filterKarId', 'filterJenisNgId',
+            'filterCustomer', 'filterPartId', 'filterProsesId',
+            'myLastRecord', 'myLastOnPage'
+        ));
     }
 
     public function create()

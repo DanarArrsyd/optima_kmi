@@ -254,7 +254,10 @@ $_customersTA = $customers->map(fn($c) => ['v' => $c, 't' => $c])->values();
 $_partsTA     = $_partsForFilter->map(fn($p) => ['v' => $p['id'], 't' => $p['part_name'], 'sub' => $p['part_no'], 'pno' => $p['part_no']])->values();
 $_prosesTA    = $_allProsesForFilter->map(fn($pr) => ['v' => $pr['id'], 't' => $pr['label']])->values();
 $_operatorTA  = $_karForFilter->map(fn($k) => ['v' => $k['id'], 't' => $k['nama']])->values();
-$hasAdvFilter = $filterCustomer || $filterPartId || $filterKarId || $filterProsesId;
+$_jenisNgTA   = $jenisNg->map(fn($n) => ['v' => $n->id, 't' => $n->kode.' – '.$n->nama_ng])->values();
+$_ngObjF      = $filterJenisNgId ? $jenisNg->firstWhere('id', $filterJenisNgId) : null;
+$_ngLabel     = $_ngObjF ? $_ngObjF->kode.' – '.$_ngObjF->nama_ng : '';
+$hasAdvFilter = $filterCustomer || $filterPartId || $filterKarId || $filterProsesId || $filterJenisNgId;
 $filterActive = !empty($mesinIds) || ($search ?? '') !== '' || $hasAdvFilter;
 $advCount = array_sum([$filterCustomer?1:0, $filterPartId?1:0, $filterKarId?1:0, $filterProsesId?1:0]);
 
@@ -430,6 +433,20 @@ $lastUrl = $myLastRecord
                 <button type="button" x-show="selected.length > 0" @click="clearAll()"
                         class="erp-mesin-clear">&times; Hapus semua pilihan</button>
             </div>
+
+            <div x-data="filterSearchComp(_jenisNgTA, {{ $filterJenisNgId ?: 0 }}, '{{ addslashes($_ngLabel) }}')"
+                 @click.outside="open=false" style="position:relative">
+                <input type="hidden" name="filter_jenis_ng_id" :value="val">
+                <input type="text" x-model="query" @focus="open=true" @input="open=true"
+                       @keydown.escape="open=false" placeholder="Jenis NG"
+                       class="erp-in" :class="val ? 'is-set' : ''">
+                <button type="button" x-show="val" @mousedown.prevent="clear()" class="erp-clr">&times;</button>
+                <div x-show="open && filtered.length > 0" x-cloak class="erp-dd">
+                    <template x-for="item in filtered" :key="item.v">
+                        <div @mousedown.prevent="pick(item)" class="erp-dd-item" x-text="item.t"></div>
+                    </template>
+                </div>
+            </div>
         </div>
 
         {{-- ══ Part & Customer ══ --}}
@@ -493,20 +510,30 @@ $lastUrl = $myLastRecord
             </div>
         </div>
 
-        {{-- ══ Filter by Date ══ --}}
-        <div class="erp-grp">
-            <b>Filter by Date</b>
+        {{-- ══ Filter by Date ══
+             Centangnya mematikan rentang tanggal sama sekali, bukan sekadar
+             menyembunyikan isian — tanpa itu tidak ada cara mencari lintas
+             seluruh riwayat. --}}
+        <div class="erp-grp" x-data="{ pakaiTgl: {{ $pakaiTanggal ? 'true' : 'false' }} }">
+            <label class="erp-chk">
+                <input type="checkbox" name="pakai_tanggal" value="1" x-model="pakaiTgl">
+                <b>Filter by Date</b>
+            </label>
             <div class="erp-dock-row">
                 <span>From</span>
-                <input type="date" name="date_from" value="{{ $dateFrom }}" class="erp-in">
+                <input type="date" name="date_from" value="{{ $dateFrom }}" class="erp-in" :disabled="!pakaiTgl">
             </div>
             <div class="erp-dock-row">
                 <span>To</span>
-                <input type="date" name="date_to" value="{{ $dateTo }}" class="erp-in">
+                <input type="date" name="date_to" value="{{ $dateTo }}" class="erp-in" :disabled="!pakaiTgl">
             </div>
         </div>
 
         <div class="erp-grp">
+            {{-- Penanda form dikirim: tanpa ini, centang yang dilepas tidak
+                 terkirim sama sekali dan server tidak bisa membedakan
+                 "dimatikan" dari "halaman baru dibuka". --}}
+            <input type="hidden" name="filter_apply" value="1">
             <button type="submit" class="erp-btn is-pri"><i class="bi bi-funnel"></i>Tampilkan</button>
             <a href="{{ route('input.produksi.index') }}" class="erp-btn">Reset</a>
         </div>
@@ -1004,6 +1031,7 @@ const _partsTA       = @json($_partsTA);
 const _partsFullData = @json($_partsForFilter);
 const _prosesTA      = @json($_prosesTA);
 const _operatorTA    = @json($_operatorTA);
+const _jenisNgTA     = @json($_jenisNgTA);
 
 /* filterSearchComp & partGroupComp kini di layouts/app.blade.php. */
 
