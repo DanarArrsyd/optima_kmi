@@ -7,7 +7,7 @@
 <div class="erp-ws">
 
 <div class="erp-tb">
-    <button type="button" id="btnDock" class="erp-tb-btn is-on"
+    <button type="button" id="btnDock" class="erp-tb-btn"
             onclick="erpToggleDock('mesinDock','btnDock')">
         <i class="bi bi-funnel"></i>Filter
     </button>
@@ -19,7 +19,9 @@
 
 <div class="erp-ws-body">
 
-<aside class="erp-dock" id="mesinDock">
+{{-- Dock mulai tertutup; cakupan data yang sedang dilihat tetap
+     terbaca di status bar, jadi tidak ada yang tersembunyi diam-diam. --}}
+<aside class="erp-dock" id="mesinDock" style="display:none">
     <div class="erp-dock-hd">
         <span>Filter</span>
         <button type="button" class="erp-dock-x" onclick="erpToggleDock('mesinDock','btnDock')" title="Tutup filter">&times;</button>

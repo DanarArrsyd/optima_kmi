@@ -18,7 +18,7 @@
     <button type="button" id="tabOne" class="erp-tb-btn" onclick="switchMode('one')">
         <i class="bi bi-person"></i>Per Inspector
     </button>
-    <button type="button" id="btnDock" class="erp-tb-btn is-on" onclick="erpToggleDock('vcbDock','btnDock')">
+    <button type="button" id="btnDock" class="erp-tb-btn" onclick="erpToggleDock('vcbDock','btnDock')">
         <i class="bi bi-funnel"></i>Filter
     </button>
     <span class="erp-tb-sp"></span>
@@ -26,7 +26,9 @@
 
 <div class="erp-ws-body">
 
-<aside class="erp-dock" id="vcbDock">
+{{-- Dock mulai tertutup; cakupan data yang sedang dilihat tetap
+     terbaca di status bar, jadi tidak ada yang tersembunyi diam-diam. --}}
+<aside class="erp-dock" id="vcbDock" style="display:none">
     <div class="erp-dock-hd">
         <span>Filter</span>
         <button type="button" class="erp-dock-x" onclick="erpToggleDock('vcbDock','btnDock')" title="Tutup filter">&times;</button>
