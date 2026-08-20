@@ -92,19 +92,9 @@
     </div>
 </div>
 @else
-<div class="erp-panel">
-    <div class="erp-panel-header" style="display:flex;align-items:center;gap:8px">
-        <i class="bi bi-exclamation-triangle-fill" style="color:#ca8a04"></i>
-        Daftar Record Anomali
-        <span style="background:#fde047;color:#713f12;font-size:10px;font-weight:700;
-                     padding:2px 8px;border-radius:999px;margin-left:2px">
-            {{ $summary['total'] }} record
-        </span>
-        <span style="margin-left:auto;font-size:10px;font-weight:400;color:#9ca3af;text-transform:none;letter-spacing:0">
-            Klik <strong>Edit</strong> untuk perbaiki data
-        </span>
-    </div>
-    <div style="overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 260px);min-height:200px">
+{{-- Kepala panel dibuang: judul sudah di topbar, jumlah record sudah di
+     status bar. Wadah gulung bertumpuk juga dilepas — dua wadah gulung
+     membuat kepala tabel yang menempel berhenti bekerja. --}}
         <table class="erp-table tbl-freeze" style="min-width:1400px">
             <thead style="position:sticky;top:0;z-index:10">
                 <tr>
@@ -130,17 +120,17 @@
             @foreach($anomalies as $i => $a)
                 @php $t = $a->record; $part = $t->partProses?->part; @endphp
                 <tr class="anomaly-row" style="background:#fefce8">
-                    <td class="sc sc-1" style="text-align:center;color:#9ca3af;font-size:11px">{{ $i + 1 }}</td>
+                    <td class="sc sc-1" style="text-align:center;color:#9ca3af">{{ $i + 1 }}</td>
                     <td class="sc sc-2" style="font-weight:600">
                         {{ \Carbon\Carbon::parse($t->tanggal_produksi)->format('d/m/Y') }}
                     </td>
-                    <td class="sc sc-3" style="font-size:0.88rem;color:#6b7280;white-space:nowrap">{{ $t->shift?->nama_shift ?? '—' }}</td>
+                    <td class="sc sc-3" style="color:#6b7280;white-space:nowrap">{{ $t->shift?->nama_shift ?? '—' }}</td>
                     <td class="sc sc-4" style="font-weight:600;white-space:nowrap">{{ $t->karyawan?->nama_karyawan ?? '—' }}</td>
-                    <td class="sc sc-5 sc-sep" style="font-size:0.88rem">{{ $t->mesin?->id_mesin ?? '—' }}</td>
-                    <td style="font-size:0.82rem;white-space:nowrap">{{ $part?->part_no ?? '—' }}</td>
-                    <td style="font-size:0.82rem;white-space:nowrap">{{ $part?->part_name ?? '—' }}</td>
-                    <td style="font-size:0.82rem;white-space:nowrap">{{ $t->partProses?->nama_proses ?? '—' }}</td>
-                    <td style="font-size:0.82rem;white-space:nowrap;color:#6b7280">
+                    <td class="sc sc-5 sc-sep" >{{ $t->mesin?->id_mesin ?? '—' }}</td>
+                    <td style="white-space:nowrap">{{ $part?->part_no ?? '—' }}</td>
+                    <td style="white-space:nowrap">{{ $part?->part_name ?? '—' }}</td>
+                    <td style="white-space:nowrap">{{ $t->partProses?->nama_proses ?? '—' }}</td>
+                    <td style="white-space:nowrap;color:#6b7280">
                         {{ $t->jam_start }} – {{ $t->jam_finish }}
                     </td>
                     <td style="text-align:right;font-weight:600;
@@ -149,27 +139,28 @@
                     </td>
                     <td style="text-align:right;font-weight:600">{{ number_format($t->qty_aktual) }}</td>
                     <td style="text-align:right;color:#6b7280">{{ number_format($a->sph_std) }}</td>
-                    <td style="text-align:right;font-weight:700;color:#b91c1c">
+                    <td style="text-align:right;font-weight:600;color:#b91c1c">
                         {{ number_format($a->sph_act) }}
                     </td>
-                    <td style="text-align:right;font-weight:700;white-space:nowrap;
+                    <td style="text-align:right;font-weight:600;white-space:nowrap;
                                color:{{ $a->pct === null ? '#9ca3af' : ($a->pct > 150 ? '#b91c1c' : '#374151') }}">
                         @if($a->pct !== null)
-                            {{ $a->pct }}% <i class="bi bi-exclamation-triangle-fill" style="font-size:0.7rem;color:#ca8a04"></i>
+                            {{ $a->pct }}% <i class="bi bi-exclamation-triangle-fill" style="color:#ca8a04"></i>
                         @else
                             —
                         @endif
                     </td>
-                    <td style="font-size:0.78rem;color:#92400e;white-space:nowrap">
-                        @foreach($a->warnings as $w)
-                            <div><i class="bi bi-dot" style="color:#ca8a04;font-size:1rem"></i>{{ $w }}</div>
-                        @endforeach
+                    {{-- Ikut ukuran sel lain; warnanya yang membedakan, bukan
+                         ukurannya. Beberapa alasan dirangkai satu baris supaya
+                         tinggi barisnya tidak melar sendiri dibanding baris lain. --}}
+                    <td style="color:#92400e;white-space:nowrap">
+                        {{ implode(' · ', $a->warnings) }}
                     </td>
                     <td>
                         <div style="display:flex;gap:5px;align-items:center">
                             <a href="{{ route('input.produksi.edit', $t) }}"
                                class="btn btn-warning btn-sm"
-                               style="font-size:0.78rem;padding:3px 8px;white-space:nowrap">
+                               style="font-size:var(--erp-fs-sm);padding:3px 8px;white-space:nowrap">
                                 <i class="bi bi-pencil me-1"></i>Edit
                             </a>
                             <form method="POST"
@@ -177,7 +168,7 @@
                                   onsubmit="return confirm('Tandai data ini sebagai OK?\n\nIni berarti lo sudah review dan yakin nilai SPH / persentase ini memang benar.')">
                                 @csrf
                                 <button type="submit" class="btn btn-success btn-sm"
-                                        style="font-size:0.78rem;padding:3px 8px;white-space:nowrap">
+                                        style="font-size:var(--erp-fs-sm);padding:3px 8px;white-space:nowrap">
                                     <i class="bi bi-check-lg me-1"></i>OK
                                 </button>
                             </form>
@@ -187,14 +178,16 @@
             @endforeach
             </tbody>
         </table>
-    </div>
-</div>
 @endif
 
-<div style="margin-top:10px;font-size:0.8rem;color:#9ca3af">
+{{-- Ambang dibaca dari config/anomali_lhp.php, bukan ditulis ulang di sini:
+     halaman ini dan hitungan badge di LHP Produksi memakai sumber yang sama,
+     dan angka yang disalin akan menyimpang diam-diam saat ambangnya diubah. --}}
+<div class="erp-meta" style="margin-top:10px;color:#9ca3af">
     <i class="bi bi-info-circle me-1"></i>
-    Threshold: Achievement &gt;150% · Waktu kerja &lt;5 menit · SPH standar = 0.
-    Semua data ditampilkan tanpa paginasi untuk rentang tanggal yang dipilih.
+    Ambang: Achievement &gt;{{ config('anomali_lhp.pct_maks') }}% &middot;
+    Waktu kerja &lt;{{ round(config('anomali_lhp.wkj_min') * 60) }} menit &middot;
+    SPH standar = 0. Semua data ditampilkan tanpa paginasi untuk rentang tanggal yang dipilih.
 </div>
 </div>{{-- /erp-scroll --}}
 </div>{{-- /erp-ws-main --}}
