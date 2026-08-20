@@ -36,7 +36,7 @@ $oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->n
      x-transition:leave="transition ease-in duration-150"
      x-transition:leave-start="opacity-100"
      x-transition:leave-end="opacity-0"
-     style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1040">
+     style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1190">
 </div>
 
 {{-- ── DRAWER PANEL ─────────────────────────────────────────────── --}}
@@ -48,16 +48,16 @@ $oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->n
      x-transition:leave="transition ease-in duration-200"
      x-transition:leave-start="transform translate-x-0"
      x-transition:leave-end="transform translate-x-full"
-     style="position:fixed;top:0;right:0;height:100dvh;width:640px;max-width:100vw;z-index:1050;">
-    <div style="display:flex;flex-direction:column;height:100%;background:#fff;box-shadow:-4px 0 24px rgba(0,0,0,.18)">
+     style="position:fixed;top:0;right:0;height:100dvh;width:640px;max-width:100vw;z-index:1200">
+    <div class="erp-drawer" style="display:flex;flex-direction:column;height:100%;background:#fff;box-shadow:-4px 0 24px rgba(0,0,0,.18)">
 
     {{-- Header --}}
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:#111827;color:#fff;flex-shrink:0">
-        <div style="font-weight:700;font-size:0.95rem;letter-spacing:.02em">
+    <div class="erp-drawer-hd">
+        <div>
             <i class="bi bi-clipboard-data me-2"></i>Input LHP Produksi
         </div>
         <button type="button" @click="drawerOpen = false"
-                style="background:none;border:none;color:#fff;font-size:1.25rem;cursor:pointer;padding:0;line-height:1">
+                >
             <i class="bi bi-x-lg"></i>
         </button>
     </div>
@@ -66,13 +66,13 @@ $oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->n
     <div style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:24px;overscroll-behavior:contain">
 
         @if($errors->any())
-        <div class="alert alert-danger mb-3" style="font-size:0.92rem">
+        <div class="alert alert-danger mb-3" >
             <ul class="mb-0 ps-3">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
         </div>
         @endif
 
         @if($karyawan->isEmpty() || $mesin->isEmpty() || $parts->isEmpty())
-        <div class="alert alert-warning mb-3" style="font-size:0.92rem">
+        <div class="alert alert-warning mb-3" >
             <strong>Master data belum lengkap:</strong>
             @if($karyawan->isEmpty()) <a href="{{ route('master.karyawan.index') }}">Tambah Karyawan/Operator</a>. @endif
             @if($mesin->isEmpty()) <a href="{{ route('master.mesin.index') }}">Tambah Mesin</a>. @endif
@@ -86,14 +86,14 @@ $oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->n
 
                 {{-- Tanggal + Shift --}}
                 <div class="col-6">
-                    <label class="form-label" style="font-size:0.92rem">Tanggal Produksi <span class="text-danger">*</span></label>
+                    <label class="form-label" >Tanggal Produksi <span class="text-danger">*</span></label>
                     <input type="date" name="tanggal_produksi"
                            class="form-control @error('tanggal_produksi') is-invalid @enderror"
                            value="{{ old('tanggal_produksi', date('Y-m-d')) }}">
                     @error('tanggal_produksi')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
                 <div class="col-6">
-                    <label class="form-label" style="font-size:0.92rem">Shift <span class="text-danger">*</span></label>
+                    <label class="form-label" >Shift <span class="text-danger">*</span></label>
                     <select name="id_shift" class="form-select @error('id_shift') is-invalid @enderror">
                         <option value="">-- Pilih --</option>
                         @foreach($shifts as $s)
@@ -108,7 +108,7 @@ $oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->n
                 {{-- Operator --}}
                 <div class="col-12"
                      x-data="taField(taKaryawan, '{{ $oldKaryawanTxt }}', {{ $oldKaryawanId ?: 'null' }})">
-                    <label class="form-label" style="font-size:0.92rem">Operator <span class="text-danger">*</span></label>
+                    <label class="form-label" >Operator <span class="text-danger">*</span></label>
                     <div class="ta-wrap">
                         <input type="text" class="form-control ta-input @error('id_karyawan') is-invalid @enderror"
                                x-model="query" @focus="openDd()" @blur="closeDd()"
@@ -123,13 +123,13 @@ $oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->n
                             </template>
                         </div>
                     </div>
-                    @error('id_karyawan')<div class="invalid-feedback d-block" style="font-size:0.88rem">{{ $message }}</div>@enderror
+                    @error('id_karyawan')<div class="invalid-feedback d-block" >{{ $message }}</div>@enderror
                 </div>
 
                 {{-- Mesin --}}
                 <div class="col-12"
                      x-data="taField(taMesin, '{{ $oldMesinTxt }}', {{ $oldMesinId ?: 'null' }})">
-                    <label class="form-label" style="font-size:0.92rem">Mesin <span class="text-danger">*</span></label>
+                    <label class="form-label" >Mesin <span class="text-danger">*</span></label>
                     <div class="ta-wrap">
                         <input type="text" class="form-control ta-input @error('id_mesin') is-invalid @enderror"
                                x-model="query" @focus="openDd()" @blur="closeDd()"
@@ -144,12 +144,12 @@ $oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->n
                             </template>
                         </div>
                     </div>
-                    @error('id_mesin')<div class="invalid-feedback d-block" style="font-size:0.88rem">{{ $message }}</div>@enderror
+                    @error('id_mesin')<div class="invalid-feedback d-block" >{{ $message }}</div>@enderror
                 </div>
 
                 {{-- Part + Proses --}}
                 <div class="col-12" x-data="produksiPartSelector()">
-                    <label class="form-label" style="font-size:0.92rem">Part <span class="text-danger">*</span></label>
+                    <label class="form-label" >Part <span class="text-danger">*</span></label>
                     <div class="ta-wrap" style="margin-bottom:8px">
                         <input type="text" class="form-control ta-input"
                                x-model="query" @focus="openDd()" @blur="closeDd()"
@@ -163,7 +163,7 @@ $oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->n
                             </template>
                         </div>
                     </div>
-                    <label class="form-label" style="font-size:0.92rem">Proses <span class="text-danger">*</span></label>
+                    <label class="form-label" >Proses <span class="text-danger">*</span></label>
                     <select name="id_part_proses"
                             class="form-select @error('id_part_proses') is-invalid @enderror"
                             :disabled="prosesList.length===0">
@@ -174,26 +174,26 @@ $oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->n
                             </option>
                         </template>
                     </select>
-                    @error('id_part_proses')<div class="invalid-feedback d-block" style="font-size:0.88rem">{{ $message }}</div>@enderror
+                    @error('id_part_proses')<div class="invalid-feedback d-block" >{{ $message }}</div>@enderror
                 </div>
 
                 {{-- Jam Start / Finish / Qty --}}
                 <div class="col-4">
-                    <label class="form-label" style="font-size:0.92rem">Jam Start <span class="text-danger">*</span></label>
+                    <label class="form-label" >Jam Start <span class="text-danger">*</span></label>
                     <input type="time" name="jam_start"
                            class="form-control @error('jam_start') is-invalid @enderror"
                            value="{{ old('jam_start') }}">
                     @error('jam_start')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
                 <div class="col-4">
-                    <label class="form-label" style="font-size:0.92rem">Jam Finish <span class="text-danger">*</span></label>
+                    <label class="form-label" >Jam Finish <span class="text-danger">*</span></label>
                     <input type="time" name="jam_finish"
                            class="form-control @error('jam_finish') is-invalid @enderror"
                            value="{{ old('jam_finish') }}">
                     @error('jam_finish')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
                 <div class="col-4">
-                    <label class="form-label" style="font-size:0.92rem">Qty Aktual <span class="text-danger">*</span></label>
+                    <label class="form-label" >Qty Aktual <span class="text-danger">*</span></label>
                     <input type="number" name="qty_aktual"
                            class="form-control @error('qty_aktual') is-invalid @enderror"
                            value="{{ old('qty_aktual') }}" min="1">
@@ -214,7 +214,7 @@ $oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->n
                                    @change="if (!adaNg) { const w = $el.closest('[x-data]').querySelector('.ng-rows'); if (w) Alpine.$data(w).rows = []; }"
                                    {{ $oldAdaNg ? 'checked' : '' }}>
                             <label class="form-check-label fw-semibold" for="ada_ng_drawer"
-                                   style="font-size:0.92rem;color:#374151">
+                                   style="color:#374151">
                                 <i class="bi bi-exclamation-triangle me-1 text-warning"></i>Ada NG Proses?
                             </label>
                         </div>
@@ -230,10 +230,10 @@ $oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->n
             </div>{{-- /row --}}
 
             <div style="margin-top:20px;padding-top:16px;border-top:1px solid #e5e7eb;display:flex;gap:8px">
-                <button type="submit" class="btn btn-primary" style="flex:1;font-size:0.95rem">
+                <button type="submit" class="btn btn-primary" style="flex:1">
                     <i class="bi bi-save me-1"></i>Simpan LHP
                 </button>
-                <button type="button" @click="drawerOpen = false" class="btn btn-outline-secondary" style="font-size:0.95rem">
+                <button type="button" @click="drawerOpen = false" class="btn btn-outline-secondary" >
                     Batal
                 </button>
             </div>
@@ -402,17 +402,22 @@ $lastUrl = $myLastRecord
                  Dock cuma 210px — panel melayang akan keluar layar. --}}
             <div x-show="mesinOpen" x-cloak class="erp-mesin-pick">
                 @foreach($mesinByLine as $line => $mesinGroup)
-                <div class="erp-mesin-line">{{ $line }}</div>
+                <div class="erp-mesin-line">Line {{ $line }}</div>
                 <div class="erp-mesin-chips">
                     @foreach($mesinGroup as $m)
                     <button type="button" @click="toggle({{ $m->id }})"
                             class="erp-chip" :class="isSelected({{ $m->id }}) ? 'is-on' : ''"
-                            title="{{ $m->nama_mesin }}">{{ $m->id_mesin }}</button>
+                            :aria-pressed="isSelected({{ $m->id }}) ? 'true' : 'false'"
+                            title="{{ $m->id_mesin }} &mdash; {{ $m->nama_mesin }}">
+                        <span class="kode">{{ $m->id_mesin }}</span>
+                        <span class="nama">{{ $m->nama_mesin }}</span>
+                        <i class="bi bi-check-lg tik" aria-hidden="true"></i>
+                    </button>
                     @endforeach
                 </div>
                 @endforeach
                 <button type="button" x-show="selected.length > 0" @click="clearAll()"
-                        class="erp-mesin-clear">&times; Hapus semua</button>
+                        class="erp-mesin-clear">&times; Hapus semua pilihan</button>
             </div>
         </div>
 
@@ -448,9 +453,9 @@ $lastUrl = $myLastRecord
                             class="erp-clr">&times;</button>
                     <div x-show="partOpen && filteredParts.length > 0" x-cloak class="erp-dd">
                         <template x-for="item in filteredParts" :key="item.v">
-                            <div @mousedown.prevent="pickPart(item)" class="erp-dd-item">
-                                <div x-text="item.t" style="font-weight:700"></div>
-                                <div x-text="item.sub" style="font-size:.72rem;color:#9ca3af"></div>
+                            <div @mousedown.prevent="pickPart(item)" class="erp-dd-item" :title="item.t">
+                                <span style="font-weight:700" x-text="item.t"></span>
+                                <span class="sub" x-text="item.sub"></span>
                             </div>
                         </template>
                     </div>
@@ -522,7 +527,7 @@ $lastUrl = $myLastRecord
             @csrf
             <div class="row g-2 align-items-end">
                 <div class="col-md-7">
-                    <label class="form-label mb-1" style="font-size:0.92rem">File Excel (.xlsx / .xls / .csv)</label>
+                    <label class="form-label mb-1" >File Excel (.xlsx / .xls / .csv)</label>
                     <input type="file" name="file" class="form-control" accept=".xlsx,.xls,.csv" required>
                 </div>
                 <div class="col-auto">
@@ -531,7 +536,7 @@ $lastUrl = $myLastRecord
                     </button>
                 </div>
             </div>
-            <div class="mt-2" style="font-size:0.88rem;color:#6c757d">
+            <div class="mt-2" style="color:#6c757d">
                 Mulai dari baris ke-4 (baris 1 = header, baris 2 = keterangan, baris 3 = contoh).
             </div>
         </form>
@@ -558,7 +563,7 @@ $lastUrl = $myLastRecord
             <div style="width:100%">
                 <strong>{{ count(session('import_errors')) }} baris gagal diimport:</strong>
                 <div style="max-height:180px;overflow-y:auto;margin-top:6px">
-                    <ul class="mb-0" style="font-size:0.92rem">
+                    <ul class="mb-0" >
                         @foreach(session('import_errors') as $err)<li>{{ $err }}</li>@endforeach
                     </ul>
                 </div>
@@ -759,12 +764,11 @@ $lastUrl = $myLastRecord
         hasNote=!!$event.detail.text; recordId=$event.detail.recordId;
         isAdmin=$event.detail.isAdmin||false; noteAt=$event.detail.noteAt||'';
         updatedAt=$event.detail.updatedAt||''; resolvedAt=$event.detail.resolvedAt||'';
-        resolvedBy=$event.detail.resolvedBy||''; resolveAction=$event.detail.resolveAction||'';
-     "
+        resolvedBy=$event.detail.resolvedBy||''; resolveAction=$event.detail.resolveAction||''"
      x-on:keydown.escape.window="open=false">
 
     <div x-show="open" x-cloak @click="open=false"
-         style="position:fixed;inset:0;z-index:1049"></div>
+         style="position:fixed;inset:0;z-index:1190"></div>
 
     <div x-show="open" x-cloak
          x-transition:enter="transition ease-out duration-250"
@@ -773,20 +777,20 @@ $lastUrl = $myLastRecord
          x-transition:leave="transition ease-in duration-200"
          x-transition:leave-start="transform translate-x-0"
          x-transition:leave-end="transform translate-x-full"
+         class="erp-drawer"
          style="position:fixed;top:0;right:0;height:100dvh;width:420px;max-width:100vw;
-                z-index:1050;display:flex;flex-direction:column;
+                z-index:1200;display:flex;flex-direction:column;
                 background:#fff;box-shadow:-6px 0 32px rgba(0,0,0,.15)">
 
         {{-- Header --}}
-        <div style="display:flex;align-items:center;justify-content:space-between;
-                    padding:14px 20px;background:#111827;color:#fff;flex-shrink:0">
-            <div style="font-weight:700;font-size:0.95rem">
+        <div class="erp-drawer-hd">
+            <div>
                 <i class="bi bi-chat-left-text-fill me-2"></i>
                 <span x-show="isAdmin">Note dari Staff</span>
                 <span x-show="!isAdmin">Note untuk Admin</span>
             </div>
             <button type="button" @click="open=false"
-                    style="background:none;border:none;color:#fff;font-size:1.2rem;cursor:pointer;line-height:1;padding:0">
+                    >
                 <i class="bi bi-x-lg"></i>
             </button>
         </div>
@@ -796,29 +800,29 @@ $lastUrl = $myLastRecord
 
             {{-- ADMIN MODE: baca note, lihat status --}}
             <div x-show="isAdmin">
-                <p style="font-size:0.82rem;color:#6b7280;margin-bottom:8px">Catatan dari staff:</p>
+                <p style="color:#6b7280;margin-bottom:8px">Catatan dari staff:</p>
                 <div x-text="text"
                      style="background:#fafafa;border:1px solid #e5e7eb;border-radius:4px;
-                            padding:12px;font-size:0.88rem;min-height:80px;white-space:pre-wrap;color:#111827"></div>
-                <div x-show="noteAt" style="font-size:0.75rem;color:#9ca3af;margin-top:6px">
+                            padding:12px;min-height:80px;white-space:pre-wrap;color:#111827"></div>
+                <div x-show="noteAt" class="erp-meta" style="color:#9ca3af;margin-top:6px">
                     Dikirim: <span x-text="noteAt ? new Date(noteAt).toLocaleString('id-ID',{dateStyle:'medium',timeStyle:'short'}) : ''"></span>
                 </div>
 
                 {{-- Status perubahan data --}}
                 <div style="margin-top:16px">
                     <div x-show="dataChanged === true"
-                         style="padding:10px 14px;background:#f0fdf4;border:1px solid #86efac;border-radius:4px;font-size:0.82rem;color:#166534">
+                         style="padding:10px 14px;background:#f0fdf4;border:1px solid #86efac;border-radius:4px;color:#166534">
                         <i class="bi bi-check-circle-fill me-1"></i>Data sudah diperbarui setelah note dikirim
                     </div>
                     <div x-show="dataChanged === false"
-                         style="padding:10px 14px;background:#fef9c3;border:1px solid #fde047;border-radius:4px;font-size:0.82rem;color:#713f12">
+                         style="padding:10px 14px;background:#fef9c3;border:1px solid #fde047;border-radius:4px;color:#713f12">
                         <i class="bi bi-exclamation-triangle-fill me-1"></i>Data <strong>belum</strong> diperbarui sejak note dikirim
                     </div>
                 </div>
 
                 {{-- Status resolved --}}
                 <div x-show="resolvedAt"
-                     style="margin-top:12px;padding:10px 14px;background:#f0fdf4;border:1px solid #86efac;border-radius:4px;font-size:0.82rem;color:#166534">
+                     style="margin-top:12px;padding:10px 14px;background:#f0fdf4;border:1px solid #86efac;border-radius:4px;color:#166534">
                     <i class="bi bi-check2-circle me-1"></i>
                     Sudah ditandai selesai oleh <strong x-text="resolvedBy"></strong>
                     pada <span x-text="resolvedAt ? new Date(resolvedAt).toLocaleString('id-ID',{dateStyle:'medium',timeStyle:'short'}) : ''"></span>
@@ -829,28 +833,28 @@ $lastUrl = $myLastRecord
             <div x-show="!isAdmin">
                 <template x-if="resolvedAt">
                     <div>
-                        <div style="padding:10px 14px;background:#f0fdf4;border:1px solid #86efac;border-radius:4px;font-size:0.82rem;color:#166534;margin-bottom:12px">
+                        <div style="padding:10px 14px;background:#f0fdf4;border:1px solid #86efac;border-radius:4px;color:#166534;margin-bottom:12px">
                             <i class="bi bi-lock-fill me-1"></i>
                             Note sudah di-feedback admin. Tidak dapat diubah lagi.
                         </div>
-                        <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:4px;padding:12px 14px;font-size:0.88rem;color:#374151;white-space:pre-wrap" x-text="text || '(kosong)'"></div>
+                        <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:4px;padding:12px 14px;color:#374151;white-space:pre-wrap" x-text="text || '(kosong)'"></div>
                     </div>
                 </template>
                 <template x-if="!resolvedAt">
                     <div>
-                        <p style="font-size:0.82rem;color:#6b7280;margin-bottom:14px;line-height:1.6">
+                        <p style="color:#6b7280;margin-bottom:14px;line-height:1.6">
                             Tulis catatan untuk admin mengenai kesalahan pada data ini.
                             Admin akan melihat catatan ini dan dapat memperbaiki data.
                         </p>
                         <textarea x-model="text" rows="6"
-                                  class="form-control" style="font-size:0.88rem;resize:vertical"
+                                  class="form-control" style="resize:vertical"
                                   placeholder="Contoh: Qty aktual seharusnya 500, bukan 400. Mohon dikoreksi."
                                   maxlength="1000"></textarea>
-                        <div style="font-size:0.75rem;color:#9ca3af;text-align:right;margin-top:4px">
+                        <div class="erp-meta" style="color:#9ca3af;text-align:right;margin-top:4px">
                             <span x-text="text.length">0</span>/1000
                         </div>
                         <div x-show="hasNote" style="margin-top:16px;padding:10px 14px;
-                             background:#fefce8;border:1px solid #fde047;border-radius:4px;font-size:0.8rem;color:#713f12">
+                             background:#fefce8;border:1px solid #fde047;border-radius:4px;color:#713f12">
                             <i class="bi bi-info-circle me-1"></i>
                             Note sebelumnya sudah dikirim. Kamu bisa ubah atau hapus di bawah.
                         </div>
