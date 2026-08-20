@@ -202,23 +202,6 @@
 const _jenisNgTA = @json($_jenisNgTA);
 const _orangTA   = @json($_orangTA);
 
-/* Disalin dari /input/produksi. Sengaja tidak di-share ke layout: memindahkannya
-   menyentuh halaman input yang jauh lebih ramai, dan itu perubahan tersendiri. */
-function filterSearchComp(items, initVal, initLabel) {
-    return {
-        items,
-        query: initLabel || '',
-        val:   (initVal !== undefined && initVal !== null && initVal !== 0 && initVal !== '0') ? initVal : '',
-        open:  false,
-        get filtered() {
-            if (!this.query.trim()) return this.items.slice(0, 40);
-            const q = this.query.toLowerCase();
-            return this.items.filter(i => i.t.toLowerCase().includes(q)).slice(0, 40);
-        },
-        pick(item) { this.val = item.v; this.query = item.t; this.open = false; },
-        clear()    { this.val = ''; this.query = ''; },
-        onInput()  { this.val = ''; this.open = true; },
-    };
-}
+/* filterSearchComp kini di layouts/app.blade.php — tidak lagi disalin. */
 </script>
 @endpush
