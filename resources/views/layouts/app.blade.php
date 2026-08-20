@@ -1475,6 +1475,76 @@ if (!isMobile() && localStorage.getItem(SB_KEY) === '1') {
                       Halaman yang memakainya WAJIB menyediakan _partsTA,
                       _prosesTA, dan _partsFullData.
 ══════════════════════════════════════════════════════════════════ */
+/* ══ taField — ketik-cari dengan navigasi papan tik ═══════════════
+   Satu definisi. Sebelumnya ada di 18 berkas view dalam lima varian teks,
+   dan varian itu sudah menyimpang: tiap perbaikan bug harus dikerjakan
+   lima kali, dan sejarah repo ini menunjukkan yang begitu selalu
+   ketinggalan di satu tempat.
+
+   Kelima varian ternyata hanya DUA perilaku, dan bedanya cuma closeDd():
+
+     Kelompok input (12 berkas)
+         mengosongkan val+query kalau val terisi tapi teksnya sudah
+         tidak cocok lagi; teks tanpa pilihan DIBIARKAN menggantung.
+
+     Kelompok analitik (6 berkas)
+         mengosongkan query kalau tidak ada yang dipilih; val basi yang
+         teksnya sudah diubah DIBIARKAN.
+
+   Yang dipakai di sini menutup dua-duanya: kotak dikosongkan kecuali ia
+   benar-benar memegang satu pilihan yang teksnya masih cocok. Aman untuk
+   keduanya — val basi tidak pernah ikut terkirim, dan teks menggantung
+   tidak lagi memberi kesan ada yang terpilih.
+
+   Keenam halaman analitik memanggil taField() tanpa initText/initVal,
+   jadi bagi mereka perilakunya persis sama seperti sebelumnya.
+══════════════════════════════════════════════════════════════════ */
+function taField(items, initText = '', initVal = null) {
+    return {
+        items,
+        query: initText,
+        val:   initVal,
+        open:  false,
+        idx:   -1,
+
+        get filtered() {
+            if (!this.query.trim()) return this.items.slice(0, 60);
+            const q = this.query.toLowerCase();
+            return this.items.filter(i => i.t.toLowerCase().includes(q)).slice(0, 60);
+        },
+
+        openDd()  { this.open = true; this.idx = -1; },
+
+        closeDd() {
+            setTimeout(() => {
+                this.open = false;
+                const terpilih = this.val !== null && this.val !== ''
+                    && this.items.some(i => i.v == this.val && i.t === this.query);
+                if (! terpilih) { this.val = null; this.query = ''; }
+            }, 180);
+        },
+
+        onInput()  { this.val = null; this.open = true; this.idx = -1; },
+        pick(item) { this.query = item.t; this.val = item.v; this.open = false; this.idx = -1; },
+
+        onKey(e) {
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                this.open = true;
+                this.idx = Math.min(this.idx + 1, this.filtered.length - 1);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                this.idx = Math.max(this.idx - 1, 0);
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (this.idx >= 0 && this.filtered[this.idx]) this.pick(this.filtered[this.idx]);
+            } else if (e.key === 'Escape') {
+                this.open = false;
+            }
+        },
+    };
+}
+
 function filterSearchComp(items, initVal, initLabel, onPick) {
     return {
         items,
