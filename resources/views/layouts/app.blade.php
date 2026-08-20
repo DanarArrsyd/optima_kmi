@@ -347,11 +347,16 @@
         }
 
         /* ══ Main ═══════════════════════════════════════════════════ */
+        /* Jarak dari topbar dipasang sebagai PADDING, bukan margin.
+           margin-top di sini runtuh keluar dari <body> sehingga body ikut
+           terdorong 46px dan dokumen selalu 46px lebih tinggi dari layar —
+           setiap halaman menyisakan gulungan hantu, termasuk /overview yang
+           justru dirancang terkunci satu layar tanpa scroll. Padding tidak
+           pernah runtuh. Posisi konten tidak berubah: tetap 46 + 18 dari atas. */
         #main {
             margin-left: 0;
-            margin-top: var(--tb-h);
-            padding: 18px 22px;
-            min-height: calc(100vh - var(--tb-h));
+            padding: calc(var(--tb-h) + 18px) 22px 18px;
+            min-height: 100vh;
             transition: margin-left var(--t);
         }
 
@@ -819,7 +824,6 @@
            tergulung di belakang ruang kerja yang seharusnya terkunci.
            Dipakai padding, bukan margin: padding tidak pernah runtuh. */
         #main.erp-flush {
-            margin-top: 0;
             padding: var(--tb-h) 0 0 0 !important;
             min-height: 0;
             height: 100vh;

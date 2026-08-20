@@ -260,23 +260,18 @@
         font-size: 14px;
     }
 
-    /* Catatan kenapa sebuah angka kosong — TETAP terlihat, tidak dipindah ke
-       tooltip. Halaman yang diam soal ini bikin orang menyangka datanya nol.
-       Yang berubah cuma tempatnya: dulu panel sendiri (mencuri satu slot
-       grid), sekarang catatan kaki di dalam panel A/P/Q dengan tinggi dibatasi
-       + scroll sendiri, supaya catatan panjang tidak pernah mendorong grafik
-       lain keluar layar. */
-    .ov-catatan {
-        font-size: 10px;
-        color: var(--text-3);
-        line-height: 1.35;
-        margin: 5px 0 0;
-        padding-left: 14px;
-        max-height: 3.6em;
-        overflow-y: auto;
+    /* Penanda peringatan di kepala panel OEE, menggantikan daftar kalimat
+       yang dulu dicetak di bawah angka. Isi tersering ("Performance melebihi
+       100%") bersifat struktural sehingga muncul hampir selalu — sebagai teks
+       ia mendorong tinggi panel dan membuat kotak OEE tidak pernah sama dengan
+       tiga kotak di bawahnya. Sebagai ikon ia nol pengaruh ke tinggi. */
+    .ov-flag {
+        margin-left: auto;
         flex: 0 0 auto;
-        border-top: 1px solid var(--border-2);
-        padding-top: 4px;
+        color: var(--c-warn);
+        font-size: 11px;
+        line-height: 1;
+        cursor: help;
     }
 
     /* ══ Responsif ══════════════════════════════════════════════════
@@ -326,10 +321,12 @@
         .ov-donut-wrap  { flex: 0 0 auto; height: 180px; }
         .ov-chart-line  { flex: 0 0 auto; height: 225px; }
         .ov-chart-pareto{ flex: 0 0 auto; height: 320px; }
-        .ov-big         { font-size: 44px; }
-        .ov-big-sm      { font-size: 30px; }
+        /* 44px membuat angka OEE hampir menyentuh tepi kotak dan jomplang
+           dari tiga kotak di bawahnya. Selisihnya dijaga tetap ada — OEE
+           memang disengaja dominan — tapi cukup 1,25x, bukan 1,47x. */
+        .ov-big         { font-size: 34px; }
+        .ov-big-sm      { font-size: 27px; }
         .ov-donut-center{ font-size: 26px; }
-        .ov-catatan     { max-height: none; }
     }
     @media (max-width: 900px) {
         .ov-row-1, .ov-row-2 { grid-template-columns: 1fr; }
@@ -436,22 +433,29 @@
              .ov-big-sm — bedanya dari ukuran huruf, bukan dari besar kotak. --}}
         <div class="ov-stack">
             <div class="erp-panel">
-                <div class="erp-panel-header"><span class="ov-h">OEE</span><span class="ov-sub">- {{ $labelRentang }}</span></div>
+                {{-- Catatan TIDAK lagi dicetak sebagai kalimat di bawah angka.
+                     Isi tersering adalah "Performance melebihi 100%", dan itu
+                     kondisi STRUKTURAL — sph_standar_produksi dipakai untuk dua
+                     tujuan yang bertentangan — jadi kalimatnya praktis muncul
+                     terus, mendorong tinggi panel, lalu terpotong sendiri oleh
+                     tepi kotak. Kotaknya jadi tidak pernah sama dengan tiga
+                     kotak di bawahnya.
+
+                     Isinya tidak dihilangkan: pindah ke ikon + title di kepala
+                     panel, sehingga tetap terbaca saat ditunjuk tanpa pernah
+                     mengubah tinggi kotak. --}}
+                <div class="erp-panel-header">
+                    <span class="ov-h">OEE</span>
+                    <span class="ov-sub">- {{ $labelRentang }}</span>
+                    @if($oee['catatan'] !== [])
+                        <span class="ov-flag" title="{{ implode(' · ', $oee['catatan']) }}"
+                              aria-label="{{ implode(' · ', $oee['catatan']) }}">
+                            <i class="bi bi-exclamation-triangle-fill"></i>
+                        </span>
+                    @endif
+                </div>
                 <div class="erp-panel-body">
                     <div class="ov-big">{{ $oee['oee_pct'] === null ? '—' : number_format($oee['oee_pct'], 1, ',', '.').'%' }}</div>
-
-                    {{-- Catatan menempel di panel OEE, bukan kotak kelima.
-                         Kotak sendiri akan mencuri seperlima tinggi kolom
-                         padahal isinya kosong di hari normal. Di sini ia cuma
-                         memakan ruang saat memang ada yang perlu dijelaskan —
-                         dan yang dijelaskan justru kenapa OEE tak lengkap. --}}
-                    @if($oee['catatan'] !== [])
-                        <ul class="ov-catatan">
-                            @foreach($oee['catatan'] as $c)
-                                <li>{{ $c }}</li>
-                            @endforeach
-                        </ul>
-                    @endif
                 </div>
             </div>
 
