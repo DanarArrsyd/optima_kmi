@@ -359,7 +359,13 @@
             from { opacity: 0.4; }
             to   { opacity: 1; }
         }
-        #main { animation: pageIn 0.12s ease forwards; }
+        /* TANPA `forwards`. Animasi opacity yang isiannya dipertahankan membuat
+           #main punya stacking context sendiri yang tidak pernah hilang, sehingga
+           SEMUA laci di dalamnya terkurung di bawah topbar (z-index 1100) berapa
+           pun z-index laci itu — kepala laci tidak pernah terlihat. Tanpa fill,
+           konteksnya lepas begitu animasi selesai; hasil akhirnya sama karena
+           opacity dasarnya memang 1. */
+        #main { animation: pageIn 0.12s ease; }
 
         /* ══ Page Header ════════════════════════════════════════════ */
         .page-header {
@@ -970,11 +976,23 @@
             border: 1px solid var(--border); border-radius: 2px;
             z-index: 600; max-height: 220px; overflow-y: auto;
         }
+        /* Nama part bisa jauh lebih panjang dari lebar dock. Dropdown tidak
+           bisa melebar keluar karena .erp-dock-body menggulung dan ikut
+           memotong — jadi teksnya dibiarkan turun baris, bukan dipotong
+           elipsis. Nama panjang tetap terbaca utuh. */
         .erp-dd-item {
             padding: 5px 8px; cursor: pointer; font-size: var(--erp-fs, 12px);
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text);
+            color: var(--text); line-height: 1.35;
+            white-space: normal; overflow-wrap: anywhere;
+            border-bottom: 1px solid var(--border-3);
         }
+        .erp-dd-item:last-child { border-bottom: none; }
         .erp-dd-item:hover { background: var(--surface-3); }
+        .erp-dd-item .sub {
+            display: block; font-size: var(--erp-fs-sm, 11px);
+            color: var(--text-4); margin-top: 1px;
+        }
+        .erp-dd { max-height: 260px; }
         .erp-clr {
             position: absolute; right: 5px; top: 50%; transform: translateY(-50%);
             background: none; border: none; color: var(--text-4);
@@ -985,30 +1003,49 @@
            Memanjang ke bawah, bukan melayang: dock hanya 210px, panel
            melayang akan keluar dari tepi layar. */
         .erp-mesin-pick {
-            border: 1px solid var(--border-2); background: var(--surface-2);
-            padding: 6px; display: flex; flex-direction: column; gap: 4px;
-            max-height: 190px; overflow-y: auto;
+            border: 1px solid var(--border); background: var(--surface);
+            display: flex; flex-direction: column;
+            max-height: 230px; overflow-y: auto;
         }
         .erp-mesin-line {
+            position: sticky; top: 0; z-index: 1;
+            padding: 3px 6px; background: var(--surface-3);
+            border-bottom: 1px solid var(--border-2);
             font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
-            text-transform: uppercase; color: var(--text-4);
+            text-transform: uppercase; color: var(--text-3);
         }
-        .erp-mesin-chips { display: flex; flex-wrap: wrap; gap: 3px; }
+        /* Daftar mesin, bukan kotak-kotak: satu baris per mesin dengan kode,
+           nama, dan centang tipis di kanan untuk yang terpilih. Lebih mudah
+           dipindai dan muat nama mesin, yang tidak mungkin di dalam chip. */
+        .erp-mesin-chips { display: flex; flex-direction: column; }
         .erp-chip {
-            height: 22px; padding: 0 7px; cursor: pointer;
-            border: 1px solid var(--border); background: var(--surface);
-            color: var(--text-2); font-family: inherit; font-size: 11px;
-            font-weight: 700; border-radius: 2px; white-space: nowrap;
+            display: flex; align-items: center; gap: 7px; width: 100%;
+            min-height: var(--erp-ctl-h); padding: 3px 6px; cursor: pointer;
+            border: none; border-bottom: 1px solid var(--border-3);
+            background: var(--surface); color: var(--text-2);
+            font-family: inherit; font-size: var(--erp-fs); text-align: left;
         }
+        .erp-chip:last-child { border-bottom: none; }
         .erp-chip:hover { background: var(--surface-3); }
-        .erp-chip.is-on { background: #1f2937; border-color: #1f2937; color: #fff; }
-        .erp-mesin-clear {
-            align-self: flex-start; background: none; border: none; cursor: pointer;
-            color: var(--c-danger); font-family: inherit; font-size: 11px; padding: 2px 0;
+        .erp-chip .kode { font-weight: 700; color: var(--text); flex: 0 0 auto; }
+        .erp-chip .nama {
+            flex: 1 1 auto; min-width: 0; color: var(--text-3);
+            font-size: var(--erp-fs-sm);
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
         }
+        .erp-chip .tik { flex: 0 0 auto; color: var(--c-success); opacity: 0; font-size: 13px; }
+        .erp-chip.is-on { background: #f0fdf4; }
+        .erp-chip.is-on:hover { background: #dcfce7; }
+        .erp-chip.is-on .tik { opacity: 1; }
+        .erp-chip.is-on .kode { color: #14532d; }
+        .erp-mesin-clear {
+            background: none; border: none; border-top: 1px solid var(--border-2);
+            cursor: pointer; color: var(--c-danger); font-family: inherit;
+            font-size: var(--erp-fs-sm); padding: 5px 6px; text-align: left;
+        }
+        .erp-mesin-clear:hover { background: var(--surface-3); }
         @media (pointer: coarse) {
-            .erp-chip { height: 34px; padding: 0 12px; font-size: 12px; }
-            .erp-mesin-pick { max-height: 260px; }
+            .erp-mesin-pick { max-height: 300px; }
         }
 
         /* ── Baris navigasi halaman di bawah grid ── */
@@ -1028,6 +1065,55 @@
             font-size: var(--erp-fs-sm, 11px); color: #713f12; line-height: 1.4;
         }
         .erp-warnstrip i { color: #ca8a04; flex-shrink: 0; }
+
+
+        /* ══ Laci (input & catatan) ═════════════════════════════════
+           Sebelumnya tiap label, isian, dan teks bantu memasang ukurannya
+           sendiri — 0.92rem, 0.95rem, 0.88rem, 0.82rem, 0.75rem berbaur di
+           satu panel. Skalanya sekarang satu tempat, memakai token yang sama
+           dengan grid supaya laci dan halaman terasa satu keluarga.
+        ══════════════════════════════════════════════════════════════ */
+        .erp-drawer {
+            --erp-fs:    13px;   /* isian di laci sedikit lebih besar dari grid:
+                                    di sini orang mengetik, bukan memindai */
+            --erp-fs-sm: 11px;
+            --erp-ctl-h: 32px;
+            font-size: var(--erp-fs);
+        }
+        @media (pointer: coarse) {
+            .erp-drawer { --erp-fs: 14px; --erp-ctl-h: 44px; }
+        }
+
+        .erp-drawer-hd {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 10px 16px; background: var(--tb-bg); color: #fff; flex-shrink: 0;
+            font-size: 13px; font-weight: 700; letter-spacing: 0.02em;
+        }
+        .erp-drawer-hd button {
+            background: none; border: none; color: #fff;
+            font-size: 15px; line-height: 1; cursor: pointer; padding: 0;
+        }
+
+        .erp-drawer .form-label {
+            font-size: var(--erp-fs-sm); font-weight: 700;
+            letter-spacing: 0.06em; text-transform: uppercase;
+            color: var(--text-3); margin-bottom: 3px;
+        }
+        .erp-drawer .form-control,
+        .erp-drawer .form-select {
+            font-size: var(--erp-fs); height: var(--erp-ctl-h); padding: 0 8px;
+        }
+        .erp-drawer textarea.form-control { height: auto; padding: 7px 8px; }
+        .erp-drawer .btn { font-size: var(--erp-fs); }
+        .erp-drawer .invalid-feedback,
+        .erp-drawer .form-text,
+        .erp-drawer .erp-meta { font-size: var(--erp-fs-sm); }
+        .erp-drawer .alert { font-size: var(--erp-fs); }
+        .erp-drawer .form-check-label { font-size: var(--erp-fs); }
+        .erp-drawer .erp-note-box {
+            font-size: var(--erp-fs); line-height: 1.55;
+            white-space: pre-wrap; color: var(--text);
+        }
 
         /* ══ Notification Bell ══════════════════════════════════ */
         .notif-btn { background: none; border: none; color: #9ca3af; font-size: 1.05rem; position: relative; cursor: pointer; padding: 5px 7px; border-radius: 4px; display:flex;align-items:center; }
