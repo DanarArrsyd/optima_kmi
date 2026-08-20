@@ -63,33 +63,52 @@
 </style>
 @endpush
 
+{{-- Ruang kerja ERP mengelola tingginya sendiri sampai tepi layar. --}}
+@section('main_mod', 'erp-flush')
+
 @section('content')
 @php
     $defaultTo = date('Y-m-d');
     $defaultFrom = date('Y-m-01', strtotime('first day of -11 months'));
 @endphp
+<div x-data="vcbNg()" x-init="load()" class="erp-ws">
 
-<div x-data="vcbNg()" x-init="load()">
+<div class="erp-tb">
+    <button type="button" id="btnDock" class="erp-tb-btn is-on"
+            onclick="erpToggleDock('ngDock','btnDock')">
+        <i class="bi bi-funnel"></i>Filter
+    </button>
+    <button type="button" class="erp-tb-btn" @click="load()" :disabled="loading">
+        <i class="bi bi-arrow-clockwise"></i><span x-show="!loading">Refresh</span><span x-show="loading" x-cloak>Memuat&hellip;</span>
+    </button>
+    <span class="erp-tb-sp"></span>
+</div>
 
-    {{-- ── Filter ───────────────────────────────── --}}
-    <div class="erp-panel mb-3">
-        <div class="erp-panel-body">
-            <div class="row g-2 align-items-end">
-                <div class="col-auto">
-                    <label class="form-label mb-1" style="font-size:0.82rem">Dari</label>
-                    <input type="date" class="form-control form-control-sm" x-model="dateFrom">
-                </div>
-                <div class="col-auto">
-                    <label class="form-label mb-1" style="font-size:0.82rem">Sampai</label>
-                    <input type="date" class="form-control form-control-sm" x-model="dateTo">
-                </div>
-                <div class="col-auto">
-                    <button class="btn btn-sm btn-dark" @click="load()" :disabled="loading">
-                        <span x-show="!loading">Tampilkan</span>
-                        <span x-show="loading" x-cloak>Memuat…</span>
-                    </button>
-                </div>
-            </div>
+<div class="erp-ws-body">
+
+<aside class="erp-dock" id="ngDock">
+    <div class="erp-dock-hd">
+        <span>Filter</span>
+        <button type="button" class="erp-dock-x" onclick="erpToggleDock('ngDock','btnDock')" title="Tutup filter">&times;</button>
+    </div>
+    <div class="erp-dock-body">
+        <div class="erp-grp">
+            <b>Filter by Date</b>
+            <div class="erp-dock-row"><span>From</span><input type="date" class="erp-in" x-model="dateFrom"></div>
+            <div class="erp-dock-row"><span>To</span><input type="date" class="erp-in" x-model="dateTo"></div>
+        </div>
+        <div class="erp-grp">
+            <button type="button" class="erp-btn is-pri" @click="load()" :disabled="loading">
+                <span x-show="!loading">Tampilkan</span>
+                <span x-show="loading" x-cloak>Memuat&hellip;</span>
+            </button>
+        </div>
+    </div>
+</aside>
+
+<div class="erp-ws-main">
+<div class="erp-scroll erp-scroll-pad">
+
         </div>
     </div>
 
@@ -192,8 +211,20 @@
             </div>
         </div>
     </div>
+</div>{{-- /erp-scroll --}}
+</div>{{-- /erp-ws-main --}}
+</div>{{-- /erp-ws-body --}}
+
+<div class="erp-status">
+    <span>{{ $judul }}</span>
+    <span x-show="hasData" x-cloak>Total NG <b x-text="fmtInt(summary.total_ng)"></b> pcs</span>
+    <span class="sp"></span>
+    <span>Login as {{ auth()->user()->name }}</span>
 </div>
+
+</div>{{-- /erp-ws --}}
 @endsection
+
 
 @push('scripts')
 <script>

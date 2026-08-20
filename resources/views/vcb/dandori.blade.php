@@ -7,9 +7,11 @@
 .vcbd-wrap {
     display: flex;
     gap: 0;
-    background: #f4f6f8;
-    /* stretch below page-header */
-    margin: -8px -16px -16px;   /* pull to content edges */
+    background: var(--bg);
+    /* Berada di dalam .erp-ws-body yang sudah setinggi ruang kerja, jadi
+       tidak perlu lagi ditarik ke tepi dengan margin negatif. */
+    flex: 1 1 auto;
+    min-height: 0;
 }
 
 /* ── Sidebar ──────────────────────────────────────────────────── */
@@ -161,6 +163,9 @@
 </style>
 @endpush
 
+{{-- Ruang kerja ERP mengelola tingginya sendiri sampai tepi layar. --}}
+@section('main_mod', 'erp-flush')
+
 @section('content')
 
 @php $defaultFrom = date('Y-m-01'); $defaultTo = date('Y-m-d'); @endphp
@@ -168,22 +173,35 @@
 {{-- Satu scope Alpine mencakup page-header + seluruh vcbd-wrap --}}
 <div x-data="vcbDandori()">
 
-{{-- ── PAGE HEADER ──────────────────────────────────────────── --}}
-<div class="page-header">
-    <h1 class="page-title">
-        <i class="bi bi-clock-history"></i>VCB Dandori — Loss Time Analysis
-    </h1>
+<div class="erp-ws">
+
+<div class="erp-tb">
+    <button type="button" class="erp-tb-btn" @click="loadData()" :disabled="loading">
+        <i class="bi bi-arrow-clockwise"></i><span x-show="!loading">Refresh</span><span x-show="loading" x-cloak>Memuat&hellip;</span>
+    </button>
     @if(! auth()->user()->isGuest())
-    <a :href="exportUrl" class="btn btn-success btn-sm" style="text-decoration:none">
-        <i class="bi bi-file-earmark-excel me-1"></i>Export Excel
-    </a>
+    <a :href="exportUrl" class="erp-tb-btn"><i class="bi bi-file-earmark-excel"></i>Export Excel</a>
     @endif
+    <span class="erp-tb-sp"></span>
 </div>
 
+<div class="erp-ws-body">
 <div class="vcbd-wrap">
 
     {{-- ── LEFT SIDEBAR — Mesin filter ──────────────────────── --}}
     <aside class="vcbd-sidebar">
+        <div class="erp-grp" style="margin-bottom:12px">
+            <b>Filter by Date</b>
+            <div class="erp-dock-row"><span>From</span>
+                <input type="date" class="erp-in" x-model="dateFrom" :max="dateTo"></div>
+            <div class="erp-dock-row"><span>To</span>
+                <input type="date" class="erp-in" x-model="dateTo" :min="dateFrom"></div>
+            <input type="month" class="erp-in" @change="setBulan($event.target.value)" title="Pilih satu bulan penuh">
+            <button type="button" class="erp-btn is-pri" @click="loadData()">
+                <i class="bi bi-funnel"></i>Tampilkan
+            </button>
+        </div>
+
         <div>
             <div class="vcbd-sidebar-label">Filter Mesin</div>
             <div class="vcbd-ctrl-row mt-2">
@@ -204,40 +222,6 @@
 
     {{-- ── MAIN CONTENT ───────────────────────────────────────── --}}
     <main class="vcbd-main">
-
-        {{-- Filter bar — same class as VCB Produksi --}}
-        <div class="filter-bar">
-            <form style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;width:100%"
-                  @submit.prevent="loadData()">
-                <div class="filter-group">
-                    <label>Dari Tanggal</label>
-                    <input type="date" class="form-control form-control-sm"
-                           x-model="dateFrom" :max="dateTo">
-                </div>
-                <div class="filter-group">
-                    <label>Sampai Tanggal</label>
-                    <input type="date" class="form-control form-control-sm"
-                           x-model="dateTo" :min="dateFrom">
-                </div>
-                <div class="filter-group">
-                    <label>Bulan</label>
-                    <input type="month" class="form-control form-control-sm"
-                           @change="setBulan($event.target.value)">
-                </div>
-                <div class="filter-group" style="flex-direction:row;gap:6px;align-items:flex-end">
-                    <button type="submit" class="btn btn-secondary btn-sm">
-                        <i class="bi bi-funnel me-1"></i>Tampilkan
-                    </button>
-                </div>
-                <div style="margin-left:auto;display:flex;align-items:flex-end">
-                    <span style="font-size:0.75rem;color:#5d7283;background:#f0f2f5;
-                                 border:1px solid #d4dbe3;padding:4px 10px;white-space:nowrap">
-                        <span x-show="loading"><i class="bi bi-arrow-repeat spin me-1"></i>Memuat...</span>
-                        <span x-show="!loading" x-text="'Total over standar: ' + fmt(summary.total_over) + ' mnt'">—</span>
-                    </span>
-                </div>
-            </form>
-        </div>
 
         {{-- Chart 1: Loss Time per Jenis (vertical bars) --}}
         <div class="erp-panel">
@@ -386,6 +370,17 @@
     </aside>
 
 </div>{{-- /vcbd-wrap --}}
+</div>{{-- /erp-ws-body --}}
+
+<div class="erp-status">
+    <span>VCB Dandori &mdash; Loss Time Analysis</span>
+    <span x-show="loading" x-cloak>Memuat&hellip;</span>
+    <span x-show="!loading" x-text="'Total over standar: ' + fmt(summary.total_over) + ' mnt'"></span>
+    <span class="sp"></span>
+    <span>Login as {{ auth()->user()->name }}</span>
+</div>
+
+</div>{{-- /erp-ws --}}
 
 </div>{{-- /vcbDandori scope --}}
 @endsection
