@@ -1135,6 +1135,60 @@
             letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3);
         }
 
+
+        /* ══ Toast pesan singkat ═════════════════════════════════════
+           Dulu pesan sukses dicetak sebagai alert setinggi ~46px di dalam
+           aliran halaman, mendorong seluruh isi ke bawah — dan di halaman
+           ruang kerja yang terkunci setinggi layar, dorongan itu memotong
+           bagian bawah grid. Sekarang melayang (position: fixed) sehingga
+           nol pengaruh ke tata letak, dan menghilang sendiri.
+
+           Yang TIDAK dijadikan toast: daftar baris gagal import. Isinya
+           perlu dibaca satu per satu, jadi tetap panel yang menetap. */
+        .toast-stack {
+            position: fixed;
+            top: calc(var(--tb-h) + 10px);
+            right: 14px;
+            z-index: 1300;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            pointer-events: none;
+            max-width: min(420px, calc(100vw - 28px));
+        }
+        .toast-msg {
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            font-size: 13px;
+            line-height: 1.35;
+            border: 1px solid var(--border);
+            border-left-width: 3px;
+            background: var(--surface);
+            color: var(--text);
+            animation: toastIn 0.16s ease both;
+        }
+        .toast-msg.is-ok   { border-left-color: var(--c-success); }
+        .toast-msg.is-bad  { border-left-color: var(--c-danger); }
+        .toast-msg .ic     { flex: 0 0 auto; font-size: 14px; line-height: 1; }
+        .toast-msg.is-ok  .ic { color: var(--c-success); }
+        .toast-msg.is-bad .ic { color: var(--c-danger); }
+        .toast-msg .txt    { flex: 1 1 auto; min-width: 0; }
+        .toast-msg .x {
+            flex: 0 0 auto; background: none; border: none; cursor: pointer;
+            color: var(--text-4); font-size: 15px; line-height: 1; padding: 0 2px;
+        }
+        .toast-msg.pergi { animation: toastOut 0.22s ease both; }
+
+        @keyframes toastIn  { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+        @keyframes toastOut { to { opacity: 0; transform: translateY(-6px); } }
+
+        @media (prefers-reduced-motion: reduce) {
+            .toast-msg, .toast-msg.pergi { animation: none; }
+        }
+
         /* ══ Notification Bell ══════════════════════════════════ */
         .notif-btn { background: none; border: none; color: #9ca3af; font-size: 1.05rem; position: relative; cursor: pointer; padding: 5px 7px; border-radius: 4px; display:flex;align-items:center; }
         .notif-btn:hover { color: #fff; background: rgba(255,255,255,.08); }
@@ -1256,24 +1310,29 @@
 
 {{-- ═══ MAIN ══════════════════════════════════════════════════════════ --}}
 <main id="main" class="@yield('main_mod')">
-    @unless(View::hasSection('suppress_layout_flash'))
-        @if(session('success'))
-            <div class="alert alert-success alert-dismissible" role="alert">
-                <i class="bi bi-check-circle-fill"></i>
-                <span>{{ session('success') }}</span>
-                <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
-            </div>
-        @endif
-        @if(session('error'))
-            <div class="alert alert-danger alert-dismissible" role="alert">
-                <i class="bi bi-x-octagon-fill"></i>
-                <span>{{ session('error') }}</span>
-                <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
-            </div>
-        @endif
-    @endunless
     @yield('content')
 </main>
+
+{{-- Di LUAR #main: halaman ruang kerja memakai overflow:hidden, dan toast
+     di dalamnya akan terpotong. --}}
+@php
+    $_toasts = array_filter([
+        ['ok', session('success')],
+        ['ok', session('import_success')],
+        ['bad', session('error')],
+    ], fn ($t) => filled($t[1]));
+@endphp
+@if($_toasts !== [])
+<div class="toast-stack" id="toastStack">
+    @foreach($_toasts as [$jenis, $pesan])
+        <div class="toast-msg is-{{ $jenis }}" role="status">
+            <i class="ic bi {{ $jenis === 'ok' ? 'bi-check-circle-fill' : 'bi-x-octagon-fill' }}"></i>
+            <span class="txt">{{ $pesan }}</span>
+            <button type="button" class="x" aria-label="Tutup">&times;</button>
+        </div>
+    @endforeach
+</div>
+@endif
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" integrity="sha384-NrKB+u6Ts6AtkIhwPixiKTzgSKNblyhlk0Sohlgar9UHUBzai/sgnNNWWd291xqt" crossorigin="anonymous"></script>
@@ -1365,6 +1424,32 @@ if (!isMobile() && localStorage.getItem(SB_KEY) === '1') {
 /* Buka-tutup dock filter untuk halaman tanpa Alpine (VCB, daftar NG).
    Ditaruh di layout supaya tidak disalin lagi per halaman — salinan
    .fbar-* yang dulu menyimpang berawal persis dari kebiasaan itu. */
+/* Toast hilang sendiri setelah beberapa detik. Pesan sukses tidak perlu
+   ditutup manual — yang perlu dibaca lama (daftar baris gagal import)
+   sengaja bukan toast. */
+(function () {
+    var stack = document.getElementById('toastStack');
+    if (!stack) return;
+
+    function buang(el) {
+        if (!el || el.classList.contains('pergi')) return;
+        el.classList.add('pergi');
+        setTimeout(function () { el.remove(); }, 220);
+    }
+
+    Array.prototype.forEach.call(stack.querySelectorAll('.toast-msg'), function (el, i) {
+        el.querySelector('.x').addEventListener('click', function () { buang(el); });
+
+        /* Ditahan selama kursor di atasnya: pesan panjang tidak keburu hilang
+           saat sedang dibaca. */
+        var timer = setTimeout(function () { buang(el); }, 4000 + i * 400);
+        el.addEventListener('mouseenter', function () { clearTimeout(timer); });
+        el.addEventListener('mouseleave', function () {
+            timer = setTimeout(function () { buang(el); }, 1200);
+        });
+    });
+})();
+
 function erpToggleDock(dockId, btnId) {
     const d = document.getElementById(dockId);
     if (!d) return;
