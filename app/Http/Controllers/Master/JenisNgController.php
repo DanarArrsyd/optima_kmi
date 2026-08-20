@@ -12,11 +12,22 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class JenisNgController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $jenisNg = MasterJenisNg::orderBy('kode')->paginate(30);
+        $search = trim((string) $request->input('q', ''));
+        $filterKategori = trim((string) $request->input('filter_kategori', ''));
 
-        return view('master.jenis-ng.index', compact('jenisNg'));
+        $jenisNg = MasterJenisNg::query()
+            ->when($search !== '', fn ($q) => $q->where(fn ($s) => $s
+                ->where('kode', 'like', '%'.$search.'%')
+                ->orWhere('nama_ng', 'like', '%'.$search.'%')))
+            ->when($filterKategori !== '', fn ($q) => $q->where('kategori', $filterKategori))
+            ->orderBy('kode')
+            ->paginate(30)->withQueryString();
+
+        $kategoriList = MasterJenisNg::distinct()->orderBy('kategori')->pluck('kategori')->filter()->values();
+
+        return view('master.jenis-ng.index', compact('jenisNg', 'search', 'filterKategori', 'kategoriList'));
     }
 
     public function store(Request $request)

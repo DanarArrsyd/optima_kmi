@@ -1,10 +1,13 @@
 @extends('layouts.app')
 @section('title', 'Master Shift')
 @section('suppress_layout_flash', 'yes')
+{{-- Ruang kerja ERP mengelola tingginya sendiri sampai tepi layar. --}}
+@section('main_mod', 'erp-flush')
+
 @section('content')
 
 {{-- ══ ALPINE SCOPE ══ --}}
-<div x-data="{ drawerOpen: {{ $errors->any() ? 'true' : 'false' }} }">
+<div x-data="{ drawerOpen: {{ $errors->any() ? 'true' : 'false' }}, filterOpen: false }">
 
 {{-- ── DRAWER BACKDROP ──────────────────────────────────────────── --}}
 <div x-show="drawerOpen"
@@ -248,17 +251,50 @@
 
 {{-- ══ KONTEN HALAMAN ══════════════════════════════════════════ --}}
 
-<div class="page-header">
-    <h1 class="page-title"><i class="bi bi-calendar-week"></i>Master Shift</h1>
-    <div class="action-btns">
-        <button class="btn btn-primary btn-sm" @click="drawerOpen = true">
-            <i class="bi bi-plus-lg me-1"></i>Tambah
-        </button>
-        <button class="btn btn-outline-success btn-sm" onclick="document.getElementById('import-panel').classList.toggle('d-none')">
-            <i class="bi bi-file-earmark-arrow-up me-1"></i>Import Excel
-        </button>
-    </div>
+{{-- ══ RUANG KERJA ERP ══════════════════════════════════════════ --}}
+<div class="erp-ws">
+
+<div class="erp-tb">
+    <button type="button" class="erp-tb-btn is-new" @click="drawerOpen = true">
+        <i class="bi bi-plus-lg"></i>Tambah
+    </button>
+    <button type="button" class="erp-tb-btn" :class="filterOpen ? 'is-on' : ''" @click="filterOpen = !filterOpen">
+        <i class="bi bi-funnel"></i>Filter @if($search !== '' || $filterAvail !== '')<span aria-hidden="true">&bull;</span>@endif
+    </button>
+    <a href="{{ route('master.shift.index') }}" class="erp-tb-btn"><i class="bi bi-arrow-clockwise"></i>Refresh</a>
+    <span class="erp-tb-sp"></span>
 </div>
+
+<div class="erp-ws-body">
+
+<aside class="erp-dock" x-show="filterOpen" x-cloak>
+    <div class="erp-dock-hd">
+        <span>Filter</span>
+        <button type="button" class="erp-dock-x" @click="filterOpen = false" title="Tutup filter">&times;</button>
+    </div>
+    <form method="GET" action="{{ route('master.shift.index') }}" class="erp-dock-body">
+        <div class="erp-grp">
+            <b>Find</b>
+            <input type="text" name="q" value="{{ $search }}" class="erp-in @if($search !== '') is-set @endif"
+                   placeholder="Nama Shift">
+            <select name="filter_avail" class="erp-in @if($filterAvail !== '') is-set @endif">
+                <option value="">Semua Shift</option>
+                <option value="ya" @selected($filterAvail === 'ya')>Dihitung Availability</option>
+                <option value="tidak" @selected($filterAvail === 'tidak')>Tidak Dihitung</option>
+            </select>
+        </div>
+
+        <div class="erp-grp">
+            <button type="submit" class="erp-btn is-pri"><i class="bi bi-funnel"></i>Tampilkan</button>
+            <a href="{{ route('master.shift.index') }}" class="erp-btn">Reset</a>
+        </div>
+    </form>
+</aside>
+
+<div class="erp-ws-main">
+{{-- Judul sudah ada di topbar; penggulungan dipegang .erp-scroll saja. --}}
+<div class="erp-scroll">
+
 
 
 <div id="import-panel" class="erp-panel mb-3 d-none">
@@ -288,9 +324,6 @@
     </div>
 </div>
 
-<div class="erp-panel">
-    <div class="erp-panel-header">Daftar Shift</div>
-    <div style="overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 320px);min-height:200px">
         <table class="erp-table" style="min-width:820px">
             <thead style="position:sticky;top:0;z-index:10">
                 <tr>
@@ -384,9 +417,22 @@
             @endforelse
             </tbody>
         </table>
-    </div>
+</div>{{-- /erp-scroll --}}
+
+<div class="erp-pg">{{ $shifts->links() }}</div>
+
+</div>{{-- /erp-ws-main --}}
+</div>{{-- /erp-ws-body --}}
+
+<div class="erp-status">
+    <span><b>{{ number_format($shifts->total()) }}</b> shift</span>
+    @if($search !== '' || $filterAvail !== '')<span>Filter aktif</span>@endif
+    <span class="sp"></span>
+    <span>Login as {{ auth()->user()->name }}</span>
 </div>
-<div class="mt-3">{{ $shifts->links() }}</div>
+
+</div>{{-- /erp-ws --}}
+
 
 </div>{{-- /alpine outer scope --}}
 

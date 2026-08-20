@@ -17,8 +17,14 @@ class KaryawanController extends Controller
     public function index(Request $request)
     {
         $filter = $request->input('filter', 'semua');
+        $search = trim((string) $request->input('q', ''));
+        $filterDept = trim((string) $request->input('filter_dept', ''));
 
-        $q = MasterKaryawan::orderBy('nama_karyawan');
+        $q = MasterKaryawan::orderBy('nama_karyawan')
+            ->when($search !== '', fn ($x) => $x->where(fn ($s) => $s
+                ->where('nik', 'like', '%'.$search.'%')
+                ->orWhere('nama_karyawan', 'like', '%'.$search.'%')))
+            ->when($filterDept !== '', fn ($x) => $x->where('departemen', $filterDept));
 
         if ($filter === 'aktif') {
             $q->where('is_aktif', true);
@@ -34,7 +40,9 @@ class KaryawanController extends Controller
             $karyawan = MasterKaryawan::orderBy('nama_karyawan')->paginate(20)->withQueryString();
         }
 
-        return view('master.karyawan.index', compact('karyawan', 'filter'));
+        $deptList = MasterKaryawan::distinct()->orderBy('departemen')->pluck('departemen')->filter()->values();
+
+        return view('master.karyawan.index', compact('karyawan', 'filter', 'search', 'filterDept', 'deptList'));
     }
 
     public function toggleAktif(MasterKaryawan $karyawan)

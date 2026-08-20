@@ -1,10 +1,13 @@
 @extends('layouts.app')
 @section('title', 'Manajemen Users')
 @section('suppress_layout_flash', 'yes')
+{{-- Ruang kerja ERP mengelola tingginya sendiri sampai tepi layar. --}}
+@section('main_mod', 'erp-flush')
+
 @section('content')
 
 {{-- ══ ALPINE SCOPE ══ --}}
-<div x-data="{ drawerOpen: {{ $errors->any() ? 'true' : 'false' }} }">
+<div x-data="{ drawerOpen: {{ $errors->any() ? 'true' : 'false' }}, filterOpen: false }">
 
 {{-- ── DRAWER BACKDROP ──────────────────────────────────────────── --}}
 <div x-show="drawerOpen"
@@ -130,16 +133,53 @@
 
 {{-- ══ KONTEN HALAMAN ══════════════════════════════════════════ --}}
 
-<div class="page-header">
-    <h1 class="page-title"><i class="bi bi-person-gear"></i>Manajemen Users</h1>
-    <button class="btn btn-primary btn-sm" @click="drawerOpen = true">
-        <i class="bi bi-plus-lg me-1"></i>Tambah User
+{{-- ══ RUANG KERJA ERP ══════════════════════════════════════════ --}}
+<div class="erp-ws">
+
+<div class="erp-tb">
+    <button type="button" class="erp-tb-btn is-new" @click="drawerOpen = true">
+        <i class="bi bi-plus-lg"></i>Tambah
     </button>
+    <button type="button" class="erp-tb-btn" :class="filterOpen ? 'is-on' : ''" @click="filterOpen = !filterOpen">
+        <i class="bi bi-funnel"></i>Filter @if($search !== '' || $filterRole !== '')<span aria-hidden="true">&bull;</span>@endif
+    </button>
+    <a href="{{ route('master.users.index') }}" class="erp-tb-btn"><i class="bi bi-arrow-clockwise"></i>Refresh</a>
+    <span class="erp-tb-sp"></span>
 </div>
 
+<div class="erp-ws-body">
 
-<div class="erp-panel">
-    <div class="erp-panel-header">Daftar User Sistem</div>
+<aside class="erp-dock" x-show="filterOpen" x-cloak>
+    <div class="erp-dock-hd">
+        <span>Filter</span>
+        <button type="button" class="erp-dock-x" @click="filterOpen = false" title="Tutup filter">&times;</button>
+    </div>
+    <form method="GET" action="{{ route('master.users.index') }}" class="erp-dock-body">
+        <div class="erp-grp">
+            <b>Find</b>
+            <input type="text" name="q" value="{{ $search }}" class="erp-in @if($search !== '') is-set @endif"
+                   placeholder="Nama atau Email">
+            <select name="filter_role" class="erp-in @if($filterRole !== '') is-set @endif">
+                <option value="">Semua Role</option>
+                @foreach($roleList as $o)
+                <option value="{{ $o }}" @selected($filterRole === $o)>{{ $o }}</option>
+                @endforeach
+            </select>
+        </div>
+
+        <div class="erp-grp">
+            <button type="submit" class="erp-btn is-pri"><i class="bi bi-funnel"></i>Tampilkan</button>
+            <a href="{{ route('master.users.index') }}" class="erp-btn">Reset</a>
+        </div>
+    </form>
+</aside>
+
+<div class="erp-ws-main">
+{{-- Judul sudah ada di topbar; penggulungan dipegang .erp-scroll saja. --}}
+<div class="erp-scroll">
+
+
+
     <table class="erp-table">
         <thead>
             <tr>
@@ -175,8 +215,22 @@
         @endforelse
         </tbody>
     </table>
+</div>{{-- /erp-scroll --}}
+
+<div class="erp-pg">{{ $users->links() }}</div>
+
+</div>{{-- /erp-ws-main --}}
+</div>{{-- /erp-ws-body --}}
+
+<div class="erp-status">
+    <span><b>{{ number_format($users->total()) }}</b> akun</span>
+    @if($search !== '' || $filterRole !== '')<span>Filter aktif</span>@endif
+    <span class="sp"></span>
+    <span>Login as {{ auth()->user()->name }}</span>
 </div>
-<div class="mt-3">{{ $users->links() }}</div>
+
+</div>{{-- /erp-ws --}}
+
 
 </div>{{-- /alpine outer scope --}}
 @endsection
