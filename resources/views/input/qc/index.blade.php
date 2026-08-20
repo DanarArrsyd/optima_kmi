@@ -1,6 +1,8 @@
 @extends('layouts.app')
 @section('title', 'LHP Quality')
 @section('suppress_layout_flash', 'yes')
+{{-- Ruang kerja ERP mengelola tingginya sendiri sampai tepi layar. --}}
+@section('main_mod', 'erp-flush')
 
 @php
 $oldKaryawanId  = old('id_karyawan_qc');
@@ -24,7 +26,7 @@ $oldKaryawanTxt = $oldKaryawan?->nama_karyawan ?? '';
      x-transition:leave="transition ease-in duration-150"
      x-transition:leave-start="opacity-100"
      x-transition:leave-end="opacity-0"
-     style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1040">
+     style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1190">
 </div>
 
 {{-- ── DRAWER PANEL ─────────────────────────────────────────────── --}}
@@ -36,16 +38,16 @@ $oldKaryawanTxt = $oldKaryawan?->nama_karyawan ?? '';
      x-transition:leave="transition ease-in duration-200"
      x-transition:leave-start="transform translate-x-0"
      x-transition:leave-end="transform translate-x-full"
-     style="position:fixed;top:0;right:0;height:100dvh;width:640px;max-width:100vw;z-index:1050;">
-    <div style="display:flex;flex-direction:column;height:100%;background:#fff;box-shadow:-4px 0 24px rgba(0,0,0,.18)">
+     style="position:fixed;top:0;right:0;height:100dvh;width:640px;max-width:100vw;z-index:1200">
+    <div class="erp-drawer" style="display:flex;flex-direction:column;height:100%;background:#fff;box-shadow:-4px 0 24px rgba(0,0,0,.18)">
 
     {{-- Header --}}
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:#111827;color:#fff;flex-shrink:0">
-        <div style="font-weight:700;font-size:0.95rem;letter-spacing:.02em">
+    <div class="erp-drawer-hd">
+        <div>
             <i class="bi bi-check2-square me-2"></i>Input LHP Quality
         </div>
         <button type="button" @click="drawerOpen = false"
-                style="background:none;border:none;color:#fff;font-size:1.25rem;cursor:pointer;padding:0;line-height:1">
+                >
             <i class="bi bi-x-lg"></i>
         </button>
     </div>
@@ -54,13 +56,13 @@ $oldKaryawanTxt = $oldKaryawan?->nama_karyawan ?? '';
     <div style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:24px;overscroll-behavior:contain">
 
         @if($errors->any())
-        <div class="alert alert-danger mb-3" style="font-size:0.92rem">
+        <div class="alert alert-danger mb-3" >
             <ul class="mb-0 ps-3">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
         </div>
         @endif
 
         @if($karyawan->isEmpty() || $parts->isEmpty())
-        <div class="alert alert-warning mb-3" style="font-size:0.92rem">
+        <div class="alert alert-warning mb-3" >
             <strong>Master data belum lengkap:</strong>
             @if($karyawan->isEmpty()) <a href="{{ route('master.karyawan.index') }}">Tambah QC Inspector (departemen: QC)</a>. @endif
             @if($parts->isEmpty()) <a href="{{ route('master.part.index') }}">Tambah Part / Dies</a>. @endif
@@ -73,14 +75,14 @@ $oldKaryawanTxt = $oldKaryawan?->nama_karyawan ?? '';
 
                 {{-- Tanggal Pengecekan + Tanggal Produksi Part --}}
                 <div class="col-6">
-                    <label class="form-label" style="font-size:0.92rem">Tanggal Pengecekan <span class="text-danger">*</span></label>
+                    <label class="form-label" >Tanggal Pengecekan <span class="text-danger">*</span></label>
                     <input type="date" name="tgl_pengecekan"
                            class="form-control @error('tgl_pengecekan') is-invalid @enderror"
                            value="{{ old('tgl_pengecekan', date('Y-m-d')) }}">
                     @error('tgl_pengecekan')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
                 <div class="col-6">
-                    <label class="form-label" style="font-size:0.92rem">Tanggal Produksi Part <span class="text-danger">*</span></label>
+                    <label class="form-label" >Tanggal Produksi Part <span class="text-danger">*</span></label>
                     <input type="date" name="tgl_produksi_part"
                            class="form-control @error('tgl_produksi_part') is-invalid @enderror"
                            value="{{ old('tgl_produksi_part', date('Y-m-d')) }}">
@@ -89,7 +91,7 @@ $oldKaryawanTxt = $oldKaryawan?->nama_karyawan ?? '';
 
                 {{-- Shift --}}
                 <div class="col-6">
-                    <label class="form-label" style="font-size:0.92rem">Shift <span class="text-danger">*</span></label>
+                    <label class="form-label" >Shift <span class="text-danger">*</span></label>
                     <select name="id_shift" class="form-select @error('id_shift') is-invalid @enderror">
                         <option value="">-- Pilih Shift --</option>
                         @foreach($shifts as $shift)
@@ -104,7 +106,7 @@ $oldKaryawanTxt = $oldKaryawan?->nama_karyawan ?? '';
                 {{-- QC Inspector — typeahead, full width --}}
                 <div class="col-12"
                      x-data="taField(taKaryawan, '{{ $oldKaryawanTxt }}', {{ $oldKaryawanId ?: 'null' }})">
-                    <label class="form-label" style="font-size:0.92rem">QC Inspector <span class="text-danger">*</span></label>
+                    <label class="form-label" >QC Inspector <span class="text-danger">*</span></label>
                     <div class="ta-wrap">
                         <input type="text"
                                class="form-control ta-input @error('id_karyawan_qc') is-invalid @enderror"
@@ -125,12 +127,12 @@ $oldKaryawanTxt = $oldKaryawan?->nama_karyawan ?? '';
                             </template>
                         </div>
                     </div>
-                    @error('id_karyawan_qc')<div class="invalid-feedback d-block" style="font-size:0.88rem">{{ $message }}</div>@enderror
+                    @error('id_karyawan_qc')<div class="invalid-feedback d-block" >{{ $message }}</div>@enderror
                 </div>
 
                 {{-- Part — typeahead, auto-select finish-good proses --}}
                 <div class="col-12" x-data="qcPartSelector()">
-                    <label class="form-label" style="font-size:0.92rem">Part (Finish Good) <span class="text-danger">*</span></label>
+                    <label class="form-label" >Part (Finish Good) <span class="text-danger">*</span></label>
                     <div class="ta-wrap" style="margin-bottom:8px">
                         <input type="text"
                                class="form-control ta-input"
@@ -153,7 +155,7 @@ $oldKaryawanTxt = $oldKaryawan?->nama_karyawan ?? '';
 
                     {{-- Proses info (auto-selected finish good) --}}
                     <div x-show="proses !== null" x-cloak class="mb-2 p-2"
-                         style="background:#f0f4f8;border:1px solid #d4dbe3;border-radius:2px;font-size:0.88rem">
+                         style="background:#f0f4f8;border:1px solid #d4dbe3;border-radius:2px">
                         <i class="bi bi-check2-circle text-success me-1"></i>
                         <strong>Proses Finish Good:</strong>
                         <span x-text="proses ? `${proses.id_proses} – ${proses.nama_proses}` : ''"></span>
@@ -161,19 +163,19 @@ $oldKaryawanTxt = $oldKaryawan?->nama_karyawan ?? '';
                               x-text="proses ? ` (SPH Std QC: ${proses.sph_standar_qc})` : ''"></span>
                     </div>
                     <input type="hidden" name="id_part_proses" :value="proses ? proses.id : ''">
-                    @error('id_part_proses')<div class="text-danger mt-1" style="font-size:0.88rem">{{ $message }}</div>@enderror
+                    @error('id_part_proses')<div class="text-danger mt-1" >{{ $message }}</div>@enderror
                 </div>
 
                 {{-- Jam Start + Jam Finish --}}
                 <div class="col-6">
-                    <label class="form-label" style="font-size:0.92rem">Jam Start <span class="text-danger">*</span></label>
+                    <label class="form-label" >Jam Start <span class="text-danger">*</span></label>
                     <input type="time" name="jam_start"
                            class="form-control @error('jam_start') is-invalid @enderror"
                            value="{{ old('jam_start') }}">
                     @error('jam_start')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
                 <div class="col-6">
-                    <label class="form-label" style="font-size:0.92rem">Jam Finish <span class="text-danger">*</span></label>
+                    <label class="form-label" >Jam Finish <span class="text-danger">*</span></label>
                     <input type="time" name="jam_finish"
                            class="form-control @error('jam_finish') is-invalid @enderror"
                            value="{{ old('jam_finish') }}">
@@ -182,7 +184,7 @@ $oldKaryawanTxt = $oldKaryawan?->nama_karyawan ?? '';
 
                 {{-- Qty OK --}}
                 <div class="col-6">
-                    <label class="form-label" style="font-size:0.92rem">Qty OK <span class="text-danger">*</span></label>
+                    <label class="form-label" >Qty OK <span class="text-danger">*</span></label>
                     <input type="number" name="qty_ok"
                            class="form-control @error('qty_ok') is-invalid @enderror"
                            value="{{ old('qty_ok', 0) }}" min="0">
@@ -191,7 +193,7 @@ $oldKaryawanTxt = $oldKaryawan?->nama_karyawan ?? '';
 
                 {{-- Jenis NG --}}
                 <div class="col-12">
-                    <label class="form-label fw-semibold" style="font-size:0.92rem">Jenis NG</label>
+                    <label class="form-label fw-semibold" >Jenis NG</label>
                     @include('input.partials.ng-rows', [
                         'jenisNg' => $jenisNg,
                         'initial' => old('ng', []),
@@ -201,10 +203,10 @@ $oldKaryawanTxt = $oldKaryawan?->nama_karyawan ?? '';
             </div>{{-- /row --}}
 
             <div style="margin-top:20px;padding-top:16px;border-top:1px solid #e5e7eb;display:flex;gap:8px">
-                <button type="submit" class="btn btn-primary" style="flex:1;font-size:0.95rem">
+                <button type="submit" class="btn btn-primary" style="flex:1">
                     <i class="bi bi-save me-1"></i>Simpan LHP
                 </button>
-                <button type="button" @click="drawerOpen = false" class="btn btn-outline-secondary" style="font-size:0.95rem">
+                <button type="button" @click="drawerOpen = false" class="btn btn-outline-secondary" >
                     Batal
                 </button>
             </div>
@@ -215,35 +217,92 @@ $oldKaryawanTxt = $oldKaryawan?->nama_karyawan ?? '';
 @endif
 
 {{-- ══ KONTEN HALAMAN ══════════════════════════════════════════ --}}
+@php
+    /* Tautan "Last Input": kalau baris terakhir milik user tidak ada di
+       halaman ini, lompat ke tanggalnya, bukan ke jangkar yang tak ketemu. */
+    $lastUrl = $myLastRecord
+        ? route('input.qc.index', [
+            'date_from' => $myLastRecord->tgl_pengecekan,
+            'date_to'   => $myLastRecord->tgl_pengecekan,
+          ]).'#last-input'
+        : null;
+    $filterActive = ($search ?? '') !== '';
+@endphp
 
-<div class="page-header">
-    <h1 class="page-title"><i class="bi bi-check2-square"></i>Input LHP Quality</h1>
-    <div class="action-btns">
-        @if(! auth()->user()->isGuest())
-        <button class="btn btn-primary btn-sm" @click="drawerOpen = true">
-            <i class="bi bi-plus-lg me-1"></i>Input Baru
-        </button>
-        @endif
-        <button type="button" @click="filterOpen = !filterOpen"
-                :class="filterOpen ? 'btn-secondary' : 'btn-outline-secondary'"
-                class="btn btn-sm" style="position:relative">
-            <i class="bi bi-funnel me-1"></i>Filter
-            @if(($search ?? '') !== '')
-            <span style="position:absolute;top:-5px;right:-5px;width:8px;height:8px;background:#ef4444;border-radius:50%;border:1.5px solid #fff"></span>
-            @endif
-        </button>
-        @if(! auth()->user()->isGuest())
-        <button class="btn btn-outline-success btn-sm"
-                onclick="document.getElementById('import-qc-panel').classList.toggle('d-none')">
-            <i class="bi bi-file-earmark-arrow-up me-1"></i>Import Excel
-        </button>
-        <button class="btn btn-outline-secondary btn-sm"
-                onclick="document.getElementById('exportQcPanel').classList.toggle('d-none')">
-            <i class="bi bi-file-earmark-excel me-1"></i>Export Excel
-        </button>
-        @endif
-    </div>
+<div class="erp-ws">
+
+{{-- ── Strip toolbar ─────────────────────────────────────────── --}}
+<div class="erp-tb">
+    @if(! auth()->user()->isGuest())
+    <button type="button" class="erp-tb-btn is-new" @click="drawerOpen = true">
+        <i class="bi bi-plus-lg"></i>Input Baru
+    </button>
+    @endif
+
+    <button type="button" class="erp-tb-btn" :class="filterOpen ? 'is-on' : ''"
+            @click="filterOpen = !filterOpen">
+        <i class="bi bi-funnel"></i>Filter
+        @if($filterActive)<span aria-hidden="true">&bull;</span>@endif
+    </button>
+
+    @if(! auth()->user()->isGuest())
+    <button type="button" class="erp-tb-btn"
+            onclick="document.getElementById('import-qc-panel').classList.toggle('d-none')">
+        <i class="bi bi-file-earmark-arrow-up"></i>Import Excel
+    </button>
+    <button type="button" class="erp-tb-btn"
+            onclick="document.getElementById('exportQcPanel').classList.toggle('d-none')">
+        <i class="bi bi-file-earmark-excel"></i>Export Excel
+    </button>
+    @endif
+
+    <a href="{{ route('input.qc.index') }}" class="erp-tb-btn">
+        <i class="bi bi-arrow-clockwise"></i>Refresh
+    </a>
+
+    @if($myLastRecord)
+    <a href="{{ $myLastOnPage ? '#last-input' : $lastUrl }}" class="erp-tb-btn"
+       title="Input terakhir Anda: {{ \Carbon\Carbon::parse($myLastRecord->tgl_pengecekan)->format('d/m/Y') }} &middot; {{ $myLastRecord->partProses?->part?->part_name ?? '—' }}">
+        <i class="bi bi-clock-history"></i>Last Input
+    </a>
+    @endif
+
+    <span class="erp-tb-sp"></span>
 </div>
+
+<div class="erp-ws-body">
+
+{{-- ── Dock filter (kiri) ────────────────────────────────────── --}}
+<aside class="erp-dock" x-show="filterOpen" x-cloak>
+    <div class="erp-dock-hd">
+        <span>Filter</span>
+        <button type="button" class="erp-dock-x" @click="filterOpen = false" title="Tutup filter">&times;</button>
+    </div>
+    <form method="GET" action="{{ route('input.qc.index') }}" class="erp-dock-body">
+        <div class="erp-grp">
+            <b>Find</b>
+            <input type="text" name="q" value="{{ $search ?? '' }}" class="erp-in"
+                   placeholder="Inspector, part, proses, customer">
+        </div>
+        <div class="erp-grp">
+            <b>Filter by Date</b>
+            <div class="erp-dock-row">
+                <span>From</span>
+                <input type="date" name="date_from" value="{{ $dateFrom }}" class="erp-in">
+            </div>
+            <div class="erp-dock-row">
+                <span>To</span>
+                <input type="date" name="date_to" value="{{ $dateTo }}" class="erp-in">
+            </div>
+        </div>
+        <div class="erp-grp">
+            <button type="submit" class="erp-btn is-pri"><i class="bi bi-funnel"></i>Tampilkan</button>
+            <a href="{{ route('input.qc.index') }}" class="erp-btn">Reset</a>
+        </div>
+    </form>
+</aside>
+
+<div class="erp-ws-main">
 
 @if(! auth()->user()->isGuest())
 {{-- Export Panel --}}
@@ -268,7 +327,7 @@ $oldKaryawanTxt = $oldKaryawan?->nama_karyawan ?? '';
             @csrf
             <div class="row g-2 align-items-end">
                 <div class="col-md-7">
-                    <label class="form-label mb-1" style="font-size:0.92rem">File Excel (.xlsx / .xls / .csv)</label>
+                    <label class="form-label mb-1" >File Excel (.xlsx / .xls / .csv)</label>
                     <input type="file" name="file" class="form-control" accept=".xlsx,.xls,.csv" required>
                 </div>
                 <div class="col-auto">
@@ -277,7 +336,7 @@ $oldKaryawanTxt = $oldKaryawan?->nama_karyawan ?? '';
                     </button>
                 </div>
             </div>
-            <div class="mt-2" style="font-size:0.75rem;color:#6c757d">
+            <div class="mt-2" style="color:#6c757d">
                 Mulai dari baris ke-4 (baris 1 = header, baris 2 = keterangan, baris 3 = contoh).
                 Proses <em>finish good</em> dipilih otomatis dari data master.
                 Download template untuk melihat referensi data master.
@@ -308,7 +367,7 @@ $oldKaryawanTxt = $oldKaryawan?->nama_karyawan ?? '';
             <div style="width:100%">
                 <strong>{{ count(session('import_errors')) }} baris gagal diimport:</strong>
                 <div style="max-height:180px;overflow-y:auto;margin-top:6px">
-                    <ul class="mb-0" style="font-size:0.92rem">
+                    <ul class="mb-0" >
                         @foreach(session('import_errors') as $err)
                             <li>{{ $err }}</li>
                         @endforeach
@@ -319,91 +378,8 @@ $oldKaryawanTxt = $oldKaryawan?->nama_karyawan ?? '';
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 @endif
-
-{{-- Filter Bar --}}
-<div x-show="filterOpen" x-cloak
-     x-transition:enter="transition ease-out duration-150"
-     x-transition:enter-start="opacity-0 -translate-y-1"
-     x-transition:enter-end="opacity-100 translate-y-0"
-     x-transition:leave="transition ease-in duration-100"
-     x-transition:leave-start="opacity-100 translate-y-0"
-     x-transition:leave-end="opacity-0 -translate-y-1">
-<div class="filter-bar mb-3">
-    <form method="GET" action="{{ route('input.qc.index') }}" style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;width:100%">
-        <div class="filter-group">
-            <label>Dari Tanggal</label>
-            <input type="date" name="date_from" class="form-control" value="{{ $dateFrom }}">
-        </div>
-        <div class="filter-group">
-            <label>Sampai Tanggal</label>
-            <input type="date" name="date_to" class="form-control" value="{{ $dateTo }}">
-        </div>
-        <div class="filter-group" style="min-width:220px;flex:1">
-            <label>Cari</label>
-            <div style="position:relative">
-                <i class="bi bi-search" style="position:absolute;left:8px;top:50%;transform:translateY(-50%);color:#9ca3af;font-size:0.8rem;pointer-events:none"></i>
-                <input type="text" name="q" value="{{ $search ?? '' }}" class="form-control"
-                       style="padding-left:28px" placeholder="Inspector, part, proses, customer…">
-            </div>
-        </div>
-        <div class="filter-group" style="flex-direction:row;gap:6px;align-items:flex-end">
-            <button type="submit" class="btn btn-secondary btn-sm">
-                <i class="bi bi-funnel me-1"></i>Tampilkan
-            </button>
-            <a href="{{ route('input.qc.index') }}" class="btn btn-outline-secondary btn-sm">Reset</a>
-        </div>
-        <div style="margin-left:auto;display:flex;align-items:flex-end">
-            <span style="font-size:0.75rem;color:#5d7283;background:#f0f2f5;border:1px solid #d4dbe3;padding:4px 10px;">
-                {{ $transaksi->total() }} record{{ ($search ?? '') ? ' (filter aktif)' : '' }}
-            </span>
-        </div>
-    </form>
-</div>
-</div>{{-- /filterOpen wrapper --}}
-
-@if($myLastRecord)
-@php
-    $lastUrl = route('input.qc.index', [
-        'date_from' => $myLastRecord->tgl_pengecekan,
-        'date_to'   => $myLastRecord->tgl_pengecekan,
-    ]) . '#last-input';
-@endphp
-<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:2px;padding:9px 14px;margin-bottom:10px;display:flex;align-items:center;gap:10px">
-    <i class="bi bi-clock-history" style="color:#0284c7;font-size:1rem;flex-shrink:0"></i>
-    <div style="flex:1;font-size:0.83rem;min-width:0;color:#0c4a6e">
-        <strong style="color:#075985">{{ auth()->user()->name }}</strong>
-        <span style="color:#94a3b8;margin:0 3px">·</span>
-        <span style="color:#94a3b8;font-size:0.75rem">{{ auth()->user()->email }}</span>
-        <span style="color:#cbd5e1;margin:0 6px">|</span>
-        <span style="color:#64748b;font-size:0.78rem">{{ \Carbon\Carbon::parse($myLastRecord->tgl_pengecekan)->format('d/m/Y') }}</span>
-        <span style="color:#94a3b8;margin:0 4px">·</span>
-        <span style="color:#374151">{{ $myLastRecord->karyawanQc?->nama_karyawan ?? '—' }}</span>
-        <span style="color:#94a3b8"> — </span>
-        <span style="color:#374151">{{ $myLastRecord->partProses?->part?->part_name ?? '—' }}</span>
-        <span style="color:#94a3b8;margin:0 4px">·</span>
-        <span style="color:#374151;font-weight:600">{{ number_format($myLastRecord->qty_ok) }} ok</span>
-        <span style="color:#94a3b8;margin:0 5px">·</span>
-        <span style="color:#64748b;font-size:0.78rem">{{ $myLastRecord->created_at->diffForHumans() }}</span>
-    </div>
-    @if($myLastOnPage)
-    <a href="#last-input"
-       style="display:inline-flex;align-items:center;gap:4px;height:26px;padding:0 10px;border-radius:2px;background:#0284c7;color:#fff;font-size:0.78rem;font-weight:600;text-decoration:none;white-space:nowrap;flex-shrink:0;transition:background 100ms"
-       onmouseenter="this.style.background='#0369a1'" onmouseleave="this.style.background='#0284c7'">
-        <i class="bi bi-arrow-down" style="font-size:0.7rem"></i>Lihat
-    </a>
-    @else
-    <a href="{{ $lastUrl }}"
-       style="display:inline-flex;align-items:center;gap:4px;height:26px;padding:0 10px;border-radius:2px;border:1px solid #bae6fd;background:#fff;color:#0284c7;font-size:0.78rem;font-weight:600;text-decoration:none;white-space:nowrap;flex-shrink:0;transition:all 100ms"
-       onmouseenter="this.style.background='#e0f2fe'" onmouseleave="this.style.background='#fff'">
-        <i class="bi bi-box-arrow-up-right" style="font-size:0.7rem"></i>Buka
-    </a>
-    @endif
-</div>
-@endif
-
-<div class="erp-panel">
-    <div class="erp-panel-header">Daftar LHP Quality</div>
-    <div style="overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 340px);min-height:200px">
+{{-- Judul sudah ada di topbar; penggulungan dipegang .erp-scroll saja. --}}
+<div class="erp-scroll">
         <table class="erp-table" style="min-width:1470px">
             <thead style="position:sticky;top:0;z-index:10">
                 <tr>
@@ -452,20 +428,20 @@ $oldKaryawanTxt = $oldKaryawan?->nama_karyawan ?? '';
                     <td style="color:#5d7283">{{ \Carbon\Carbon::parse($t->tgl_produksi_part)->format('d/m/Y') }}</td>
                     <td style="white-space:nowrap">{{ $t->shift?->nama_shift ?? '—' }}</td>
                     <td style="white-space:nowrap">{{ $t->karyawanQc?->nama_karyawan ?? '—' }}</td>
-                    <td style="font-size:0.75rem;color:#5d7283">{{ $part?->customer ?? '—' }}</td>
+                    <td style="color:#5d7283">{{ $part?->customer ?? '—' }}</td>
                     <td style="white-space:nowrap">{{ $part?->part_no ?? '—' }}</td>
-                    <td style="font-size:0.75rem;white-space:nowrap">{{ $part?->part_name ?? '—' }}</td>
-                    <td style="white-space:nowrap;font-size:0.75rem">{{ $t->jam_start }} – {{ $t->jam_finish }}</td>
+                    <td style="white-space:nowrap">{{ $part?->part_name ?? '—' }}</td>
+                    <td style="white-space:nowrap">{{ $t->jam_start }} – {{ $t->jam_finish }}</td>
                     <td style="text-align:right;font-weight:600;color:#27ae60">{{ number_format($t->qty_ok) }}</td>
                     <td style="text-align:right;font-weight:600;color:#c0392b">
                         {{ number_format($t->qty_ng) }}
                         @if($totalQty > 0 && $t->qty_ng > 0)
-                            <span style="font-size:0.65rem;font-weight:400;color:#888">
+                            <span class="erp-meta" style="font-weight:400;color:#888">
                                 ({{ round($t->qty_ng / $totalQty * 100, 1) }}%)
                             </span>
                         @endif
                     </td>
-                    <td style="font-size:0.72rem;color:#5d7283">
+                    <td style="color:#5d7283">
                         {{ $t->ng_ringkas ?: '—' }}
                     </td>
                     <td style="text-align:right;color:#5d7283">{{ number_format($sphStd) }}</td>
@@ -474,7 +450,7 @@ $oldKaryawanTxt = $oldKaryawan?->nama_karyawan ?? '';
                     </td>
                     <td style="text-align:right;color:#5d7283">{{ number_format($t->waktu_kerja_jam, 1) }}j</td>
                     <td style="text-align:right">{{ number_format($t->actual_cycle_time, 1) }}s</td>
-                    <td style="text-align:right;font-weight:700;color:{{ $pct === null ? '#9ca3af' : ($pct >= 100 ? '#15803d' : '#b91c1c') }}">
+                    <td style="text-align:right;font-weight:600;color:{{ $pct === null ? '#9ca3af' : ($pct >= 100 ? '#15803d' : '#b91c1c') }}">
                         {{ $pct !== null ? $pct . '%' : '—' }}
                     </td>
                     <td>
@@ -509,7 +485,7 @@ $oldKaryawanTxt = $oldKaryawan?->nama_karyawan ?? '';
                         <button type="button"
                                 onclick="openNoteDrawer('qc',{{ $t->id }},{{ \Illuminate\Support\Js::from($note ?? '') }},false,'','','{{ $staffResolvedAt }}','')"
                                 class="btn btn-sm {{ $staffResolvedAt ? 'btn-success' : ($note ? 'btn-warning' : 'btn-outline-secondary') }}"
-                                style="font-size:0.78rem;white-space:nowrap">
+                                style="white-space:nowrap">
                             <i class="bi bi-{{ $staffResolvedAt ? 'check2-circle' : ('chat-left-text' . ($note ? '-fill' : '')) }} me-1"></i>
                             {{ $staffResolvedAt ? 'Selesai' : ($note ? 'Edit Note' : 'Note') }}
                         </button>
@@ -521,9 +497,25 @@ $oldKaryawanTxt = $oldKaryawan?->nama_karyawan ?? '';
             @endforelse
             </tbody>
         </table>
-    </div>
+</div>{{-- /erp-scroll --}}
+
+<div class="erp-pg"><div class="mt-3">{{ $transaksi->links() }}</div></div>
+
+</div>{{-- /erp-ws-main --}}
+</div>{{-- /erp-ws-body --}}
+
+{{-- ── Status bar: cakupan data yang sedang dilihat, selalu terlihat ── --}}
+<div class="erp-status">
+    <span>Period {{ \Carbon\Carbon::parse($dateFrom)->format('M Y') }} &mdash;
+          From {{ \Carbon\Carbon::parse($dateFrom)->format('d M Y') }}
+          To {{ \Carbon\Carbon::parse($dateTo)->format('d M Y') }}</span>
+    <span><b>{{ number_format($transaksi->total()) }}</b> record</span>
+    @if($filterActive)<span>Filter aktif</span>@endif
+    <span class="sp"></span>
+    <span>Login as {{ auth()->user()->name }}</span>
 </div>
-<div class="mt-3">{{ $transaksi->links() }}</div>
+
+</div>{{-- /erp-ws --}}
 
 {{-- ── Note Drawer (Alpine, no blocking backdrop) ───────────────── --}}
 <div x-data="{
@@ -539,12 +531,11 @@ $oldKaryawanTxt = $oldKaryawan?->nama_karyawan ?? '';
         hasNote=!!$event.detail.text; recordId=$event.detail.recordId;
         isAdmin=$event.detail.isAdmin||false; noteAt=$event.detail.noteAt||'';
         updatedAt=$event.detail.updatedAt||''; resolvedAt=$event.detail.resolvedAt||'';
-        resolvedBy=$event.detail.resolvedBy||''; resolveAction=$event.detail.resolveAction||'';
-     "
+        resolvedBy=$event.detail.resolvedBy||''; resolveAction=$event.detail.resolveAction||''"
      x-on:keydown.escape.window="open=false">
 
     <div x-show="open" x-cloak @click="open=false"
-         style="position:fixed;inset:0;z-index:1049"></div>
+         style="position:fixed;inset:0;z-index:1190"></div>
 
     <div x-show="open" x-cloak
          x-transition:enter="transition ease-out duration-250"
@@ -553,44 +544,44 @@ $oldKaryawanTxt = $oldKaryawan?->nama_karyawan ?? '';
          x-transition:leave="transition ease-in duration-200"
          x-transition:leave-start="transform translate-x-0"
          x-transition:leave-end="transform translate-x-full"
+         class="erp-drawer"
          style="position:fixed;top:0;right:0;height:100dvh;width:420px;max-width:100vw;
-                z-index:1050;display:flex;flex-direction:column;
+                z-index:1200;display:flex;flex-direction:column;
                 background:#fff;box-shadow:-6px 0 32px rgba(0,0,0,.15)">
 
-        <div style="display:flex;align-items:center;justify-content:space-between;
-                    padding:14px 20px;background:#111827;color:#fff;flex-shrink:0">
-            <div style="font-weight:700;font-size:0.95rem">
+        <div class="erp-drawer-hd">
+            <div>
                 <i class="bi bi-chat-left-text-fill me-2"></i>
                 <span x-show="isAdmin">Note dari Staff</span>
                 <span x-show="!isAdmin">Note untuk Admin</span>
             </div>
             <button type="button" @click="open=false"
-                    style="background:none;border:none;color:#fff;font-size:1.2rem;cursor:pointer;line-height:1;padding:0">
+                    >
                 <i class="bi bi-x-lg"></i>
             </button>
         </div>
 
         <div style="flex:1;overflow-y:auto;padding:24px">
             <div x-show="isAdmin">
-                <p style="font-size:0.82rem;color:#6b7280;margin-bottom:8px">Catatan dari staff:</p>
+                <p style="color:#6b7280;margin-bottom:8px">Catatan dari staff:</p>
                 <div x-text="text"
                      style="background:#fafafa;border:1px solid #e5e7eb;border-radius:4px;
-                            padding:12px;font-size:0.88rem;min-height:80px;white-space:pre-wrap;color:#111827"></div>
-                <div x-show="noteAt" style="font-size:0.75rem;color:#9ca3af;margin-top:6px">
+                            padding:12px;min-height:80px;white-space:pre-wrap;color:#111827"></div>
+                <div x-show="noteAt" style="color:#9ca3af;margin-top:6px">
                     Dikirim: <span x-text="noteAt ? new Date(noteAt).toLocaleString('id-ID',{dateStyle:'medium',timeStyle:'short'}) : ''"></span>
                 </div>
                 <div style="margin-top:16px">
                     <div x-show="dataChanged === true"
-                         style="padding:10px 14px;background:#f0fdf4;border:1px solid #86efac;border-radius:4px;font-size:0.82rem;color:#166534">
+                         style="padding:10px 14px;background:#f0fdf4;border:1px solid #86efac;border-radius:4px;color:#166534">
                         <i class="bi bi-check-circle-fill me-1"></i>Data sudah diperbarui setelah note dikirim
                     </div>
                     <div x-show="dataChanged === false"
-                         style="padding:10px 14px;background:#fef9c3;border:1px solid #fde047;border-radius:4px;font-size:0.82rem;color:#713f12">
+                         style="padding:10px 14px;background:#fef9c3;border:1px solid #fde047;border-radius:4px;color:#713f12">
                         <i class="bi bi-exclamation-triangle-fill me-1"></i>Data <strong>belum</strong> diperbarui sejak note dikirim
                     </div>
                 </div>
                 <div x-show="resolvedAt"
-                     style="margin-top:12px;padding:10px 14px;background:#f0fdf4;border:1px solid #86efac;border-radius:4px;font-size:0.82rem;color:#166534">
+                     style="margin-top:12px;padding:10px 14px;background:#f0fdf4;border:1px solid #86efac;border-radius:4px;color:#166534">
                     <i class="bi bi-check2-circle me-1"></i>
                     Sudah ditandai selesai oleh <strong x-text="resolvedBy"></strong>
                     pada <span x-text="resolvedAt ? new Date(resolvedAt).toLocaleString('id-ID',{dateStyle:'medium',timeStyle:'short'}) : ''"></span>
@@ -599,28 +590,28 @@ $oldKaryawanTxt = $oldKaryawan?->nama_karyawan ?? '';
             <div x-show="!isAdmin">
                 <template x-if="resolvedAt">
                     <div>
-                        <div style="padding:10px 14px;background:#f0fdf4;border:1px solid #86efac;border-radius:4px;font-size:0.82rem;color:#166534;margin-bottom:12px">
+                        <div style="padding:10px 14px;background:#f0fdf4;border:1px solid #86efac;border-radius:4px;color:#166534;margin-bottom:12px">
                             <i class="bi bi-lock-fill me-1"></i>
                             Note sudah di-feedback admin. Tidak dapat diubah lagi.
                         </div>
-                        <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:4px;padding:12px 14px;font-size:0.88rem;color:#374151;white-space:pre-wrap" x-text="text || '(kosong)'"></div>
+                        <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:4px;padding:12px 14px;color:#374151;white-space:pre-wrap" x-text="text || '(kosong)'"></div>
                     </div>
                 </template>
                 <template x-if="!resolvedAt">
                     <div>
-                        <p style="font-size:0.82rem;color:#6b7280;margin-bottom:14px;line-height:1.6">
+                        <p style="color:#6b7280;margin-bottom:14px;line-height:1.6">
                             Tulis catatan untuk admin mengenai kesalahan pada data ini.
                             Admin akan melihat catatan ini dan dapat memperbaiki data.
                         </p>
                         <textarea x-model="text" rows="6"
-                                  class="form-control" style="font-size:0.88rem;resize:vertical"
+                                  class="form-control" style="resize:vertical"
                                   placeholder="Contoh: Qty NG seharusnya 3, bukan 0. Mohon dikoreksi."
                                   maxlength="1000"></textarea>
-                        <div style="font-size:0.75rem;color:#9ca3af;text-align:right;margin-top:4px">
+                        <div style="color:#9ca3af;text-align:right;margin-top:4px">
                             <span x-text="text.length">0</span>/1000
                         </div>
                         <div x-show="hasNote" style="margin-top:16px;padding:10px 14px;
-                             background:#fefce8;border:1px solid #fde047;border-radius:4px;font-size:0.8rem;color:#713f12">
+                             background:#fefce8;border:1px solid #fde047;border-radius:4px;color:#713f12">
                             <i class="bi bi-info-circle me-1"></i>
                             Note sebelumnya sudah dikirim. Kamu bisa ubah atau hapus.
                         </div>

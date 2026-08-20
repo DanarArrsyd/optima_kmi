@@ -945,6 +945,7 @@
             font-size: var(--erp-fs);
         }
         .erp-ws .erp-table .btn-sm { padding: 0 6px; font-size: var(--erp-fs-sm); line-height: 1.6; }
+        .erp-ws .erp-table .erp-meta { font-size: var(--erp-fs-sm); }
 
         /* ── Status bar ── */
         .erp-status {
