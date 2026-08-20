@@ -176,6 +176,10 @@
 <div class="erp-ws">
 
 <div class="erp-tb">
+    <button type="button" id="btnDock" class="erp-tb-btn"
+            onclick="erpToggleDock('vcbdSidebar','btnDock')">
+        <i class="bi bi-funnel"></i>Filter
+    </button>
     <button type="button" class="erp-tb-btn" @click="loadData()" :disabled="loading">
         <i class="bi bi-arrow-clockwise"></i><span x-show="!loading">Refresh</span><span x-show="loading" x-cloak>Memuat&hellip;</span>
     </button>
@@ -188,8 +192,10 @@
 <div class="erp-ws-body">
 <div class="vcbd-wrap">
 
-    {{-- ── LEFT SIDEBAR — Mesin filter ──────────────────────── --}}
-    <aside class="vcbd-sidebar">
+    {{-- ── LEFT SIDEBAR — filter tanggal + mesin ──────────────
+         Mulai tertutup seperti dock di halaman lain; cakupan data yang
+         sedang dilihat tetap terbaca di status bar. --}}
+    <aside class="vcbd-sidebar" id="vcbdSidebar" style="display:none">
         <div class="erp-grp" style="margin-bottom:12px">
             <b>Filter by Date</b>
             <div class="erp-dock-row"><span>From</span>

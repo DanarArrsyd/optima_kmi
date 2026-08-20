@@ -18,7 +18,7 @@
 </style>
 
 {{-- ══ SATU ALPINE SCOPE — drawer + filter ══ --}}
-<div x-data="{ drawerOpen: {{ $errors->any() ? 'true' : 'false' }}, filterOpen: {{ $filterActive ? 'true' : 'false' }} }">
+<div x-data="{ drawerOpen: {{ $errors->any() ? 'true' : 'false' }}, filterOpen: false }">
 
 {{-- ── DRAWER BACKDROP ── --}}
 <div x-show="drawerOpen" x-cloak @click="drawerOpen = false"
