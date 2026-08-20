@@ -1,5 +1,8 @@
 @extends('layouts.app')
 @section('title', 'Control Stroke Mesin')
+{{-- Ruang kerja ERP mengelola tingginya sendiri sampai tepi layar. --}}
+@section('main_mod', 'erp-flush')
+
 @section('content')
 <style>
     #strokeTable tbody td { white-space: nowrap; }
@@ -24,10 +27,76 @@
     .filter-badge { font-size:10px; }
 </style>
 
-<div class="d-flex justify-content-between align-items-center mb-2">
-    <h4 class="mb-0"><i class="bi bi-arrow-repeat me-2"></i>Control Stroke Mesin</h4>
-    <div class="text-muted small">Target preventive: <strong>{{ number_format($threshold, 0, ',', '.') }} stroke</strong> / mesin</div>
+{{-- ══ RUANG KERJA ERP ══════════════════════════════════════════
+     Toolbar pencarian, urutan, dan filter lanjutan dipindah UTUH ke dalam
+     dock — id dan kelasnya tidak diubah sedikit pun supaya JS halaman ini
+     tetap bekerja apa adanya. --}}
+<div class="erp-ws">
+
+<div class="erp-tb">
+    <button type="button" id="btnDock" class="erp-tb-btn"
+            onclick="erpToggleDock('csDock','btnDock')">
+        <i class="bi bi-funnel"></i>Filter
+    </button>
+    <a href="{{ route('maintenance.control-stroke-mesin') }}" class="erp-tb-btn"><i class="bi bi-arrow-clockwise"></i>Refresh</a>
+    <span class="erp-tb-sp"></span>
 </div>
+
+<div class="erp-ws-body">
+
+<aside class="erp-dock" id="csDock" style="display:none">
+    <div class="erp-dock-hd">
+        <span>Filter</span>
+        <button type="button" class="erp-dock-x" onclick="erpToggleDock('csDock','btnDock')" title="Tutup filter">&times;</button>
+    </div>
+    <div class="erp-dock-body">
+{{-- Toolbar: search + sort selalu terlihat; filter lanjutan dilipat. --}}
+<div class="cs-toolbar">
+    <div class="cs-search">
+        <div class="input-group input-group-sm">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input type="text" id="csSearch" class="form-control" placeholder="Cari kode / nama mesin...">
+        </div>
+    </div>
+    <select id="csSort" class="form-select form-select-sm" >
+        <option value="pct_desc">Stroke tertinggi &darr;</option>
+        <option value="pct_asc">Stroke terendah &uarr;</option>
+        <option value="kode_asc">Kode mesin A–Z</option>
+        <option value="nama_asc">Nama mesin A–Z</option>
+    </select>
+    <button type="button" id="csFilterToggle" class="btn btn-outline-secondary btn-sm" aria-expanded="false">
+        <i class="bi bi-sliders me-1"></i>Filter <span id="csFilterCount" class="badge bg-secondary filter-badge d-none">0</span>
+    </button>
+    <button type="button" id="csReset" class="btn btn-outline-secondary btn-sm d-none"><i class="bi bi-x-lg me-1"></i>Reset</button>
+</div>
+
+{{-- Panel filter lanjutan — tersembunyi sampai tombol Filter ditekan. Tiap filter typeahead
+     (bisa diketik): opsinya diisi dari data yang dimuat, jadi tak ada opsi kosong. --}}
+<div id="csFilterPanel" class="d-none">
+    <div style="padding:6px">
+        <div class="cs-adv">
+            <div class="erp-grp">
+                <b>Mesin</b>
+                <div class="cs-ta" data-key="mesin"><input type="text" class="form-control form-control-sm cs-ta-input" placeholder="Semua Mesin..." autocomplete="off"><div class="cs-ta-dd d-none"></div></div>
+            </div>
+            <div class="erp-grp">
+                <b>Tipe Mesin</b>
+                <div class="cs-ta" data-key="tipe"><input type="text" class="form-control form-control-sm cs-ta-input" placeholder="Semua Tipe..." autocomplete="off"><div class="cs-ta-dd d-none"></div></div>
+            </div>
+            <div class="erp-grp">
+                <b>Line</b>
+                <div class="cs-ta" data-key="line"><input type="text" class="form-control form-control-sm cs-ta-input" placeholder="Semua Line..." autocomplete="off"><div class="cs-ta-dd d-none"></div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+    </div>
+</aside>
+
+<div class="erp-ws-main">
+<div class="erp-scroll erp-scroll-pad">
 
 {{-- KPI strip: klik sel = filter status. Klik sel yang sama lagi = balik ke semua. --}}
 <div class="kpi-strip mb-2">
@@ -45,53 +114,12 @@
     </div>
 </div>
 
-{{-- Toolbar: search + sort selalu terlihat; filter lanjutan dilipat. --}}
-<div class="cs-toolbar mb-2">
-    <div class="cs-search">
-        <div class="input-group input-group-sm">
-            <span class="input-group-text"><i class="bi bi-search"></i></span>
-            <input type="text" id="csSearch" class="form-control" placeholder="Cari kode / nama mesin...">
-        </div>
-    </div>
-    <select id="csSort" class="form-select form-select-sm" style="width:auto">
-        <option value="pct_desc">Stroke tertinggi &darr;</option>
-        <option value="pct_asc">Stroke terendah &uarr;</option>
-        <option value="kode_asc">Kode mesin A–Z</option>
-        <option value="nama_asc">Nama mesin A–Z</option>
-    </select>
-    <button type="button" id="csFilterToggle" class="btn btn-outline-secondary btn-sm" aria-expanded="false">
-        <i class="bi bi-sliders me-1"></i>Filter <span id="csFilterCount" class="badge bg-secondary filter-badge d-none">0</span>
-    </button>
-    <button type="button" id="csReset" class="btn btn-outline-secondary btn-sm d-none"><i class="bi bi-x-lg me-1"></i>Reset</button>
-</div>
-
-{{-- Panel filter lanjutan — tersembunyi sampai tombol Filter ditekan. Tiap filter typeahead
-     (bisa diketik): opsinya diisi dari data yang dimuat, jadi tak ada opsi kosong. --}}
-<div id="csFilterPanel" class="erp-panel mb-2 d-none">
-    <div class="card-body py-2">
-        <div class="row g-2 align-items-end">
-            <div class="col-md-4">
-                <label class="form-label small mb-1">Mesin</label>
-                <div class="cs-ta" data-key="mesin"><input type="text" class="form-control form-control-sm cs-ta-input" placeholder="Semua Mesin..." autocomplete="off"><div class="cs-ta-dd d-none"></div></div>
-            </div>
-            <div class="col-md-4">
-                <label class="form-label small mb-1">Tipe Mesin</label>
-                <div class="cs-ta" data-key="tipe"><input type="text" class="form-control form-control-sm cs-ta-input" placeholder="Semua Tipe..." autocomplete="off"><div class="cs-ta-dd d-none"></div></div>
-            </div>
-            <div class="col-md-4">
-                <label class="form-label small mb-1">Line</label>
-                <div class="cs-ta" data-key="line"><input type="text" class="form-control form-control-sm cs-ta-input" placeholder="Semua Line..." autocomplete="off"><div class="cs-ta-dd d-none"></div></div>
-            </div>
-        </div>
-    </div>
-</div>
-
 <div class="erp-panel">
     <div class="erp-panel-header d-flex justify-content-between align-items-center">
         <span>Detail per Mesin</span>
         <span class="text-muted small" id="csCount"></span>
     </div>
-    <div class="erp-panel-body p-0">
+    <div class="erp-panel-body" style="padding:0">
         {{-- Kotak setinggi layar: tabel geser horizontal DI DALAM kotaknya sendiri, jadi
              scrollbar-nya tak terkubur di dasar tabel panjang. Header ringkas sekarang, jadi
              min-height 600px (thead + 8 baris) sesuai permintaan, offset 300px. Header ringkas
@@ -114,6 +142,18 @@
         </div>
     </div>
 </div>
+</div>{{-- /erp-scroll --}}
+</div>{{-- /erp-ws-main --}}
+</div>{{-- /erp-ws-body --}}
+
+<div class="erp-status">
+    <span>Control Stroke Mesin</span>
+    <span>Target preventive <b>{{ number_format($threshold, 0, ',', '.') }}</b> stroke / mesin</span>
+    <span class="sp"></span>
+    <span>Login as {{ auth()->user()->name }}</span>
+</div>
+
+</div>{{-- /erp-ws --}}
 @endsection
 
 @push('scripts')

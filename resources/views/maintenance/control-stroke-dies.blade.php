@@ -1,5 +1,8 @@
 @extends('layouts.app')
 @section('title', 'Control Stroke Dies')
+{{-- Ruang kerja ERP mengelola tingginya sendiri sampai tepi layar. --}}
+@section('main_mod', 'erp-flush')
+
 @section('content')
 <style>
     #strokeTable tbody td { white-space: nowrap; }
@@ -23,10 +26,73 @@
     .filter-badge { font-size:10px; }
 </style>
 
-<div class="d-flex justify-content-between align-items-center mb-2">
-    <h4 class="mb-0"><i class="bi bi-arrow-repeat me-2"></i>Control Stroke Dies</h4>
-    <div class="text-muted small">Target preventive: <strong>{{ number_format($threshold, 0, ',', '.') }} stroke</strong> / dies</div>
+{{-- ══ RUANG KERJA ERP ══════════════════════════════════════════
+     Toolbar pencarian, urutan, dan filter lanjutan dipindah UTUH ke dalam
+     dock — id dan kelasnya tidak diubah sedikit pun supaya JS halaman ini
+     tetap bekerja apa adanya. --}}
+<div class="erp-ws">
+
+<div class="erp-tb">
+    <button type="button" id="btnDock" class="erp-tb-btn"
+            onclick="erpToggleDock('csDock','btnDock')">
+        <i class="bi bi-funnel"></i>Filter
+    </button>
+    <a href="{{ route('maintenance.control-stroke-dies') }}" class="erp-tb-btn"><i class="bi bi-arrow-clockwise"></i>Refresh</a>
+    <span class="erp-tb-sp"></span>
 </div>
+
+<div class="erp-ws-body">
+
+<aside class="erp-dock" id="csDock" style="display:none">
+    <div class="erp-dock-hd">
+        <span>Filter</span>
+        <button type="button" class="erp-dock-x" onclick="erpToggleDock('csDock','btnDock')" title="Tutup filter">&times;</button>
+    </div>
+    <div class="erp-dock-body">
+<div class="cs-toolbar">
+    <div class="cs-search">
+        <div class="input-group input-group-sm">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input type="text" id="csSearch" class="form-control" placeholder="Cari part no / nama dies / proses...">
+        </div>
+    </div>
+    <select id="csSort" class="form-select form-select-sm" >
+        <option value="pct_desc">Stroke tertinggi &darr;</option>
+        <option value="pct_asc">Stroke terendah &uarr;</option>
+        <option value="kode_asc">Part No A–Z</option>
+        <option value="nama_asc">Nama dies A–Z</option>
+    </select>
+    <button type="button" id="csFilterToggle" class="btn btn-outline-secondary btn-sm" aria-expanded="false">
+        <i class="bi bi-sliders me-1"></i>Filter <span id="csFilterCount" class="badge bg-secondary filter-badge d-none">0</span>
+    </button>
+    <button type="button" id="csReset" class="btn btn-outline-secondary btn-sm d-none"><i class="bi bi-x-lg me-1"></i>Reset</button>
+</div>
+
+<div id="csFilterPanel" class="d-none">
+    <div style="padding:6px">
+        <div class="cs-adv">
+            <div class="erp-grp">
+                <b>Part</b>
+                <div class="cs-ta" data-key="part"><input type="text" class="form-control form-control-sm cs-ta-input" placeholder="Semua Part..." autocomplete="off"><div class="cs-ta-dd d-none"></div></div>
+            </div>
+            <div class="erp-grp">
+                <b>Customer</b>
+                <div class="cs-ta" data-key="customer"><input type="text" class="form-control form-control-sm cs-ta-input" placeholder="Semua Customer..." autocomplete="off"><div class="cs-ta-dd d-none"></div></div>
+            </div>
+            <div class="erp-grp">
+                <b>Proses</b>
+                <div class="cs-ta" data-key="proses"><input type="text" class="form-control form-control-sm cs-ta-input" placeholder="Semua Proses..." autocomplete="off"><div class="cs-ta-dd d-none"></div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+    </div>
+</aside>
+
+<div class="erp-ws-main">
+<div class="erp-scroll erp-scroll-pad">
 
 <div class="kpi-strip mb-2">
     <div class="kpi-cell active" data-status="" style="border-left-color:#6b7280" role="button" tabindex="0" aria-pressed="true">
@@ -43,51 +109,13 @@
     </div>
 </div>
 
-<div class="cs-toolbar mb-2">
-    <div class="cs-search">
-        <div class="input-group input-group-sm">
-            <span class="input-group-text"><i class="bi bi-search"></i></span>
-            <input type="text" id="csSearch" class="form-control" placeholder="Cari part no / nama dies / proses...">
-        </div>
-    </div>
-    <select id="csSort" class="form-select form-select-sm" style="width:auto">
-        <option value="pct_desc">Stroke tertinggi &darr;</option>
-        <option value="pct_asc">Stroke terendah &uarr;</option>
-        <option value="kode_asc">Part No A–Z</option>
-        <option value="nama_asc">Nama dies A–Z</option>
-    </select>
-    <button type="button" id="csFilterToggle" class="btn btn-outline-secondary btn-sm" aria-expanded="false">
-        <i class="bi bi-sliders me-1"></i>Filter <span id="csFilterCount" class="badge bg-secondary filter-badge d-none">0</span>
-    </button>
-    <button type="button" id="csReset" class="btn btn-outline-secondary btn-sm d-none"><i class="bi bi-x-lg me-1"></i>Reset</button>
-</div>
-
 {{-- Tiap filter typeahead (bisa diketik); opsinya diisi dari data yang dimuat. --}}
-<div id="csFilterPanel" class="erp-panel mb-2 d-none">
-    <div class="card-body py-2">
-        <div class="row g-2 align-items-end">
-            <div class="col-md-4">
-                <label class="form-label small mb-1">Part</label>
-                <div class="cs-ta" data-key="part"><input type="text" class="form-control form-control-sm cs-ta-input" placeholder="Semua Part..." autocomplete="off"><div class="cs-ta-dd d-none"></div></div>
-            </div>
-            <div class="col-md-4">
-                <label class="form-label small mb-1">Customer</label>
-                <div class="cs-ta" data-key="customer"><input type="text" class="form-control form-control-sm cs-ta-input" placeholder="Semua Customer..." autocomplete="off"><div class="cs-ta-dd d-none"></div></div>
-            </div>
-            <div class="col-md-4">
-                <label class="form-label small mb-1">Proses</label>
-                <div class="cs-ta" data-key="proses"><input type="text" class="form-control form-control-sm cs-ta-input" placeholder="Semua Proses..." autocomplete="off"><div class="cs-ta-dd d-none"></div></div>
-            </div>
-        </div>
-    </div>
-</div>
-
 <div class="erp-panel">
     <div class="erp-panel-header d-flex justify-content-between align-items-center">
         <span>Detail per Dies</span>
         <span class="text-muted small" id="csCount"></span>
     </div>
-    <div class="erp-panel-body p-0">
+    <div class="erp-panel-body" style="padding:0">
         {{-- Kotak setinggi layar: tabel geser horizontal di dalam kotaknya sendiri. Header
              ringkas sekarang, jadi min-height 600px (8 baris) + offset 300px. Header ringkas (y=241) bikin scrollbar jauh
              lebih dekat; layar tinggi (>900px) kotak melar. Dies lebih banyak dari mesin. --}}
@@ -108,6 +136,18 @@
         </div>
     </div>
 </div>
+</div>{{-- /erp-scroll --}}
+</div>{{-- /erp-ws-main --}}
+</div>{{-- /erp-ws-body --}}
+
+<div class="erp-status">
+    <span>Control Stroke Dies</span>
+    <span>Target preventive <b>{{ number_format($threshold, 0, ',', '.') }}</b> stroke / dies</span>
+    <span class="sp"></span>
+    <span>Login as {{ auth()->user()->name }}</span>
+</div>
+
+</div>{{-- /erp-ws --}}
 @endsection
 
 @push('scripts')
