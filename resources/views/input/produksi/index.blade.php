@@ -594,7 +594,7 @@ $lastUrl = $myLastRecord
                     <th style="width:75px">Customer</th>
                     <th style="width:130px">Part No.</th>
                     <th>Part Name</th>
-                    <th style="width:45px;text-align:center">ID<br>Proses</th>
+                    <th style="width:72px;text-align:center">ID Proses</th>
                     <th>Proses</th>
                     <th style="width:110px">Jam</th>
                     <th style="width:65px;text-align:right">Qty Act</th>
@@ -644,30 +644,30 @@ $lastUrl = $myLastRecord
                     <td class="sc sc-2" style="white-space:nowrap">{{ $t->shift?->nama_shift ?? '—' }}</td>
                     <td class="sc sc-3" style="white-space:nowrap">{{ $t->karyawan?->nama_karyawan ?? '—' }}</td>
                     <td class="sc sc-4">{{ $t->mesin?->id_mesin ?? '—' }}</td>
-                    <td class="sc sc-5 sc-sep" style="font-size:0.88rem;white-space:nowrap">{{ $t->mesin?->nama_mesin ?? '—' }}</td>
-                    <td style="font-size:0.88rem;color:#5d7283">{{ $part?->customer ?? '—' }}</td>
+                    <td class="sc sc-5 sc-sep" style="white-space:nowrap">{{ $t->mesin?->nama_mesin ?? '—' }}</td>
+                    <td style="color:#5d7283">{{ $part?->customer ?? '—' }}</td>
                     <td style="white-space:nowrap">{{ $part?->part_no ?? '—' }}</td>
-                    <td style="font-size:0.88rem;white-space:nowrap">{{ $part?->part_name ?? '—' }}</td>
+                    <td style="white-space:nowrap">{{ $part?->part_name ?? '—' }}</td>
                     <td style="text-align:center;font-weight:600">{{ $pp?->id_proses ?? '—' }}</td>
-                    <td style="font-size:0.88rem;white-space:nowrap">{{ $pp?->nama_proses ?? '—' }}</td>
-                    <td style="white-space:nowrap;font-size:0.88rem">{{ $t->jam_start }} – {{ $t->jam_finish }}</td>
+                    <td style="white-space:nowrap">{{ $pp?->nama_proses ?? '—' }}</td>
+                    <td style="white-space:nowrap">{{ $t->jam_start }} – {{ $t->jam_finish }}</td>
                     <td style="text-align:right;font-weight:600">{{ number_format($t->qty_aktual) }}</td>
                     <td style="text-align:right;font-weight:600;color:{{ $t->qty_ng ? '#c0392b' : '#9ca3af' }}">
                         {{ $t->qty_ng ? number_format($t->qty_ng) : '—' }}
                     </td>
-                    <td style="font-size:0.72rem;color:#5d7283">{{ $t->ng_ringkas ?: '—' }}</td>
+                    <td style="color:#5d7283">{{ $t->ng_ringkas ?: '—' }}</td>
                     <td style="text-align:right;color:#5d7283">{{ number_format($sphStd) }}</td>
                     <td style="text-align:right;font-weight:600;color:{{ $sphAct >= $sphStd ? '#27ae60' : '#c0392b' }}">
                         {{ number_format($sphAct) }}
                     </td>
                     <td style="text-align:right;color:#5d7283">{{ number_format($t->waktu_kerja_jam, 1) }}j</td>
                     <td style="text-align:right">{{ number_format($t->actual_cycle_time, 1) }}s</td>
-                    <td style="text-align:right;font-weight:700;color:{{ $pct===null?'#9ca3af':($pct>=100?'#15803d':'#b91c1c') }}">
+                    <td style="text-align:right;font-weight:600;color:{{ $pct===null?'#9ca3af':($pct>=100?'#15803d':'#b91c1c') }}">
                         @if($isAnomaly)
                         <span data-bs-toggle="tooltip" data-bs-placement="left"
                               title="{{ $tooltipTxt }}"
                               style="cursor:help;white-space:nowrap">
-                            {{ $pct !== null ? $pct.'%' : '—' }} <i class="bi bi-exclamation-triangle-fill" style="color:#ca8a04;font-size:0.75rem"></i>
+                            {{ $pct !== null ? $pct.'%' : '—' }} <i class="bi bi-exclamation-triangle-fill" style="color:#ca8a04"></i>
                         </span>
                         @else
                         <span style="white-space:nowrap">{{ $pct !== null ? $pct.'%' : '—' }}</span>
@@ -704,7 +704,7 @@ $lastUrl = $myLastRecord
                         <button type="button"
                                 onclick="openNoteDrawer('produksi',{{ $t->id }},{{ \Illuminate\Support\Js::from($note ?? '') }},false,'','','{{ $staffResolvedAt }}','')"
                                 class="btn btn-sm {{ $staffResolvedAt ? 'btn-success' : ($note ? 'btn-warning' : 'btn-outline-secondary') }}"
-                                style="font-size:0.78rem;white-space:nowrap">
+                                style="font-size:var(--erp-fs-sm);white-space:nowrap">
                             <i class="bi bi-{{ $staffResolvedAt ? 'check2-circle' : ('chat-left-text' . ($note ? '-fill' : '')) }} me-1"></i>
                             {{ $staffResolvedAt ? 'Selesai' : ($note ? 'Edit Note' : 'Note') }}
                         </button>
