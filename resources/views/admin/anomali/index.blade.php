@@ -1,47 +1,66 @@
 @extends('layouts.app')
 @section('title', 'Anomali LHP Produksi')
 @section('suppress_layout_flash', 'yes')
+{{-- Ruang kerja ERP mengelola tingginya sendiri sampai tepi layar. --}}
+@section('main_mod', 'erp-flush')
+
 @section('content')
 
-<div class="page-header">
-    <h1 class="page-title"><i class="bi bi-exclamation-triangle"></i>Anomali LHP Produksi</h1>
+{{-- ══ RUANG KERJA ERP ══════════════════════════════════════════
+     Isinya kartu ringkasan + tabel, jadi .erp-scroll dibiarkan
+     menggulung tegak. --}}
+<div class="erp-ws" x-data="{ filterOpen: false }">
+
+<div class="erp-tb">
+    <button type="button" class="erp-tb-btn" :class="filterOpen ? 'is-on' : ''" @click="filterOpen = !filterOpen">
+        <i class="bi bi-funnel"></i>Filter
+        @if($reason !== '')<span aria-hidden="true">&bull;</span>@endif
+    </button>
+    <a href="{{ route('admin.anomali') }}" class="erp-tb-btn"><i class="bi bi-arrow-clockwise"></i>Refresh</a>
+    <span class="erp-tb-sp"></span>
 </div>
 
+<div class="erp-ws-body">
 
-{{-- ── Filter ──────────────────────────────────────────────────── --}}
-<div class="filter-bar mb-3">
-    <form method="GET" action="{{ route('admin.anomali') }}"
-          style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;width:100%">
-        <div class="filter-group">
-            <label>Dari Tanggal</label>
-            <input type="date" name="date_from" class="form-control form-control-sm" value="{{ $dateFrom }}">
-        </div>
-        <div class="filter-group">
-            <label>Sampai Tanggal</label>
-            <input type="date" name="date_to" class="form-control form-control-sm" value="{{ $dateTo }}">
-        </div>
-        <div class="filter-group">
-            <label>Jenis Anomali</label>
-            <select name="reason" class="form-select form-select-sm" style="min-width:200px">
-                <option value=""         {{ $reason===''          ? 'selected':'' }}>Semua Jenis</option>
-                <option value="high_pct" {{ $reason==='high_pct'  ? 'selected':'' }}>Achievement &gt;150%</option>
-                <option value="short_wkj"{{ $reason==='short_wkj' ? 'selected':'' }}>Waktu kerja &lt;5 menit</option>
-                <option value="no_std"   {{ $reason==='no_std'    ? 'selected':'' }}>SPH standar belum diset</option>
+<aside class="erp-dock" x-show="filterOpen" x-cloak>
+    <div class="erp-dock-hd">
+        <span>Filter</span>
+        <button type="button" class="erp-dock-x" @click="filterOpen = false" title="Tutup filter">&times;</button>
+    </div>
+    <form method="GET" action="{{ route('admin.anomali') }}" class="erp-dock-body">
+
+        <div class="erp-grp">
+            <b>Jenis Anomali</b>
+            <select name="reason" class="erp-in @if($reason !== '') is-set @endif">
+                <option value="" @selected($reason === '')>Semua Jenis</option>
+                <option value="high_pct" @selected($reason === 'high_pct')>Achievement &gt;150%</option>
+                <option value="short_wkj" @selected($reason === 'short_wkj')>Waktu kerja &lt;5 menit</option>
+                <option value="no_std" @selected($reason === 'no_std')>SPH standar belum diset</option>
             </select>
         </div>
-        <div class="filter-group" style="flex-direction:row;gap:6px;align-items:flex-end">
-            <button type="submit" class="btn btn-secondary btn-sm">
-                <i class="bi bi-funnel me-1"></i>Tampilkan
-            </button>
-            <a href="{{ route('admin.anomali') }}" class="btn btn-outline-secondary btn-sm">Reset</a>
+
+        <div class="erp-grp">
+            <b>Filter by Date</b>
+            <div class="erp-dock-row">
+                <span>From</span>
+                <input type="date" name="date_from" value="{{ $dateFrom }}" class="erp-in">
+            </div>
+            <div class="erp-dock-row">
+                <span>To</span>
+                <input type="date" name="date_to" value="{{ $dateTo }}" class="erp-in">
+            </div>
         </div>
-        <div style="margin-left:auto;display:flex;align-items:flex-end">
-            <span style="font-size:0.78rem;color:#5d7283;background:#f0f2f5;border:1px solid #d4dbe3;padding:4px 10px">
-                {{ $dateFrom }} — {{ $dateTo }}
-            </span>
+
+        <div class="erp-grp">
+            <button type="submit" class="erp-btn is-pri"><i class="bi bi-funnel"></i>Tampilkan</button>
+            <a href="{{ route('admin.anomali') }}" class="erp-btn">Reset</a>
         </div>
     </form>
-</div>
+</aside>
+
+<div class="erp-ws-main">
+{{-- Judul sudah ada di topbar; jumlah record sudah di status bar. --}}
+<div class="erp-scroll erp-scroll-pad">
 
 {{-- ── KPI Summary Cards ───────────────────────────────────────── --}}
 <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
@@ -177,5 +196,18 @@
     Threshold: Achievement &gt;150% · Waktu kerja &lt;5 menit · SPH standar = 0.
     Semua data ditampilkan tanpa paginasi untuk rentang tanggal yang dipilih.
 </div>
+</div>{{-- /erp-scroll --}}
+</div>{{-- /erp-ws-main --}}
+</div>{{-- /erp-ws-body --}}
 
+<div class="erp-status">
+    <span>Period {{ \Carbon\Carbon::parse($dateFrom)->format('d M Y') }}
+          &mdash; {{ \Carbon\Carbon::parse($dateTo)->format('d M Y') }}</span>
+    <span><b>{{ number_format($summary['total']) }}</b> record anomali</span>
+    @if($reason !== '')<span>Filter aktif</span>@endif
+    <span class="sp"></span>
+    <span>Login as {{ auth()->user()->name }}</span>
+</div>
+
+</div>{{-- /erp-ws --}}
 @endsection

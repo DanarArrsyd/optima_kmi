@@ -923,6 +923,17 @@
         .erp-dock-row { display: grid; grid-template-columns: 34px 1fr; align-items: center; gap: 6px; }
         .erp-dock-row > span { font-size: var(--erp-fs-sm); color: var(--text-3); }
         .erp-chk { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+        /* Typeahead lama (.ta-*) dipakai halaman analitik maintenance; di dalam
+           dock ia harus ikut lebar penuh, bukan lebar bawaan Bootstrap. */
+        .erp-dock .ta-wrap { position: relative; width: 100%; }
+        .erp-dock .ta-dropdown {
+            position: absolute; top: calc(100% + 2px); left: 0; right: 0;
+            background: var(--surface); border: 1px solid var(--border);
+            z-index: 600; max-height: 220px; overflow-y: auto;
+        }
+        .erp-dock .ta-item { padding: 5px 8px; cursor: pointer; font-size: var(--erp-fs); }
+        .erp-dock .ta-item:hover, .erp-dock .ta-item.ta-active { background: var(--surface-3); }
+        .erp-dock .ta-empty { padding: 5px 8px; color: var(--text-4); font-size: var(--erp-fs-sm); }
         .erp-chk input { margin: 0; }
         .erp-in:disabled { background: var(--surface-3); color: var(--text-4); }
         .erp-btn {

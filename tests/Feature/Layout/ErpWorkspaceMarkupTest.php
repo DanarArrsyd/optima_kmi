@@ -57,6 +57,15 @@ class ErpWorkspaceMarkupTest extends TestCase
             'Master Loss Time' => ['master.losstime.index', 'admin', true],
             'Master Jenis NG' => ['master.jenis-ng.index', 'admin', true],
             'Master Users' => ['master.users.index', 'admin', true],
+            'MTTR Mesin' => ['maintenance.mttr', 'staff_maintenance', true],
+            'MTTR Dies' => ['maintenance.mttr-dies', 'staff_maintenance', true],
+            'MTBF Mesin' => ['maintenance.mtbf', 'staff_maintenance', true],
+            'MTBF Dies' => ['maintenance.mtbf-dies', 'staff_maintenance', true],
+            'Availability Mesin' => ['maintenance.availability', 'staff_maintenance', true],
+            'Availability Dies' => ['maintenance.availability-dies', 'staff_maintenance', true],
+            'Control Stroke Mesin' => ['maintenance.control-stroke-mesin', 'staff_maintenance', true],
+            'Control Stroke Dies' => ['maintenance.control-stroke-dies', 'staff_maintenance', true],
+            'Anomali LHP' => ['admin.anomali', 'admin', true],
         ];
     }
 

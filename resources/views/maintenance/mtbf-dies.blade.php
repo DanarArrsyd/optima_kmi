@@ -1,26 +1,44 @@
 @extends('layouts.app')
 @section('title', 'MTBF Dies')
+{{-- Ruang kerja ERP mengelola tingginya sendiri sampai tepi layar. --}}
+@section('main_mod', 'erp-flush')
+
 @section('content')
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h4 class="mb-0"><i class="bi bi-arrow-repeat me-2"></i>MTBF — Mean Time Between Failures</h4>
+{{-- ══ RUANG KERJA ERP ══════════════════════════════════════════
+     Isinya KPI + grafik + tabel yang memang perlu digulung, jadi
+     .erp-scroll dibiarkan menggulung tegak — bukan dikunci satu layar. --}}
+<div class="erp-ws">
+
+<div class="erp-tb">
+    <button type="button" id="btnDock" class="erp-tb-btn is-on"
+            onclick="erpToggleDock('anDock','btnDock')">
+        <i class="bi bi-funnel"></i>Filter
+    </button>
+    <a href="{{ route('maintenance.mtbf-dies') }}" class="erp-tb-btn"><i class="bi bi-arrow-clockwise"></i>Refresh</a>
+    <span class="erp-tb-sp"></span>
 </div>
 
-<div class="erp-panel mb-4">
-    <div class="card-body py-3">
-        <form id="filterForm" class="row g-2 align-items-end">
-            <div class="col-md-3">
-                <label class="form-label small mb-1">Tanggal Dari</label>
-                <input type="date" id="date_from" name="date_from" class="form-control form-control-sm" value="{{ date('Y-01-01') }}">
+<div class="erp-ws-body">
+
+<aside class="erp-dock" id="anDock" style="display:none">
+    <div class="erp-dock-hd">
+        <span>Filter</span>
+        <button type="button" class="erp-dock-x" onclick="erpToggleDock('anDock','btnDock')" title="Tutup filter">&times;</button>
+    </div>
+    <form id="filterForm" class="erp-dock-body">
+            <div class="erp-grp">
+                <b>Tanggal Dari</b>
+                <input type="date" id="date_from" name="date_from" class="erp-in" value="{{ date('Y-01-01') }}">
             </div>
-            <div class="col-md-3">
-                <label class="form-label small mb-1">Tanggal Sampai</label>
-                <input type="date" id="date_to" name="date_to" class="form-control form-control-sm" value="{{ date('Y-m-d') }}">
+            <div class="erp-grp">
+                <b>Tanggal Sampai</b>
+                <input type="date" id="date_to" name="date_to" class="erp-in" value="{{ date('Y-m-d') }}">
             </div>
-            <div class="col-md-3">
-                <label class="form-label small mb-1">Customer</label>
+            <div class="erp-grp">
+                <b>Customer</b>
                 <div x-data="taField(taCustomer)">
                     <div class="ta-wrap">
-                        <input type="text" class="form-control form-control-sm ta-input"
+                        <input type="text" class="erp-in ta-input"
                                x-model="query" @focus="openDd()" @blur="closeDd()" @keydown="onKey($event)" @input="onInput()"
                                placeholder="Semua Customer...">
                         <input type="hidden" id="customer" name="customer" :value="val ?? ''">
@@ -33,11 +51,11 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <label class="form-label small mb-1">Part No</label>
+            <div class="erp-grp">
+                <b>Part No</b>
                 <div x-data="taField(taPart)">
                     <div class="ta-wrap">
-                        <input type="text" class="form-control form-control-sm ta-input"
+                        <input type="text" class="erp-in ta-input"
                                x-model="query" @focus="openDd()" @blur="closeDd()" @keydown="onKey($event)" @input="onInput()"
                                placeholder="Semua Dies...">
                         <input type="hidden" id="part_id" name="part_id" :value="val ?? ''">
@@ -50,36 +68,37 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <button type="submit" class="btn btn-primary btn-sm w-100"><i class="bi bi-search me-1"></i>Tampilkan</button>
+            <div class="erp-grp">
+                <button type="submit" class="erp-btn is-pri"><i class="bi bi-search me-1"></i>Tampilkan</button>
             </div>
         </form>
-    </div>
-</div>
+</aside>
 
+<div class="erp-ws-main">
+<div class="erp-scroll erp-scroll-pad">
 <div class="row g-3 mb-4">
     <div class="col-md-6">
-        <div class="erp-panel h-100"><div class="card-body py-3">
+        <div class="erp-panel h-100"><div class="erp-panel-body" style="padding:10px">
             <div class="text-muted small">Rata-rata MTBF</div>
             <div style="font-size:1.6rem;font-weight:700"><span id="kpiMtbf">—</span> <span class="small text-muted">jam</span></div>
         </div></div>
     </div>
     <div class="col-md-6">
-        <div class="erp-panel h-100"><div class="card-body py-3">
+        <div class="erp-panel h-100"><div class="erp-panel-body" style="padding:10px">
             <div class="text-muted small">Total Breakdown</div>
             <div style="font-size:1.6rem;font-weight:700"><span id="kpiTotalBd">0</span></div>
         </div></div>
     </div>
 </div>
 
-<div class="erp-panel mb-4">
-    <div class="card-body"><canvas id="mtbfChart" height="100"></canvas></div>
+<div class="erp-panel">
+    <div class="erp-panel-body" style="padding:12px"><canvas id="mtbfChart" height="100"></canvas></div>
 </div>
 
 <div class="erp-panel">
     <div class="erp-panel-header">Detail per Dies</div>
-    <div class="erp-panel-body p-0">
-        <div class="table-responsive">
+    <div class="erp-panel-body" style="padding:0">
+        <div style="overflow-x:auto">
             <table class="erp-table">
                 <thead>
                     <tr><th>Part No</th><th>Nama Dies</th><th>Proses</th><th class="text-end">Breakdown</th><th class="text-end">MTBF (jam kerja)</th><th class="text-end">MTBF (hari kerja)</th></tr>
@@ -91,6 +110,17 @@
         </div>
     </div>
 </div>
+</div>{{-- /erp-scroll --}}
+</div>{{-- /erp-ws-main --}}
+</div>{{-- /erp-ws-body --}}
+
+<div class="erp-status">
+    <span>MTBF — Mean Time Between Failures (Dies)</span>
+    <span class="sp"></span>
+    <span>Login as {{ auth()->user()->name }}</span>
+</div>
+
+</div>{{-- /erp-ws --}}
 @endsection
 
 @push('scripts')
