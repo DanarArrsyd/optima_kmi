@@ -133,26 +133,7 @@ function escHtml(str) {
 const taCustomer = @json($customers->map(fn($c) => ['v' => $c, 't' => $c]));
 const taPart = @json($partList->map(fn($m) => ['v' => $m->id, 't' => $m->part_no.' – '.$m->part_name]));
 
-function taField(items, initText = '', initVal = null) {
-    return {
-        items, query: initText, val: initVal, open: false, idx: -1,
-        get filtered() {
-            if (!this.query.trim()) return this.items.slice(0, 60);
-            const q = this.query.toLowerCase();
-            return this.items.filter(i => i.t.toLowerCase().includes(q)).slice(0, 60);
-        },
-        openDd()  { this.open = true; this.idx = -1; },
-        closeDd() { setTimeout(() => { this.open = false; if (!this.val) this.query = ''; }, 180); },
-        onInput() { this.val = null; this.open = true; this.idx = -1; },
-        pick(item) { this.query = item.t; this.val = item.v; this.open = false; this.idx = -1; },
-        onKey(e) {
-            if      (e.key === 'ArrowDown') { e.preventDefault(); this.open = true; this.idx = Math.min(this.idx+1, this.filtered.length-1); }
-            else if (e.key === 'ArrowUp')   { e.preventDefault(); this.idx = Math.max(this.idx-1, 0); }
-            else if (e.key === 'Enter')     { e.preventDefault(); if (this.idx>=0 && this.filtered[this.idx]) this.pick(this.filtered[this.idx]); }
-            else if (e.key === 'Escape')    { this.open = false; }
-        },
-    };
-}
+/* taField() kini satu definisi di layouts/app.blade.php. */
 
 let availChart = null;
 
