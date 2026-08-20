@@ -13,11 +13,18 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class LosstimeController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $losstimes = MasterLosstime::orderBy('kode')->paginate(20);
+        $search = trim((string) $request->input('q', ''));
 
-        return view('master.losstime.index', compact('losstimes'));
+        $losstimes = MasterLosstime::query()
+            ->when($search !== '', fn ($q) => $q->where(fn ($s) => $s
+                ->where('kode', 'like', '%'.$search.'%')
+                ->orWhere('jenis_losstime', 'like', '%'.$search.'%')))
+            ->orderBy('kode')
+            ->paginate(20)->withQueryString();
+
+        return view('master.losstime.index', compact('losstimes', 'search'));
     }
 
     public function create()

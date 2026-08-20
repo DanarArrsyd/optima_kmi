@@ -1,9 +1,12 @@
 @extends('layouts.app')
 @section('title', 'Master Karyawan')
 @section('suppress_layout_flash', 'yes')
+{{-- Ruang kerja ERP mengelola tingginya sendiri sampai tepi layar. --}}
+@section('main_mod', 'erp-flush')
+
 @section('content')
 
-<div x-data="{ drawerOpen: {{ $errors->any() ? 'true' : 'false' }} }">
+<div x-data="{ drawerOpen: {{ $errors->any() ? 'true' : 'false' }}, filterOpen: false }">
 
 {{-- ── DRAWER BACKDROP ──────────────────────────────────────────── --}}
 <div x-show="drawerOpen"
@@ -98,17 +101,60 @@
 
 {{-- ══ KONTEN HALAMAN ══════════════════════════════════════════ --}}
 
-<div class="page-header">
-    <h1 class="page-title"><i class="bi bi-people"></i>Master Karyawan</h1>
-    <div class="action-btns">
-        <button class="btn btn-primary btn-sm" @click="drawerOpen = true">
-            <i class="bi bi-plus-lg me-1"></i>Tambah
-        </button>
-        <button class="btn btn-outline-success btn-sm" onclick="document.getElementById('import-panel').classList.toggle('d-none')">
-            <i class="bi bi-file-earmark-arrow-up me-1"></i>Import Excel
-        </button>
-    </div>
+{{-- ══ RUANG KERJA ERP ══════════════════════════════════════════ --}}
+<div class="erp-ws">
+
+<div class="erp-tb">
+    <button type="button" class="erp-tb-btn is-new" @click="drawerOpen = true">
+        <i class="bi bi-plus-lg"></i>Tambah
+    </button>
+    <button type="button" class="erp-tb-btn" :class="filterOpen ? 'is-on' : ''" @click="filterOpen = !filterOpen">
+        <i class="bi bi-funnel"></i>Filter @if($search !== '' || $filterDept !== '' || $filter !== 'semua')<span aria-hidden="true">&bull;</span>@endif
+    </button>
+    <button type="button" class="erp-tb-btn"
+            onclick="document.getElementById('import-panel').classList.toggle('d-none')">
+        <i class="bi bi-file-earmark-arrow-up"></i>Import Excel
+    </button>
+    <a href="{{ route('master.karyawan.index') }}" class="erp-tb-btn"><i class="bi bi-arrow-clockwise"></i>Refresh</a>
+    <span class="erp-tb-sp"></span>
 </div>
+
+<div class="erp-ws-body">
+
+<aside class="erp-dock" x-show="filterOpen" x-cloak>
+    <div class="erp-dock-hd">
+        <span>Filter</span>
+        <button type="button" class="erp-dock-x" @click="filterOpen = false" title="Tutup filter">&times;</button>
+    </div>
+    <form method="GET" action="{{ route('master.karyawan.index') }}" class="erp-dock-body">
+        <div class="erp-grp">
+            <b>Find</b>
+            <input type="text" name="q" value="{{ $search }}" class="erp-in @if($search !== '') is-set @endif"
+                   placeholder="NIK atau Nama Karyawan">
+            <select name="filter_dept" class="erp-in @if($filterDept !== '') is-set @endif">
+                <option value="">Semua Departemen</option>
+                @foreach($deptList as $o)
+                <option value="{{ $o }}" @selected($filterDept === $o)>{{ $o }}</option>
+                @endforeach
+            </select>
+            <select name="filter" class="erp-in @if($filter !== 'semua') is-set @endif">
+                <option value="semua" @selected($filter === 'semua')>Semua Status</option>
+                <option value="aktif" @selected($filter === 'aktif')>Aktif</option>
+                <option value="nonaktif" @selected($filter === 'nonaktif')>Nonaktif</option>
+            </select>
+        </div>
+
+        <div class="erp-grp">
+            <button type="submit" class="erp-btn is-pri"><i class="bi bi-funnel"></i>Tampilkan</button>
+            <a href="{{ route('master.karyawan.index') }}" class="erp-btn">Reset</a>
+        </div>
+    </form>
+</aside>
+
+<div class="erp-ws-main">
+{{-- Judul sudah ada di topbar; penggulungan dipegang .erp-scroll saja. --}}
+<div class="erp-scroll">
+
 
 
 <div id="import-panel" class="erp-panel mb-3 d-none">
@@ -165,16 +211,15 @@
     </span>
 </div>
 
-<div class="erp-panel">
-    <div class="erp-panel-header" style="display:flex;justify-content:space-between;align-items:center">
-        <span>Daftar Karyawan</span>
-        @if($filter === 'nonaktif')
-        <span style="font-size:0.75rem;color:#6b7280;font-weight:400">
-            <i class="bi bi-info-circle me-1"></i>Karyawan non-aktif tidak muncul di form input LHP
-        </span>
-        @endif
-    </div>
-    <div style="overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 300px);min-height:200px">
+{{-- Kepala panel dibuang: judul sudah di topbar, jumlah sudah di status bar.
+     Catatan "non-aktif tidak muncul di form input" dipertahankan sebagai
+     strip tipis — itu keterangan perilaku, bukan sekadar hiasan judul. --}}
+@if($filter === 'nonaktif')
+<div class="erp-warnstrip">
+    <i class="bi bi-info-circle"></i>
+    <span>Karyawan non-aktif tidak muncul di form input LHP.</span>
+</div>
+@endif
     <table class="erp-table" style="min-width:700px;width:100%">
         <thead style="position:sticky;top:0;z-index:10">
             <tr>
@@ -245,9 +290,22 @@
         @endforelse
         </tbody>
     </table>
-    </div>{{-- /overflow wrapper --}}
+</div>{{-- /erp-scroll --}}
+
+<div class="erp-pg">{{ $karyawan->links() }}</div>
+
+</div>{{-- /erp-ws-main --}}
+</div>{{-- /erp-ws-body --}}
+
+<div class="erp-status">
+    <span><b>{{ number_format($karyawan->total()) }}</b> karyawan</span>
+    @if($search !== '' || $filterDept !== '' || $filter !== 'semua')<span>Filter aktif</span>@endif
+    <span class="sp"></span>
+    <span>Login as {{ auth()->user()->name }}</span>
 </div>
-<div class="mt-3">{{ $karyawan->links() }}</div>
+
+</div>{{-- /erp-ws --}}
+
 
 </div>{{-- /alpine outer scope --}}
 @endsection

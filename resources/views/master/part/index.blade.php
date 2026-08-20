@@ -1,10 +1,28 @@
 @extends('layouts.app')
 @section('title', 'Master Part / Dies')
 @section('suppress_layout_flash', 'yes')
+{{-- Ruang kerja ERP mengelola tingginya sendiri sampai tepi layar. --}}
+@section('main_mod', 'erp-flush')
+
+@php
+/* ── Data dock filter ── */
+$_partsForFilter = $partsForFilter->map(fn ($pp) => [
+    'id' => $pp->id, 'part_no' => $pp->part_no, 'part_name' => $pp->part_name, 'customer' => $pp->customer,
+    'proses' => $pp->proses->map(fn ($pr) => ['id' => $pr->id, 'label' => $pr->id_proses.' – '.$pr->nama_proses])->values(),
+])->values();
+$_partsTA  = $_partsForFilter->map(fn ($x) => ['v' => $x['id'], 't' => $x['part_name'], 'sub' => $x['part_no'], 'pno' => $x['part_no']])->values();
+$_prosesTA = $partsForFilter->flatMap(fn ($pp) => $pp->proses)->unique('id')
+    ->map(fn ($pr) => ['v' => $pr->id, 't' => $pr->id_proses.' – '.$pr->nama_proses])->values();
+
+$_partLabel   = $filterPartId ? ($partsForFilter->firstWhere('id', $filterPartId)?->part_name ?? '') : '';
+$_prosesObjF  = $filterProsesId ? $partsForFilter->flatMap(fn ($pp) => $pp->proses)->firstWhere('id', $filterProsesId) : null;
+$_prosesLabel = $_prosesObjF ? $_prosesObjF->id_proses.' – '.$_prosesObjF->nama_proses : '';
+@endphp
+
 @section('content')
 
 {{-- ══ ALPINE SCOPE ══ --}}
-<div x-data="{ drawerOpen: {{ $errors->any() ? 'true' : 'false' }} }">
+<div x-data="{ drawerOpen: {{ $errors->any() ? 'true' : 'false' }}, filterOpen: false }">
 
 {{-- ── DRAWER BACKDROP ──────────────────────────────────────────── --}}
 <div x-show="drawerOpen"
@@ -116,22 +134,107 @@
 
 {{-- ══ KONTEN HALAMAN ══════════════════════════════════════════ --}}
 
-<div class="page-header">
-    <h1 class="page-title"><i class="bi bi-box-seam"></i>Master Part / Dies</h1>
-    <div class="action-btns">
-        <button class="btn btn-primary btn-sm" @click="drawerOpen = true">
-            <i class="bi bi-plus-lg me-1"></i>Tambah Part
-        </button>
-        <button class="btn btn-outline-success btn-sm" onclick="document.getElementById('import-panel').classList.toggle('d-none')">
-            <i class="bi bi-file-earmark-arrow-up me-1"></i>Import Excel
-        </button>
-        <button class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('export-panel').classList.toggle('d-none')">
-            <i class="bi bi-file-earmark-excel me-1"></i>Export Excel
-        </button>
-    </div>
+{{-- ══ RUANG KERJA ERP ══════════════════════════════════════════ --}}
+<div class="erp-ws">
+
+<div class="erp-tb">
+    <button type="button" class="erp-tb-btn is-new" @click="drawerOpen = true">
+        <i class="bi bi-plus-lg"></i>Tambah Part
+    </button>
+    <button type="button" class="erp-tb-btn" :class="filterOpen ? 'is-on' : ''" @click="filterOpen = !filterOpen">
+        <i class="bi bi-funnel"></i>Filter @if($search !== '' || $filterCustomer !== '' || $filterPartId || $filterProsesId)<span aria-hidden="true">&bull;</span>@endif
+    </button>
+    <button type="button" class="erp-tb-btn"
+            onclick="document.getElementById('import-panel').classList.toggle('d-none')">
+        <i class="bi bi-file-earmark-arrow-up"></i>Import Excel
+    </button>
+    <button type="button" class="erp-tb-btn"
+            onclick="document.getElementById('export-panel').classList.toggle('d-none')">
+        <i class="bi bi-file-earmark-excel"></i>Export Excel
+    </button>
+    <a href="{{ route('master.part.index') }}" class="erp-tb-btn"><i class="bi bi-arrow-clockwise"></i>Refresh</a>
+    <span class="erp-tb-sp"></span>
 </div>
 
-{{-- ── EXPORT PANEL ────────────────────────────────────────────── --}}
+<div class="erp-ws-body">
+
+<aside class="erp-dock" x-show="filterOpen" x-cloak>
+    <div class="erp-dock-hd">
+        <span>Filter</span>
+        <button type="button" class="erp-dock-x" @click="filterOpen = false" title="Tutup filter">&times;</button>
+    </div>
+    <form method="GET" action="{{ route('master.part.index') }}" class="erp-dock-body">
+
+        <div class="erp-grp">
+            <b>Find</b>
+            <input type="text" name="q" value="{{ $search }}" class="erp-in @if($search !== '') is-set @endif"
+                   placeholder="Part No, Part Name, Customer, Proses">
+        </div>
+
+        <div class="erp-grp">
+            <b>Part &amp; Customer</b>
+            <select name="filter_customer" class="erp-in @if($filterCustomer !== '') is-set @endif">
+                <option value="">Semua Customer</option>
+                @foreach($customerList as $c)
+                <option value="{{ $c }}" @selected($filterCustomer === $c)>{{ $c }}</option>
+                @endforeach
+            </select>
+
+            <div x-data="partGroupComp({{ $filterPartId ?: 0 }}, '{{ addslashes($_partLabel) }}', {{ $filterProsesId ?: 0 }}, '{{ addslashes($_prosesLabel) }}')"
+                 style="display:flex;flex-direction:column;gap:4px">
+
+                <div @click.outside="partOpen=false" style="position:relative">
+                    <input type="hidden" name="filter_part_id" :value="partVal">
+                    <input type="text" x-model="partQuery" @focus="partOpen=true"
+                           @input="partOpen=true;partVal='';prosesVal='';prosesQuery=''"
+                           @keydown.escape="partOpen=false" placeholder="Nama Part"
+                           class="erp-in" :class="partVal ? 'is-set' : ''">
+                    <button type="button" x-show="partVal"
+                            @mousedown.prevent="partVal='';partQuery='';prosesVal='';prosesQuery=''"
+                            class="erp-clr">&times;</button>
+                    <div x-show="partOpen && filteredParts.length > 0" x-cloak class="erp-dd">
+                        <template x-for="item in filteredParts" :key="item.v">
+                            <div @mousedown.prevent="pickPart(item)" class="erp-dd-item" :title="item.t">
+                                <span style="font-weight:700" x-text="item.t"></span>
+                                <span class="sub" x-text="item.sub"></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <div @click.outside="prosesOpen=false" style="position:relative">
+                    <input type="hidden" name="filter_proses_id" :value="prosesVal">
+                    <input type="text" x-model="prosesQuery" @focus="prosesOpen=true"
+                           @input="prosesOpen=true;prosesVal=''" @keydown.escape="prosesOpen=false"
+                           placeholder="Proses" class="erp-in" :class="prosesVal ? 'is-set' : ''">
+                    <button type="button" x-show="prosesVal" @mousedown.prevent="prosesVal='';prosesQuery=''" class="erp-clr">&times;</button>
+                    <div x-show="prosesOpen && filteredProses.length > 0" x-cloak class="erp-dd">
+                        <template x-for="item in filteredProses" :key="item.v">
+                            <div @mousedown.prevent="prosesVal=item.v;prosesQuery=item.t;prosesOpen=false"
+                                 class="erp-dd-item" x-text="item.t"></div>
+                        </template>
+                    </div>
+                </div>
+
+                {{-- Nomor part tidak diketik: dia turunan dari Nama Part. --}}
+                <input type="text" class="erp-in" readonly tabindex="-1"
+                       :value="partNo || 'Nomor Part'" :title="partNo">
+            </div>
+        </div>
+
+        <div class="erp-grp">
+            <button type="submit" class="erp-btn is-pri"><i class="bi bi-funnel"></i>Tampilkan</button>
+            <a href="{{ route('master.part.index') }}" class="erp-btn">Reset</a>
+        </div>
+    </form>
+</aside>
+
+<div class="erp-ws-main">
+{{-- Judul sudah ada di topbar; penggulungan dipegang .erp-scroll saja.
+     Panel rekomendasi SPH ikut di dalamnya supaya bisa digulung bersama
+     tabel — dia bisa panjang dan tidak boleh mendorong grid keluar layar. --}}
+<div class="erp-scroll erp-scroll-pad">
+
 <div id="export-panel" class="erp-panel mb-3 d-none">
     <div class="erp-panel-header">
         <i class="bi bi-file-earmark-excel me-1"></i>Export Master Part / Dies
@@ -162,33 +265,6 @@
 </div>
 
 {{-- ── SEARCH BAR ──────────────────────────────────────────────── --}}
-<form method="GET" action="{{ route('master.part.index') }}" class="mb-3">
-    <div style="display:flex;gap:8px;align-items:center;max-width:560px">
-        <div style="position:relative;flex:1">
-            <i class="bi bi-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#9ca3af;font-size:0.85rem;pointer-events:none"></i>
-            <input type="text" name="q" value="{{ $search }}"
-                   class="form-control form-control-sm"
-                   style="padding-left:32px"
-                   placeholder="Cari Part No, Part Name, Customer, atau Nama Proses…"
-                   autofocus>
-        </div>
-        <button type="submit" class="btn btn-secondary btn-sm">Cari</button>
-        @if($search !== '')
-        <a href="{{ route('master.part.index') }}" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-x-lg"></i> Reset
-        </a>
-        @endif
-    </div>
-    @if($search !== '')
-    <div style="margin-top:6px;font-size:0.78rem;color:#6b7280">
-        Menampilkan {{ $rows->total() }} hasil untuk
-        <strong style="color:#374151">"{{ $search }}"</strong>
-    </div>
-    @endif
-</form>
-
-
-{{-- ── REKOMENDASI UPGRADE SPH (admin only) ─────────────────── --}}
 @if(auth()->user()->role === 'admin' && $recommendations->isNotEmpty())
 <div class="erp-panel mb-3" style="border-color:#d4a017">
     <div class="erp-panel-header"
@@ -434,19 +510,8 @@
     </div>
 </div>
 
-<div class="erp-panel">
-    <div class="erp-panel-header" style="display:flex;justify-content:space-between;align-items:center">
-        <span>
-            Daftar Part &amp; Proses
-            @if($search !== '')
-            <span class="badge ms-2" style="background:#374151;color:#fff;font-size:0.7rem">Filter aktif</span>
-            @endif
-        </span>
-        <span style="font-size:0.7rem;font-weight:400;color:#5d7283">
-            {{ $rows->total() }} baris &mdash; klik <strong>Edit</strong> untuk kelola proses
-        </span>
-    </div>
-    <div style="overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 320px);min-height:200px">
+{{-- Kepala panel dibuang: judul di topbar, jumlah baris dan penanda filter
+     aktif sudah ada di status bar. --}}
     <table class="erp-table" style="min-width:900px">
         <thead style="position:sticky;top:0;z-index:10">
             <tr>
@@ -517,9 +582,22 @@
         @endforelse
         </tbody>
     </table>
-    </div>{{-- /overflow-x:auto --}}
+</div>{{-- /erp-scroll --}}
+
+<div class="erp-pg">{{ $rows->links() }}</div>
+
+</div>{{-- /erp-ws-main --}}
+</div>{{-- /erp-ws-body --}}
+
+<div class="erp-status">
+    <span><b>{{ number_format($rows->total()) }}</b> baris part-proses</span>
+    @if($search !== '' || $filterCustomer !== '' || $filterPartId || $filterProsesId)<span>Filter aktif</span>@endif
+    <span class="sp"></span>
+    <span>Login as {{ auth()->user()->name }}</span>
 </div>
-<div class="mt-3">{{ $rows->links() }}</div>
+
+</div>{{-- /erp-ws --}}
+
 
 {{-- Part tanpa proses (part sudah ada tapi prosesnya belum) --}}
 @php
@@ -565,3 +643,12 @@
 
 </div>{{-- /alpine outer scope --}}
 @endsection
+
+@push('scripts')
+<script>
+/* ── Data dock filter (komponen bersama di layout) ── */
+const _partsTA       = @json($_partsTA);
+const _partsFullData = @json($_partsForFilter);
+const _prosesTA      = @json($_prosesTA);
+</script>
+@endpush

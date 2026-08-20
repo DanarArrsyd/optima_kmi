@@ -6,15 +6,27 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreMasterUserRequest;
 use App\Models\MasterKaryawan;
 use App\Models\User;
+use Illuminate\Http\Request;
 
 class UserController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $users = User::with('karyawan')->orderBy('name')->paginate(20);
-        $karyawan = MasterKaryawan::orderBy('nama_karyawan')->get();
+        $search = trim((string) $request->input('q', ''));
+        $filterRole = trim((string) $request->input('filter_role', ''));
 
-        return view('master.users.index', compact('users', 'karyawan'));
+        $users = User::with('karyawan')
+            ->when($search !== '', fn ($q) => $q->where(fn ($s) => $s
+                ->where('name', 'like', '%'.$search.'%')
+                ->orWhere('email', 'like', '%'.$search.'%')))
+            ->when($filterRole !== '', fn ($q) => $q->where('role', $filterRole))
+            ->orderBy('name')
+            ->paginate(20)->withQueryString();
+
+        $karyawan = MasterKaryawan::orderBy('nama_karyawan')->get();
+        $roleList = User::distinct()->orderBy('role')->pluck('role')->filter()->values();
+
+        return view('master.users.index', compact('users', 'karyawan', 'search', 'filterRole', 'roleList'));
     }
 
     public function create()

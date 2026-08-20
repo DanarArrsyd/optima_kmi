@@ -13,11 +13,27 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class MesinController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $mesin = MasterMesin::orderBy('line')->orderBy('id_mesin')->paginate(20);
+        $search = trim((string) $request->input('q', ''));
+        $filterLine = trim((string) $request->input('filter_line', ''));
+        $filterTipe = trim((string) $request->input('filter_tipe', ''));
 
-        return view('master.mesin.index', compact('mesin'));
+        $mesin = MasterMesin::query()
+            ->when($search !== '', fn ($q) => $q->where(fn ($s) => $s
+                ->where('id_mesin', 'like', '%'.$search.'%')
+                ->orWhere('nama_mesin', 'like', '%'.$search.'%')))
+            ->when($filterLine !== '', fn ($q) => $q->where('line', $filterLine))
+            ->when($filterTipe !== '', fn ($q) => $q->where('tipe_mesin', $filterTipe))
+            ->orderBy('line')->orderBy('id_mesin')
+            ->paginate(20)->withQueryString();
+
+        /* Pilihan diambil dari isi tabel, bukan daftar tertulis: line dan tipe
+         * mesin bertambah lewat import, dan daftar tertulis akan ketinggalan. */
+        $lineList = MasterMesin::distinct()->orderBy('line')->pluck('line')->filter()->values();
+        $tipeList = MasterMesin::distinct()->orderBy('tipe_mesin')->pluck('tipe_mesin')->filter()->values();
+
+        return view('master.mesin.index', compact('mesin', 'search', 'filterLine', 'filterTipe', 'lineList', 'tipeList'));
     }
 
     public function create()

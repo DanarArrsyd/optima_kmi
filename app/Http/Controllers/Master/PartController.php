@@ -44,6 +44,21 @@ class PartController extends Controller
             });
         }
 
+        /* Filter per kolom di dock, di atas pencarian bebas yang sudah ada. */
+        $filterCustomer = trim((string) $request->input('filter_customer', ''));
+        $filterPartId = (int) $request->input('filter_part_id', 0);
+        $filterProsesId = (int) $request->input('filter_proses_id', 0);
+
+        if ($filterCustomer !== '') {
+            $q->where('master_part.customer', $filterCustomer);
+        }
+        if ($filterPartId > 0) {
+            $q->where('master_part_proses.id_part', $filterPartId);
+        }
+        if ($filterProsesId > 0) {
+            $q->where('master_part_proses.id', $filterProsesId);
+        }
+
         $rows = $q->paginate(30)->withQueryString();
 
         $isAdmin = auth()->user()?->role === 'admin';
@@ -63,8 +78,13 @@ class PartController extends Controller
 
         $customerList = MasterPart::whereNotNull('customer')->where('customer', '!=', '')
             ->distinct()->orderBy('customer')->pluck('customer');
+        $partsForFilter = MasterPart::with('proses')->orderBy('part_name')->get();
 
-        return view('master.part.index', compact('rows', 'recommendations', 'recommendationsQc', 'search', 'dismissedProdCount', 'dismissedQcCount', 'customerList'));
+        return view('master.part.index', compact(
+            'rows', 'recommendations', 'recommendationsQc', 'search',
+            'dismissedProdCount', 'dismissedQcCount', 'customerList',
+            'filterCustomer', 'filterPartId', 'filterProsesId', 'partsForFilter'
+        ));
     }
 
     public function export(Request $request)

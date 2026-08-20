@@ -50,6 +50,13 @@ class ErpWorkspaceMarkupTest extends TestCase
             'VCB Mesin' => ['vcb.mesin', 'staff_produksi', true],
             'VCB NG Proses' => ['vcb.ng-proses', 'staff_produksi', true],
             'Daftar NG Proses' => ['vcb.ng-proses.daftar', 'staff_produksi', true],
+            'Master Mesin' => ['master.mesin.index', 'admin', true],
+            'Master Karyawan' => ['master.karyawan.index', 'admin', true],
+            'Master Part' => ['master.part.index', 'admin', true],
+            'Master Shift' => ['master.shift.index', 'admin', true],
+            'Master Loss Time' => ['master.losstime.index', 'admin', true],
+            'Master Jenis NG' => ['master.jenis-ng.index', 'admin', true],
+            'Master Users' => ['master.users.index', 'admin', true],
         ];
     }
 

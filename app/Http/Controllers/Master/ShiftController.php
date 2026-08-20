@@ -13,11 +13,18 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class ShiftController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $shifts = MasterShift::with('istirahat')->orderBy('jam_start')->paginate(20);
+        $search = trim((string) $request->input('q', ''));
+        $filterAvail = trim((string) $request->input('filter_avail', ''));
 
-        return view('master.shift.index', compact('shifts'));
+        $shifts = MasterShift::with('istirahat')
+            ->when($search !== '', fn ($q) => $q->where('nama_shift', 'like', '%'.$search.'%'))
+            ->when($filterAvail !== '', fn ($q) => $q->where('dihitung_availability', $filterAvail === 'ya'))
+            ->orderBy('jam_start')
+            ->paginate(20)->withQueryString();
+
+        return view('master.shift.index', compact('shifts', 'search', 'filterAvail'));
     }
 
     public function create()
