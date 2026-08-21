@@ -184,7 +184,7 @@ disentuh**.
 
 | Test | Membuktikan |
 |---|---|
-| `MasterKaryawanNonaktifTest::menonaktifkan_menyimpan_tanggal` | PATCH toggle menyimpan tanggal yang dikirim |
+| `KaryawanNonaktifTest::menonaktifkan_menyimpan_tanggal` | PATCH toggle menyimpan tanggal yang dikirim |
 | `…::mengaktifkan_kembali_mengosongkan_tanggal` | Aktif kembali → kolom NULL |
 | `…::tanggal_masa_depan_ditolak` | Validasi `before_or_equal:today` |
 | `…::tanpa_tanggal_jatuh_ke_hari_ini` | Permintaan tanpa field tetap aman |
@@ -194,7 +194,7 @@ disentuh**.
 | `…::operator_nonaktif_tidak_ikut_saat_rentang_lewat` | Aturan penyaringan, dijangkarkan ke `<select>`-nya |
 | `…::operator_aktif_selalu_ikut` | Sisi sebaliknya |
 | `…::berlaku_juga_di_vcb_quality` | Bug kembar tertutup |
-| `BackfillTanggalNonaktifTest` | Backfill mengambil transaksi terbaru dari tiga tabel; nol transaksi tetap NULL |
+| `BackfillTanggalNonaktifTest` (4 test) | Backfill mengambil transaksi terbaru dari tiga tabel; nol transaksi tetap NULL |
 
 Asersi dropdown dijangkarkan ke isi `<select id="one_karyawan_id">`, bukan ke seluruh HTML —
 nama operator juga muncul di tempat lain di halaman, sehingga asersi atas seluruh HTML tidak
