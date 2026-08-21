@@ -81,7 +81,12 @@ class KaryawanNonaktifTest extends TestCase
 
         $this->actingAs($this->admin())
             ->patch(route('master.karyawan.toggle-aktif', $k), [
-                'tanggal_nonaktif' => now()->addDay()->toDateString(),
+                // Batas validasi di controller memakai now('Asia/Jakarta'). Tes ini
+                // harus menghitung "besok" di zona waktu yang sama — kalau dihitung
+                // dari now() (UTC) begitu saja, antara jam 17:00-23:59 UTC tanggal
+                // WIB sudah lebih dulu maju sehari, "besok" versi tes ini sama
+                // dengan batas asli, validasi lolos, dan tes ini merah palsu.
+                'tanggal_nonaktif' => now('Asia/Jakarta')->addDay()->toDateString(),
             ])
             ->assertSessionHasErrors('tanggal_nonaktif');
 

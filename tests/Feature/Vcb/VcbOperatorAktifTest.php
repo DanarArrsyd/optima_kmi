@@ -46,6 +46,27 @@ class VcbOperatorAktifTest extends TestCase
         $this->assertStringContainsString('data-nonaktif=""', $select);
     }
 
+    /**
+     * Bentuk yang melanggar invarian: karyawan is_aktif = true tapi masih
+     * membawa tanggal_nonaktif basi (bisa terjadi lewat edit phpMyAdmin
+     * langsung). Guard `! $k->is_aktif &&` di view ada persis untuk ini —
+     * data-nonaktif wajib tetap kosong walau kolomnya terisi.
+     */
+    public function test_operator_aktif_dengan_tanggal_nonaktif_basi_tetap_kosong(): void
+    {
+        MasterKaryawan::create([
+            'nik' => 'P3', 'nama_karyawan' => 'OPERATOR BASI',
+            'departemen' => 'Produksi', 'is_aktif' => true,
+            'tanggal_nonaktif' => '2026-06-12',
+        ]);
+
+        $select = $this->selectOperator($this->html('vcb.produksi'));
+
+        $this->assertStringContainsString('OPERATOR BASI', $select);
+        $this->assertStringContainsString('data-nonaktif=""', $select);
+        $this->assertStringNotContainsString('data-nonaktif="2026-06-12"', $select);
+    }
+
     public function test_operator_nonaktif_membawa_tanggalnya(): void
     {
         MasterKaryawan::create([
@@ -64,6 +85,12 @@ class VcbOperatorAktifTest extends TestCase
         $html = $this->html('vcb.produksi');
 
         $this->assertStringContainsString("saringOrangNonaktif('one_karyawan_id'", $html);
+        // Drill-down (klik baris di ringkasan Mode 1) wajib membawa karyawanId
+        // sebagai wajibIkut — kalau ini kembali jadi saringOperator() tanpa
+        // argumen, orang yang baru diklik bisa tersaring keluar dari <select>
+        // dan drill-down-nya mentok, walau tes yang cuma cek pemanggilan
+        // saringOrangNonaktif tetap hijau.
+        $this->assertStringContainsString('saringOperator(karyawanId);', $html);
     }
 
     public function test_inspector_nonaktif_membawa_tanggalnya(): void
@@ -84,5 +111,8 @@ class VcbOperatorAktifTest extends TestCase
         $html = $this->html('vcb.quality');
 
         $this->assertStringContainsString("saringOrangNonaktif('one_karyawan_id'", $html);
+        // Sama seperti twin-nya di produksi: drill-down wajib meneruskan
+        // karyawanId sebagai wajibIkut, bukan memanggil saringOperator() polos.
+        $this->assertStringContainsString('saringOperator(karyawanId);', $html);
     }
 }

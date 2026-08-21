@@ -680,7 +680,7 @@ function toggleDay(di) {
 
 const saringOperator = saringOrangNonaktif('one_karyawan_id', 'one_date_from', 'one_operator_note');
 
-document.getElementById('one_date_from').addEventListener('change', saringOperator);
+document.getElementById('one_date_from').addEventListener('change', () => saringOperator());
 saringOperator();   // tampilan pertama harus sudah bersih, bukan setelah tanggal disentuh
 
 async function loadOneOperator() {

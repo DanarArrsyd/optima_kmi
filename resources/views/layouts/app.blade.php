@@ -1620,9 +1620,15 @@ function erpToggleDock(dockId, btnId) {
  * Menyaring daftar orang di sebuah <select> mengikuti tanggal mulai yang dipilih.
  *
  * Halaman menyediakan datanya: tiap <option> membawa data-nonaktif="YYYY-MM-DD"
- * (kosong = masih aktif). Kembaliannya fungsi tanpa argumen yang membangun ulang
- * <select>-nya. Membangun ulang, BUKAN display:none pada <option> — perilaku
- * display:none di <option> tidak seragam antar peramban.
+ * (kosong = masih aktif). Kembaliannya fungsi saring(wajibIkut = null) yang
+ * membangun ulang <select>-nya. Membangun ulang, BUKAN display:none pada
+ * <option> — perilaku display:none di <option> tidak seragam antar peramban.
+ *
+ * wajibIkut (opsional): id karyawan yang harus tetap muncul di opsi walau
+ * tanggal_nonaktif-nya jatuh sebelum "dari". Dipakai saat orang itu dijangkau
+ * dengan mengklik barisnya sendiri di tabel ringkasan Mode 1 yang tak
+ * tersaring — dia relevan dengan drill-down ini by definition, dan menjatuhkan
+ * dia dari <select> akan mem-mentok-kan drill-down itu sendiri.
  *
  * Daftar lengkapnya di-snapshot sekali saat dipasang, karena pembangunan ulang
  * yang pertama akan menghapus sumbernya dari DOM.
