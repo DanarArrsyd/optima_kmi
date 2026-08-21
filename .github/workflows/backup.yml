@@ -1,0 +1,38 @@
+name: Backup harian
+
+# Memanggil artisan backup:jalankan di server lewat SSH, sejalur dengan
+# deploy.yml dan debug-log.yml.
+#
+# ⚠️ Jadwal GitHub Actions tidak dijamin tepat waktu — bisa telat puluhan menit
+# saat antrean padat — dan DINONAKTIFKAN OTOMATIS setelah 60 hari repositori
+# tidak ada aktivitas. Ketelatan tidak masalah untuk backup harian;
+# penonaktifan masalah, dan yang memberi tahu adalah kartu umur backup di
+# halaman Backup Sistem, bukan orang yang kebetulan curiga.
+on:
+  schedule:
+    - cron: '0 16 * * *'   # 16:00 UTC = 23:00 WIB, sesudah shift 2 selesai
+  workflow_dispatch:
+
+env:
+  REMOTE_PATH: /home/u518638233/domains/optima.kencomanufactur.co.id/public_html
+  REMOTE_PHP: /opt/alt/php84/usr/bin/php
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p "${{ secrets.SSH_PORT }}" "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      # Tanpa -e, kode keluar artisan tidak sampai ke step ini dan jadwal yang
+      # gagal akan tampak hijau.
+      - name: Jalankan backup
+        run: |
+          set -e
+          ssh -p "${{ secrets.SSH_PORT }}" -i ~/.ssh/deploy_key \
+            "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" \
+            "cd ${{ env.REMOTE_PATH }} && ${{ env.REMOTE_PHP }} artisan backup:jalankan"
