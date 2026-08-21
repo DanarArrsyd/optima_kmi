@@ -21,6 +21,7 @@
 - **Direktif Blade tidak boleh menempel karakter kata** (`Filter@if` → halaman 500). Sapuan: `grep -rnE '\w@(if|endif|else|elseif|foreach|endforeach|selected)\b' resources/views/`
 - **Asersi filter dijangkarkan** ke elemen yang diuji, jangan ke seluruh HTML — nama karyawan muncul di banyak tempat di halaman yang sama
 - **Format akhir:** `vendor/bin/pint app tests` (scope Pint hanya `app/` + `tests/`)
+- **Komponen JS bersama hanya boleh punya SATU definisi**, di `resources/views/layouts/app.blade.php`, dan didaftarkan di `KomponenBersamaTest`. Menyalinnya ke view dilarang — `taField()` pernah jadi 18 berkas dengan 5 varian yang sudah menyimpang
 - Bahasa komentar, pesan flash, dan judul kolom: **Indonesia**, mengikuti berkas sekitarnya
 
 ---
@@ -36,13 +37,15 @@
 | `app/Http/Controllers/Master/KaryawanController.php` | Tulis & kosongkan tanggal, validasi, kirim flag kolom ke view |
 | `resources/views/master/karyawan/index.blade.php` | Laci tanggal di tombol Non-Aktifkan + kolom "Nonaktif Sejak" |
 | `app/Imports/KaryawanImport.php` | Kosongkan tanggal saat import mengaktifkan orang |
-| `resources/views/vcb/produksi.blade.php` | `data-nonaktif` + penyaring dropdown |
+| `resources/views/layouts/app.blade.php` | **Satu-satunya** definisi `saringOrangNonaktif()` |
+| `resources/views/vcb/produksi.blade.php` | `data-nonaktif` di option + pemanggilan penyaring |
 | `resources/views/vcb/quality.blade.php` | Sama, sisi Inspector |
+| `tests/Feature/Layout/KomponenBersamaTest.php` | Daftarkan komponen bersama kelima |
 | `tests/Feature/Master/KaryawanNonaktifTest.php` | Task 1, 3, 4, 5 |
 | `tests/Feature/Master/BackfillTanggalNonaktifTest.php` | Task 2 |
 | `tests/Feature/Vcb/VcbOperatorAktifTest.php` | Task 6, 7 |
 
-**Catatan keterujian yang harus diterima sejak awal:** aturan penyaringan berjalan di JavaScript, dan suite ini PHPUnit. Yang bisa diuji dari PHP: tiap `<option>` membawa `data-nonaktif` yang benar, dan sumber penyaringnya ada di halaman. Perilaku penyaringnya sendiri diuji manual. Jangan menulis asersi yang seolah menguji perilaku JS — itu asersi yang tidak pernah bisa gagal.
+**Catatan keterujian yang harus diterima sejak awal:** aturan penyaringan berjalan di JavaScript, dan suite ini PHPUnit. Yang bisa diuji dari PHP: tiap `<option>` membawa `data-nonaktif` yang benar, dan penyaringnya benar-benar dipanggil di halaman. Perilaku penyaringnya sendiri diuji manual. Jangan menulis asersi yang seolah menguji perilaku JS — itu asersi yang tidak pernah bisa gagal.
 
 ---
 
@@ -773,17 +776,21 @@ git commit -m "fix(import): import karyawan mengosongkan tanggal_nonaktif saat m
 
 ---
 
-### Task 6: Dropdown Operator VCB Produksi
+### Task 6: Komponen penyaring bersama + VCB Produksi
 
 **Files:**
-- Modify: `resources/views/vcb/produksi.blade.php:84-90` (select), `:296-300` (drill-down), `:710-711` (bulan)
+- Modify: `resources/views/layouts/app.blade.php` (blok `<script>` komponen bersama)
+- Modify: `resources/views/vcb/produksi.blade.php` (select operator, drill-down, handler bulan)
+- Modify: `tests/Feature/Layout/KomponenBersamaTest.php:20-25`
 - Test: `tests/Feature/Vcb/VcbOperatorAktifTest.php`
 
 **Interfaces:**
 - Consumes: kolom dari Task 1, backfill dari Task 2
-- Produces: fungsi JS `saringOperator()` di halaman VCB Produksi
+- Produces: `saringOrangNonaktif(selectId, dateFromId, noteId)` → mengembalikan fungsi `saring()` tanpa argumen. Task 7 memanggil fungsi yang sama.
 
 Controller **tidak diubah** — `index()` sudah memuat seluruh karyawan produksi dan `->get()` membawa kolom baru apa adanya.
+
+Komponennya **didefinisikan sekali di layout**, seperti `taField`, `filterSearchComp`, `partGroupComp`, dan `erpToggleDock`. Halaman menyediakan DATANYA (`data-nonaktif` di tiap `<option>`), bukan definisi fungsinya.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -802,7 +809,7 @@ use Tests\TestCase;
 /**
  * Aturan penyaringannya sendiri berjalan di JavaScript dan tidak bisa dijalankan
  * dari PHPUnit. Yang diuji di sini: tiap <option> membawa data-nonaktif yang
- * benar, dan penyaringnya benar-benar terpasang di halaman. Jangan menulis
+ * benar, dan penyaringnya benar-benar dipanggil di halaman. Jangan menulis
  * asersi yang seolah menguji perilaku JS — itu asersi yang tak pernah bisa gagal.
  */
 class VcbOperatorAktifTest extends TestCase
@@ -851,12 +858,11 @@ class VcbOperatorAktifTest extends TestCase
         $this->assertStringContainsString('data-nonaktif="2026-06-12"', $select);
     }
 
-    public function test_penyaring_terpasang_di_halaman(): void
+    public function test_penyaring_dipanggil_di_halaman_produksi(): void
     {
         $html = $this->html('vcb.produksi');
 
-        $this->assertStringContainsString('function saringOperator()', $html);
-        $this->assertStringContainsString("o.nonaktif >= dari", $html);
+        $this->assertStringContainsString("saringOrangNonaktif('one_karyawan_id'", $html);
     }
 }
 ```
@@ -866,7 +872,81 @@ class VcbOperatorAktifTest extends TestCase
 Run: `php artisan test tests/Feature/Vcb/VcbOperatorAktifTest.php`
 Expected: FAIL — `data-nonaktif` tidak ada di `<select>`
 
-- [ ] **Step 3: Tempelkan data-nonaktif ke tiap option**
+- [ ] **Step 3: Definisikan komponen di layout**
+
+`resources/views/layouts/app.blade.php` — di dalam blok `<script>` tempat `taField`, `filterSearchComp`, `partGroupComp`, dan `erpToggleDock` sudah didefinisikan, tambahkan:
+
+```javascript
+/**
+ * Menyaring daftar orang di sebuah <select> mengikuti tanggal mulai yang dipilih.
+ *
+ * Halaman menyediakan datanya: tiap <option> membawa data-nonaktif="YYYY-MM-DD"
+ * (kosong = masih aktif). Kembaliannya fungsi tanpa argumen yang membangun ulang
+ * <select>-nya. Membangun ulang, BUKAN display:none pada <option> — perilaku
+ * display:none di <option> tidak seragam antar peramban.
+ *
+ * Daftar lengkapnya di-snapshot sekali saat dipasang, karena pembangunan ulang
+ * yang pertama akan menghapus sumbernya dari DOM.
+ */
+function saringOrangNonaktif(selectId, dateFromId, noteId) {
+    const sel = document.getElementById(selectId);
+    const semua = Array.from(sel.querySelectorAll('option'))
+        .filter(o => o.value !== '')
+        .map(o => ({ id: o.value, nama: o.textContent, nonaktif: o.dataset.nonaktif || '' }));
+    const placeholder = sel.querySelector('option[value=""]');
+    const placeholderHtml = placeholder ? placeholder.outerHTML : '';
+
+    return function saring() {
+        const dari     = document.getElementById(dateFromId).value;
+        const terpilih = sel.value;
+        const note     = document.getElementById(noteId);
+
+        // Tanggal ISO aman dibandingkan sebagai string.
+        // nonaktif kosong = selalu tampil: kolom kosong tidak boleh menghilangkan orang.
+        const lolos = semua.filter(o => !o.nonaktif || o.nonaktif >= dari);
+
+        sel.innerHTML = placeholderHtml;
+        lolos.forEach(o => {
+            const opt = document.createElement('option');
+            opt.value = o.id;
+            opt.textContent = o.nama;
+            opt.dataset.nonaktif = o.nonaktif;
+            sel.appendChild(opt);
+        });
+
+        if (terpilih && lolos.some(o => o.id === terpilih)) {
+            sel.value = terpilih;
+            if (note) note.textContent = '';
+
+            return;
+        }
+
+        if (terpilih) {
+            // Mengosongkan diam-diam akan membuat grafik menampilkan orang lain
+            // tanpa penjelasan.
+            const hilang = semua.find(o => o.id === terpilih);
+            if (note) note.textContent = hilang ? `${hilang.nama} tidak aktif pada periode ini.` : '';
+            sel.value = '';
+        }
+    };
+}
+```
+
+- [ ] **Step 4: Daftarkan sebagai komponen bersama kelima**
+
+`tests/Feature/Layout/KomponenBersamaTest.php` — tambahkan satu baris ke konstanta `KOMPONEN`:
+
+```php
+    private const KOMPONEN = [
+        'function taField(',
+        'function filterSearchComp(',
+        'function partGroupComp(',
+        'function erpToggleDock(',
+        'function saringOrangNonaktif(',
+    ];
+```
+
+- [ ] **Step 5: Tempelkan data-nonaktif ke tiap option**
 
 `resources/views/vcb/produksi.blade.php` — ganti blok `@foreach` di dalam `<select id="one_karyawan_id">`:
 
@@ -877,57 +957,7 @@ Expected: FAIL — `data-nonaktif` tidak ada di `<select>`
                     @endforeach
 ```
 
-- [ ] **Step 4: Tambahkan penyaringnya**
-
-Di `@push('scripts')` halaman itu, sebelum `loadOneOperator()` didefinisikan, tambahkan:
-
-```javascript
-// Daftar operator diambil sekali dari markup awal, lalu <select> dibangun ulang
-// tiap rentang tanggal berubah. Membangun ulang, bukan display:none pada
-// <option> — perilaku display:none di <option> tidak seragam antar peramban.
-const OPERATORS = Array.from(document.querySelectorAll('#one_karyawan_id option'))
-    .filter(o => o.value !== '')
-    .map(o => ({ id: o.value, nama: o.textContent, nonaktif: o.dataset.nonaktif || '' }));
-
-function saringOperator() {
-    const dari     = document.getElementById('one_date_from').value;
-    const sel      = document.getElementById('one_karyawan_id');
-    const terpilih = sel.value;
-    const note     = document.getElementById('one_operator_note');
-
-    // Tanggal ISO aman dibandingkan sebagai string.
-    // nonaktif kosong = selalu tampil: kolom kosong tidak boleh menghilangkan orang.
-    const lolos = OPERATORS.filter(o => !o.nonaktif || o.nonaktif >= dari);
-
-    sel.innerHTML = '<option value="">— Pilih Operator —</option>';
-    lolos.forEach(o => {
-        const opt = document.createElement('option');
-        opt.value = o.id;
-        opt.textContent = o.nama;
-        opt.dataset.nonaktif = o.nonaktif;
-        sel.appendChild(opt);
-    });
-
-    if (terpilih && lolos.some(o => o.id === terpilih)) {
-        sel.value = terpilih;
-        note.textContent = '';
-        return;
-    }
-
-    if (terpilih) {
-        // Mengosongkan diam-diam akan membuat grafik menampilkan orang lain
-        // tanpa penjelasan.
-        const hilang = OPERATORS.find(o => o.id === terpilih);
-        note.textContent = hilang ? `${hilang.nama} tidak aktif pada periode ini.` : '';
-        sel.value = '';
-    }
-}
-
-document.getElementById('one_date_from').addEventListener('change', saringOperator);
-saringOperator();   // tampilan pertama harus sudah bersih, bukan setelah tanggal disentuh
-```
-
-- [ ] **Step 5: Tambahkan tempat pesannya**
+- [ ] **Step 6: Tambahkan tempat pesannya**
 
 Tepat setelah `</select>` milik `one_karyawan_id`, di dalam `.erp-grp` yang sama:
 
@@ -935,7 +965,18 @@ Tepat setelah `</select>` milik `one_karyawan_id`, di dalam `.erp-grp` yang sama
                 <small id="one_operator_note" style="color:#b91c1c;font-size:10px"></small>
 ```
 
-- [ ] **Step 6: Sambungkan ke dua jalur lain yang mengubah tanggal**
+- [ ] **Step 7: Pasang penyaringnya**
+
+Di `@push('scripts')` halaman itu, sebelum `loadOneOperator()` didefinisikan:
+
+```javascript
+const saringOperator = saringOrangNonaktif('one_karyawan_id', 'one_date_from', 'one_operator_note');
+
+document.getElementById('one_date_from').addEventListener('change', saringOperator);
+saringOperator();   // tampilan pertama harus sudah bersih, bukan setelah tanggal disentuh
+```
+
+- [ ] **Step 8: Sambungkan ke dua jalur lain yang mengubah tanggal**
 
 `applyBulanFilter` menyetel `.value` secara programatis, dan itu **tidak** memicu event `change`. Ganti pemanggilnya:
 
@@ -953,18 +994,21 @@ Jalur drill-down dari grafik menyetel operator SEBELUM tanggal, sehingga daftarn
         document.getElementById('one_karyawan_id').value  = karyawanId;
 ```
 
-- [ ] **Step 7: Run tests to verify they pass**
+- [ ] **Step 9: Run tests to verify they pass**
 
 Run: `php artisan test tests/Feature/Vcb/VcbOperatorAktifTest.php`
 Expected: PASS (3 test)
 
+Run: `php artisan test tests/Feature/Layout/KomponenBersamaTest.php`
+Expected: PASS (5 test) — komponen kelima ada di layout, nol penyalin
+
 Run: `php artisan test tests/Feature/Vcb/`
 Expected: PASS — termasuk `VcbAchievedCounterTest` yang juga membaca halaman ini
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 10: Commit**
 
 ```bash
-git add resources/views/vcb/produksi.blade.php tests/Feature/Vcb/VcbOperatorAktifTest.php
+git add resources/views/layouts/app.blade.php resources/views/vcb/produksi.blade.php tests/Feature/Layout/KomponenBersamaTest.php tests/Feature/Vcb/VcbOperatorAktifTest.php
 git commit -m "feat(vcb): dropdown operator menyaring ikut rentang tanggal"
 ```
 
@@ -973,14 +1017,14 @@ git commit -m "feat(vcb): dropdown operator menyaring ikut rentang tanggal"
 ### Task 7: Dropdown Inspector VCB Quality
 
 **Files:**
-- Modify: `resources/views/vcb/quality.blade.php:83-90` (select), `:295-296` (drill-down), `:673` (bulan)
+- Modify: `resources/views/vcb/quality.blade.php` (select inspector, drill-down, handler bulan)
 - Test: `tests/Feature/Vcb/VcbOperatorAktifTest.php` (tambah)
 
 **Interfaces:**
-- Consumes: pola dari Task 6
-- Produces: fungsi JS `saringOperator()` di halaman VCB Quality
+- Consumes: `saringOrangNonaktif(selectId, dateFromId, noteId)` dari Task 6 — sudah ada di layout, **jangan didefinisikan ulang di view mana pun**
+- Produces: —
 
-Bug kembar. Repo ini sudah berkali-kali membetulkan satu tempat dan meninggalkan pasangannya — terakhir pada penghitung achieved (PR #95).
+Bug kembar. Repo ini sudah berkali-kali membetulkan satu tempat dan meninggalkan pasangannya — terakhir pada penghitung achieved (PR #95). Id elemennya sama persis dengan halaman produksi (`one_karyawan_id`, `one_date_from`, `one_bulan_filter`); yang berbeda hanya nama fungsi pemuatnya, `loadOneInspector()`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1000,12 +1044,11 @@ Tambahkan ke `tests/Feature/Vcb/VcbOperatorAktifTest.php`:
         $this->assertStringContainsString('data-nonaktif="2026-05-30"', $select);
     }
 
-    public function test_penyaring_terpasang_juga_di_quality(): void
+    public function test_penyaring_dipanggil_di_halaman_quality(): void
     {
         $html = $this->html('vcb.quality');
 
-        $this->assertStringContainsString('function saringOperator()', $html);
-        $this->assertStringContainsString("o.nonaktif >= dari", $html);
+        $this->assertStringContainsString("saringOrangNonaktif('one_karyawan_id'", $html);
     }
 ```
 
@@ -1025,64 +1068,23 @@ Expected: FAIL — dua test baru gagal, tiga test Task 6 tetap hijau
                     @endforeach
 ```
 
-- [ ] **Step 4: Tambahkan penyaringnya**
-
-Di `@push('scripts')` halaman itu, sebelum `loadOneInspector()` didefinisikan:
-
-```javascript
-// Daftar inspector diambil sekali dari markup awal, lalu <select> dibangun ulang
-// tiap rentang tanggal berubah. Membangun ulang, bukan display:none pada
-// <option> — perilaku display:none di <option> tidak seragam antar peramban.
-const OPERATORS = Array.from(document.querySelectorAll('#one_karyawan_id option'))
-    .filter(o => o.value !== '')
-    .map(o => ({ id: o.value, nama: o.textContent, nonaktif: o.dataset.nonaktif || '' }));
-
-function saringOperator() {
-    const dari     = document.getElementById('one_date_from').value;
-    const sel      = document.getElementById('one_karyawan_id');
-    const terpilih = sel.value;
-    const note     = document.getElementById('one_operator_note');
-
-    // Tanggal ISO aman dibandingkan sebagai string.
-    // nonaktif kosong = selalu tampil: kolom kosong tidak boleh menghilangkan orang.
-    const lolos = OPERATORS.filter(o => !o.nonaktif || o.nonaktif >= dari);
-
-    sel.innerHTML = '<option value="">— Pilih Inspector —</option>';
-    lolos.forEach(o => {
-        const opt = document.createElement('option');
-        opt.value = o.id;
-        opt.textContent = o.nama;
-        opt.dataset.nonaktif = o.nonaktif;
-        sel.appendChild(opt);
-    });
-
-    if (terpilih && lolos.some(o => o.id === terpilih)) {
-        sel.value = terpilih;
-        note.textContent = '';
-        return;
-    }
-
-    if (terpilih) {
-        // Mengosongkan diam-diam akan membuat grafik menampilkan orang lain
-        // tanpa penjelasan.
-        const hilang = OPERATORS.find(o => o.id === terpilih);
-        note.textContent = hilang ? `${hilang.nama} tidak aktif pada periode ini.` : '';
-        sel.value = '';
-    }
-}
-
-document.getElementById('one_date_from').addEventListener('change', saringOperator);
-saringOperator();   // tampilan pertama harus sudah bersih, bukan setelah tanggal disentuh
-```
-
-⚠️ Teks placeholder `— Pilih Inspector —` harus sama persis dengan yang dirender Blade di halaman ini. Periksa `<option value="">` aslinya sebelum menyalin; kalau berbeda, pakai yang asli.
-
-- [ ] **Step 5: Tambahkan tempat pesannya**
+- [ ] **Step 4: Tambahkan tempat pesannya**
 
 Tepat setelah `</select>` milik `one_karyawan_id`, di dalam `.erp-grp` yang sama:
 
 ```blade
                 <small id="one_operator_note" style="color:#b91c1c;font-size:10px"></small>
+```
+
+- [ ] **Step 5: Pasang penyaringnya**
+
+Di `@push('scripts')` halaman itu, sebelum `loadOneInspector()` didefinisikan:
+
+```javascript
+const saringOperator = saringOrangNonaktif('one_karyawan_id', 'one_date_from', 'one_operator_note');
+
+document.getElementById('one_date_from').addEventListener('change', saringOperator);
+saringOperator();   // tampilan pertama harus sudah bersih, bukan setelah tanggal disentuh
 ```
 
 - [ ] **Step 6: Sambungkan ke dua jalur lain yang mengubah tanggal**
@@ -1103,12 +1105,13 @@ Jalur drill-down dari grafik (sekitar baris 295) menyetel inspector SEBELUM tang
         document.getElementById('one_karyawan_id').value = karyawanId;
 ```
 
-Nama fungsinya sengaja tetap `saringOperator` di kedua halaman meski di sini isinya inspector: keduanya halaman terpisah tanpa berbagi berkas, dan nama yang sama membuat penjaga Task 6 dan Task 7 memeriksa hal yang persis sama.
-
 - [ ] **Step 7: Run tests to verify they pass**
 
 Run: `php artisan test tests/Feature/Vcb/VcbOperatorAktifTest.php`
 Expected: PASS (5 test)
+
+Run: `php artisan test tests/Feature/Layout/KomponenBersamaTest.php`
+Expected: PASS — nol penyalin `saringOrangNonaktif` di berkas view
 
 - [ ] **Step 8: Commit**
 
