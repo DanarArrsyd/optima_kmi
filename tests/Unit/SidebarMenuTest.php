@@ -188,4 +188,26 @@ class SidebarMenuTest extends TestCase
 
         $this->assertNull(SidebarMenu::activeGroup('admin'));
     }
+
+    public function test_tidak_ada_route_yang_muncul_dua_kali(): void
+    {
+        // Dibaca dari config MENTAH, bukan forRole('admin'), supaya entri yang
+        // hanya terlihat peran lain ikut tercakup.
+        $routes = [];
+
+        foreach (config('sidebar') as $entri) {
+            if (($entri['type'] ?? 'link') === 'link') {
+                $routes[] = $entri['route'];
+
+                continue;
+            }
+            foreach ($entri['items'] as $anak) {
+                $routes[] = $anak['route'];
+            }
+        }
+
+        $ganda = array_keys(array_filter(array_count_values($routes), fn ($n) => $n > 1));
+
+        $this->assertSame([], $ganda, 'Route muncul lebih dari sekali di sidebar: '.implode(', ', $ganda));
+    }
 }
