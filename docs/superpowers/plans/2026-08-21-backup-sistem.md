@@ -491,28 +491,33 @@ Tambahkan ke `tests/Unit/BackupServiceTest.php`:
 ```php
     public function test_pangkas_menyisakan_tiga_puluh_terbaru(): void
     {
-        foreach (range(1, 33) as $i) {
+        // Tanggal sungguhan, bukan 2026-07-33: nama berkas ini juga yang dibaca
+        // manusia di halaman, dan fixture yang mustahil menyembunyikan salah urut.
+        $mulai = \Illuminate\Support\Carbon::parse('2026-06-01');
+        foreach (range(0, 32) as $i) {
             Storage::disk('local')->put(
-                BackupService::DIREKTORI.'/optima-2026-07-'.str_pad((string) $i, 2, '0', STR_PAD_LEFT).'_0100.zip',
+                BackupService::DIREKTORI.'/optima-'.$mulai->copy()->addDays($i)->format('Y-m-d').'_0100.zip',
                 'isi'
             );
         }
 
         $terbuang = $this->layanan()->pangkas(30);
 
-        $tersisa = Storage::disk('local')->files(BackupService::DIREKTORI);
+        $tersisa = implode(',', Storage::disk('local')->files(BackupService::DIREKTORI));
         $this->assertSame(3, $terbuang);
-        $this->assertCount(30, $tersisa);
+        $this->assertCount(30, Storage::disk('local')->files(BackupService::DIREKTORI));
         // Yang dibuang yang PALING LAMA, bukan yang paling baru.
-        $this->assertStringNotContainsString('2026-07-01_0100', implode(',', $tersisa));
-        $this->assertStringContainsString('2026-07-33_0100', implode(',', $tersisa));
+        $this->assertStringNotContainsString('optima-2026-06-01_0100', $tersisa);
+        $this->assertStringNotContainsString('optima-2026-06-03_0100', $tersisa);
+        $this->assertStringContainsString('optima-2026-07-03_0100', $tersisa);
     }
 
     public function test_jalankan_memangkas_otomatis(): void
     {
-        foreach (range(1, 30) as $i) {
+        $mulai = \Illuminate\Support\Carbon::parse('2026-06-01');
+        foreach (range(0, 29) as $i) {
             Storage::disk('local')->put(
-                BackupService::DIREKTORI.'/optima-2026-07-'.str_pad((string) $i, 2, '0', STR_PAD_LEFT).'_0100.zip',
+                BackupService::DIREKTORI.'/optima-'.$mulai->copy()->addDays($i)->format('Y-m-d').'_0100.zip',
                 'isi'
             );
         }
