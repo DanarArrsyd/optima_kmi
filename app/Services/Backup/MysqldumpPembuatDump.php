@@ -1,0 +1,103 @@
+<?php
+
+namespace App\Services\Backup;
+
+use App\Contracts\PembuatDump;
+use RuntimeException;
+use Symfony\Component\Process\Process;
+
+class MysqldumpPembuatDump implements PembuatDump
+{
+    public function __construct(private string $biner = '/usr/bin/mysqldump') {}
+
+    /**
+     * Argumen dipisah dari eksekusi supaya bisa diuji tanpa MySQL.
+     *
+     * Kata sandi TIDAK pernah masuk ke sini — ia dititipkan lewat berkas konfig
+     * mode 0600, karena argumen perintah terlihat di daftar proses seluruh mesin
+     * dan ini shared hosting.
+     */
+    public function perintah(string $tujuan, string $berkasKonfig): array
+    {
+        $k = config('database.connections.mysql');
+
+        return [
+            $this->biner,
+            '--defaults-extra-file='.$berkasKonfig,
+            '--host='.$k['host'],
+            '--port='.$k['port'],
+            '--user='.$k['username'],
+            '--single-transaction',
+            '--quick',
+            '--no-tablespaces',
+            '--default-character-set=utf8mb4',
+            '--result-file='.$tujuan,
+            $k['database'],
+        ];
+    }
+
+    public function keBerkas(string $tujuan): void
+    {
+        $konfig = tempnam(sys_get_temp_dir(), 'optima-dump-');
+        chmod($konfig, 0600);
+        file_put_contents($konfig, "[client]\npassword=\"".$this->escapeNilaiOpsi(config('database.connections.mysql.password'))."\"\n");
+
+        try {
+            $proses = new Process($this->perintah($tujuan, $konfig));
+            // Kalau angka ini dinaikkan, BackupService::TTL_LOCK WAJIB ikut
+            // dinaikkan (lihat komentar di sana) — TTL lock harus menutupi
+            // waktu dump INI DITAMBAH perakitan ZIP sesudahnya, bukan cuma
+            // sama dengan timeout dump.
+            $proses->setTimeout(600);
+
+            try {
+                $proses->run();
+            } catch (\Throwable $e) {
+                // Mencakup ProcessTimedoutException — timeout tidak pernah
+                // sampai ke pengecekan isSuccessful() di bawah, jadi berkas
+                // separuh jadi wajib dihapus di sini juga sebelum dilempar ulang.
+                @unlink($tujuan);
+                throw $e;
+            }
+
+            if (! $proses->isSuccessful()) {
+                // mysqldump --result-file menulis bertahap ke $tujuan, jadi
+                // kegagalan di tengah jalan (kredensial salah, koneksi putus,
+                // disk penuh) meninggalkan berkas separuh jadi. Itu tidak
+                // boleh mendarat sebagai berkas dump yang tampak valid.
+                @unlink($tujuan);
+
+                // Yang dicatat pesan galat dan kode keluar — BUKAN barisnya,
+                // supaya kredensial tidak pernah mendarat di log.
+                throw new RuntimeException(
+                    'mysqldump gagal (kode '.$proses->getExitCode().'): '.trim($proses->getErrorOutput())
+                );
+            }
+        } finally {
+            @unlink($konfig);
+        }
+    }
+
+    /**
+     * Parser option-file MySQL melucuti kutip pembungkus lalu memproses escape
+     * backslash pada nilainya. Tanpa ini, sandi berisi `\` diam-diam terpotong/
+     * berubah dan sandi berisi `"` mengakhiri nilainya lebih awal — dua-duanya
+     * bikin backup gagal terus sesudah rotasi sandi berikutnya, dengan galat
+     * yang membingungkan (sepertinya kredensial salah, padahal cuma kurang escape).
+     * `\` wajib di-escape LEBIH DULU supaya backslash hasil escape `"` tidak
+     * ikut di-escape ulang.
+     */
+    private function escapeNilaiOpsi(?string $nilai): string
+    {
+        // Bisa dihandel null: config('database.connections.mysql.password')
+        // resolve lewat env('DB_PASSWORD', ''), dan Laravel memetakan literal
+        // `null` di .env jadi PHP null (bukan string kosong) — shape nyata di
+        // host dengan MySQL tanpa kata sandi. Tanpa cast ini, null yang masuk
+        // ke parameter bertipe string non-nullable BUKAN sekadar deprecation
+        // (aturan deprecation null-ke-string cuma berlaku untuk fungsi
+        // internal PHP, bukan parameter userland ber-tipe seperti ini) —
+        // coercive typing PHP melempar TypeError, dan backup mati total
+        // dengan fatal error tiap kali dijalankan di host itu.
+        return str_replace(['\\', '"'], ['\\\\', '\\"'], (string) $nilai);
+    }
+}

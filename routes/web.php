@@ -82,6 +82,14 @@ Route::middleware('auth')->group(function () {
         Route::patch('part/{part}/proses/{proses}/upgrade-qc-sph', [PartController::class, 'upgradeQcSph'])->name('part.proses.upgrade-qc-sph');
     });
 
+    // --- SISTEM (admin only) — satu arsip memuat seluruh DB termasuk tabel users ---
+    Route::middleware('role:admin')->prefix('sistem')->name('sistem.')->group(function () {
+        Route::get('backup', [\App\Http\Controllers\Sistem\BackupController::class, 'index'])->name('backup.index');
+        Route::post('backup/jalankan', [\App\Http\Controllers\Sistem\BackupController::class, 'jalankan'])->name('backup.jalankan');
+        Route::get('backup/{berkas}/unduh', [\App\Http\Controllers\Sistem\BackupController::class, 'unduh'])->name('backup.unduh');
+        Route::delete('backup/{berkas}', [\App\Http\Controllers\Sistem\BackupController::class, 'hapus'])->name('backup.hapus');
+    });
+
     // --- INPUT PRODUKSI: daftar (read-only, guest boleh) ---
     Route::middleware('role:admin,staff_produksi,guest')->prefix('input')->name('input.')->group(function () {
         Route::get('produksi', [ProduksiController::class, 'index'])->name('produksi.index');

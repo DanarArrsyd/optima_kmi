@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Contracts\PembuatDump;
+use App\Services\Backup\MysqldumpPembuatDump;
 use App\Services\Chatbot\Capabilities;
 use App\Services\Chatbot\CapabilityRegistry;
 use App\Support\SafeExcelValueBinder;
@@ -48,6 +50,8 @@ class AppServiceProvider extends ServiceProvider
             CapabilityRegistry::class,
             fn ($app) => new CapabilityRegistry($app->tagged('chatbot.capability')),
         );
+
+        $this->app->bind(PembuatDump::class, MysqldumpPembuatDump::class);
     }
 
     public function boot(): void
