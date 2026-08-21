@@ -84,6 +84,32 @@ class BackfillTanggalNonaktifTest extends TestCase
         $this->assertSame('2026-06-20', $k->fresh()->tanggal_nonaktif->toDateString());
     }
 
+    /**
+     * transaksi_qc satu-satunya sumber yang kolom kuncinya BUKAN id_karyawan
+     * (melainkan id_karyawan_qc) — kalau nama kolomnya salah ketik di migrasi,
+     * test lain tidak akan menangkapnya karena mereka tidak menyentuh tabel
+     * ini sama sekali.
+     */
+    public function test_mengambil_tanggal_dari_transaksi_qc(): void
+    {
+        $k = MasterKaryawan::create([
+            'nik' => 'N5', 'nama_karyawan' => 'ORANG LIMA',
+            'departemen' => 'QC', 'is_aktif' => false,
+        ]);
+        $m = $this->buatMasterPendukung();
+
+        DB::table('transaksi_qc')->insert([
+            'tgl_pengecekan' => '2026-04-10', 'tgl_produksi_part' => '2026-04-10',
+            'id_shift' => $m['shiftId'], 'id_karyawan_qc' => $k->id, 'id_part_proses' => $m['partProsesId'],
+            'jam_start' => '08:00:00', 'jam_finish' => '16:00:00', 'qty_ok' => 10,
+            'created_by' => $m['userId'], 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $this->jalankanBackfill();
+
+        $this->assertSame('2026-04-10', $k->fresh()->tanggal_nonaktif->toDateString());
+    }
+
     public function test_karyawan_aktif_tidak_disentuh(): void
     {
         $k = MasterKaryawan::create([

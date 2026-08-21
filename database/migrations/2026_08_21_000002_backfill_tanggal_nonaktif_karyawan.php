@@ -32,39 +32,47 @@ return new class extends Migration
             ['transaksi_dandori_rincian', 'tanggal', 'id_karyawan'],
         ];
 
-        DB::table('master_karyawan')
+        // ->get() lalu iterasi biasa, BUKAN ->each()/chunk berbasis OFFSET: loop
+        // ini meng-update kolom yang sama dengan yang difilter di whereNull()
+        // di atas, jadi chunk OFFSET akan melewati baris begitu chunk pertama
+        // selesai. Jumlah karyawan nonaktif puluhan, jadi get() saja cukup.
+        $karyawanList = DB::table('master_karyawan')
             ->where('is_aktif', false)
             ->whereNull('tanggal_nonaktif')
             ->orderBy('id')
-            ->each(function ($karyawan) use ($sumber) {
-                $terakhir = null;
+            ->get();
 
-                foreach ($sumber as [$tabel, $kolomTanggal, $kolomKaryawan]) {
-                    if (! Schema::hasTable($tabel)) {
-                        continue;
-                    }
+        foreach ($karyawanList as $karyawan) {
+            $terakhir = null;
 
-                    $maks = DB::table($tabel)
-                        ->where($kolomKaryawan, $karyawan->id)
-                        ->max($kolomTanggal);
-
-                    if ($maks !== null && ($terakhir === null || $maks > $terakhir)) {
-                        $terakhir = $maks;
-                    }
+            foreach ($sumber as [$tabel, $kolomTanggal, $kolomKaryawan]) {
+                if (! Schema::hasTable($tabel)) {
+                    continue;
                 }
 
-                if ($terakhir !== null) {
-                    DB::table('master_karyawan')
-                        ->where('id', $karyawan->id)
-                        ->update(['tanggal_nonaktif' => substr((string) $terakhir, 0, 10)]);
+                $maks = DB::table($tabel)
+                    ->where($kolomKaryawan, $karyawan->id)
+                    ->max($kolomTanggal);
+
+                if ($maks !== null && ($terakhir === null || $maks > $terakhir)) {
+                    $terakhir = $maks;
                 }
-            });
+            }
+
+            if ($terakhir !== null) {
+                DB::table('master_karyawan')
+                    ->where('id', $karyawan->id)
+                    ->update(['tanggal_nonaktif' => substr((string) $terakhir, 0, 10)]);
+            }
+        }
     }
 
     public function down(): void
     {
-        if (Schema::hasColumn('master_karyawan', 'tanggal_nonaktif')) {
-            DB::table('master_karyawan')->update(['tanggal_nonaktif' => null]);
-        }
+        // Sengaja no-op. Tugas berikutnya membuat kolom ini bisa diisi langsung
+        // dari UI admin, jadi nilai hasil backfill tidak bisa dibedakan dari
+        // nilai yang sudah diinput admin — rollback otomatis akan menghapus
+        // data yang sah. Untuk membatalkan backfill ini, kembalikan
+        // tanggal_nonaktif secara manual dari sumbernya.
     }
 };
