@@ -6,6 +6,7 @@ use App\Contracts\PembuatDump;
 use App\Models\User;
 use App\Services\BackupService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -48,8 +49,17 @@ class BackupHalamanTest extends TestCase
         // Satu arsip memuat seluruh DB termasuk tabel users.
         $u = User::factory()->create(['role' => $peran]);
 
+        // Nama arsip WAJIB berpola valid (POLA_NAMA) di dua URL di bawah —
+        // kalau tidak, 403 yang diharapkan bisa jadi kebetulan datang dari
+        // validator nama berkas (404) yang jalan sebelum middleware peran
+        // sempat dicek, dan test ini lolos tanpa membuktikan apa pun soal
+        // otorisasi.
+        $arsip = 'optima-2026-01-01_010000.zip';
+
         $this->actingAs($u)->get(route('sistem.backup.index'))->assertForbidden();
         $this->actingAs($u)->post(route('sistem.backup.jalankan'))->assertForbidden();
+        $this->actingAs($u)->get(route('sistem.backup.unduh', $arsip))->assertForbidden();
+        $this->actingAs($u)->delete(route('sistem.backup.hapus', $arsip))->assertForbidden();
     }
 
     public function test_admin_bisa_membuka(): void
@@ -125,6 +135,35 @@ class BackupHalamanTest extends TestCase
         $this->actingAs($admin)->delete(route('sistem.backup.hapus', $nama))->assertRedirect();
 
         $this->assertSame([], Storage::disk('local')->files(BackupService::DIREKTORI));
+    }
+
+    public function test_kolom_dipicu_oleh_menampilkan_nama_dan_em_dash(): void
+    {
+        // Nama khas supaya tidak kebetulan cocok dengan teks lain di halaman.
+        $admin = User::factory()->create(['role' => 'admin', 'name' => 'Budi Kencana Pemicu']);
+
+        // Nama arsip cuma presisi ke detik (POLA_NAMA) — dua backup di detik
+        // yang sama akan tabrakan nama dan File::move() salah satu menimpa
+        // yang lain diam-diam. Pin waktunya beda detik supaya test ini
+        // deterministik, bukan tergantung seberapa cepat mesin CI berjalan.
+        Carbon::setTestNow(Carbon::parse('2026-01-01 10:00:00', 'Asia/Jakarta'));
+        app(BackupService::class)->jalankan('manual', $admin->id);
+        Carbon::setTestNow(Carbon::parse('2026-01-01 10:00:05', 'Asia/Jakarta'));
+        app(BackupService::class)->jalankan('terjadwal', null);
+        Carbon::setTestNow();
+
+        $html = $this->actingAs($admin)->get(route('sistem.backup.index'))->getContent();
+
+        // Anchor ke <tbody> tabel arsip, BUKAN seluruh halaman: nama admin yang
+        // login juga selalu muncul di status bar ("Login as {{ ...->name }}"),
+        // jadi assertSee() ke seluruh HTML tidak pernah bisa gagal kalau kolom
+        // dipicu_oleh_nama dihapus atau kuncinya diganti nama.
+        $ditemukan = preg_match('/<tbody>.*?<\/tbody>/s', $html, $cocok);
+        $this->assertSame(1, $ditemukan, 'Tabel arsip (tbody) tidak ditemukan di halaman.');
+        $grid = $cocok[0];
+
+        $this->assertStringContainsString('Budi Kencana Pemicu', $grid);
+        $this->assertStringContainsString('—', $grid);
     }
 
     public function test_kartu_umur_memberi_peringatan_saat_belum_pernah_backup(): void
@@ -214,6 +253,6 @@ class BackupHalamanTest extends TestCase
 
         $this->actingAs($admin)
             ->get(route('vcb.produksi'))
-            ->assertSee('action="'.route('logout').'"', false);
+            ->assertSee('method="POST" action="'.route('logout').'"', false);
     }
 }

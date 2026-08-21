@@ -26,7 +26,24 @@ class BackupService
     /** Nama & TTL lock, dipegang untuk SELURUH pemanggil (tombol manual & jadwal). */
     private const NAMA_LOCK = 'backup-berjalan';
 
-    private const TTL_LOCK = 600;
+    /**
+     * WAJIB lebih besar dari total waktu SELURUH proses jalankan(), bukan cuma
+     * salah satu komponennya. Lock diambil sebelum mysqldump mulai, dan ZIP
+     * assembly (menyalin semua berkas unggahan) baru terjadi SESUDAH dump
+     * selesai — jadi TTL harus menutupi setTimeout(600) di
+     * MysqldumpPembuatDump::keBerkas() DITAMBAH waktu perakitan ZIP sesudahnya,
+     * bukan sama persis dengan timeout mysqldump-nya. Kalau TTL == timeout
+     * dump, dump yang memakai hampir seluruh 600 detik membuat lock kedaluwarsa
+     * persis saat ZIP masih ditulis, dan pemanggil lain (jadwal 23:00 WIB)
+     * bisa merebut lock yang "kosong" itu lalu menjalankan mysqldump kedua
+     * berbarengan — persis hazard yang lock ini dibuat untuk mencegah.
+     * 1800 dipilih karena jalur terjadwal sudah dibatasi terpisah oleh
+     * timeout-minutes: 20 di .github/workflows/backup.yml, jadi proses PHP
+     * yang macet/crash di sisi lock cuma memblokir backup berikutnya paling
+     * lama 30 menit. Kalau setTimeout() di MysqldumpPembuatDump dinaikkan,
+     * nilai ini WAJIB dinaikkan mengikutinya.
+     */
+    private const TTL_LOCK = 1800;
 
     /**
      * Ambang bawah ukuran dump. mysqldump yang menulis header lalu berhenti
@@ -71,13 +88,17 @@ class BackupService
                 $berkasDump = $kerja.'/database.sql';
                 $this->pembuatDump->keBerkas($berkasDump);
 
+                // filesize() gagal (mis. berkas lenyap) TIDAK PERNAH sampai ke
+                // pengecekan "=== false": handler galat Laravel mengubah stat
+                // warning-nya jadi ErrorException lebih dulu. Cabang itu mati,
+                // jadi tidak ditulis di sini — pengecekan cukup ambang ukuran.
                 $ukuranDump = filesize($berkasDump);
-                if ($ukuranDump === false || $ukuranDump < self::UKURAN_DUMP_MINIMAL) {
+                if ($ukuranDump < self::UKURAN_DUMP_MINIMAL) {
                     // Bukan cuma "kecil" — ini "mysqldump keluar sukses tapi
                     // dumpnya nyaris kosong", persis kasus yang terlihat sah di
                     // kartu umur & ukuran ZIP tapi tidak me-restore apa-apa.
                     throw new RuntimeException(
-                        'Dump database janggal kecil ('.($ukuranDump === false ? 0 : $ukuranDump).' byte) — kemungkinan mysqldump gagal diam-diam.'
+                        "Dump database janggal kecil ({$ukuranDump} byte) — kemungkinan mysqldump gagal diam-diam."
                     );
                 }
 

@@ -3,6 +3,7 @@
 namespace Tests\Unit;
 
 use App\Contracts\PembuatDump;
+use App\Exceptions\BackupSedangBerjalanException;
 use App\Services\BackupService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\File;
@@ -91,14 +92,14 @@ class BackupServiceTest extends TestCase
     {
         // Tanpa pengecualian ini arsip ke-N memuat N-1 pendahulunya dan
         // ukurannya menggelembung berlipat sampai disknya penuh.
-        Storage::disk('local')->put(BackupService::DIREKTORI.'/optima-2020-01-01_0000.zip', 'arsip lama');
+        Storage::disk('local')->put(BackupService::DIREKTORI.'/optima-2020-01-01_000000.zip', 'arsip lama');
         Storage::disk('local')->put('checksheet/contoh.pdf', 'isi pdf');
 
         $isi = $this->isiZip($this->layanan()->jalankan('manual', null));
 
         $this->assertContains('berkas/checksheet/contoh.pdf', $isi);
         foreach ($isi as $entri) {
-            $this->assertStringNotContainsString('optima-2020-01-01_0000.zip', $entri);
+            $this->assertStringNotContainsString('optima-2020-01-01_000000.zip', $entri);
         }
     }
 
@@ -117,6 +118,13 @@ class BackupServiceTest extends TestCase
         try {
             $this->layanan($gagal)->jalankan('manual', null);
             $this->fail('Seharusnya melempar RuntimeException.');
+        } catch (BackupSedangBerjalanException $e) {
+            // BackupSedangBerjalanException JUGA turunan RuntimeException — lock
+            // 'backup-berjalan' yang nyasar/stale bisa lolos catch(RuntimeException)
+            // polos di bawah tanpa pernah menyentuh jalur dump-gagal yang diuji
+            // test ini. Gagalkan eksplisit supaya test ini tidak pernah lulus
+            // trivial karena sebab yang salah.
+            $this->fail('Melempar BackupSedangBerjalanException (lock), bukan galat dump yang diuji: '.$e->getMessage());
         } catch (RuntimeException) {
             // diharapkan
         }
@@ -150,6 +158,11 @@ class BackupServiceTest extends TestCase
         try {
             $this->layanan($kecil)->jalankan('manual', null);
             $this->fail('Seharusnya melempar RuntimeException untuk dump yang janggal kecil.');
+        } catch (BackupSedangBerjalanException $e) {
+            // Lihat catatan yang sama di test_dump_gagal_tidak_meninggalkan_berkas():
+            // lock nyasar/stale bisa lolos catch(RuntimeException) polos tanpa
+            // pernah menyentuh jalur ambang ukuran dump yang diuji test ini.
+            $this->fail('Melempar BackupSedangBerjalanException (lock), bukan galat ukuran dump yang diuji: '.$e->getMessage());
         } catch (RuntimeException) {
             // diharapkan
         }

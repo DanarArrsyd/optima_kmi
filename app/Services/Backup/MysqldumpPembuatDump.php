@@ -44,6 +44,10 @@ class MysqldumpPembuatDump implements PembuatDump
 
         try {
             $proses = new Process($this->perintah($tujuan, $konfig));
+            // Kalau angka ini dinaikkan, BackupService::TTL_LOCK WAJIB ikut
+            // dinaikkan (lihat komentar di sana) — TTL lock harus menutupi
+            // waktu dump INI DITAMBAH perakitan ZIP sesudahnya, bukan cuma
+            // sama dengan timeout dump.
             $proses->setTimeout(600);
 
             try {
@@ -83,8 +87,15 @@ class MysqldumpPembuatDump implements PembuatDump
      * `\` wajib di-escape LEBIH DULU supaya backslash hasil escape `"` tidak
      * ikut di-escape ulang.
      */
-    private function escapeNilaiOpsi(string $nilai): string
+    private function escapeNilaiOpsi(?string $nilai): string
     {
-        return str_replace(['\\', '"'], ['\\\\', '\\"'], $nilai);
+        // Bisa dihandel null: config('database.connections.mysql.password')
+        // resolve lewat env('DB_PASSWORD', ''), dan Laravel memetakan literal
+        // `null` di .env jadi PHP null (bukan string kosong) — shape nyata di
+        // host dengan MySQL tanpa kata sandi. Tanpa cast ini, str_replace()
+        // menerima null di parameter bertipe string dan PHP 8.4 mencatat
+        // deprecation tiap kali backup jalan, di log yang justru paling
+        // penting untuk dipercaya.
+        return str_replace(['\\', '"'], ['\\\\', '\\"'], (string) $nilai);
     }
 }
