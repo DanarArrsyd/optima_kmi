@@ -1296,11 +1296,37 @@
             <span>{{ now()->format('d M Y') }}</span>
         </div>
 
-        <div class="topbar-item user-block">
-            <i class="bi bi-person-circle"></i>
-            <div class="user-info">
-                <span class="name">{{ $u->name }}</span>
-                <span class="role">{{ str_replace('_', ' ', $u->role) }}</span>
+        <div class="topbar-item user-block" x-data="{ buka: false }" style="position:relative;cursor:pointer">
+            <div @click="buka = ! buka" style="display:flex;align-items:center;gap:8px">
+                <i class="bi bi-person-circle"></i>
+                <div class="user-info">
+                    <span class="name">{{ $u->name }}</span>
+                    <span class="role">{{ str_replace('_', ' ', $u->role) }}</span>
+                </div>
+                <i class="bi bi-chevron-down" style="font-size:11px"></i>
+            </div>
+
+            <div x-show="buka" x-cloak @click.outside="buka = false"
+                 style="position:absolute;right:0;top:calc(100% + 6px);min-width:190px;background:#fff;border:1px solid var(--border);border-radius:4px;box-shadow:0 6px 20px rgba(0,0,0,.14);z-index:1200">
+                {{-- Route profil belum terdaftar di aplikasi ini (ProfileController
+                     tak punya route terpasang) — guard Route::has supaya dropdown
+                     tak menabrak RouteNotFoundException di setiap halaman. --}}
+                @if(\Illuminate\Support\Facades\Route::has('profile.edit'))
+                <a href="{{ route('profile.edit') }}" class="dropdown-item">
+                    <i class="bi bi-person me-2"></i>Profil
+                </a>
+                @endif
+                @if($u->role === 'admin')
+                <a href="{{ route('sistem.backup.index') }}" class="dropdown-item">
+                    <i class="bi bi-download me-2"></i>Backup Sistem
+                </a>
+                @endif
+                <form method="POST" action="{{ route('logout') }}" style="margin:0">
+                    @csrf
+                    <button type="submit" class="dropdown-item" style="width:100%;text-align:left;border:0;background:none">
+                        <i class="bi bi-box-arrow-right me-2"></i>Logout
+                    </button>
+                </form>
             </div>
         </div>
 
@@ -1309,14 +1335,6 @@
             MODE TAMU &mdash; READ ONLY
         </div>
         @endif
-
-        <form method="POST" action="{{ route('logout') }}" style="margin:0">
-            @csrf
-            <button type="submit" class="topbar-logout" title="Logout">
-                <i class="bi bi-box-arrow-right"></i>
-                <span>Logout</span>
-            </button>
-        </form>
     </div>
 </header>
 

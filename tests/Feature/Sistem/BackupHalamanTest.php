@@ -142,4 +142,47 @@ class BackupHalamanTest extends TestCase
             ->get(route('sistem.backup.index'))
             ->assertSee('#b91c1c', false);
     }
+
+    // Catatan: route('dashboard') di aplikasi ini SELALU redirect (302) ke
+    // halaman lain sesuai peran — body-nya cuma halaman "Redirecting to ..."
+    // bawaan Symfony, bukan topbar. Dites lewat route('vcb.produksi') —
+    // halaman nyata yang memuat layouts.app, sama seperti konvensi di
+    // tests/Feature/Layout/GuestUiTest.php.
+
+    public function test_admin_melihat_tautan_backup_di_topbar(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $this->actingAs($admin)
+            ->get(route('vcb.produksi'))
+            ->assertSee(route('sistem.backup.index'), false);
+    }
+
+    public function test_bukan_admin_tidak_melihat_tautan_backup(): void
+    {
+        // Kenyamanan, bukan pengaman — pengamannya role:admin di route.
+        $manager = User::factory()->create(['role' => 'manager']);
+
+        $this->actingAs($manager)
+            ->get(route('vcb.produksi'))
+            ->assertDontSee(route('sistem.backup.index'), false);
+    }
+
+    public function test_guest_tetap_melihat_penanda_mode_tamu(): void
+    {
+        $guest = User::factory()->create(['role' => 'guest']);
+
+        $this->actingAs($guest)
+            ->get(route('vcb.produksi'))
+            ->assertSee('MODE TAMU', false);
+    }
+
+    public function test_logout_tetap_form_post(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $this->actingAs($admin)
+            ->get(route('vcb.produksi'))
+            ->assertSee('action="'.route('logout').'"', false);
+    }
 }
