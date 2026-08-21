@@ -127,7 +127,7 @@ jobs:
                \$tot = Illuminate\\Support\\Facades\\DB::select(\"SELECT ROUND(SUM(data_length+index_length)/1024/1024,2) AS mb, COUNT(*) AS jml FROM information_schema.tables WHERE table_schema=?\", [\$db]);
                foreach (\$r as \$x) { echo str_pad(\$x->t, 34), str_pad((string) \$x->n, 10, \" \", STR_PAD_LEFT), str_pad(\$x->mb.\" MB\", 12, \" \", STR_PAD_LEFT), PHP_EOL; }
                echo \"TOTAL: \", \$tot[0]->mb, \" MB dalam \", \$tot[0]->jml, \" tabel\", PHP_EOL;
-             "; \
+             " < /dev/null; \
              echo; echo "=== 4. Sisa disk & ukuran berkas unggahan ==="; \
              df -h ${{ env.REMOTE_PATH }} | tail -2; \
              du -sh ${{ env.REMOTE_PATH }}/storage/app/private 2>/dev/null || echo "storage/app/private belum ada"'
