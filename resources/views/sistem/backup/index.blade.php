@@ -49,7 +49,7 @@
             <th style="width:100px;white-space:nowrap">Sumber</th>
             <th style="width:100px;white-space:nowrap">Ukuran</th>
             <th style="width:100px;white-space:nowrap">Jumlah Tabel</th>
-            <th>Nama Berkas</th>
+            <th>Dipicu Oleh</th>
             <th style="width:180px;white-space:nowrap">Aksi</th>
         </tr>
     </thead>
@@ -60,7 +60,10 @@
             <td style="white-space:nowrap">{{ $b['sumber'] ?? '—' }}</td>
             <td style="white-space:nowrap">{{ number_format($b['ukuran'] / 1048576, 2) }} MB</td>
             <td style="white-space:nowrap">{{ $b['jumlah_tabel'] ?? '—' }}</td>
-            <td style="font-family:monospace">{{ $b['nama'] }}</td>
+            <td>
+                {{ $b['dipicu_oleh_nama'] ?? '—' }}
+                <div style="font-family:monospace;font-size:10.5px;color:#9ca3af">{{ $b['nama'] }}</div>
+            </td>
             <td style="white-space:nowrap">
                 <div class="action-btns" style="flex-wrap:nowrap">
                     <a href="{{ route('sistem.backup.unduh', $b['nama']) }}" class="btn btn-primary btn-sm">Unduh</a>

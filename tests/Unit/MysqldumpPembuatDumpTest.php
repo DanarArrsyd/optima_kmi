@@ -59,7 +59,13 @@ class MysqldumpPembuatDumpTest extends TestCase
      */
     private function buatStubGagal(): string
     {
-        $stub = tempnam(sys_get_temp_dir(), 'optima-stub-').'.sh';
+        // tempnam() bikin berkas kosong di $sementara — kita cuma butuh
+        // namanya untuk menurunkan path .sh; berkas asli itu dihapus supaya
+        // tidak ada tempnam() yatim tertinggal di direktori temp sistem
+        // setiap test ini jalan.
+        $sementara = tempnam(sys_get_temp_dir(), 'optima-stub-');
+        unlink($sementara);
+        $stub = $sementara.'.sh';
         file_put_contents($stub, <<<'SH'
 #!/bin/sh
 for arg in "$@"; do
@@ -76,6 +82,93 @@ SH
         chmod($stub, 0755);
 
         return $stub;
+    }
+
+    /**
+     * Stub "mysqldump" kedua: alih-alih men-dump, ia menyalin ISI berkas
+     * --defaults-extra-file ke --result-file lalu keluar sukses. Berkas
+     * konfig itu sendiri dihapus MysqldumpPembuatDump sebelum test bisa
+     * memeriksanya (mode 0600, dan memang harus tidak tersisa di disk) —
+     * ini cara satu-satunya melihat isinya tanpa MySQL sungguhan.
+     */
+    private function buatStubSalinKonfig(): string
+    {
+        $sementara = tempnam(sys_get_temp_dir(), 'optima-stub-');
+        unlink($sementara);
+        $stub = $sementara.'.sh';
+        file_put_contents($stub, <<<'SH'
+#!/bin/sh
+konfig=""
+hasil=""
+for arg in "$@"; do
+    case "$arg" in
+        --defaults-extra-file=*)
+            konfig="${arg#--defaults-extra-file=}"
+            ;;
+        --result-file=*)
+            hasil="${arg#--result-file=}"
+            ;;
+    esac
+done
+cp "$konfig" "$hasil"
+exit 0
+SH
+        );
+        chmod($stub, 0755);
+
+        return $stub;
+    }
+
+    /**
+     * Tiruan minimal aturan escape option-file MySQL yang relevan di sini:
+     * backslash membatalkan-arti karakter sesudahnya. Dipakai untuk
+     * membuktikan ROUND TRIP (decode(encode(x)) === x), bukan cuma mencocokkan
+     * string hasil escape MysqldumpPembuatDump secara literal — supaya test
+     * ini tetap valid walau detail escaping internalnya berubah.
+     */
+    private function unescapeSepertiMysql(string $nilai): string
+    {
+        $hasil = '';
+        $panjang = strlen($nilai);
+        for ($i = 0; $i < $panjang; $i++) {
+            if ($nilai[$i] === '\\' && $i + 1 < $panjang) {
+                $hasil .= $nilai[$i + 1];
+                $i++;
+            } else {
+                $hasil .= $nilai[$i];
+            }
+        }
+
+        return $hasil;
+    }
+
+    public function test_sandi_berisi_backslash_dan_kutip_round_trip_lewat_berkas_konfig(): void
+    {
+        // Tanpa escape: backslash diam-diam mengubah/memotong nilai, dan
+        // kutip mengakhiri nilai lebih awal — dua-duanya bikin backup gagal
+        // terus sesudah rotasi sandi berikutnya, dengan galat yang
+        // membingungkan (kelihatan seperti kredensial salah).
+        $asli = 'sandi\\aneh"berisi"backslash\\dan\\kutip';
+        config(['database.connections.mysql.password' => $asli]);
+
+        $stub = $this->buatStubSalinKonfig();
+        $tujuan = tempnam(sys_get_temp_dir(), 'optima-dump-');
+
+        try {
+            (new MysqldumpPembuatDump($stub))->keBerkas($tujuan);
+
+            $isi = file_get_contents($tujuan);
+            $this->assertStringContainsString('password="', $isi);
+
+            $awal = strpos($isi, 'password="') + strlen('password="');
+            $akhir = strrpos($isi, '"');
+            $terenkode = substr($isi, $awal, $akhir - $awal);
+
+            $this->assertSame($asli, $this->unescapeSepertiMysql($terenkode));
+        } finally {
+            @unlink($stub);
+            @unlink($tujuan);
+        }
     }
 
     public function test_berkas_separuh_jadi_dihapus_saat_mysqldump_gagal(): void

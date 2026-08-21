@@ -3,8 +3,11 @@
 namespace App\Services;
 
 use App\Contracts\PembuatDump;
+use App\Exceptions\BackupSedangBerjalanException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use ZipArchive;
@@ -20,6 +23,19 @@ class BackupService
     // supaya bisa diperiksa deterministik oleh test tanpa menebak nama persis.
     public const DIREKTORI_KERJA = 'app/backup-sementara';
 
+    /** Nama & TTL lock, dipegang untuk SELURUH pemanggil (tombol manual & jadwal). */
+    private const NAMA_LOCK = 'backup-berjalan';
+
+    private const TTL_LOCK = 600;
+
+    /**
+     * Ambang bawah ukuran dump. mysqldump yang menulis header lalu berhenti
+     * (koneksi putus di tengah, hak akses tabel dicabut sebagian) tetap bisa
+     * keluar dengan kode 0 — arsipnya jadi ZIP yang ukurannya masuk akal tapi
+     * isinya nyaris kosong. Ini bukan validasi isi dump, cuma penjaga waras.
+     */
+    private const UKURAN_DUMP_MINIMAL = 1024;
+
     public function __construct(private PembuatDump $pembuatDump) {}
 
     /**
@@ -28,46 +44,79 @@ class BackupService
      * Seluruh pekerjaan dilakukan di direktori sementara lebih dulu; ZIP baru
      * dipindahkan ke tujuan setelah utuh. Kalau ada langkah yang gagal, yang
      * tersisa nol berkas — bukan arsip separuh jadi yang terlihat sah di daftar.
+     *
+     * Lock diambil DI SINI (bukan di controller) supaya berlaku untuk SEMUA
+     * pemanggil — tombol manual (BackupController) maupun jadwal terjadwal
+     * (backup:jalankan lewat SSH). Kalau lock ditaruh cuma di satu sisi, dua
+     * mysqldump bisa jalan bersamaan dan, kalau nama arsipnya jatuh di detik
+     * yang sama, File::move() salah satu menimpa arsip yang lain diam-diam.
      */
     public function jalankan(string $sumber, ?int $userId = null): string
     {
-        $waktu = now('Asia/Jakarta');
-        // Detik disertakan supaya pemicu manual yang jatuh di menit yang sama
-        // dengan jadwal otomatis tidak menimpa arsip yang sudah ada lewat rename().
-        $nama = 'optima-'.$waktu->format('Y-m-d_His').'.zip';
-
-        $kerja = storage_path(self::DIREKTORI_KERJA.'/'.uniqid());
-        File::ensureDirectoryExists($kerja);
-
-        try {
-            $berkasDump = $kerja.'/database.sql';
-            $this->pembuatDump->keBerkas($berkasDump);
-
-            $manifest = [
-                'waktu_wib' => $waktu->format('Y-m-d H:i:s'),
-                'waktu_utc' => now()->format('Y-m-d H:i:s'),
-                'sumber' => $sumber,
-                'dipicu_oleh' => $userId,
-                'jumlah_tabel' => $this->jumlahTabel(),
-                'ukuran_dump' => filesize($berkasDump),
-            ];
-            File::put($kerja.'/manifest.json', json_encode($manifest, JSON_PRETTY_PRINT));
-
-            $zipSementara = $kerja.'/arsip.zip';
-            $this->rakitZip($zipSementara, $berkasDump, $kerja.'/manifest.json');
-
-            Storage::disk('local')->makeDirectory(self::DIREKTORI);
-            $tujuan = Storage::disk('local')->path(self::DIREKTORI.'/'.$nama);
-            if (! File::move($zipSementara, $tujuan)) {
-                throw new RuntimeException("Gagal memindahkan arsip ke {$tujuan}.");
-            }
-        } finally {
-            File::deleteDirectory($kerja);
+        $kunci = Cache::lock(self::NAMA_LOCK, self::TTL_LOCK);
+        if (! $kunci->get()) {
+            throw new BackupSedangBerjalanException;
         }
 
-        $this->pangkas();
+        try {
+            $waktu = now('Asia/Jakarta');
+            // Detik disertakan supaya pemicu manual yang jatuh di menit yang sama
+            // dengan jadwal otomatis tidak menimpa arsip yang sudah ada lewat rename().
+            $nama = 'optima-'.$waktu->format('Y-m-d_His').'.zip';
 
-        return $nama;
+            $kerja = storage_path(self::DIREKTORI_KERJA.'/'.uniqid());
+            File::ensureDirectoryExists($kerja);
+
+            try {
+                $berkasDump = $kerja.'/database.sql';
+                $this->pembuatDump->keBerkas($berkasDump);
+
+                $ukuranDump = filesize($berkasDump);
+                if ($ukuranDump === false || $ukuranDump < self::UKURAN_DUMP_MINIMAL) {
+                    // Bukan cuma "kecil" — ini "mysqldump keluar sukses tapi
+                    // dumpnya nyaris kosong", persis kasus yang terlihat sah di
+                    // kartu umur & ukuran ZIP tapi tidak me-restore apa-apa.
+                    throw new RuntimeException(
+                        'Dump database janggal kecil ('.($ukuranDump === false ? 0 : $ukuranDump).' byte) — kemungkinan mysqldump gagal diam-diam.'
+                    );
+                }
+
+                $manifest = [
+                    'waktu_wib' => $waktu->format('Y-m-d H:i:s'),
+                    'waktu_utc' => now()->format('Y-m-d H:i:s'),
+                    'sumber' => $sumber,
+                    'dipicu_oleh' => $userId,
+                    'jumlah_tabel' => $this->jumlahTabel(),
+                    'ukuran_dump' => $ukuranDump,
+                ];
+                File::put($kerja.'/manifest.json', json_encode($manifest, JSON_PRETTY_PRINT));
+
+                $zipSementara = $kerja.'/arsip.zip';
+                $this->rakitZip($zipSementara, $berkasDump, $kerja.'/manifest.json');
+
+                Storage::disk('local')->makeDirectory(self::DIREKTORI);
+                $tujuan = Storage::disk('local')->path(self::DIREKTORI.'/'.$nama);
+                if (! File::move($zipSementara, $tujuan)) {
+                    throw new RuntimeException("Gagal memindahkan arsip ke {$tujuan}.");
+                }
+            } finally {
+                File::deleteDirectory($kerja);
+            }
+
+            // Kegagalan memangkas arsip lama TIDAK boleh membuat backup yang
+            // baru saja berhasil dilaporkan sebagai gagal — arsipnya sudah
+            // utuh di backups/, operator cukup diberi tahu lewat log, bukan
+            // disuruh mengulang backup yang sebenarnya sudah sukses.
+            try {
+                $this->pangkas();
+            } catch (\Throwable $e) {
+                Log::error('Pemangkasan arsip backup lama gagal (arsip baru tetap tersimpan): '.$e->getMessage());
+            }
+
+            return $nama;
+        } finally {
+            $kunci->release();
+        }
     }
 
     /**
@@ -175,13 +224,21 @@ class BackupService
                 continue;
             }
 
-            // Berkas bisa lenyap/tak terbaca di antara allFiles() dan addFile()
-            // ini (dihapus proses lain saat backup berjalan) — jangan ditelan diam.
+            // Pengecekan ini cuma menangkap berkas yang SUDAH lenyap sebelum
+            // addFile() dipanggil (mis. terhapus di antara allFiles() dan
+            // baris ini). libzip malas: addFile() cuma mendaftarkan path,
+            // isinya baru dibaca saat close() — kalau berkas lenyap SESUDAH
+            // baris ini (jendela yang jauh lebih lebar, karena banyak berkas
+            // didaftarkan sebelum satu close() di akhir), close() di bawah
+            // yang menangkapnya, bukan pengecekan ini.
             if (! $zip->addFile($disk->path($relatif), 'berkas/'.$relatif)) {
                 throw new RuntimeException("Gagal menambahkan berkas unggahan ke arsip: {$relatif}");
             }
         }
 
+        // Menangkap berkas yang lenyap/tak terbaca SESUDAH addFile() di atas
+        // mendaftarkannya — libzip baru benar-benar membaca isinya di sini,
+        // bukan saat addFile() dipanggil. Jangan ditelan diam.
         if (! $zip->close()) {
             throw new RuntimeException('Gagal menutup arsip ZIP.');
         }

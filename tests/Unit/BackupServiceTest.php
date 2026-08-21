@@ -36,7 +36,10 @@ class BackupServiceTest extends TestCase
         {
             public function keBerkas(string $tujuan): void
             {
-                file_put_contents($tujuan, "-- dump uji\nCREATE TABLE contoh (id INT);\n");
+                // Diulang supaya melewati ambang UKURAN_DUMP_MINIMAL (1024 byte) —
+                // dump "wajar" di test-test lain di berkas ini, BUKAN yang diuji
+                // test_dump_terlalu_kecil_ditolak() di bawah.
+                file_put_contents($tujuan, str_repeat("-- dump uji\nCREATE TABLE contoh (id INT);\n", 40));
             }
         });
     }
@@ -126,6 +129,33 @@ class BackupServiceTest extends TestCase
 
         // Jalur sukses juga wajib bebas sisa direktori kerja, bukan cuma jalur gagal.
         $this->layanan()->jalankan('manual', null);
+        $this->assertSame(0, $this->jumlahDirektoriSementaraTersisa());
+    }
+
+    public function test_dump_janggal_kecil_ditolak(): void
+    {
+        // mysqldump yang keluar SUKSES tapi cuma menulis header (koneksi
+        // putus tepat setelah proses mulai, akses tabel dicabut sebagian di
+        // tengah jalan) lolos dari pengecekan exit code — arsipnya jadi ZIP
+        // yang kelihatan sah (kartu umur hijau, ukuran ZIP masuk akal) tapi
+        // tidak me-restore apa-apa. Itu tepat kasus yang harus ditolak di sini.
+        $kecil = new class implements PembuatDump
+        {
+            public function keBerkas(string $tujuan): void
+            {
+                file_put_contents($tujuan, "-- cuma header\n");
+            }
+        };
+
+        try {
+            $this->layanan($kecil)->jalankan('manual', null);
+            $this->fail('Seharusnya melempar RuntimeException untuk dump yang janggal kecil.');
+        } catch (RuntimeException) {
+            // diharapkan
+        }
+
+        // Nol arsip tersisa — bukan arsip nyaris kosong yang tampak sah di daftar.
+        $this->assertSame([], Storage::disk('local')->files(BackupService::DIREKTORI));
         $this->assertSame(0, $this->jumlahDirektoriSementaraTersisa());
     }
 

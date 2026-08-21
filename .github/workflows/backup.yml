@@ -29,22 +29,43 @@ env:
 jobs:
   backup:
     runs-on: ubuntu-latest
+    # Job ini masuk grup concurrency yang sama dengan deploy.yml (lihat di
+    # bawah) — sesi SSH yang menggantung tanpa batas waktu bisa menahan grup
+    # itu sampai 360 menit (default GitHub) dan memblokir SETIAP merge ke main
+    # selama itu. timeout-minutes di sini jadi jaring pengaman terpisah dari
+    # timeout Process 600s di sisi mysqldump — yang itu cuma membatasi
+    # mysqldump-nya, bukan transport SSH yang macet.
+    timeout-minutes: 20
     steps:
       - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
           printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -p "${{ secrets.SSH_PORT }}" "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+          # ssh-keyscan kadang gagal sesaat (network runner→host). Coba beberapa kali,
+          # JANGAN gagalkan job kalau tetap gagal — ssh pakai accept-new (di bawah)
+          # sebagai jaring pengaman verifikasi host. Sama seperti deploy.yml.
+          for i in 1 2 3; do
+            ssh-keyscan -p "${{ secrets.SSH_PORT }}" "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null && break
+            sleep 3
+          done
+          true
 
       # Step ini MERAH kalau backup gagal karena `ssh` meneruskan kode keluar
       # perintah remote sebagai kode keluarnya sendiri, dan shell `run:` di
       # GitHub Actions sudah jalan dengan `-e` secara default (exit begitu ada
       # perintah yang gagal). `set -e` di bawah cuma menegaskan itu, bukan
       # syarat supaya step ini merah.
+      #
+      # ConnectTimeout/ServerAlive* membatasi transport SSH itu sendiri —
+      # tanpa ini sesi yang macet (bukan gagal) bisa menggantung sampai
+      # timeout-minutes job di atas, menahan grup concurrency deploy-production
+      # selama itu.
       - name: Jalankan backup
         run: |
           set -e
           ssh -p "${{ secrets.SSH_PORT }}" -i ~/.ssh/deploy_key \
+            -o StrictHostKeyChecking=accept-new \
+            -o ConnectTimeout=15 -o ServerAliveInterval=30 -o ServerAliveCountMax=6 \
             "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" \
             "cd ${{ env.REMOTE_PATH }} && ${{ env.REMOTE_PHP }} artisan backup:jalankan"

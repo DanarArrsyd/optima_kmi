@@ -40,7 +40,7 @@ class MysqldumpPembuatDump implements PembuatDump
     {
         $konfig = tempnam(sys_get_temp_dir(), 'optima-dump-');
         chmod($konfig, 0600);
-        file_put_contents($konfig, "[client]\npassword=\"".config('database.connections.mysql.password')."\"\n");
+        file_put_contents($konfig, "[client]\npassword=\"".$this->escapeNilaiOpsi(config('database.connections.mysql.password'))."\"\n");
 
         try {
             $proses = new Process($this->perintah($tujuan, $konfig));
@@ -72,5 +72,19 @@ class MysqldumpPembuatDump implements PembuatDump
         } finally {
             @unlink($konfig);
         }
+    }
+
+    /**
+     * Parser option-file MySQL melucuti kutip pembungkus lalu memproses escape
+     * backslash pada nilainya. Tanpa ini, sandi berisi `\` diam-diam terpotong/
+     * berubah dan sandi berisi `"` mengakhiri nilainya lebih awal — dua-duanya
+     * bikin backup gagal terus sesudah rotasi sandi berikutnya, dengan galat
+     * yang membingungkan (sepertinya kredensial salah, padahal cuma kurang escape).
+     * `\` wajib di-escape LEBIH DULU supaya backslash hasil escape `"` tidak
+     * ikut di-escape ulang.
+     */
+    private function escapeNilaiOpsi(string $nilai): string
+    {
+        return str_replace(['\\', '"'], ['\\\\', '\\"'], $nilai);
     }
 }

@@ -6,6 +6,7 @@ use App\Contracts\PembuatDump;
 use App\Models\User;
 use App\Services\BackupService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
@@ -23,7 +24,9 @@ class BackupHalamanTest extends TestCase
         {
             public function keBerkas(string $tujuan): void
             {
-                file_put_contents($tujuan, "-- dump uji\n");
+                // Diulang supaya melewati ambang UKURAN_DUMP_MINIMAL (1024 byte)
+                // di BackupService — bukan aspek yang diuji test-test di berkas ini.
+                file_put_contents($tujuan, str_repeat("-- dump uji\n", 100));
             }
         });
     }
@@ -63,6 +66,34 @@ class BackupHalamanTest extends TestCase
         $this->actingAs($admin)->post(route('sistem.backup.jalankan'))->assertRedirect();
 
         $this->assertCount(1, Storage::disk('local')->files(BackupService::DIREKTORI));
+    }
+
+    public function test_tombol_ditolak_saat_backup_lain_sedang_berjalan(): void
+    {
+        // CACHE_STORE=array di phpunit.xml, dan ArrayStore mengimplementasikan
+        // LockProvider in-process — jadi lock yang diambil di sini benar-benar
+        // dilihat kode produksi lewat Cache::lock(), bukan dua kunci yang beda.
+        // Ini persis skenario jadwal terjadwal (backup:jalankan lewat SSH) yang
+        // bertabrakan dengan klik manual: kalau lock cuma dipasang di satu sisi,
+        // request ini akan LOLOS dan mysqldump kedua ikut jalan bersamaan.
+        $kunci = Cache::lock('backup-berjalan', 600);
+        $this->assertTrue($kunci->get());
+
+        try {
+            $admin = User::factory()->create(['role' => 'admin']);
+
+            $this->actingAs($admin)
+                ->post(route('sistem.backup.jalankan'))
+                ->assertRedirect();
+
+            $this->assertSame(
+                'Backup sedang berjalan. Tunggu sampai selesai.',
+                session('error')
+            );
+            $this->assertSame([], Storage::disk('local')->files(BackupService::DIREKTORI));
+        } finally {
+            $kunci->release();
+        }
     }
 
     public function test_nama_berkas_di_luar_pola_ditolak(): void

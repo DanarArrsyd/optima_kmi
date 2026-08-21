@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers\Sistem;
 
+use App\Exceptions\BackupSedangBerjalanException;
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use App\Services\BackupService;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -20,32 +21,39 @@ class BackupController extends Controller
 
     public function index()
     {
+        $daftar = $this->backup->daftar();
+
+        $idPengguna = array_filter(array_unique(array_column($daftar, 'dipicu_oleh')));
+        $nama = $idPengguna === [] ? collect() : User::whereIn('id', $idPengguna)->pluck('name', 'id');
+
+        foreach ($daftar as &$b) {
+            // Em dash untuk jadwal terjadwal (dipicu_oleh null) DAN untuk id
+            // yang sudah tak lagi resolve (akun terhapus) — dua kasus, satu
+            // tampilan, karena pengguna halaman tidak perlu membedakannya.
+            $b['dipicu_oleh_nama'] = $b['dipicu_oleh'] ? ($nama[$b['dipicu_oleh']] ?? null) : null;
+        }
+        unset($b);
+
         return view('sistem.backup.index', [
-            'daftar' => $this->backup->daftar(),
+            'daftar' => $daftar,
             'umurJam' => $this->backup->umurJamTerakhir(),
         ]);
     }
 
     public function jalankan()
     {
-        $kunci = Cache::lock('backup-berjalan', 600);
-
-        if (! $kunci->get()) {
-            return back()->with('error', 'Backup sedang berjalan. Tunggu sampai selesai.');
-        }
-
         try {
             $nama = $this->backup->jalankan('manual', auth()->id());
 
             return back()->with('success', "Backup {$nama} berhasil dibuat.");
+        } catch (BackupSedangBerjalanException) {
+            return back()->with('error', 'Backup sedang berjalan. Tunggu sampai selesai.');
         } catch (Throwable $e) {
             // Pesan aslinya memuat path absolut server (BackupService menyebut
             // berkas tujuan). Itu masuk log, BUKAN ke layar.
             Log::error('Backup manual gagal: '.$e->getMessage());
 
             return back()->with('error', 'Backup gagal. Periksa storage/logs/laravel.log untuk sebabnya.');
-        } finally {
-            $kunci->release();
         }
     }
 

@@ -6,6 +6,7 @@ use App\Contracts\PembuatDump;
 use App\Services\BackupService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use Symfony\Component\Console\Output\BufferedOutput;
@@ -33,7 +34,9 @@ class BackupPerintahTest extends TestCase
                 if ($this->gagal) {
                     throw new RuntimeException('mysqldump gagal (kode 2): akses ditolak');
                 }
-                file_put_contents($tujuan, "-- dump uji\n");
+                // Diulang supaya melewati ambang UKURAN_DUMP_MINIMAL (1024 byte)
+                // di BackupService — bukan aspek yang diuji test-test di berkas ini.
+                file_put_contents($tujuan, str_repeat("-- dump uji\n", 100));
             }
         });
     }
@@ -52,6 +55,26 @@ class BackupPerintahTest extends TestCase
 
         $this->assertSame('terjadwal', $manifest['sumber']);
         $this->assertNull($manifest['dipicu_oleh']);
+    }
+
+    public function test_keluar_dengan_kode_gagal_saat_lock_sedang_dipegang(): void
+    {
+        // Jadwal terjadwal yang tidak bisa mendapat lock (klik manual sedang
+        // jalan) WAJIB berhenti dengan kode keluar bukan nol. Kalau tidak,
+        // workflow GitHub Actions tetap hijau padahal malam itu nol backup
+        // terjadi — persis kegagalan senyap yang jadi alasan fitur ini ada.
+        $kunci = Cache::lock('backup-berjalan', 600);
+        $this->assertTrue($kunci->get());
+
+        try {
+            $this->pasangDumper();
+
+            $this->artisan('backup:jalankan')->assertFailed();
+
+            $this->assertSame([], Storage::disk('local')->files(BackupService::DIREKTORI));
+        } finally {
+            $kunci->release();
+        }
     }
 
     public function test_keluar_dengan_kode_gagal_saat_dump_gagal(): void
