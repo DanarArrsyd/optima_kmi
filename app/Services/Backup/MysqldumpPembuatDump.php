@@ -45,9 +45,24 @@ class MysqldumpPembuatDump implements PembuatDump
         try {
             $proses = new Process($this->perintah($tujuan, $konfig));
             $proses->setTimeout(600);
-            $proses->run();
+
+            try {
+                $proses->run();
+            } catch (\Throwable $e) {
+                // Mencakup ProcessTimedoutException — timeout tidak pernah
+                // sampai ke pengecekan isSuccessful() di bawah, jadi berkas
+                // separuh jadi wajib dihapus di sini juga sebelum dilempar ulang.
+                @unlink($tujuan);
+                throw $e;
+            }
 
             if (! $proses->isSuccessful()) {
+                // mysqldump --result-file menulis bertahap ke $tujuan, jadi
+                // kegagalan di tengah jalan (kredensial salah, koneksi putus,
+                // disk penuh) meninggalkan berkas separuh jadi. Itu tidak
+                // boleh mendarat sebagai berkas dump yang tampak valid.
+                @unlink($tujuan);
+
                 // Yang dicatat pesan galat dan kode keluar — BUKAN barisnya,
                 // supaya kredensial tidak pernah mendarat di log.
                 throw new RuntimeException(

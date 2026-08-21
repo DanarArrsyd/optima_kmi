@@ -50,4 +50,60 @@ class MysqldumpPembuatDumpTest extends TestCase
         $this->assertContains('--result-file=/tmp/dump.sql', $perintah);
         $this->assertSame('optima_db', end($perintah));
     }
+
+    /**
+     * Bikin skrip stub yang berperan sebagai "mysqldump" palsu: ia menulis
+     * beberapa byte ke --result-file (meniru dump yang separuh jalan), lalu
+     * keluar dengan kode bukan nol (meniru koneksi putus / kredensial salah).
+     * Tidak butuh MySQL sungguhan — cukup shell.
+     */
+    private function buatStubGagal(): string
+    {
+        $stub = tempnam(sys_get_temp_dir(), 'optima-stub-').'.sh';
+        file_put_contents($stub, <<<'SH'
+#!/bin/sh
+for arg in "$@"; do
+    case "$arg" in
+        --result-file=*)
+            tujuan="${arg#--result-file=}"
+            printf 'dump separuh jadi' > "$tujuan"
+            ;;
+    esac
+done
+exit 1
+SH
+        );
+        chmod($stub, 0755);
+
+        return $stub;
+    }
+
+    public function test_berkas_separuh_jadi_dihapus_saat_mysqldump_gagal(): void
+    {
+        $stub = $this->buatStubGagal();
+        $berkasSementara = tempnam(sys_get_temp_dir(), 'optima-dump-');
+        unlink($berkasSementara); // tempnam bikin berkas kosong — kita cuma butuh namanya
+        $tujuan = $berkasSementara.'.sql'; // belum ada — stub yang akan membuatnya
+
+        try {
+            $pembuat = new MysqldumpPembuatDump($stub);
+
+            $this->expectException(\RuntimeException::class);
+
+            try {
+                $pembuat->keBerkas($tujuan);
+            } finally {
+                // Dicek di finally supaya tetap tertangkap walau assertion
+                // exception di atas yang menutup tes: berkas separuh jadi
+                // tidak boleh mendarat di disk.
+                $this->assertFileDoesNotExist(
+                    $tujuan,
+                    'Berkas dump separuh jadi harus dihapus saat mysqldump gagal, bukan dibiarkan mendarat di disk.'
+                );
+            }
+        } finally {
+            @unlink($stub);
+            @unlink($tujuan);
+        }
+    }
 }
