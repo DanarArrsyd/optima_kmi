@@ -25,6 +25,7 @@ on:
           - sphteoretis    # kandidat SPH teoretis (CSV)
           - maxbatch       # max batch number di tabel migrations
           - checkroute     # verifikasi route resolve
+          - backupcheck    # kapasitas backup: mysqldump, disabled_functions, ukuran DB, sisa disk
           - markran        # ⚠️ MENULIS ke tabel migrations
 
 env:
@@ -101,6 +102,35 @@ jobs:
                 echo \"  jumlah baris: \" . Illuminate\\Support\\Facades\\DB::table(\"transaksi_breakdown_mesin\")->count() . PHP_EOL;
               }
             "'
+
+      # Probe kapasitas sebelum membangun halaman Backup Sistem. Semuanya read-only:
+      # tidak ada dump yang dibuat, tidak ada berkas ditulis. Yang dijawab persis
+      # empat hal yang menentukan bentuk implementasinya — dan yang salah satunya
+      # tidak bisa diketahui dari mesin lokal, karena disabled_functions PHP-FPM
+      # di hosting berbeda dari PHP CLI yang dipakai SSH ini.
+      - name: Cek kapasitas backup (read-only)
+        if: ${{ github.event.inputs.mode == 'backupcheck' }}
+        run: |
+          ssh -p "${{ secrets.SSH_PORT }}" -i ~/.ssh/deploy_key \
+            "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" \
+            'echo "=== 1. Biner mysqldump ==="; \
+             command -v mysqldump || echo "TIDAK ADA di PATH"; \
+             ls -la /usr/bin/mysqldump /opt/alt/mysql*/usr/bin/mysqldump 2>/dev/null || true; \
+             echo; echo "=== 2. Fungsi PHP yang dimatikan (CLI) ==="; \
+             ${{ env.REMOTE_PHP }} -r "echo ini_get(\"disabled_functions\") ?: \"(kosong)\", PHP_EOL;"; \
+             echo "   memory_limit: $(${{ env.REMOTE_PHP }} -r "echo ini_get(\"memory_limit\");")"; \
+             echo "   max_execution_time: $(${{ env.REMOTE_PHP }} -r "echo ini_get(\"max_execution_time\");")"; \
+             echo; echo "=== 3. Ukuran database per tabel (MB) ==="; \
+             cd ${{ env.REMOTE_PATH }} && ${{ env.REMOTE_PHP }} artisan tinker --execute="
+               \$db = Illuminate\\Support\\Facades\\DB::connection()->getDatabaseName();
+               \$r = Illuminate\\Support\\Facades\\DB::select(\"SELECT table_name AS t, table_rows AS n, ROUND((data_length+index_length)/1024/1024,2) AS mb FROM information_schema.tables WHERE table_schema=? ORDER BY (data_length+index_length) DESC LIMIT 12\", [\$db]);
+               \$tot = Illuminate\\Support\\Facades\\DB::select(\"SELECT ROUND(SUM(data_length+index_length)/1024/1024,2) AS mb, COUNT(*) AS jml FROM information_schema.tables WHERE table_schema=?\", [\$db]);
+               foreach (\$r as \$x) { echo str_pad(\$x->t, 34), str_pad((string) \$x->n, 10, \" \", STR_PAD_LEFT), str_pad(\$x->mb.\" MB\", 12, \" \", STR_PAD_LEFT), PHP_EOL; }
+               echo \"TOTAL: \", \$tot[0]->mb, \" MB dalam \", \$tot[0]->jml, \" tabel\", PHP_EOL;
+             "; \
+             echo; echo "=== 4. Sisa disk & ukuran berkas unggahan ==="; \
+             df -h ${{ env.REMOTE_PATH }} | tail -2; \
+             du -sh ${{ env.REMOTE_PATH }}/storage/app/private 2>/dev/null || echo "storage/app/private belum ada"'
 
       - name: Migrate status (breakdown & tanggal_instalasi)
         if: ${{ github.event.inputs.mode == 'migstatus' }}
