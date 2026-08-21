@@ -51,8 +51,11 @@ class KaryawanController extends Controller
 
     public function toggleAktif(Request $request, MasterKaryawan $karyawan)
     {
+        // App jalan UTC, pabrik WIB — 'today' bawaan Laravel memakai tanggal UTC,
+        // yang tujuh jam di belakang WIB. Pakai tanggal WIB biar "hari ini" versi
+        // pabrik tidak ditolak sebagai tanggal masa depan.
         $data = $request->validate([
-            'tanggal_nonaktif' => ['nullable', 'date', 'before_or_equal:today'],
+            'tanggal_nonaktif' => ['nullable', 'date', 'before_or_equal:'.now('Asia/Jakarta')->toDateString()],
         ]);
 
         try {
@@ -60,9 +63,11 @@ class KaryawanController extends Controller
                 // Tanggal boleh dimundurkan: laporan karyawan keluar sering telat
                 // berhari-hari, dan tanggal klik akan membuat dropdown VCB tetap
                 // memunculkannya sepanjang selisih itu.
+                // Fallback juga pakai tanggal WIB, bukan today() yang mengikuti UTC —
+                // supaya konsisten dengan validasi di atas dan prefill di form.
                 $karyawan->update([
                     'is_aktif' => false,
-                    'tanggal_nonaktif' => $data['tanggal_nonaktif'] ?? today()->toDateString(),
+                    'tanggal_nonaktif' => $data['tanggal_nonaktif'] ?? now('Asia/Jakarta')->toDateString(),
                 ]);
                 $status = 'dinonaktifkan';
             } else {

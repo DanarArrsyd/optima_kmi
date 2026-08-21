@@ -273,8 +273,10 @@
                                     <i class="bi bi-person-slash me-1"></i>Non-Aktifkan
                                 </button>
                                 <span x-show="buka" x-cloak style="display:inline-flex;gap:4px;align-items:center;margin-left:4px">
+                                    {{-- App jalan UTC, pabrik WIB — antara 00:00-07:00 WIB, date('Y-m-d')
+                                         masih menyebut tanggal kemarin. Pakai jam WIB biar prefill benar. --}}
                                     <input type="date" name="tanggal_nonaktif" class="erp-in"
-                                           value="{{ date('Y-m-d') }}" max="{{ date('Y-m-d') }}"
+                                           value="{{ now('Asia/Jakarta')->toDateString() }}" max="{{ now('Asia/Jakarta')->toDateString() }}"
                                            style="width:140px">
                                     <button type="submit" class="btn btn-sm btn-danger">Simpan</button>
                                     <button type="button" class="btn btn-sm btn-outline-secondary"
@@ -298,7 +300,7 @@
             </tr>
         @empty
             <tr>
-                <td colspan="6" style="text-align:center;color:#888;padding:20px">
+                <td colspan="{{ $adaKolomTanggal ? 7 : 6 }}" style="text-align:center;color:#888;padding:20px">
                     @if($filter === 'nonaktif') Tidak ada karyawan non-aktif.
                     @elseif($filter === 'aktif') Belum ada karyawan aktif.
                     @else Belum ada data karyawan.

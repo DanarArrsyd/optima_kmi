@@ -1635,14 +1635,17 @@ function saringOrangNonaktif(selectId, dateFromId, noteId) {
     const placeholder = sel.querySelector('option[value=""]');
     const placeholderHtml = placeholder ? placeholder.outerHTML : '';
 
-    return function saring() {
+    return function saring(wajibIkut = null) {
         const dari     = document.getElementById(dateFromId).value;
         const terpilih = sel.value;
         const note     = document.getElementById(noteId);
 
         // Tanggal ISO aman dibandingkan sebagai string.
         // nonaktif kosong = selalu tampil: kolom kosong tidak boleh menghilangkan orang.
-        const lolos = semua.filter(o => !o.nonaktif || o.nonaktif >= dari);
+        // wajibIkut: orang yang baru saja diklik dari ringkasan Mode 1 (yang
+        // sengaja tak tersaring) harus tetap muncul di sini — dia relevan dengan
+        // rentang ini by definition, walau tanggal_nonaktif-nya jatuh sebelum "dari".
+        const lolos = semua.filter(o => !o.nonaktif || o.nonaktif >= dari || o.id === String(wajibIkut));
 
         sel.innerHTML = placeholderHtml;
         lolos.forEach(o => {

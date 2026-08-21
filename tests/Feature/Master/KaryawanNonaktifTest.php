@@ -96,7 +96,9 @@ class KaryawanNonaktifTest extends TestCase
             ->patch(route('master.karyawan.toggle-aktif', $k))
             ->assertRedirect();
 
-        $this->assertSame(today()->toDateString(), $k->fresh()->tanggal_nonaktif->toDateString());
+        // App jalan UTC, pabrik WIB — "hari ini" yang benar dipakai fallback
+        // adalah tanggal WIB, bukan today() bawaan (UTC).
+        $this->assertSame(now('Asia/Jakarta')->toDateString(), $k->fresh()->tanggal_nonaktif->toDateString());
     }
 
     /** Ambil isi grid saja — nama karyawan juga muncul di dock filter dan laci. */
@@ -130,11 +132,21 @@ class KaryawanNonaktifTest extends TestCase
             'nik' => 'N8', 'nama_karyawan' => 'ORANG DELAPAN',
             'departemen' => 'Produksi', 'is_aktif' => true,
         ]);
+        MasterKaryawan::create([
+            'nik' => 'N9B', 'nama_karyawan' => 'ORANG SEMBILAN',
+            'departemen' => 'Produksi', 'is_aktif' => false,
+            'tanggal_nonaktif' => '2026-06-12',
+        ]);
 
         $html = $this->actingAs($this->admin())
             ->get(route('master.karyawan.index'))->assertOk()->getContent();
 
-        $this->assertStringNotContainsString('12/06/2026', $this->grid($html));
+        $grid = $this->grid($html);
+        // Kolomnya sungguh dirender: rekan nonaktif menampilkan tanggalnya,
+        // orang aktif menampilkan strip — bukan cuma "tanggal tidak muncul
+        // di mana pun", yang juga lolos kalau seluruh <td> dihapus.
+        $this->assertStringContainsString('12/06/2026', $grid);
+        $this->assertStringContainsString('—', $grid);
     }
 
     public function test_form_nonaktif_menyediakan_input_tanggal(): void

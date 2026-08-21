@@ -84,7 +84,7 @@
                     <option value="">— Pilih Inspector —</option>
                     @foreach($karyawan as $k)
                         <option value="{{ $k->id }}"
-                                data-nonaktif="{{ $k->tanggal_nonaktif ? $k->tanggal_nonaktif->format('Y-m-d') : '' }}">{{ $k->nama_karyawan }}</option>
+                                data-nonaktif="{{ ! $k->is_aktif && $k->tanggal_nonaktif ? $k->tanggal_nonaktif->format('Y-m-d') : '' }}">{{ $k->nama_karyawan }}</option>
                     @endforeach
                 </select>
                 <small id="one_operator_note" style="color:#b91c1c;font-size:10px"></small>
@@ -298,7 +298,7 @@ function switchMode(mode, karyawanId = null) {
         // dipilih sebelum disaring, daftarnya masih daftar lama.
         document.getElementById('one_date_from').value   = document.getElementById('all_date_from').value;
         document.getElementById('one_date_to').value     = document.getElementById('all_date_to').value;
-        saringOperator();
+        saringOperator(karyawanId);
         document.getElementById('one_karyawan_id').value = karyawanId;
         document.getElementById('one_shift_id').value    = document.getElementById('all_shift_id').value;
         loadOneInspector();
