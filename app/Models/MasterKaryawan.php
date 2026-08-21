@@ -13,9 +13,9 @@ class MasterKaryawan extends Model
 
     protected $table = 'master_karyawan';
 
-    protected $fillable = ['nik', 'nama_karyawan', 'departemen', 'is_aktif'];
+    protected $fillable = ['nik', 'nama_karyawan', 'departemen', 'is_aktif', 'tanggal_nonaktif'];
 
-    protected $casts = ['is_aktif' => 'boolean'];
+    protected $casts = ['is_aktif' => 'boolean', 'tanggal_nonaktif' => 'date'];
 
     public function scopeAktif($query)
     {
