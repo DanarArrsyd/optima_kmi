@@ -122,6 +122,18 @@ class BackupService
 
                 Storage::disk('local')->makeDirectory(self::DIREKTORI);
                 $tujuan = Storage::disk('local')->path(self::DIREKTORI.'/'.$nama);
+
+                // Nama berkas cuma sampai DETIK. Dua run yang jatuh di detik
+                // yang sama menghasilkan nama identik, dan rename() menimpa
+                // yang duluan tanpa suara — satu arsip lenyap sementara
+                // halaman tetap melaporkan sukses. Terbukti terjadi saat
+                // membuat pratinjau halaman, bukan skenario karangan.
+                // Menolak lebih baik daripada menimpa: yang hilang cuma satu
+                // run, bukan satu titik pulih.
+                if (File::exists($tujuan)) {
+                    throw new RuntimeException("Arsip {$nama} sudah ada — dua backup jatuh di detik yang sama.");
+                }
+
                 if (! File::move($zipSementara, $tujuan)) {
                     throw new RuntimeException("Gagal memindahkan arsip ke {$tujuan}.");
                 }
