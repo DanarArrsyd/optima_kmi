@@ -96,4 +96,52 @@ class KaryawanNonaktifTest extends TestCase
 
         $this->assertSame(today()->toDateString(), $k->fresh()->tanggal_nonaktif->toDateString());
     }
+
+    /** Ambil isi grid saja — nama karyawan juga muncul di dock filter dan laci. */
+    private function grid(string $html): string
+    {
+        $awal = strpos($html, 'class="erp-scroll');
+        $this->assertNotFalse($awal, 'Wadah .erp-scroll tidak ditemukan.');
+
+        return substr($html, $awal, strpos($html, '</table>', $awal) - $awal);
+    }
+
+    public function test_kolom_nonaktif_sejak_tampil_di_tabel(): void
+    {
+        MasterKaryawan::create([
+            'nik' => 'N7', 'nama_karyawan' => 'ORANG TUJUH',
+            'departemen' => 'Produksi', 'is_aktif' => false,
+            'tanggal_nonaktif' => '2026-06-12',
+        ]);
+
+        $html = $this->actingAs($this->admin())
+            ->get(route('master.karyawan.index'))->assertOk()->getContent();
+
+        $grid = $this->grid($html);
+        $this->assertStringContainsString('Nonaktif Sejak', $grid);
+        $this->assertStringContainsString('12/06/2026', $grid);
+    }
+
+    public function test_karyawan_aktif_menampilkan_strip(): void
+    {
+        MasterKaryawan::create([
+            'nik' => 'N8', 'nama_karyawan' => 'ORANG DELAPAN',
+            'departemen' => 'Produksi', 'is_aktif' => true,
+        ]);
+
+        $html = $this->actingAs($this->admin())
+            ->get(route('master.karyawan.index'))->assertOk()->getContent();
+
+        $this->assertStringNotContainsString('12/06/2026', $this->grid($html));
+    }
+
+    public function test_form_nonaktif_menyediakan_input_tanggal(): void
+    {
+        $this->karyawanAktif();
+
+        $html = $this->actingAs($this->admin())
+            ->get(route('master.karyawan.index'))->assertOk()->getContent();
+
+        $this->assertStringContainsString('name="tanggal_nonaktif"', $html);
+    }
 }

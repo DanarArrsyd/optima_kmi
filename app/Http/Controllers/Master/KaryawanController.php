@@ -8,6 +8,7 @@ use App\Imports\KaryawanImport;
 use App\Models\MasterKaryawan;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Facades\Excel;
@@ -42,7 +43,10 @@ class KaryawanController extends Controller
 
         $deptList = MasterKaryawan::distinct()->orderBy('departemen')->pluck('departemen')->filter()->values();
 
-        return view('master.karyawan.index', compact('karyawan', 'filter', 'search', 'filterDept', 'deptList'));
+        // Kode bisa live sebelum migrasi menyusul — halaman tetap harus hidup.
+        $adaKolomTanggal = Schema::hasColumn('master_karyawan', 'tanggal_nonaktif');
+
+        return view('master.karyawan.index', compact('karyawan', 'filter', 'search', 'filterDept', 'deptList', 'adaKolomTanggal'));
     }
 
     public function toggleAktif(Request $request, MasterKaryawan $karyawan)
