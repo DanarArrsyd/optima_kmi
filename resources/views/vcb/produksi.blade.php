@@ -84,9 +84,11 @@
                 <select id="one_karyawan_id" class="erp-in">
                     <option value="">— Pilih Operator —</option>
                     @foreach($karyawan as $k)
-                        <option value="{{ $k->id }}">{{ $k->nama_karyawan }}</option>
+                        <option value="{{ $k->id }}"
+                                data-nonaktif="{{ ! $k->is_aktif && $k->tanggal_nonaktif ? $k->tanggal_nonaktif->format('Y-m-d') : '' }}">{{ $k->nama_karyawan }}</option>
                     @endforeach
                 </select>
+                <small id="one_operator_note" style="color:#b91c1c;font-size:10px"></small>
             </div>
             <div class="erp-grp">
                 <b>Shift</b>
@@ -292,10 +294,12 @@ function switchMode(mode, karyawanId = null) {
     document.getElementById('onePeriodLabel').style.display = isAll ? 'none' : '';
 
     if (!isAll && karyawanId) {
-        // Pre-select operator and carry over dates
-        document.getElementById('one_karyawan_id').value  = karyawanId;
+        // Tanggal dulu, baru saring, baru pilih operator — kalau operator
+        // dipilih sebelum disaring, daftarnya masih daftar lama.
         document.getElementById('one_date_from').value    = document.getElementById('all_date_from').value;
         document.getElementById('one_date_to').value      = document.getElementById('all_date_to').value;
+        saringOperator(karyawanId);
+        document.getElementById('one_karyawan_id').value  = karyawanId;
         document.getElementById('one_shift_id').value     = document.getElementById('all_shift_id').value;
         loadOneOperator();
     }
@@ -674,6 +678,11 @@ function toggleDay(di) {
     icon.style.transform = isOpen ? '' : 'rotate(90deg)';
 }
 
+const saringOperator = saringOrangNonaktif('one_karyawan_id', 'one_date_from', 'one_operator_note');
+
+document.getElementById('one_date_from').addEventListener('change', () => saringOperator());
+saringOperator();   // tampilan pertama harus sudah bersih, bukan setelah tanggal disentuh
+
 async function loadOneOperator() {
     const karyawanId = document.getElementById('one_karyawan_id').value;
     if (!karyawanId) { alert('Pilih operator terlebih dahulu.'); return; }
@@ -708,7 +717,7 @@ async function loadOneOperator() {
 
 document.getElementById('formOne').addEventListener('submit', e => { e.preventDefault(); loadOneOperator(); });
 document.getElementById('one_bulan_filter').addEventListener('change', () =>
-    applyBulanFilter('one_bulan_filter', 'one_date_from', 'one_date_to', loadOneOperator));
+    applyBulanFilter('one_bulan_filter', 'one_date_from', 'one_date_to', () => { saringOperator(); loadOneOperator(); }));
 
 /* ── Init ──────────────────────────────────────────────── */
 loadAllOperators();

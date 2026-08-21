@@ -8,6 +8,7 @@ use App\Imports\KaryawanImport;
 use App\Models\MasterKaryawan;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Facades\Excel;
@@ -42,14 +43,39 @@ class KaryawanController extends Controller
 
         $deptList = MasterKaryawan::distinct()->orderBy('departemen')->pluck('departemen')->filter()->values();
 
-        return view('master.karyawan.index', compact('karyawan', 'filter', 'search', 'filterDept', 'deptList'));
+        // Kode bisa live sebelum migrasi menyusul — halaman tetap harus hidup.
+        $adaKolomTanggal = Schema::hasColumn('master_karyawan', 'tanggal_nonaktif');
+
+        return view('master.karyawan.index', compact('karyawan', 'filter', 'search', 'filterDept', 'deptList', 'adaKolomTanggal'));
     }
 
-    public function toggleAktif(MasterKaryawan $karyawan)
+    public function toggleAktif(Request $request, MasterKaryawan $karyawan)
     {
+        // App jalan UTC, pabrik WIB — 'today' bawaan Laravel memakai tanggal UTC,
+        // yang tujuh jam di belakang WIB. Pakai tanggal WIB biar "hari ini" versi
+        // pabrik tidak ditolak sebagai tanggal masa depan.
+        $data = $request->validate([
+            'tanggal_nonaktif' => ['nullable', 'date', 'before_or_equal:'.now('Asia/Jakarta')->toDateString()],
+        ]);
+
         try {
-            $karyawan->update(['is_aktif' => ! $karyawan->is_aktif]);
-            $status = $karyawan->is_aktif ? 'diaktifkan kembali' : 'dinonaktifkan';
+            if ($karyawan->is_aktif) {
+                // Tanggal boleh dimundurkan: laporan karyawan keluar sering telat
+                // berhari-hari, dan tanggal klik akan membuat dropdown VCB tetap
+                // memunculkannya sepanjang selisih itu.
+                // Fallback juga pakai tanggal WIB, bukan today() yang mengikuti UTC —
+                // supaya konsisten dengan validasi di atas dan prefill di form.
+                $karyawan->update([
+                    'is_aktif' => false,
+                    'tanggal_nonaktif' => $data['tanggal_nonaktif'] ?? now('Asia/Jakarta')->toDateString(),
+                ]);
+                $status = 'dinonaktifkan';
+            } else {
+                // Aktif kembali WAJIB mengosongkan tanggal — tanggal basi pada orang
+                // aktif akan menyaringnya keluar dari dropdown VCB tanpa ada yang sadar.
+                $karyawan->update(['is_aktif' => true, 'tanggal_nonaktif' => null]);
+                $status = 'diaktifkan kembali';
+            }
 
             return redirect()->back()->with('success', "Karyawan {$karyawan->nama_karyawan} berhasil {$status}.");
         } catch (QueryException) {

@@ -228,6 +228,9 @@
                 <th>Nama Karyawan</th>
                 <th style="width:140px;white-space:nowrap">Departemen</th>
                 <th style="width:90px;text-align:center;white-space:nowrap">Status</th>
+                @if($adaKolomTanggal)
+                <th style="width:120px;white-space:nowrap">Nonaktif Sejak</th>
+                @endif
                 <th style="width:240px;white-space:nowrap">Aksi</th>
             </tr>
         </thead>
@@ -250,21 +253,38 @@
                         <span style="font-size:0.72rem;background:#e5e7eb;color:#4b5563;padding:2px 8px;border-radius:3px;font-weight:600">Non-Aktif</span>
                     @endif
                 </td>
+                @if($adaKolomTanggal)
+                <td style="white-space:nowrap">
+                    {{ $k->tanggal_nonaktif ? $k->tanggal_nonaktif->format('d/m/Y') : '—' }}
+                </td>
+                @endif
                 <td style="white-space:nowrap">
                     <div class="action-btns" style="flex-wrap:nowrap">
                         <a href="{{ route('master.karyawan.edit', $k) }}" class="btn btn-warning btn-sm">Edit</a>
 
                         {{-- Toggle Aktif/Non-Aktif --}}
                         <form method="POST" action="{{ route('master.karyawan.toggle-aktif', $k) }}"
-                              onsubmit="return confirm('{{ $k->is_aktif ? 'Non-aktifkan' : 'Aktifkan kembali' }} karyawan {{ addslashes($k->nama_karyawan) }}?')">
+                              x-data="{ buka: false }" style="display:inline-block">
                             @csrf @method('PATCH')
                             @if($k->is_aktif)
-                                <button type="submit" class="btn btn-sm"
-                                        style="background:#4b5563;color:#fff;border:none">
+                                <button type="button" class="btn btn-sm"
+                                        style="background:#4b5563;color:#fff;border:none"
+                                        x-on:click="buka = ! buka">
                                     <i class="bi bi-person-slash me-1"></i>Non-Aktifkan
                                 </button>
+                                <span x-show="buka" x-cloak style="display:inline-flex;gap:4px;align-items:center;margin-left:4px">
+                                    {{-- App jalan UTC, pabrik WIB — antara 00:00-07:00 WIB, date('Y-m-d')
+                                         masih menyebut tanggal kemarin. Pakai jam WIB biar prefill benar. --}}
+                                    <input type="date" name="tanggal_nonaktif" class="erp-in"
+                                           value="{{ now('Asia/Jakarta')->toDateString() }}" max="{{ now('Asia/Jakarta')->toDateString() }}"
+                                           style="width:140px">
+                                    <button type="submit" class="btn btn-sm btn-danger">Simpan</button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary"
+                                            x-on:click="buka = false">Batal</button>
+                                </span>
                             @else
-                                <button type="submit" class="btn btn-sm btn-success">
+                                <button type="submit" class="btn btn-sm btn-success"
+                                        onclick="return confirm('Aktifkan kembali karyawan {{ addslashes($k->nama_karyawan) }}? Tanggal nonaktifnya akan dikosongkan.')">
                                     <i class="bi bi-person-check me-1"></i>Aktifkan
                                 </button>
                             @endif
@@ -280,7 +300,7 @@
             </tr>
         @empty
             <tr>
-                <td colspan="6" style="text-align:center;color:#888;padding:20px">
+                <td colspan="{{ $adaKolomTanggal ? 7 : 6 }}" style="text-align:center;color:#888;padding:20px">
                     @if($filter === 'nonaktif') Tidak ada karyawan non-aktif.
                     @elseif($filter === 'aktif') Belum ada karyawan aktif.
                     @else Belum ada data karyawan.

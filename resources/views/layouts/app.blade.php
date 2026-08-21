@@ -1616,6 +1616,69 @@ function erpToggleDock(dockId, btnId) {
     if (b) b.classList.toggle('is-on', on);
 }
 
+/**
+ * Menyaring daftar orang di sebuah <select> mengikuti tanggal mulai yang dipilih.
+ *
+ * Halaman menyediakan datanya: tiap <option> membawa data-nonaktif="YYYY-MM-DD"
+ * (kosong = masih aktif). Kembaliannya fungsi saring(wajibIkut = null) yang
+ * membangun ulang <select>-nya. Membangun ulang, BUKAN display:none pada
+ * <option> — perilaku display:none di <option> tidak seragam antar peramban.
+ *
+ * wajibIkut (opsional): id karyawan yang harus tetap muncul di opsi walau
+ * tanggal_nonaktif-nya jatuh sebelum "dari". Dipakai saat orang itu dijangkau
+ * dengan mengklik barisnya sendiri di tabel ringkasan Mode 1 yang tak
+ * tersaring — dia relevan dengan drill-down ini by definition, dan menjatuhkan
+ * dia dari <select> akan mem-mentok-kan drill-down itu sendiri.
+ *
+ * Daftar lengkapnya di-snapshot sekali saat dipasang, karena pembangunan ulang
+ * yang pertama akan menghapus sumbernya dari DOM.
+ */
+function saringOrangNonaktif(selectId, dateFromId, noteId) {
+    const sel = document.getElementById(selectId);
+    const semua = Array.from(sel.querySelectorAll('option'))
+        .filter(o => o.value !== '')
+        .map(o => ({ id: o.value, nama: o.textContent, nonaktif: o.dataset.nonaktif || '' }));
+    const placeholder = sel.querySelector('option[value=""]');
+    const placeholderHtml = placeholder ? placeholder.outerHTML : '';
+
+    return function saring(wajibIkut = null) {
+        const dari     = document.getElementById(dateFromId).value;
+        const terpilih = sel.value;
+        const note     = document.getElementById(noteId);
+
+        // Tanggal ISO aman dibandingkan sebagai string.
+        // nonaktif kosong = selalu tampil: kolom kosong tidak boleh menghilangkan orang.
+        // wajibIkut: orang yang baru saja diklik dari ringkasan Mode 1 (yang
+        // sengaja tak tersaring) harus tetap muncul di sini — dia relevan dengan
+        // rentang ini by definition, walau tanggal_nonaktif-nya jatuh sebelum "dari".
+        const lolos = semua.filter(o => !o.nonaktif || o.nonaktif >= dari || o.id === String(wajibIkut));
+
+        sel.innerHTML = placeholderHtml;
+        lolos.forEach(o => {
+            const opt = document.createElement('option');
+            opt.value = o.id;
+            opt.textContent = o.nama;
+            opt.dataset.nonaktif = o.nonaktif;
+            sel.appendChild(opt);
+        });
+
+        if (terpilih && lolos.some(o => o.id === terpilih)) {
+            sel.value = terpilih;
+            if (note) note.textContent = '';
+
+            return;
+        }
+
+        if (terpilih) {
+            // Mengosongkan diam-diam akan membuat grafik menampilkan orang lain
+            // tanpa penjelasan.
+            const hilang = semua.find(o => o.id === terpilih);
+            if (note) note.textContent = hilang ? `${hilang.nama} tidak aktif pada periode ini.` : '';
+            sel.value = '';
+        }
+    };
+}
+
 function sbToggle() {
     if (isMobile()) {
         $body.classList.toggle('sb-mobile-open');
