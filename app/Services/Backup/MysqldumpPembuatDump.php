@@ -92,10 +92,12 @@ class MysqldumpPembuatDump implements PembuatDump
         // Bisa dihandel null: config('database.connections.mysql.password')
         // resolve lewat env('DB_PASSWORD', ''), dan Laravel memetakan literal
         // `null` di .env jadi PHP null (bukan string kosong) — shape nyata di
-        // host dengan MySQL tanpa kata sandi. Tanpa cast ini, str_replace()
-        // menerima null di parameter bertipe string dan PHP 8.4 mencatat
-        // deprecation tiap kali backup jalan, di log yang justru paling
-        // penting untuk dipercaya.
+        // host dengan MySQL tanpa kata sandi. Tanpa cast ini, null yang masuk
+        // ke parameter bertipe string non-nullable BUKAN sekadar deprecation
+        // (aturan deprecation null-ke-string cuma berlaku untuk fungsi
+        // internal PHP, bukan parameter userland ber-tipe seperti ini) —
+        // coercive typing PHP melempar TypeError, dan backup mati total
+        // dengan fatal error tiap kali dijalankan di host itu.
         return str_replace(['\\', '"'], ['\\\\', '\\"'], (string) $nilai);
     }
 }

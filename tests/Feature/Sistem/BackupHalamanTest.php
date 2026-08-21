@@ -251,8 +251,33 @@ class BackupHalamanTest extends TestCase
     {
         $admin = User::factory()->create(['role' => 'admin']);
 
-        $this->actingAs($admin)
-            ->get(route('vcb.produksi'))
-            ->assertSee('method="POST" action="'.route('logout').'"', false);
+        $html = $this->actingAs($admin)->get(route('vcb.produksi'))->getContent();
+
+        // Dijangkarkan ke <form> yang action-nya persis route('logout'), bukan
+        // seluruh halaman — supaya token CSRF yang diperiksa di bawah pasti
+        // milik form logout ini, bukan form lain di halaman yang kebetulan
+        // juga punya token.
+        $ditemukan = preg_match(
+            '#<form\b[^>]*action="'.preg_quote(route('logout'), '#').'"[^>]*>(.*?)</form>#s',
+            $html,
+            $cocok
+        );
+        $this->assertSame(1, $ditemukan, 'Form logout (action ke route logout) tidak ditemukan di halaman.');
+        $form = $cocok[0];
+
+        // method dan action diperiksa TERPISAH (bukan satu literal
+        // "method=... action=...") supaya reorder atribut kosmetik pada
+        // <form> tidak membuat test ini merah tanpa alasan perilaku.
+        $this->assertStringContainsString('method="POST"', $form);
+
+        // Tanpa token ini, VerifyCsrfToken menolak submit logout dengan 419 di
+        // produksi dan tidak seorang pun bisa logout — kejadian yang lolos
+        // deteksi murni dari method+action, karena keduanya tidak menyentuh
+        // keberadaan @csrf sama sekali.
+        $this->assertMatchesRegularExpression(
+            '/<input[^>]+type="hidden"[^>]+name="_token"[^>]*>/',
+            $form,
+            'Form logout kehilangan token CSRF (@csrf).'
+        );
     }
 }

@@ -42,6 +42,19 @@ class BackupController extends Controller
 
     public function jalankan()
     {
+        // Jalur manual ini berjalan SINKRON di dalam request web, bukan lewat
+        // artisan seperti jadwal terjadwal. Tanpa dua baris ini, PHP-FPM/LSAPI
+        // di shared hosting mematikan request pada batas waktunya sendiri
+        // (jauh sebelum timeout 600s mysqldump di MysqldumpPembuatDump) begitu
+        // admin menutup tab atau koneksinya lambat — dan blok `finally` yang
+        // melepas lock 'backup-berjalan' di BackupService::jalankan() TIDAK
+        // PERNAH sampai jalan karena prosesnya dibunuh dari luar PHP. Lock itu
+        // lalu bertahan sampai TTL_LOCK penuh (1800 detik) dan menolak jadwal
+        // terjadwal 23:00 WIB malam itu dengan BackupSedangBerjalanException.
+        // Kalau ini tetap kejadian, `backup:buka-kunci` adalah klep daruratnya.
+        set_time_limit(0);
+        ignore_user_abort(true);
+
         try {
             $nama = $this->backup->jalankan('manual', auth()->id());
 

@@ -199,4 +199,29 @@ SH
             @unlink($tujuan);
         }
     }
+
+    public function test_sandi_null_tidak_melempar_dan_menulis_berkas_konfig(): void
+    {
+        // config('database.connections.mysql.password') resolve lewat
+        // env('DB_PASSWORD', ''), dan Laravel memetakan literal `null` di .env
+        // jadi PHP null (bukan string kosong) — shape nyata di host MySQL
+        // tanpa kata sandi. escapeNilaiOpsi() menerima ?string justru supaya
+        // shape ini tidak melempar TypeError; kalau parameternya pernah
+        // direvert ke string non-nullable, backup mati fatal di host itu
+        // tiap kali dijalankan — test ini penjaganya.
+        config(['database.connections.mysql.password' => null]);
+
+        $stub = $this->buatStubSalinKonfig();
+        $tujuan = tempnam(sys_get_temp_dir(), 'optima-dump-');
+
+        try {
+            (new MysqldumpPembuatDump($stub))->keBerkas($tujuan);
+
+            $isi = file_get_contents($tujuan);
+            $this->assertStringContainsString('password=""', $isi);
+        } finally {
+            @unlink($stub);
+            @unlink($tujuan);
+        }
+    }
 }

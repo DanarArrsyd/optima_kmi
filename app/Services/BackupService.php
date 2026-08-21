@@ -23,8 +23,13 @@ class BackupService
     // supaya bisa diperiksa deterministik oleh test tanpa menebak nama persis.
     public const DIREKTORI_KERJA = 'app/backup-sementara';
 
-    /** Nama & TTL lock, dipegang untuk SELURUH pemanggil (tombol manual & jadwal). */
-    private const NAMA_LOCK = 'backup-berjalan';
+    /**
+     * Nama & TTL lock, dipegang untuk SELURUH pemanggil (tombol manual & jadwal).
+     * Public karena dipakai juga oleh App\Console\Commands\BukaKunciBackup
+     * untuk forceRelease() lock yang macet — satu definisi nama saja supaya
+     * keduanya tidak bisa menyimpang.
+     */
+    public const NAMA_LOCK = 'backup-berjalan';
 
     /**
      * WAJIB lebih besar dari total waktu SELURUH proses jalankan(), bukan cuma

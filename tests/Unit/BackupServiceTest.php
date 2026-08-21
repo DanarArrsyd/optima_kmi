@@ -115,19 +115,31 @@ class BackupServiceTest extends TestCase
             }
         };
 
+        // TIDAK memakai try{...}catch(RuntimeException){} untuk menandai "sukses":
+        // PHPUnit\Framework\AssertionFailedError (yang dilempar $this->fail())
+        // JUGA turunan RuntimeException, jadi $this->fail() di dalam try yang
+        // sama akan tertangkap oleh catch-nya sendiri dan dianggap hasil yang
+        // diharapkan — test lulus trivial walau tidak ada exception yang
+        // dilempar sama sekali. Exception ditangkap ke variabel dulu, baru
+        // diperiksa DI LUAR try/catch supaya assertion-nya tidak bisa ditelan.
+        $terlempar = null;
         try {
             $this->layanan($gagal)->jalankan('manual', null);
-            $this->fail('Seharusnya melempar RuntimeException.');
-        } catch (BackupSedangBerjalanException $e) {
-            // BackupSedangBerjalanException JUGA turunan RuntimeException — lock
-            // 'backup-berjalan' yang nyasar/stale bisa lolos catch(RuntimeException)
-            // polos di bawah tanpa pernah menyentuh jalur dump-gagal yang diuji
-            // test ini. Gagalkan eksplisit supaya test ini tidak pernah lulus
-            // trivial karena sebab yang salah.
-            $this->fail('Melempar BackupSedangBerjalanException (lock), bukan galat dump yang diuji: '.$e->getMessage());
-        } catch (RuntimeException) {
-            // diharapkan
+        } catch (\Throwable $e) {
+            $terlempar = $e;
         }
+
+        $this->assertNotNull($terlempar, 'Seharusnya melempar RuntimeException.');
+        // BackupSedangBerjalanException JUGA turunan RuntimeException — lock
+        // 'backup-berjalan' yang nyasar/stale bisa lolos pengecekan instanceof
+        // RuntimeException di bawah tanpa pernah menyentuh jalur dump-gagal
+        // yang diuji test ini.
+        $this->assertNotInstanceOf(
+            BackupSedangBerjalanException::class,
+            $terlempar,
+            'Melempar BackupSedangBerjalanException (lock), bukan galat dump yang diuji: '.$terlempar?->getMessage()
+        );
+        $this->assertInstanceOf(RuntimeException::class, $terlempar);
 
         $this->assertSame([], Storage::disk('local')->files(BackupService::DIREKTORI));
 
@@ -155,17 +167,27 @@ class BackupServiceTest extends TestCase
             }
         };
 
+        // Lihat catatan lengkap di test_dump_gagal_tidak_meninggalkan_berkas():
+        // try{...}catch(RuntimeException){} tidak bisa dipakai untuk menandai
+        // "sukses" karena $this->fail() sendiri melempar RuntimeException
+        // (AssertionFailedError) yang akan tertangkap oleh catch-nya sendiri.
+        $terlempar = null;
         try {
             $this->layanan($kecil)->jalankan('manual', null);
-            $this->fail('Seharusnya melempar RuntimeException untuk dump yang janggal kecil.');
-        } catch (BackupSedangBerjalanException $e) {
-            // Lihat catatan yang sama di test_dump_gagal_tidak_meninggalkan_berkas():
-            // lock nyasar/stale bisa lolos catch(RuntimeException) polos tanpa
-            // pernah menyentuh jalur ambang ukuran dump yang diuji test ini.
-            $this->fail('Melempar BackupSedangBerjalanException (lock), bukan galat ukuran dump yang diuji: '.$e->getMessage());
-        } catch (RuntimeException) {
-            // diharapkan
+        } catch (\Throwable $e) {
+            $terlempar = $e;
         }
+
+        $this->assertNotNull($terlempar, 'Seharusnya melempar RuntimeException untuk dump yang janggal kecil.');
+        // Lock nyasar/stale bisa lolos pengecekan instanceof RuntimeException
+        // di bawah tanpa pernah menyentuh jalur ambang ukuran dump yang diuji
+        // test ini.
+        $this->assertNotInstanceOf(
+            BackupSedangBerjalanException::class,
+            $terlempar,
+            'Melempar BackupSedangBerjalanException (lock), bukan galat ukuran dump yang diuji: '.$terlempar?->getMessage()
+        );
+        $this->assertInstanceOf(RuntimeException::class, $terlempar);
 
         // Nol arsip tersisa — bukan arsip nyaris kosong yang tampak sah di daftar.
         $this->assertSame([], Storage::disk('local')->files(BackupService::DIREKTORI));
