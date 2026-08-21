@@ -16,7 +16,7 @@
 - **Kata sandi DB tidak boleh muncul di argumen perintah** — daftar proses terlihat seluruh penyewa di shared hosting. Pakai `--defaults-extra-file` mode `0600`, hapus di `finally`
 - **`berkas/` di dalam arsip WAJIB mengecualikan `backups/`** — kalau tidak, tiap arsip memuat seluruh pendahulunya
 - **Gagal = nol berkas.** `mysqldump` gagal tidak boleh meninggalkan ZIP separuh jadi atau 0 byte
-- **Nama berkas dari URL wajib divalidasi** terhadap pola `optima-YYYY-MM-DD_HHmm.zip` sebelum menyentuh filesystem — direktori di atasnya memuat `.env` server
+- **Nama berkas dari URL wajib divalidasi** terhadap pola `optima-YYYY-MM-DD_HHmmss.zip` sebelum menyentuh filesystem — direktori di atasnya memuat `.env` server
 - Waktu yang dibaca manusia (nama berkas, kolom, kartu) memakai **WIB**; aplikasi berjalan UTC. Jangan set `APP_TIMEZONE`
 - Halaman memakai pola `.erp-ws` dan didaftarkan di `ErpWorkspaceMarkupTest::workspacePages()`
 - **Direktif Blade tidak boleh menempel karakter kata** (`Filter@if` → 500). Sapuan: `grep -rnE '\w@(if|endif|else|elseif|foreach|endforeach|selected)\b' resources/views/`
@@ -299,7 +299,7 @@ class BackupServiceTest extends TestCase
     public function test_nama_berkas_memakai_pola_baku(): void
     {
         $this->assertMatchesRegularExpression(
-            '/^optima-\d{4}-\d{2}-\d{2}_\d{4}\.zip$/',
+            '/^optima-\d{4}-\d{2}-\d{2}_\d{6}\.zip$/',
             $this->layanan()->jalankan('manual', 7)
         );
     }
@@ -308,14 +308,14 @@ class BackupServiceTest extends TestCase
     {
         // Tanpa pengecualian ini arsip ke-N memuat N-1 pendahulunya dan
         // ukurannya menggelembung berlipat sampai disknya penuh.
-        Storage::disk('local')->put(BackupService::DIREKTORI.'/optima-2020-01-01_0000.zip', 'arsip lama');
+        Storage::disk('local')->put(BackupService::DIREKTORI.'/optima-2020-01-01_000000.zip', 'arsip lama');
         Storage::disk('local')->put('checksheet/contoh.pdf', 'isi pdf');
 
         $isi = $this->isiZip($this->layanan()->jalankan('manual', null));
 
         $this->assertContains('berkas/checksheet/contoh.pdf', $isi);
         foreach ($isi as $entri) {
-            $this->assertStringNotContainsString('optima-2020-01-01_0000.zip', $entri);
+            $this->assertStringNotContainsString('optima-2020-01-01_000000.zip', $entri);
         }
     }
 
@@ -395,7 +395,9 @@ class BackupService
     public function jalankan(string $sumber, ?int $userId = null): string
     {
         $waktu = now('Asia/Jakarta');
-        $nama = 'optima-'.$waktu->format('Y-m-d_Hi').'.zip';
+        // Detik ikut: pemicu manual dan terjadwal bisa jatuh di menit yang sama, dan
+        // tanpa detik yang belakangan menimpa yang duluan lewat rename().
+        $nama = 'optima-'.$waktu->format('Y-m-d_His').'.zip';
 
         $kerja = storage_path('app/backup-sementara-'.uniqid());
         File::ensureDirectoryExists($kerja);
@@ -496,7 +498,7 @@ Tambahkan ke `tests/Unit/BackupServiceTest.php`:
         $mulai = \Illuminate\Support\Carbon::parse('2026-06-01');
         foreach (range(0, 32) as $i) {
             Storage::disk('local')->put(
-                BackupService::DIREKTORI.'/optima-'.$mulai->copy()->addDays($i)->format('Y-m-d').'_0100.zip',
+                BackupService::DIREKTORI.'/optima-'.$mulai->copy()->addDays($i)->format('Y-m-d').'_010000.zip',
                 'isi'
             );
         }
@@ -517,7 +519,7 @@ Tambahkan ke `tests/Unit/BackupServiceTest.php`:
         $mulai = \Illuminate\Support\Carbon::parse('2026-06-01');
         foreach (range(0, 29) as $i) {
             Storage::disk('local')->put(
-                BackupService::DIREKTORI.'/optima-'.$mulai->copy()->addDays($i)->format('Y-m-d').'_0100.zip',
+                BackupService::DIREKTORI.'/optima-'.$mulai->copy()->addDays($i)->format('Y-m-d').'_010000.zip',
                 'isi'
             );
         }
@@ -530,14 +532,14 @@ Tambahkan ke `tests/Unit/BackupServiceTest.php`:
     public function test_daftar_membaca_manifest_dan_urut_terbaru_dulu(): void
     {
         $this->layanan()->jalankan('terjadwal', null);
-        Storage::disk('local')->put(BackupService::DIREKTORI.'/optima-2020-01-01_0000.zip', 'lama');
+        Storage::disk('local')->put(BackupService::DIREKTORI.'/optima-2020-01-01_000000.zip', 'lama');
 
         $daftar = $this->layanan()->daftar();
 
         $this->assertCount(2, $daftar);
         $this->assertSame('terjadwal', $daftar[0]['sumber']);
         // Arsip tanpa manifest yang bisa dibaca tetap tampil, tidak disembunyikan.
-        $this->assertSame('optima-2020-01-01_0000.zip', $daftar[1]['nama']);
+        $this->assertSame('optima-2020-01-01_000000.zip', $daftar[1]['nama']);
         $this->assertNull($daftar[1]['sumber']);
     }
 
@@ -829,7 +831,7 @@ use Throwable;
 class BackupController extends Controller
 {
     /** Nama berkas dari URL tidak pernah dipercaya — direktori di atasnya memuat .env server. */
-    private const POLA_NAMA = '/^optima-\d{4}-\d{2}-\d{2}_\d{4}\.zip$/';
+    private const POLA_NAMA = '/^optima-\d{4}-\d{2}-\d{2}_\d{6}\.zip$/';
 
     public function __construct(private BackupService $backup) {}
 
@@ -1380,7 +1382,7 @@ Yang tidak bisa dibuktikan suite, urut dari yang paling penting:
 1. **Unduh satu arsip, buka ZIP-nya, dan restore `database.sql` ke database UJI** — bukan produksi. Ini satu-satunya bukti bahwa backupnya benar-benar backup. Sampai langkah ini dilakukan, yang dimiliki cuma berkas yang ukurannya masuk akal.
 2. Periksa `manifest.json`: `jumlah_tabel` harus **31**, sesuai hasil probe.
 3. Tekan Backup Now dua kali cepat → yang kedua menjawab "Backup sedang berjalan", bukan membuat arsip kedua.
-4. Buka `/sistem/backup/optima-2020-01-01_0000.zip/unduh` untuk berkas yang tidak ada → 404, bukan galat server.
+4. Buka `/sistem/backup/optima-2020-01-01_000000.zip/unduh` untuk berkas yang tidak ada → 404, bukan galat server.
 5. Masuk sebagai `manager` → tautan Backup Sistem tidak ada di dropdown, dan membuka `/sistem/backup` langsung memberi 403.
 6. Jalankan workflow `Backup harian` lewat **Run workflow** manual sekali → hijau, dan arsip baru muncul di halaman dengan sumber `terjadwal`.
 7. Sesudah 31 arsip terkumpul, pastikan yang tertua hilang sendiri.
