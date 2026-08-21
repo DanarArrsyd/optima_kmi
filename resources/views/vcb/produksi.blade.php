@@ -406,7 +406,10 @@ function renderAllKpi(table) {
     const totalTarget = table.reduce((s,r) => s + r.total_target_qty, 0);
     const totalHours  = table.reduce((s,r) => s + r.total_duration_hours, 0);
     const overallPct  = totalTarget > 0 ? Math.round(totalQty / totalTarget * 1000) / 10 : 0;
-    const achieved    = table.filter(r => r.traffic_light === 'success').length;
+    // Hitung dari angkanya, BUKAN dari traffic_light: field itu untuk tampilan dan
+    // memisahkan EXCEED (>100) dari ACHIEVED (=100), jadi 'success' saja tak pernah
+    // memuat operator yang melampaui target.
+    const achieved    = table.filter(r => r.achievement_pct >= 100).length;
     const pctC        = pctColor(overallPct);
 
     const cards = [

@@ -124,7 +124,12 @@ async function loadData() {
         return;
     }
     tbody.innerHTML = data.table.map(row => {
-        const badge = row.traffic_light === 'success' ? 'bg-success' : row.traffic_light === 'warning' ? 'bg-warning text-dark' : 'bg-danger';
+        // Warna dari angkanya, BUKAN dari traffic_light: cabang 'success' saja tak pernah
+        // memuat mesin yang melampaui target ('info'), jadi yang di atas target dulu
+        // jatuh ke cabang terakhir dan diberi warna merah.
+        const badge = row.achievement_pct > 100 ? 'bg-primary'
+                    : row.achievement_pct >= 100 ? 'bg-success'
+                    : 'bg-danger';
         return `<tr class="table-${escHtml(row.traffic_light)}">
             <td>${escHtml(row.mesin)}</td><td>${escHtml(row.id_mesin)}</td><td>${escHtml(row.line)}</td><td>${escHtml(row.tipe_mesin)}</td>
             <td>${Number(row.total_target_qty).toLocaleString()}</td>
