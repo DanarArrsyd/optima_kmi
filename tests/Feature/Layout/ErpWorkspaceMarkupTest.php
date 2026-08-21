@@ -66,6 +66,7 @@ class ErpWorkspaceMarkupTest extends TestCase
             'Control Stroke Mesin' => ['maintenance.control-stroke-mesin', 'staff_maintenance', true],
             'Control Stroke Dies' => ['maintenance.control-stroke-dies', 'staff_maintenance', true],
             'Anomali LHP' => ['admin.anomali', 'admin', true],
+            'Backup Sistem' => ['sistem.backup.index', 'admin', true],
         ];
     }
 

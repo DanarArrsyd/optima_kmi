@@ -13,6 +13,9 @@ class BackupService
 {
     public const DIREKTORI = 'backups';
 
+    /** Pola nama arsip. Dipakai juga BackupController — satu definisi saja. */
+    public const POLA_NAMA = '/^optima-\d{4}-\d{2}-\d{2}_\d{6}\.zip$/';
+
     // Induk direktori kerja sementara — path tetap (bukan bagian uniqid-nya)
     // supaya bisa diperiksa deterministik oleh test tanpa menebak nama persis.
     public const DIREKTORI_KERJA = 'app/backup-sementara';
@@ -117,7 +120,7 @@ class BackupService
      */
     public function hapus(string $nama): void
     {
-        if (! preg_match('/^optima-\d{4}-\d{2}-\d{2}_\d{6}\.zip$/', $nama)) {
+        if (! preg_match(self::POLA_NAMA, $nama)) {
             throw new \InvalidArgumentException("Nama arsip tidak valid: {$nama}");
         }
 
