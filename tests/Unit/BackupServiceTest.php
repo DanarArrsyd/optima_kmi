@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Contracts\PembuatDump;
 use App\Services\BackupService;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
@@ -141,5 +142,71 @@ class BackupServiceTest extends TestCase
         $this->assertNull($manifest['dipicu_oleh']);
         $this->assertArrayHasKey('jumlah_tabel', $manifest);
         $this->assertArrayHasKey('waktu_wib', $manifest);
+    }
+
+    public function test_pangkas_menyisakan_tiga_puluh_terbaru(): void
+    {
+        // Tanggal sungguhan, bukan 2026-07-33: nama berkas ini juga yang dibaca
+        // manusia di halaman, dan fixture yang mustahil menyembunyikan salah urut.
+        $mulai = Carbon::parse('2026-06-01');
+        foreach (range(0, 32) as $i) {
+            Storage::disk('local')->put(
+                BackupService::DIREKTORI.'/optima-'.$mulai->copy()->addDays($i)->format('Y-m-d').'_010000.zip',
+                'isi'
+            );
+        }
+
+        $terbuang = $this->layanan()->pangkas(30);
+
+        $tersisa = implode(',', Storage::disk('local')->files(BackupService::DIREKTORI));
+        $this->assertSame(3, $terbuang);
+        $this->assertCount(30, Storage::disk('local')->files(BackupService::DIREKTORI));
+        // Yang dibuang yang PALING LAMA, bukan yang paling baru.
+        $this->assertStringNotContainsString('optima-2026-06-01_0100', $tersisa);
+        $this->assertStringNotContainsString('optima-2026-06-03_0100', $tersisa);
+        $this->assertStringContainsString('optima-2026-07-03_0100', $tersisa);
+    }
+
+    public function test_jalankan_memangkas_otomatis(): void
+    {
+        $mulai = Carbon::parse('2026-06-01');
+        foreach (range(0, 29) as $i) {
+            Storage::disk('local')->put(
+                BackupService::DIREKTORI.'/optima-'.$mulai->copy()->addDays($i)->format('Y-m-d').'_010000.zip',
+                'isi'
+            );
+        }
+
+        $this->layanan()->jalankan('manual', null);
+
+        $this->assertCount(30, Storage::disk('local')->files(BackupService::DIREKTORI));
+    }
+
+    public function test_daftar_membaca_manifest_dan_urut_terbaru_dulu(): void
+    {
+        $this->layanan()->jalankan('terjadwal', null);
+        Storage::disk('local')->put(BackupService::DIREKTORI.'/optima-2020-01-01_000000.zip', 'lama');
+
+        $daftar = $this->layanan()->daftar();
+
+        $this->assertCount(2, $daftar);
+        $this->assertSame('terjadwal', $daftar[0]['sumber']);
+        // Arsip tanpa manifest yang bisa dibaca tetap tampil, tidak disembunyikan.
+        $this->assertSame('optima-2020-01-01_000000.zip', $daftar[1]['nama']);
+        $this->assertNull($daftar[1]['sumber']);
+    }
+
+    public function test_hapus_membuang_satu_arsip(): void
+    {
+        $nama = $this->layanan()->jalankan('manual', null);
+
+        $this->layanan()->hapus($nama);
+
+        $this->assertSame([], Storage::disk('local')->files(BackupService::DIREKTORI));
+    }
+
+    public function test_umur_null_saat_belum_ada_backup(): void
+    {
+        $this->assertNull($this->layanan()->umurJamTerakhir());
     }
 }

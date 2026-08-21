@@ -62,7 +62,80 @@ class BackupService
             File::deleteDirectory($kerja);
         }
 
+        $this->pangkas();
+
         return $nama;
+    }
+
+    /**
+     * Daftar arsip, terbaru dulu. Nama berkas memuat cap waktunya, jadi urutan
+     * nama = urutan waktu; tidak perlu membuka satu pun ZIP untuk mengurutkan.
+     */
+    public function daftar(): array
+    {
+        $disk = Storage::disk('local');
+        $berkas = $disk->files(self::DIREKTORI);
+        rsort($berkas);
+
+        return array_map(function (string $path) use ($disk) {
+            $nama = basename($path);
+            $manifest = $this->bacaManifest($disk->path($path));
+
+            return [
+                'nama' => $nama,
+                'ukuran' => $disk->size($path),
+                'waktu_wib' => $manifest['waktu_wib'] ?? null,
+                'sumber' => $manifest['sumber'] ?? null,
+                'dipicu_oleh' => $manifest['dipicu_oleh'] ?? null,
+                'jumlah_tabel' => $manifest['jumlah_tabel'] ?? null,
+            ];
+        }, $berkas);
+    }
+
+    /** Buang arsip tertua, sisakan yang $simpan terbaru. Kembalikan jumlah yang dibuang. */
+    public function pangkas(int $simpan = 30): int
+    {
+        $disk = Storage::disk('local');
+        $berkas = $disk->files(self::DIREKTORI);
+        rsort($berkas);
+
+        $buang = array_slice($berkas, $simpan);
+        foreach ($buang as $path) {
+            $disk->delete($path);
+        }
+
+        return count($buang);
+    }
+
+    public function hapus(string $nama): void
+    {
+        Storage::disk('local')->delete(self::DIREKTORI.'/'.$nama);
+    }
+
+    /** Umur arsip terbaru dalam jam, atau null kalau belum ada satu pun. */
+    public function umurJamTerakhir(): ?float
+    {
+        $disk = Storage::disk('local');
+        $berkas = $disk->files(self::DIREKTORI);
+        if ($berkas === []) {
+            return null;
+        }
+        rsort($berkas);
+
+        return (time() - $disk->lastModified($berkas[0])) / 3600;
+    }
+
+    /** Arsip yang manifestnya tak terbaca tetap ditampilkan — menyembunyikannya menyembunyikan masalah. */
+    private function bacaManifest(string $pathAbsolut): array
+    {
+        $zip = new ZipArchive;
+        if ($zip->open($pathAbsolut) !== true) {
+            return [];
+        }
+        $isi = $zip->getFromName('manifest.json');
+        $zip->close();
+
+        return is_string($isi) ? (json_decode($isi, true) ?: []) : [];
     }
 
     private function rakitZip(string $tujuan, string $berkasDump, string $berkasManifest): void
