@@ -261,7 +261,9 @@ function ngColor(pct) {
     return pct === 0 ? '#15803d' : pct <= 2 ? '#a16207' : '#b91c1c';
 }
 function statusLabel(tl) {
-    const map = { success:['ACHIEVED','#15803d'], warning:['NEAR','#a16207'], danger:['BELOW','#b91c1c'] };
+    // 'info' = melampaui target. Tanpa cabang ini tiap baris di atas 100% mencetak "—";
+    // 'warning' tidak pernah dikeluarkan getTrafficLight(), jadi tidak dipetakan.
+    const map = { info:['EXCEED','#1d4ed8'], success:['ACHIEVED','#15803d'], danger:['BELOW','#b91c1c'] };
     const [label, color] = map[tl] ?? ['—','#9ca3af'];
     return `<span style="font-size:10px;font-weight:700;color:${color};letter-spacing:0.4px">${label}</span>`;
 }
@@ -382,7 +384,10 @@ function renderAllKpi(table) {
     const totalHours  = table.reduce((s,r) => s + r.total_duration_hours, 0);
     const overallPct  = totalTarget > 0 ? Math.round(totalCheck / totalTarget * 1000) / 10 : 0;
     const ngRate      = totalCheck > 0 ? Math.round(totalNg / totalCheck * 1000) / 10 : 0;
-    const achieved    = table.filter(r => r.traffic_light === 'success').length;
+    // Hitung dari angkanya, BUKAN dari traffic_light: field itu untuk tampilan dan
+    // memisahkan EXCEED (>100) dari ACHIEVED (=100), jadi 'success' saja tak pernah
+    // memuat inspector yang melampaui target.
+    const achieved    = table.filter(r => r.achievement_pct >= 100).length;
     const pctC        = pctColor(overallPct);
     const ngC         = ngColor(ngRate);
 
