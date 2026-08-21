@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Services\BackupService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class JalankanBackup extends Command
@@ -22,7 +23,14 @@ class JalankanBackup extends Command
         } catch (Throwable $e) {
             // Kode keluar bukan nol supaya workflow-nya MERAH, bukan hijau
             // dengan pesan galat yang tidak dibaca siapa pun.
-            $this->error('Backup gagal: '.$e->getMessage());
+            //
+            // Pesan aslinya bisa memuat detail infrastruktur server (mis. host
+            // & port dari galat koneksi mysqldump). Itu masuk log, BUKAN ke
+            // keluaran yang mengalir lewat SSH ke log run GitHub Actions —
+            // siapa pun dengan akses repo bisa membacanya di sana.
+            Log::error('Backup terjadwal gagal: '.$e->getMessage());
+
+            $this->error('Backup gagal. Periksa storage/logs/laravel.log untuk sebabnya.');
 
             return self::FAILURE;
         }

@@ -13,6 +13,15 @@ on:
     - cron: '0 16 * * *'   # 16:00 UTC = 23:00 WIB, sesudah shift 2 selesai
   workflow_dispatch:
 
+# Grup sama dengan deploy.yml supaya keduanya SERIAL — kalau tidak, backup
+# bisa mendarat sementara rsync/composer install sedang menulis ulang berkas
+# server. cancel-in-progress SENGAJA false: backup yang dimatikan di tengah
+# jalan meninggalkan arsip zip setengah jadi, beda dari deploy yang aman
+# diulang dari awal.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
 env:
   REMOTE_PATH: /home/u518638233/domains/optima.kencomanufactur.co.id/public_html
   REMOTE_PHP: /opt/alt/php84/usr/bin/php
@@ -28,8 +37,11 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -p "${{ secrets.SSH_PORT }}" "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
 
-      # Tanpa -e, kode keluar artisan tidak sampai ke step ini dan jadwal yang
-      # gagal akan tampak hijau.
+      # Step ini MERAH kalau backup gagal karena `ssh` meneruskan kode keluar
+      # perintah remote sebagai kode keluarnya sendiri, dan shell `run:` di
+      # GitHub Actions sudah jalan dengan `-e` secara default (exit begitu ada
+      # perintah yang gagal). `set -e` di bawah cuma menegaskan itu, bukan
+      # syarat supaya step ini merah.
       - name: Jalankan backup
         run: |
           set -e
