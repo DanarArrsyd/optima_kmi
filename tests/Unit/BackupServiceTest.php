@@ -8,6 +8,7 @@ use App\Services\BackupService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
+use PHPUnit\Framework\AssertionFailedError;
 use RuntimeException;
 use Tests\TestCase;
 use ZipArchive;
@@ -78,6 +79,33 @@ class BackupServiceTest extends TestCase
         $isi = $this->isiZip($nama);
         $this->assertContains('database.sql', $isi);
         $this->assertContains('manifest.json', $isi);
+    }
+
+    public function test_menolak_menimpa_arsip_dengan_nama_sama(): void
+    {
+        // Nama berkas cuma sampai detik. Dua run di detik yang sama dulu
+        // saling menimpa lewat rename() tanpa suara — satu arsip lenyap
+        // sementara pemanggilnya tetap menerima nama berkas seperti sukses.
+        Carbon::setTestNow('2026-08-21 16:00:00');
+
+        $pertama = $this->layanan()->jalankan('manual', 1);
+
+        try {
+            $this->layanan()->jalankan('terjadwal', null);
+            $this->fail('Seharusnya menolak nama yang sudah ada.');
+        } catch (AssertionFailedError $e) {
+            throw $e;
+        } catch (RuntimeException $e) {
+            $this->assertStringContainsString('sudah ada', $e->getMessage());
+        } finally {
+            Carbon::setTestNow();
+        }
+
+        // Arsip pertama tetap utuh, tidak tertimpa.
+        $this->assertSame(
+            [BackupService::DIREKTORI.'/'.$pertama],
+            Storage::disk('local')->files(BackupService::DIREKTORI)
+        );
     }
 
     public function test_nama_berkas_memakai_pola_baku(): void

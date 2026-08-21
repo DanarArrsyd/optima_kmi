@@ -175,6 +175,23 @@ class BackupHalamanTest extends TestCase
             ->assertSee('Belum pernah', false);
     }
 
+    public function test_div_seimbang(): void
+    {
+        // Halaman ini sengaja di luar ErpWorkspaceMarkupTest, jadi penjaga
+        // keseimbangan <div>-nya harus ada di sini — <div> nyasar tetap
+        // membalas 200 dan rusaknya cuma terlihat mata.
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $html = $this->actingAs($admin)
+            ->get(route('sistem.backup.index'))->assertOk()->getContent();
+
+        $this->assertSame(
+            preg_match_all('/<\/div>/i', $html),
+            preg_match_all('/<div\b/i', $html),
+            'Jumlah <div> dan </div> tidak seimbang di halaman Backup.'
+        );
+    }
+
     public function test_pesan_gagal_tidak_membocorkan_path_server(): void
     {
         // Pesan asli BackupService memuat path absolut server.
