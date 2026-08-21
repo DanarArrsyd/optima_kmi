@@ -29,6 +29,7 @@ class KaryawanImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
             $record->nama_karyawan = $nama;
             $record->departemen = trim((string) ($row['departemen'] ?? 'Produksi'));
             $record->is_aktif = true;
+            $record->tanggal_nonaktif = null;   // aktif tidak boleh menyimpan tanggal nonaktif
             $record->deleted_at = null;
             $record->save();
             $this->imported++;

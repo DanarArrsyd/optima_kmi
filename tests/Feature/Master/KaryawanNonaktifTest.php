@@ -2,9 +2,11 @@
 
 namespace Tests\Feature\Master;
 
+use App\Imports\KaryawanImport;
 use App\Models\MasterKaryawan;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Collection;
 use Tests\TestCase;
 
 /**
@@ -143,5 +145,22 @@ class KaryawanNonaktifTest extends TestCase
             ->get(route('master.karyawan.index'))->assertOk()->getContent();
 
         $this->assertStringContainsString('name="tanggal_nonaktif"', $html);
+    }
+
+    public function test_import_mengaktifkan_sekaligus_mengosongkan_tanggal(): void
+    {
+        MasterKaryawan::create([
+            'nik' => 'N5', 'nama_karyawan' => 'ORANG LIMA',
+            'departemen' => 'Produksi', 'is_aktif' => false,
+            'tanggal_nonaktif' => '2026-06-12',
+        ]);
+
+        (new KaryawanImport)->collection(new Collection([
+            new Collection(['nik' => 'N5', 'nama_karyawan' => 'ORANG LIMA', 'departemen' => 'Produksi']),
+        ]));
+
+        $k = MasterKaryawan::where('nama_karyawan', 'ORANG LIMA')->first();
+        $this->assertTrue($k->is_aktif);
+        $this->assertNull($k->tanggal_nonaktif);
     }
 }
