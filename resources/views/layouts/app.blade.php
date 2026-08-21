@@ -1316,11 +1316,6 @@
                     <i class="bi bi-person me-2"></i>Profil
                 </a>
                 @endif
-                @if($u->role === 'admin')
-                <a href="{{ route('sistem.backup.index') }}" class="dropdown-item">
-                    <i class="bi bi-download me-2"></i>Backup Sistem
-                </a>
-                @endif
                 <form method="POST" action="{{ route('logout') }}" style="margin:0">
                     @csrf
                     <button type="submit" class="dropdown-item" style="width:100%;text-align:left;border:0;background:none">
