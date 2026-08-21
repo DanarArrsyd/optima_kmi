@@ -100,7 +100,7 @@ class SidebarNavTest extends TestCase
 
         $this->actingAs($admin)->get(route('master.users.index'))
             ->assertOk()
-            ->assertSee("navGroups('master')", false);
+            ->assertSee("navGroups('sistem')", false);
     }
 
     public function test_header_grup_yang_memuat_halaman_ditandai(): void
