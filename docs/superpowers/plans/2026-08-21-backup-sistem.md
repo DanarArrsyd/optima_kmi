@@ -831,7 +831,22 @@ Expected: FAIL — `Route [sistem.backup.index] not defined.`
         $this->app->bind(\App\Contracts\PembuatDump::class, \App\Services\Backup\MysqldumpPembuatDump::class);
 ```
 
-- [ ] **Step 4: Tulis controllernya**
+- [ ] **Step 4: Satukan pola nama berkas**
+
+`app/Services/BackupService.php` sudah memuat pola nama arsip di dalam `hapus()` sebagai
+literal. Angkat menjadi konstanta publik supaya controller memakai definisi yang sama —
+dua salinan regex akan menyimpang, dan saat itu terjadi nama buruk lolos ke layanan lalu
+muncul sebagai 500, bukan 404:
+
+```php
+    /** Pola nama arsip. Dipakai juga BackupController — satu definisi saja. */
+    public const POLA_NAMA = '/^optima-\d{4}-\d{2}-\d{2}_\d{6}\.zip$/';
+```
+
+Ganti literal di dalam `hapus()` menjadi `self::POLA_NAMA`. Jangan ubah perilakunya —
+`tests/Unit/BackupServiceTest.php` sudah menjaganya dan harus tetap hijau.
+
+- [ ] **Step 5: Tulis controllernya**
 
 `app/Http/Controllers/Sistem/BackupController.php`:
 
@@ -850,8 +865,9 @@ use Throwable;
 
 class BackupController extends Controller
 {
-    /** Nama berkas dari URL tidak pernah dipercaya — direktori di atasnya memuat .env server. */
-    private const POLA_NAMA = '/^optima-\d{4}-\d{2}-\d{2}_\d{6}\.zip$/';
+    // Nama berkas dari URL tidak pernah dipercaya — direktori di atasnya memuat
+    // .env server. Polanya dipakai bersama BackupService::hapus(); satu definisi
+    // saja supaya keduanya tidak bisa menyimpang.
 
     public function __construct(private BackupService $backup) {}
 
@@ -908,14 +924,14 @@ class BackupController extends Controller
 
     private function pastikanNamaWajar(string $berkas): void
     {
-        if (preg_match(self::POLA_NAMA, $berkas) !== 1) {
+        if (preg_match(BackupService::POLA_NAMA, $berkas) !== 1) {
             throw new NotFoundHttpException;
         }
     }
 }
 ```
 
-- [ ] **Step 5: Daftarkan routenya**
+- [ ] **Step 6: Daftarkan routenya**
 
 `routes/web.php`, tambahkan grup baru tepat setelah grup `master` ditutup:
 
@@ -929,7 +945,7 @@ class BackupController extends Controller
     });
 ```
 
-- [ ] **Step 6: Tulis halamannya**
+- [ ] **Step 7: Tulis halamannya**
 
 `resources/views/sistem/backup/index.blade.php` — ikuti susunan `.erp-ws` yang dipakai halaman Master. Kerangkanya:
 
@@ -1018,7 +1034,7 @@ class BackupController extends Controller
 
 ⚠️ Sebelum menyalin, **buka `resources/views/master/mesin/index.blade.php` dan samakan nama kelas grid, struktur `.erp-status`, dan cara memuat tabelnya** — kalau berbeda, yang benar adalah yang ada di berkas itu, bukan kerangka di atas. Jaga spasi sebelum tiap direktif Blade.
 
-- [ ] **Step 7: Daftarkan ke penjaga tata letak**
+- [ ] **Step 8: Daftarkan ke penjaga tata letak**
 
 `tests/Feature/Layout/ErpWorkspaceMarkupTest.php`, tambahkan ke `workspacePages()`:
 
@@ -1026,7 +1042,7 @@ class BackupController extends Controller
             'Backup Sistem' => ['sistem.backup.index', 'admin', true],
 ```
 
-- [ ] **Step 8: Run tests to verify they pass**
+- [ ] **Step 9: Run tests to verify they pass**
 
 Run: `php artisan test tests/Feature/Sistem/BackupHalamanTest.php`
 Expected: PASS (12 test)
@@ -1037,7 +1053,7 @@ Expected: PASS — halaman baru ikut terjaga
 Run: `grep -rnE '\w@(if|endif|else|elseif|foreach|endforeach|selected)\b' resources/views/`
 Expected: tidak ada keluaran
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 10: Commit**
 
 ```bash
 git add app/Http/Controllers/Sistem/BackupController.php resources/views/sistem/backup/index.blade.php routes/web.php app/Providers/AppServiceProvider.php tests/Feature/Sistem/BackupHalamanTest.php tests/Feature/Layout/ErpWorkspaceMarkupTest.php
