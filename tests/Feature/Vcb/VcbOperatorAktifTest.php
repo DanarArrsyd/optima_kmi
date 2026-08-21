@@ -65,4 +65,24 @@ class VcbOperatorAktifTest extends TestCase
 
         $this->assertStringContainsString("saringOrangNonaktif('one_karyawan_id'", $html);
     }
+
+    public function test_inspector_nonaktif_membawa_tanggalnya(): void
+    {
+        MasterKaryawan::create([
+            'nik' => 'Q1', 'nama_karyawan' => 'INSPEKTOR KELUAR',
+            'departemen' => 'QC', 'is_aktif' => false,
+            'tanggal_nonaktif' => '2026-05-30',
+        ]);
+
+        $select = $this->selectOperator($this->html('vcb.quality'));
+
+        $this->assertStringContainsString('data-nonaktif="2026-05-30"', $select);
+    }
+
+    public function test_penyaring_dipanggil_di_halaman_quality(): void
+    {
+        $html = $this->html('vcb.quality');
+
+        $this->assertStringContainsString("saringOrangNonaktif('one_karyawan_id'", $html);
+    }
 }
