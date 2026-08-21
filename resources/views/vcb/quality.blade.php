@@ -38,11 +38,11 @@
     <form id="formAll" class="erp-dock-form">
             <div class="erp-grp">
                 <b>Dari Tanggal</b>
-                <input type="date" id="all_date_from" class="erp-in" value="{{ date('Y-m-01') }}">
+                <input type="date" id="all_date_from" class="erp-in" value="{{ now('Asia/Jakarta')->startOfMonth()->toDateString() }}">
             </div>
             <div class="erp-grp">
                 <b>Sampai Tanggal</b>
-                <input type="date" id="all_date_to" class="erp-in" value="{{ date('Y-m-d') }}">
+                <input type="date" id="all_date_to" class="erp-in" value="{{ now('Asia/Jakarta')->toDateString() }}">
             </div>
             <div class="erp-grp">
                 <b>Bulan</b>
@@ -68,11 +68,11 @@
     <form id="formOne" class="erp-dock-form">
             <div class="erp-grp">
                 <b>Dari Tanggal</b>
-                <input type="date" id="one_date_from" class="erp-in" value="{{ date('Y-m-01') }}">
+                <input type="date" id="one_date_from" class="erp-in" value="{{ now('Asia/Jakarta')->startOfMonth()->toDateString() }}">
             </div>
             <div class="erp-grp">
                 <b>Sampai Tanggal</b>
-                <input type="date" id="one_date_to" class="erp-in" value="{{ date('Y-m-d') }}">
+                <input type="date" id="one_date_to" class="erp-in" value="{{ now('Asia/Jakarta')->toDateString() }}">
             </div>
             <div class="erp-grp">
                 <b>Bulan</b>
@@ -430,7 +430,7 @@ function renderAllTable(table) {
         const ngC        = ngColor(row.ng_rate ?? 0);
         const rowBg      = i % 2 === 1 ? 'background:#f9fafb' : '';
 
-        return `<tr style="${rowBg};cursor:pointer" onclick="switchMode('one', ${row.id_karyawan_qc ?? ''})"
+        return `<tr style="${rowBg};cursor:pointer" onclick="switchMode('one', ${row.id_karyawan_qc ?? 'null'})"
                     title="Klik untuk detail ${escHtml(row.karyawan)}">
             <td style="text-align:center;color:#9ca3af;font-size:11px">${i+1}</td>
             <td style="font-weight:600;color:#111827">
@@ -501,7 +501,10 @@ function applyBulanFilter(bulanId, fromId, toId, reloadFn) {
     if (!v) return;
     const [y, m] = v.split('-').map(Number);
     const lastDay = new Date(y, m, 0).getDate();
-    const today = new Date().toISOString().slice(0, 10);
+    // Waktu lokal peramban (WIB di pabrik). toISOString() memaksa UTC dan
+    // memundurkan batasnya sehari selama 00:00–07:00 WIB.
+    const kini = new Date();
+    const today = `${kini.getFullYear()}-${String(kini.getMonth() + 1).padStart(2, '0')}-${String(kini.getDate()).padStart(2, '0')}`;
     const to = `${v}-${String(lastDay).padStart(2, '0')}`;
     document.getElementById(fromId).value = `${v}-01`;
     document.getElementById(toId).value   = to > today ? today : to;
@@ -680,7 +683,13 @@ async function loadOneInspector() {
 
 document.getElementById('formOne').addEventListener('submit', e => { e.preventDefault(); loadOneInspector(); });
 document.getElementById('one_bulan_filter').addEventListener('change', () =>
-    applyBulanFilter('one_bulan_filter', 'one_date_from', 'one_date_to', () => { saringOperator(); loadOneInspector(); }));
+    applyBulanFilter('one_bulan_filter', 'one_date_from', 'one_date_to', () => {
+        saringOperator();
+        // Penyaring bisa mengosongkan pilihan karena orangnya di luar rentang;
+        // memanggil pemuat sesudahnya memunculkan alert yang menyalahkan pengguna
+        // atas sesuatu yang dilakukan halaman sendiri. Pesannya sudah di catatan.
+        if (document.getElementById('one_karyawan_id').value) loadOneInspector();
+    }));
 
 /* ── Init ──────────────────────────────────────────────── */
 loadAllInspectors();
