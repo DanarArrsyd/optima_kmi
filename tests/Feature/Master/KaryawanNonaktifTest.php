@@ -3,6 +3,7 @@
 namespace Tests\Feature\Master;
 
 use App\Models\MasterKaryawan;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -27,5 +28,72 @@ class KaryawanNonaktifTest extends TestCase
         ]);
 
         $this->assertSame('2026-06-12', $k->fresh()->tanggal_nonaktif->toDateString());
+    }
+
+    private function admin(): User
+    {
+        return User::factory()->create(['role' => 'admin']);
+    }
+
+    private function karyawanAktif(): MasterKaryawan
+    {
+        return MasterKaryawan::create([
+            'nik' => 'N1', 'nama_karyawan' => 'ORANG SATU',
+            'departemen' => 'Produksi', 'is_aktif' => true,
+        ]);
+    }
+
+    public function test_menonaktifkan_menyimpan_tanggal_yang_dikirim(): void
+    {
+        $k = $this->karyawanAktif();
+
+        $this->actingAs($this->admin())
+            ->patch(route('master.karyawan.toggle-aktif', $k), ['tanggal_nonaktif' => '2026-06-12'])
+            ->assertRedirect();
+
+        $k->refresh();
+        $this->assertFalse($k->is_aktif);
+        $this->assertSame('2026-06-12', $k->tanggal_nonaktif->toDateString());
+    }
+
+    public function test_mengaktifkan_kembali_mengosongkan_tanggal(): void
+    {
+        $k = MasterKaryawan::create([
+            'nik' => 'N2', 'nama_karyawan' => 'ORANG DUA',
+            'departemen' => 'Produksi', 'is_aktif' => false,
+            'tanggal_nonaktif' => '2026-06-12',
+        ]);
+
+        $this->actingAs($this->admin())
+            ->patch(route('master.karyawan.toggle-aktif', $k))
+            ->assertRedirect();
+
+        $k->refresh();
+        $this->assertTrue($k->is_aktif);
+        $this->assertNull($k->tanggal_nonaktif);
+    }
+
+    public function test_tanggal_masa_depan_ditolak(): void
+    {
+        $k = $this->karyawanAktif();
+
+        $this->actingAs($this->admin())
+            ->patch(route('master.karyawan.toggle-aktif', $k), [
+                'tanggal_nonaktif' => now()->addDay()->toDateString(),
+            ])
+            ->assertSessionHasErrors('tanggal_nonaktif');
+
+        $this->assertTrue($k->fresh()->is_aktif);
+    }
+
+    public function test_tanpa_tanggal_jatuh_ke_hari_ini(): void
+    {
+        $k = $this->karyawanAktif();
+
+        $this->actingAs($this->admin())
+            ->patch(route('master.karyawan.toggle-aktif', $k))
+            ->assertRedirect();
+
+        $this->assertSame(today()->toDateString(), $k->fresh()->tanggal_nonaktif->toDateString());
     }
 }

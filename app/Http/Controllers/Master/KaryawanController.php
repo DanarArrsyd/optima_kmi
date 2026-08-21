@@ -45,11 +45,28 @@ class KaryawanController extends Controller
         return view('master.karyawan.index', compact('karyawan', 'filter', 'search', 'filterDept', 'deptList'));
     }
 
-    public function toggleAktif(MasterKaryawan $karyawan)
+    public function toggleAktif(Request $request, MasterKaryawan $karyawan)
     {
+        $data = $request->validate([
+            'tanggal_nonaktif' => ['nullable', 'date', 'before_or_equal:today'],
+        ]);
+
         try {
-            $karyawan->update(['is_aktif' => ! $karyawan->is_aktif]);
-            $status = $karyawan->is_aktif ? 'diaktifkan kembali' : 'dinonaktifkan';
+            if ($karyawan->is_aktif) {
+                // Tanggal boleh dimundurkan: laporan karyawan keluar sering telat
+                // berhari-hari, dan tanggal klik akan membuat dropdown VCB tetap
+                // memunculkannya sepanjang selisih itu.
+                $karyawan->update([
+                    'is_aktif' => false,
+                    'tanggal_nonaktif' => $data['tanggal_nonaktif'] ?? today()->toDateString(),
+                ]);
+                $status = 'dinonaktifkan';
+            } else {
+                // Aktif kembali WAJIB mengosongkan tanggal — tanggal basi pada orang
+                // aktif akan menyaringnya keluar dari dropdown VCB tanpa ada yang sadar.
+                $karyawan->update(['is_aktif' => true, 'tanggal_nonaktif' => null]);
+                $status = 'diaktifkan kembali';
+            }
 
             return redirect()->back()->with('success', "Karyawan {$karyawan->nama_karyawan} berhasil {$status}.");
         } catch (QueryException) {
