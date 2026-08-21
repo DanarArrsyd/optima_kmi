@@ -13,6 +13,10 @@ class BackupService
 {
     public const DIREKTORI = 'backups';
 
+    // Induk direktori kerja sementara — path tetap (bukan bagian uniqid-nya)
+    // supaya bisa diperiksa deterministik oleh test tanpa menebak nama persis.
+    public const DIREKTORI_KERJA = 'app/backup-sementara';
+
     public function __construct(private PembuatDump $pembuatDump) {}
 
     /**
@@ -25,9 +29,11 @@ class BackupService
     public function jalankan(string $sumber, ?int $userId = null): string
     {
         $waktu = now('Asia/Jakarta');
-        $nama = 'optima-'.$waktu->format('Y-m-d_Hi').'.zip';
+        // Detik disertakan supaya pemicu manual yang jatuh di menit yang sama
+        // dengan jadwal otomatis tidak menimpa arsip yang sudah ada lewat rename().
+        $nama = 'optima-'.$waktu->format('Y-m-d_His').'.zip';
 
-        $kerja = storage_path('app/backup-sementara-'.uniqid());
+        $kerja = storage_path(self::DIREKTORI_KERJA.'/'.uniqid());
         File::ensureDirectoryExists($kerja);
 
         try {
@@ -48,7 +54,10 @@ class BackupService
             $this->rakitZip($zipSementara, $berkasDump, $kerja.'/manifest.json');
 
             Storage::disk('local')->makeDirectory(self::DIREKTORI);
-            File::move($zipSementara, Storage::disk('local')->path(self::DIREKTORI.'/'.$nama));
+            $tujuan = Storage::disk('local')->path(self::DIREKTORI.'/'.$nama);
+            if (! File::move($zipSementara, $tujuan)) {
+                throw new RuntimeException("Gagal memindahkan arsip ke {$tujuan}.");
+            }
         } finally {
             File::deleteDirectory($kerja);
         }
@@ -63,8 +72,12 @@ class BackupService
             throw new RuntimeException('Tidak bisa membuat berkas ZIP.');
         }
 
-        $zip->addFile($berkasDump, 'database.sql');
-        $zip->addFile($berkasManifest, 'manifest.json');
+        if (! $zip->addFile($berkasDump, 'database.sql')) {
+            throw new RuntimeException('Gagal menambahkan database.sql ke arsip.');
+        }
+        if (! $zip->addFile($berkasManifest, 'manifest.json')) {
+            throw new RuntimeException('Gagal menambahkan manifest.json ke arsip.');
+        }
 
         // Salin berkas unggahan, KECUALI direktori backup itu sendiri — kalau
         // ikut, tiap arsip memuat seluruh pendahulunya.
@@ -73,10 +86,17 @@ class BackupService
             if (str_starts_with($relatif, self::DIREKTORI.'/')) {
                 continue;
             }
-            $zip->addFile($disk->path($relatif), 'berkas/'.$relatif);
+
+            // Berkas bisa lenyap/tak terbaca di antara allFiles() dan addFile()
+            // ini (dihapus proses lain saat backup berjalan) — jangan ditelan diam.
+            if (! $zip->addFile($disk->path($relatif), 'berkas/'.$relatif)) {
+                throw new RuntimeException("Gagal menambahkan berkas unggahan ke arsip: {$relatif}");
+            }
         }
 
-        $zip->close();
+        if (! $zip->close()) {
+            throw new RuntimeException('Gagal menutup arsip ZIP.');
+        }
     }
 
     private function jumlahTabel(): int

@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Contracts\PembuatDump;
 use App\Services\BackupService;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use Tests\TestCase;
@@ -11,6 +12,23 @@ use ZipArchive;
 
 class BackupServiceTest extends TestCase
 {
+    /**
+     * Direktori kerja sementara ada di filesystem SUNGGUHAN (storage_path()),
+     * bukan di dalam Storage::fake('local'), jadi dibersihkan manual di sini
+     * supaya tidak bocor antar test dan tetap bisa diperiksa deterministik.
+     */
+    private function direktoriSementara(): string
+    {
+        return storage_path(BackupService::DIREKTORI_KERJA);
+    }
+
+    private function jumlahDirektoriSementaraTersisa(): int
+    {
+        $dir = $this->direktoriSementara();
+
+        return File::isDirectory($dir) ? count(File::directories($dir)) : 0;
+    }
+
     private function layanan(?PembuatDump $pembuat = null): BackupService
     {
         return new BackupService($pembuat ?? new class implements PembuatDump
@@ -39,6 +57,13 @@ class BackupServiceTest extends TestCase
     {
         parent::setUp();
         Storage::fake('local');
+        File::deleteDirectory($this->direktoriSementara());
+    }
+
+    protected function tearDown(): void
+    {
+        File::deleteDirectory($this->direktoriSementara());
+        parent::tearDown();
     }
 
     public function test_menyusun_arsip_lengkap(): void
@@ -53,7 +78,7 @@ class BackupServiceTest extends TestCase
     public function test_nama_berkas_memakai_pola_baku(): void
     {
         $this->assertMatchesRegularExpression(
-            '/^optima-\d{4}-\d{2}-\d{2}_\d{4}\.zip$/',
+            '/^optima-\d{4}-\d{2}-\d{2}_\d{6}\.zip$/',
             $this->layanan()->jalankan('manual', 7)
         );
     }
@@ -93,6 +118,14 @@ class BackupServiceTest extends TestCase
         }
 
         $this->assertSame([], Storage::disk('local')->files(BackupService::DIREKTORI));
+
+        // Bukti nyata bahwa `finally { File::deleteDirectory($kerja); }` benar-benar
+        // jalan: direktori kerja sementara di storage_path() tidak boleh tersisa.
+        $this->assertSame(0, $this->jumlahDirektoriSementaraTersisa());
+
+        // Jalur sukses juga wajib bebas sisa direktori kerja, bukan cuma jalur gagal.
+        $this->layanan()->jalankan('manual', null);
+        $this->assertSame(0, $this->jumlahDirektoriSementaraTersisa());
     }
 
     public function test_manifest_memuat_sumber_dan_pemicu(): void
