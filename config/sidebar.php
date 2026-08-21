@@ -24,7 +24,6 @@
 | roles  : role yang boleh melihat. Grup TIDAK punya 'roles' — diturunkan
 |          dari gabungan role anaknya, supaya cuma ada satu tempat yang
 |          bisa salah.
-| accent : warna khusus (opsional), dipakai Anomali LHP.
 |
 | Route *.data, *.detail, *.import, *.export adalah endpoint JSON/unduhan
 | yang tidak pernah merender layout, jadi tidak perlu masuk 'match'.

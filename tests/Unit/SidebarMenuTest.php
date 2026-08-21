@@ -94,14 +94,19 @@ class SidebarMenuTest extends TestCase
         $this->assertNotContains('chatbot', $this->keys('guest'));
     }
 
-    public function test_grup_quality_menyusut_sesuai_role(): void
+    public function test_grup_quality_menyusut_untuk_manager(): void
     {
-        $grup = collect(SidebarMenu::forRole('staff_qc'))->firstWhere('key', 'quality');
+        // staff_qc dan guest sama-sama melihat keempat anak grup quality, jadi
+        // keduanya tidak membuktikan grup ini bisa menyusut. manager satu-
+        // satunya role yang benar-benar kehilangan anak: dia memantau VCB
+        // tapi tidak menginput LHP Quality.
+        $grup = collect(SidebarMenu::forRole('manager'))->firstWhere('key', 'quality');
 
         $this->assertSame(
-            ['LHP Quality', 'VCB Quality', 'VCB NG Total', 'Daftar NG Total'],
+            ['VCB Quality', 'VCB NG Total', 'Daftar NG Total'],
             array_column($grup['items'], 'label')
         );
+        $this->assertNotContains('LHP Quality', array_column($grup['items'], 'label'));
     }
 
     public function test_manager_melihat_breakdown_tapi_bukan_lhp(): void
