@@ -778,6 +778,26 @@ class BackupHalamanTest extends TestCase
             ->assertSee('Belum pernah', false);
     }
 
+    public function test_pesan_gagal_tidak_membocorkan_path_server(): void
+    {
+        // Pesan asli BackupService memuat path absolut server.
+        $this->app->bind(PembuatDump::class, fn () => new class implements PembuatDump
+        {
+            public function keBerkas(string $tujuan): void
+            {
+                throw new \RuntimeException('Gagal memindahkan arsip ke /home/rahasia/public_html/storage/app/private/backups/x.zip.');
+            }
+        });
+
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $this->actingAs($admin)
+            ->post(route('sistem.backup.jalankan'))
+            ->assertRedirect();
+
+        $this->assertStringNotContainsString('/home/rahasia', session('error'));
+    }
+
     public function test_kartu_umur_merah_setelah_48_jam(): void
     {
         // Kartu ini yang memberi tahu kalau jadwalnya berhenti — kalau ambangnya
@@ -856,9 +876,11 @@ class BackupController extends Controller
 
             return back()->with('success', "Backup {$nama} berhasil dibuat.");
         } catch (Throwable $e) {
+            // Pesan aslinya memuat path absolut server (BackupService menyebut
+            // berkas tujuan). Itu masuk log, BUKAN ke layar.
             Log::error('Backup manual gagal: '.$e->getMessage());
 
-            return back()->with('error', 'Backup gagal: '.$e->getMessage());
+            return back()->with('error', 'Backup gagal. Periksa storage/logs/laravel.log untuk sebabnya.');
         } finally {
             $kunci->release();
         }
@@ -1007,7 +1029,7 @@ class BackupController extends Controller
 - [ ] **Step 8: Run tests to verify they pass**
 
 Run: `php artisan test tests/Feature/Sistem/BackupHalamanTest.php`
-Expected: PASS (11 test)
+Expected: PASS (12 test)
 
 Run: `php artisan test tests/Feature/Layout/ErpWorkspaceMarkupTest.php`
 Expected: PASS — halaman baru ikut terjaga
@@ -1122,7 +1144,7 @@ Penanda "MODE TAMU — READ ONLY" untuk `guest` **tetap di tempatnya**, di luar 
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `php artisan test tests/Feature/Sistem/BackupHalamanTest.php`
-Expected: PASS (15 test)
+Expected: PASS (16 test)
 
 Run: `php artisan test tests/Feature/Layout/`
 Expected: PASS — termasuk `GuestUiTest` dan `ChatbotCanvasTest` yang membaca layout ini
@@ -1331,7 +1353,7 @@ git commit -m "feat(backup): perintah backup:jalankan + jadwal harian 23:00 WIB"
 ```bash
 php artisan test
 ```
-Expected: PASS — 889 test lama + 31 test baru, nol gagal
+Expected: PASS — 889 test lama + 32 test baru, nol gagal
 
 ```bash
 vendor/bin/pint app tests
