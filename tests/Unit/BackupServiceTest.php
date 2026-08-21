@@ -209,4 +209,40 @@ class BackupServiceTest extends TestCase
     {
         $this->assertNull($this->layanan()->umurJamTerakhir());
     }
+
+    public function test_hapus_menolak_nama_di_luar_pola_arsip(): void
+    {
+        // Flysystem cuma menolak keluar dari root disk, bukan keluar dari
+        // subdirektori backups/ — '../checksheet/rahasia.pdf' menormalisasi jadi
+        // 'checksheet/rahasia.pdf' dan diam-diam menghapus berkas nyata (disk
+        // private yang sama dipakai checksheet PDF Preventive Dies).
+        Storage::disk('local')->put('checksheet/rahasia.pdf', 'isi rahasia');
+
+        try {
+            $this->layanan()->hapus('../checksheet/rahasia.pdf');
+            $this->fail('Seharusnya melempar InvalidArgumentException.');
+        } catch (\InvalidArgumentException) {
+            // diharapkan
+        }
+
+        $this->assertTrue(Storage::disk('local')->exists('checksheet/rahasia.pdf'));
+    }
+
+    public function test_umur_jam_terakhir_membaca_arsip_paling_baru(): void
+    {
+        $disk = Storage::disk('local');
+        $disk->put(BackupService::DIREKTORI.'/optima-2026-06-01_010000.zip', 'lama');
+        $disk->put(BackupService::DIREKTORI.'/optima-2026-06-10_010000.zip', 'baru');
+
+        // touch() langsung ke path fisik di disk fake — teknik yang sama dipakai
+        // test lain di repo ini untuk mengontrol mtime deterministik.
+        touch($disk->path(BackupService::DIREKTORI.'/optima-2026-06-01_010000.zip'), time() - 48 * 3600);
+        touch($disk->path(BackupService::DIREKTORI.'/optima-2026-06-10_010000.zip'), time() - 2 * 3600);
+
+        $umur = $this->layanan()->umurJamTerakhir();
+
+        // Arsip "baru" berumur ~2 jam. Kalau urutnya kebalik (arsip "lama" yang
+        // dibaca), umurnya akan ~48 jam — jauh di luar toleransi ini.
+        $this->assertEqualsWithDelta(2.0, $umur, 0.1);
+    }
 }

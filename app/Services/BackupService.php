@@ -107,8 +107,20 @@ class BackupService
         return count($buang);
     }
 
+    /**
+     * Validasi ditaruh DI SINI, bukan hanya di lapisan HTTP pemanggilnya:
+     * normalizer path Flysystem cuma menolak keluar dari root disk, bukan
+     * keluar dari subdirektori backups/ — '../checksheet/rahasia.pdf'
+     * menormalisasi jadi 'checksheet/rahasia.pdf' dan diam-diam menghapus
+     * berkas nyata (disk private yang sama dipakai checksheet PDF Preventive
+     * Dies). Route handler di masa depan tidak boleh diandalkan untuk hati-hati.
+     */
     public function hapus(string $nama): void
     {
+        if (! preg_match('/^optima-\d{4}-\d{2}-\d{2}_\d{6}\.zip$/', $nama)) {
+            throw new \InvalidArgumentException("Nama arsip tidak valid: {$nama}");
+        }
+
         Storage::disk('local')->delete(self::DIREKTORI.'/'.$nama);
     }
 
