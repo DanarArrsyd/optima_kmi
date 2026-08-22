@@ -27,6 +27,7 @@ on:
           - checkroute     # verifikasi route resolve
           - backupcheck    # kapasitas backup: mysqldump, disabled_functions, ukuran DB, sisa disk
           - dandoricek     # sesi dandori vs baris LHP: yatim, ambigu, operator beda
+          - dandorilonggar # kenapa yatim: cocokkan tanpa shift, tanpa part, & jarak hari terdekat
           - markran        # ⚠️ MENULIS ke tabel migrations
 
 env:
@@ -179,6 +180,37 @@ jobs:
               echo \"=== 5. Sepuluh contoh sesi YATIM ===\", PHP_EOL;
               foreach (\$q(\"SELECT d.tanggal,d.id_shift,d.id_mesin,d.id_part_proses FROM (SELECT DISTINCT tanggal,id_shift,id_mesin,id_part_proses FROM transaksi_dandori_rincian WHERE deleted_at IS NULL) d LEFT JOIN (SELECT DISTINCT tanggal_produksi,id_shift,id_mesin,id_part_proses FROM transaksi_produksi WHERE deleted_at IS NULL) p ON p.tanggal_produksi=d.tanggal AND p.id_shift=d.id_shift AND p.id_mesin=d.id_mesin AND p.id_part_proses=d.id_part_proses WHERE p.tanggal_produksi IS NULL ORDER BY d.tanggal DESC LIMIT 10\") as \$x) {
                 echo \"  \", \$x->tanggal, \"  shift=\", \$x->id_shift, \"  mesin=\", \$x->id_mesin, \"  part_proses=\", \$x->id_part_proses, PHP_EOL;
+              }
+            " < /dev/null'
+
+      # Lanjutan dandoricek. Mode itu memakai kunci ketat (tanggal+shift+mesin+part)
+      # dan menemukan 60% sesi dandori yatim. Angka itu belum bisa dipercaya
+      # sebagai "dandori memang berdiri sendiri" — kunci ketat juga menghasilkan
+      # yatim palsu kalau ganti dies terjadi di akhir shift dan produksinya jalan
+      # shift atau hari berikutnya, atau kalau id_part_proses dandori merujuk part
+      # yang DITINGGALKAN, bukan yang dituju.
+      #
+      # Mode ini melonggarkan kuncinya satu per satu supaya kelihatan yatimnya
+      # nyata atau cuma salah cocok. Read-only.
+      - name: Kuliti sesi Dandori yatim (read-only)
+        if: ${{ github.event.inputs.mode == 'dandorilonggar' }}
+        run: |
+          ssh -p "${{ secrets.SSH_PORT }}" -i ~/.ssh/deploy_key \
+            "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" \
+            'cd ${{ env.REMOTE_PATH }} && ${{ env.REMOTE_PHP }} artisan tinker --execute="
+              \$q = fn(\$sql) => Illuminate\\Support\\Facades\\DB::select(\$sql);
+
+              \$a = \$q(\"SELECT COUNT(*) total, SUM(CASE WHEN p.tanggal_produksi IS NULL THEN 1 ELSE 0 END) yatim FROM (SELECT DISTINCT tanggal,id_mesin,id_part_proses FROM transaksi_dandori_rincian WHERE deleted_at IS NULL) d LEFT JOIN (SELECT DISTINCT tanggal_produksi,id_mesin,id_part_proses FROM transaksi_produksi WHERE deleted_at IS NULL) p ON p.tanggal_produksi=d.tanggal AND p.id_mesin=d.id_mesin AND p.id_part_proses=d.id_part_proses\")[0];
+              echo \"=== A. Cocokkan TANPA shift (tanggal+mesin+part) ===\", PHP_EOL;
+              echo \"  total sesi : \", \$a->total, \"   yatim : \", (int) \$a->yatim, PHP_EOL, PHP_EOL;
+
+              \$b = \$q(\"SELECT COUNT(*) total, SUM(CASE WHEN p.tanggal_produksi IS NULL THEN 1 ELSE 0 END) yatim FROM (SELECT DISTINCT tanggal,id_shift,id_mesin FROM transaksi_dandori_rincian WHERE deleted_at IS NULL) d LEFT JOIN (SELECT DISTINCT tanggal_produksi,id_shift,id_mesin FROM transaksi_produksi WHERE deleted_at IS NULL) p ON p.tanggal_produksi=d.tanggal AND p.id_shift=d.id_shift AND p.id_mesin=d.id_mesin\")[0];
+              echo \"=== B. Cocokkan TANPA part_proses (tanggal+shift+mesin) ===\", PHP_EOL;
+              echo \"  total sesi : \", \$b->total, \"   yatim : \", (int) \$b->yatim, PHP_EOL, PHP_EOL;
+
+              echo \"=== C. Sesi yatim (kunci ketat): jarak hari ke LHP terdekat, mesin+part sama ===\", PHP_EOL;
+              foreach (\$q(\"SELECT CASE WHEN m.jarak IS NULL THEN \\\"z. mesin+part ini TIDAK PERNAH ada LHP\\\" WHEN m.jarak=0 THEN \\\"a. hari sama, shift beda\\\" WHEN m.jarak=1 THEN \\\"b. selisih 1 hari\\\" WHEN m.jarak<=7 THEN \\\"c. selisih 2-7 hari\\\" ELSE \\\"d. selisih lebih dari 7 hari\\\" END ember, COUNT(*) jumlah FROM (SELECT d.tanggal,(SELECT MIN(ABS(DATEDIFF(p.tanggal_produksi,d.tanggal))) FROM transaksi_produksi p WHERE p.deleted_at IS NULL AND p.id_mesin=d.id_mesin AND p.id_part_proses=d.id_part_proses) jarak FROM (SELECT DISTINCT tanggal,id_shift,id_mesin,id_part_proses FROM transaksi_dandori_rincian WHERE deleted_at IS NULL) d LEFT JOIN (SELECT DISTINCT tanggal_produksi,id_shift,id_mesin,id_part_proses FROM transaksi_produksi WHERE deleted_at IS NULL) p2 ON p2.tanggal_produksi=d.tanggal AND p2.id_shift=d.id_shift AND p2.id_mesin=d.id_mesin AND p2.id_part_proses=d.id_part_proses WHERE p2.tanggal_produksi IS NULL) m GROUP BY ember ORDER BY ember\") as \$x) {
+                echo \"  \", str_pad(\$x->ember, 42), \$x->jumlah, PHP_EOL;
               }
             " < /dev/null'
 
