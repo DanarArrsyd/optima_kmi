@@ -227,6 +227,26 @@ $oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->n
                     </div>
                 </div>
 
+                {{-- Ada Dandori? --}}
+                <div class="col-12" x-data="{ adaDandori: {{ old('ada_dandori') ? 'true' : 'false' }} }">
+                    <div class="form-check">
+                        {{-- Melepas centang MENGOSONGKAN baris dandori-rows, bukan sekadar
+                             menyembunyikannya, supaya dandori_count selalu konsisten
+                             dengan dandori[] yang terkirim. --}}
+                        <input class="form-check-input" type="checkbox" name="ada_dandori"
+                               id="ada_dandori_drawer" value="1" x-model="adaDandori"
+                               @change="if (!adaDandori) { const w = $el.closest('[x-data]').querySelector('.dandori-rows'); if (w) Alpine.$data(w).rows = []; }">
+                        <label class="form-check-label fw-semibold" for="ada_dandori_drawer">Ada Dandori</label>
+                    </div>
+                    <div x-show="adaDandori" x-cloak class="mt-2">
+                        @include('input.partials.dandori-rows', [
+                            'losstimes' => $losstimes,
+                            'karyawan' => $karyawan,
+                            'initial' => old('dandori', []),
+                        ])
+                    </div>
+                </div>
+
             </div>{{-- /row --}}
 
             <div style="margin-top:20px;padding-top:16px;border-top:1px solid #e5e7eb;display:flex;gap:8px">
