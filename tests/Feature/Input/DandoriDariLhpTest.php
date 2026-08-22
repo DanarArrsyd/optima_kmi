@@ -13,6 +13,7 @@ use App\Models\TransaksiProduksi;
 use App\Models\User;
 use App\Services\DandoriRincianService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
@@ -293,12 +294,20 @@ class DandoriDariLhpTest extends TestCase
     }
 
     /** Ambil isi satu blok saja — nama field muncul di lebih dari satu tempat di halaman. */
+    /**
+     * Potong tepat sepanjang blok dandori. Dijangkarkan ke penanda pembuka dan
+     * penutupnya, bukan ke jumlah karakter tetap: nama field dandori muncul di
+     * lebih dari satu tempat pada halaman yang sama, dan blok ini tumbuh.
+     */
     private function blokDandori(string $html): string
     {
         $awal = strpos($html, 'class="dandori-rows"');
         $this->assertNotFalse($awal, 'Blok dandori tidak ditemukan.');
 
-        return substr($html, $awal, 3000);
+        $akhir = strpos($html, '<!-- /dandori-rows -->', $awal);
+        $this->assertNotFalse($akhir, 'Penanda penutup blok dandori tidak ditemukan.');
+
+        return substr($html, $awal, $akhir - $awal);
     }
 
     public function test_form_create_punya_blok_dandori(): void
@@ -390,5 +399,59 @@ class DandoriDariLhpTest extends TestCase
         $this->delete(route('input.produksi.destroy', TransaksiProduksi::first()))->assertRedirect();
 
         $this->assertSame(1, TransaksiDandoriRincian::count());
+    }
+
+    /* ── Blok dandori dibuat seragam dengan halaman Dandori ───────────────── */
+
+    public static function formPembuatan(): array
+    {
+        return [
+            'create' => ['input.produksi.create'],
+            'laci index' => ['input.produksi.index'],
+        ];
+    }
+
+    #[DataProvider('formPembuatan')]
+    public function test_jenis_loss_time_memakai_typeahead_bukan_dropdown(string $rute): void
+    {
+        $blok = $this->blokDandori($this->get(route($rute))->assertOk()->getContent());
+
+        // Dropdown apa pun di dalam blok berarti masih ada field yang belum
+        // diseragamkan dengan halaman Dandori — termasuk Operator Dandori.
+        $this->assertStringNotContainsString('<select', $blok);
+
+        $this->assertStringContainsString('ta-input', $blok);
+        $this->assertStringContainsString('Ketik kode atau jenis', $blok);
+        $this->assertStringContainsString('dandori[${i}][id_losstime]', $blok);
+    }
+
+    #[DataProvider('formPembuatan')]
+    public function test_blok_dandori_menampilkan_std_dan_over(string $rute): void
+    {
+        $blok = $this->blokDandori($this->get(route($rute))->assertOk()->getContent());
+
+        $this->assertStringContainsString('Std (mnt)', $blok);
+        $this->assertStringContainsString('Over (mnt)', $blok);
+        $this->assertStringContainsString('std_menit_progressive', $blok);
+    }
+
+    #[DataProvider('formPembuatan')]
+    public function test_operator_dandori_memakai_typeahead_bersama(string $rute): void
+    {
+        $blok = $this->blokDandori($this->get(route($rute))->assertOk()->getContent());
+
+        // taField() satu definisi di layout — jangan disalin ulang di partial.
+        $this->assertStringContainsString('taField(taKaryawan', $blok);
+        $this->assertStringContainsString('name="dandori_karyawan_id"', $blok);
+    }
+
+    #[DataProvider('formPembuatan')]
+    public function test_pilihan_proses_membawa_penanda_progressive(string $rute): void
+    {
+        // Pratinjau Std/Over di browser harus tahu proses PROGRESSIVE atau bukan.
+        // Penandanya menempel di <option>, bukan menebak dari teks pilihannya.
+        $html = $this->get(route($rute))->assertOk()->getContent();
+
+        $this->assertStringContainsString('data-progressive', $html);
     }
 }
