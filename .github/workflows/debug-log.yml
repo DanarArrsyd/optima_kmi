@@ -31,6 +31,7 @@ on:
           - dandoripart    # yatim dicocokkan per PART (bukan part_proses) + sebaran mesin/part
           - dandoripartno  # part_name kembar dgn part_no beda; cocokkan per NAMA part
           - dandoridup     # duplikat baris dandori + sebaran bulan & tanggal import
+          - dandoribaru    # sesi yatim & ambigu KHUSUS era aplikasi (Juni 2026 ke atas)
           - markran        # ⚠️ MENULIS ke tabel migrations
 
 env:
@@ -346,6 +347,45 @@ jobs:
               echo \"=== E. Sepuluh tanggal created_at dengan baris terbanyak ===\", PHP_EOL;
               foreach (\$q(\"SELECT DATE(created_at) tgl, COUNT(*) n FROM transaksi_dandori_rincian WHERE deleted_at IS NULL GROUP BY tgl ORDER BY n DESC LIMIT 10\") as \$x) {
                 echo \"  \", \$x->tgl, \"   \", \$x->n, PHP_EOL;
+              }
+            " < /dev/null'
+
+      # Pengukuran terakhir rantai ini. Probe sebelumnya menemukan dua era data:
+      # Januari-Mei 2026 praktis 100% dandori tercatat pada SATU part (sisa
+      # migrasi Excel dengan atribusi part yang salah), dan Juni ke atas barulah
+      # data input aplikasi dengan part beragam.
+      #
+      # Artinya angka "60% sesi yatim" yang dipakai menilai penggabungan form
+      # DIDOMINASI era rusak itu. Yang mewakili cara kerja sekarang cuma Juni
+      # 2026 ke atas — dan itu yang diukur di sini. Read-only.
+      - name: Sesi Dandori era aplikasi saja (read-only)
+        if: ${{ github.event.inputs.mode == 'dandoribaru' }}
+        run: |
+          ssh -p "${{ secrets.SSH_PORT }}" -i ~/.ssh/deploy_key \
+            "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" \
+            'cd ${{ env.REMOTE_PATH }} && ${{ env.REMOTE_PHP }} artisan tinker --execute="
+              \$q = fn(\$sql) => Illuminate\\Support\\Facades\\DB::select(\$sql);
+              \$sejak = \" AND d.tanggal >= \\\"2026-06-01\\\" \";
+
+              \$a = \$q(\"SELECT COUNT(*) total, SUM(CASE WHEN p.tanggal_produksi IS NULL THEN 1 ELSE 0 END) yatim FROM (SELECT DISTINCT d.tanggal,d.id_shift,d.id_mesin,d.id_part_proses FROM transaksi_dandori_rincian d WHERE d.deleted_at IS NULL\" . \$sejak . \") d LEFT JOIN (SELECT DISTINCT tanggal_produksi,id_shift,id_mesin,id_part_proses FROM transaksi_produksi WHERE deleted_at IS NULL) p ON p.tanggal_produksi=d.tanggal AND p.id_shift=d.id_shift AND p.id_mesin=d.id_mesin AND p.id_part_proses=d.id_part_proses\")[0];
+              echo \"=== A. Juni 2026 ke atas — kunci ketat (tgl+shift+mesin+proses) ===\", PHP_EOL;
+              echo \"  total sesi : \", \$a->total, \"   yatim : \", (int) \$a->yatim, \"   (\", \$a->total ? round(\$a->yatim / \$a->total * 100) : 0, \"%)\", PHP_EOL, PHP_EOL;
+
+              \$b = \$q(\"SELECT COUNT(*) total, SUM(CASE WHEN x.ip IS NULL THEN 1 ELSE 0 END) yatim FROM (SELECT DISTINCT d.tanggal,d.id_shift,d.id_mesin,pp.id_part ip FROM transaksi_dandori_rincian d JOIN master_part_proses pp ON pp.id=d.id_part_proses WHERE d.deleted_at IS NULL\" . \$sejak . \") d LEFT JOIN (SELECT DISTINCT p.tanggal_produksi,p.id_shift,p.id_mesin,pp2.id_part ip FROM transaksi_produksi p JOIN master_part_proses pp2 ON pp2.id=p.id_part_proses WHERE p.deleted_at IS NULL) x ON x.tanggal_produksi=d.tanggal AND x.id_shift=d.id_shift AND x.id_mesin=d.id_mesin AND x.ip=d.ip\")[0];
+              echo \"=== B. Sama, tapi dicocokkan per PART (bukan proses) ===\", PHP_EOL;
+              echo \"  total sesi : \", \$b->total, \"   yatim : \", (int) \$b->yatim, \"   (\", \$b->total ? round(\$b->yatim / \$b->total * 100) : 0, \"%)\", PHP_EOL, PHP_EOL;
+
+              \$c = \$q(\"SELECT COUNT(*) kombinasi, SUM(CASE WHEN n>1 THEN 1 ELSE 0 END) lebih_dari_satu, MAX(n) terbanyak FROM (SELECT COUNT(*) n FROM transaksi_produksi WHERE deleted_at IS NULL AND tanggal_produksi >= \\\"2026-06-01\\\" GROUP BY tanggal_produksi,id_shift,id_mesin,id_part_proses) x\")[0];
+              echo \"=== C. Ambiguitas LHP era yang sama ===\", PHP_EOL;
+              echo \"  total kombinasi : \", \$c->kombinasi, \"   punya >1 baris LHP : \", (int) \$c->lebih_dari_satu, \"   terbanyak : \", \$c->terbanyak, PHP_EOL, PHP_EOL;
+
+              \$e = \$q(\"SELECT COUNT(*) beda FROM (SELECT DISTINCT d.tanggal,d.id_shift,d.id_mesin,d.id_part_proses,d.id_karyawan FROM transaksi_dandori_rincian d WHERE d.deleted_at IS NULL\" . \$sejak . \") d JOIN transaksi_produksi p ON p.tanggal_produksi=d.tanggal AND p.id_shift=d.id_shift AND p.id_mesin=d.id_mesin AND p.id_part_proses=d.id_part_proses AND p.deleted_at IS NULL WHERE p.id_karyawan<>d.id_karyawan\")[0];
+              echo \"=== D. Operator dandori beda dari operator LHP (era baru) ===\", PHP_EOL;
+              echo \"  sesi : \", \$e->beda, PHP_EOL, PHP_EOL;
+
+              echo \"=== E. Lima part penyumbang yatim terbanyak (era baru) ===\", PHP_EOL;
+              foreach (\$q(\"SELECT mp.part_name nama, pp.nama_proses proses, COUNT(*) jumlah FROM (SELECT DISTINCT d.tanggal,d.id_shift,d.id_mesin,d.id_part_proses FROM transaksi_dandori_rincian d WHERE d.deleted_at IS NULL\" . \$sejak . \") d LEFT JOIN (SELECT DISTINCT tanggal_produksi,id_shift,id_mesin,id_part_proses FROM transaksi_produksi WHERE deleted_at IS NULL) p ON p.tanggal_produksi=d.tanggal AND p.id_shift=d.id_shift AND p.id_mesin=d.id_mesin AND p.id_part_proses=d.id_part_proses JOIN master_part_proses pp ON pp.id=d.id_part_proses JOIN master_part mp ON mp.id=pp.id_part WHERE p.tanggal_produksi IS NULL GROUP BY mp.part_name, pp.nama_proses ORDER BY jumlah DESC LIMIT 5\") as \$x) {
+                echo \"  \", str_pad(substr(\$x->nama, 0, 30), 32), str_pad(\$x->proses, 14), \$x->jumlah, PHP_EOL;
               }
             " < /dev/null'
 
