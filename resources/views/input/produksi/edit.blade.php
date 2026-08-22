@@ -219,7 +219,7 @@ $initProsesListPhp = $initPart
 
                 {{-- NG Proses Toggle --}}
                 <div class="col-12" x-data="{ adaNg: {{ $initAdaNg == '1' ? 'true' : 'false' }} }">
-                    <div class="p-3" style="background:#fafafa;border:1px solid #e5e7eb;border-radius:4px">
+                    <div class="input-panel">
                         <div class="form-check mb-0">
                             <input class="form-check-input" type="checkbox" name="ada_ng" id="ada_ng"
                                    value="1" x-model="adaNg"
