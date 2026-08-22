@@ -103,7 +103,7 @@ class ProduksiWriteServiceTest extends TestCase
         $mesin = MasterMesin::create(['id_mesin' => 'A-001', 'nama_mesin' => 'MESIN A', 'line' => 'A', 'tipe_mesin' => 'PRESS', 'kapasitas_max_stroke' => 100]);
         $part = MasterPart::create(['part_no' => 'P-1', 'part_name' => 'PART SATU']);
         $proses = MasterPartProses::create(['id_part' => $part->id, 'id_proses' => 1, 'nama_proses' => 'BENDING', 'sph_standar_produksi' => 500]);
-        $jenisNg = MasterJenisNg::create(['kode' => 'NG1', 'jenis_ng' => 'GORES']);
+        $jenisNg = MasterJenisNg::create(['kode' => 'NG1', 'nama_ng' => 'GORES']);
         $losstime = MasterLosstime::create(['kode' => 'LT1', 'jenis_losstime' => 'GANTI DIES', 'std_menit_default' => 30, 'std_menit_progressive' => 45]);
 
         $this->ref = compact('shift', 'karyawan', 'karyawanLain', 'mesin', 'proses', 'jenisNg', 'losstime');
@@ -362,6 +362,7 @@ use App\Models\MasterShift;
 use App\Models\TransaksiDandoriRincian;
 use App\Models\TransaksiProduksi;
 use App\Models\User;
+use App\Services\DandoriRincianService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -385,7 +386,7 @@ class ProduksiBatchTest extends TestCase
         $mesinLain = MasterMesin::create(['id_mesin' => 'A-002', 'nama_mesin' => 'MESIN B', 'line' => 'A', 'tipe_mesin' => 'PRESS', 'kapasitas_max_stroke' => 100]);
         $part = MasterPart::create(['part_no' => 'P-1', 'part_name' => 'PART SATU']);
         $proses = MasterPartProses::create(['id_part' => $part->id, 'id_proses' => 1, 'nama_proses' => 'BENDING', 'sph_standar_produksi' => 500]);
-        $jenisNg = MasterJenisNg::create(['kode' => 'NG1', 'jenis_ng' => 'GORES']);
+        $jenisNg = MasterJenisNg::create(['kode' => 'NG1', 'nama_ng' => 'GORES']);
         $losstime = MasterLosstime::create(['kode' => 'LT1', 'jenis_losstime' => 'GANTI DIES', 'std_menit_default' => 30, 'std_menit_progressive' => 45]);
 
         $this->ref = compact('shift', 'karyawan', 'mesin', 'mesinLain', 'proses', 'jenisNg', 'losstime');
@@ -465,17 +466,38 @@ class ProduksiBatchTest extends TestCase
 
     public function test_gagal_di_tengah_transaksi_tidak_menyisakan_baris(): void
     {
-        // Lolos validasi tapi meledak saat menulis: qty_aktual di luar jangkauan
-        // kolom. Membuktikan pembatalan transaksi, bukan sekadar urutan validasi.
-        $rows = [
-            $this->baris(),
-            $this->baris(['jam_start' => '09:00', 'jam_finish' => '11:00', 'qty_aktual' => 999999999999999]),
-        ];
+        // Validasi LOLOS, jadi controller sungguh masuk DB::transaction() dan
+        // baris pertama sungguh tertulis. Baru pada baris kedua layanan dandori
+        // dipaksa meledak lewat double — membuktikan baris pertama ikut
+        // dibatalkan, bukan sekadar request ditolak lebih awal.
+        $this->app->instance(DandoriRincianService::class, new class extends DandoriRincianService
+        {
+            private int $panggilan = 0;
+
+            public function simpan(array $sesi, array $rincian): int
+            {
+                $this->panggilan++;
+
+                if ($this->panggilan >= 2) {
+                    throw new \RuntimeException('baris kedua sengaja gagal untuk menguji rollback');
+                }
+
+                return 0;
+            }
+        });
+
+        // Exception dibiarkan tembus supaya test ini deterministik: kalau
+        // DB::transaction dicopot, error ini lolos sampai sini TANPA rollback
+        // dan baris pertama akan bertahan.
+        $this->withoutExceptionHandling();
 
         try {
-            $this->kirim($rows);
-        } catch (\Throwable $e) {
-            // Ledakan penyimpanan memang diharapkan di sini.
+            $this->kirim([
+                $this->baris(),
+                $this->baris(['jam_start' => '09:00', 'jam_finish' => '11:00']),
+            ]);
+        } catch (\RuntimeException $e) {
+            $this->assertSame('baris kedua sengaja gagal untuk menguji rollback', $e->getMessage());
         }
 
         $this->assertSame(0, TransaksiProduksi::count());
@@ -859,7 +881,7 @@ class HalamanBatchProduksiTest extends TestCase
         MasterMesin::create(['id_mesin' => 'A-001', 'nama_mesin' => 'MESIN A', 'line' => 'A', 'tipe_mesin' => 'PRESS', 'kapasitas_max_stroke' => 100]);
         $part = MasterPart::create(['part_no' => 'P-1', 'part_name' => 'PART SATU']);
         MasterPartProses::create(['id_part' => $part->id, 'id_proses' => 1, 'nama_proses' => 'BENDING', 'sph_standar_produksi' => 500]);
-        MasterJenisNg::create(['kode' => 'NG1', 'jenis_ng' => 'GORES']);
+        MasterJenisNg::create(['kode' => 'NG1', 'nama_ng' => 'GORES']);
         MasterLosstime::create(['kode' => 'LT1', 'jenis_losstime' => 'GANTI DIES', 'std_menit_default' => 30, 'std_menit_progressive' => 45]);
 
         $this->actingAs(User::factory()->create(['role' => 'staff_produksi']));
