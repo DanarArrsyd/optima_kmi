@@ -5,21 +5,6 @@
      jadi padding bawaan #main dilepas untuk halaman ini. --}}
 @section('main_mod', 'erp-flush')
 
-@php
-$oldKaryawanId  = old('id_karyawan');
-$oldKaryawan    = $karyawan->firstWhere('id', $oldKaryawanId);
-$oldKaryawanTxt = $oldKaryawan?->nama_karyawan ?? '';
-
-$oldMesinId  = old('id_mesin');
-$oldMesinObj = $mesin->firstWhere('id', $oldMesinId);
-$oldMesinTxt = $oldMesinObj ? "{$oldMesinObj->id_mesin} - {$oldMesinObj->nama_mesin} (Line {$oldMesinObj->line})" : '';
-
-$oldAdaNg      = old('ada_ng', false);
-$oldJenisNgId  = old('id_jenis_ng');
-$oldJenisNgObj = $jenisNg->firstWhere('id', $oldJenisNgId);
-$oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->nama_ng}" : '';
-@endphp
-
 @section('content')
 
 {{-- ══ SATU ALPINE SCOPE — mengontrol konten halaman ══ --}}
@@ -764,30 +749,8 @@ function openNoteDrawer(type, id, existingNote, isAdmin, updatedAt, noteAt, reso
 </div>{{-- /alpine outer scope --}}
 @endsection
 
-@php
-$_taKaryawan = $karyawan->map(fn($k) => ['v' => $k->id, 't' => $k->nama_karyawan])->values();
-$_taMesin    = $mesin->map(fn($m) => ['v' => $m->id, 't' => "{$m->id_mesin} - {$m->nama_mesin} (Line {$m->line})"])->values();
-$_taParts    = $parts->map(fn($p) => ['v' => $p->id, 't' => "{$p->part_no} — {$p->part_name}"])->values();
-$_partsData  = $parts->map(fn($p) => [
-    'id'     => $p->id,
-    'proses' => $p->proses->map(fn($pr) => [
-        'id'                   => $pr->id,
-        'id_proses'            => $pr->id_proses,
-        'nama_proses'          => $pr->nama_proses,
-        'sph_standar_produksi' => $pr->sph_standar_produksi,
-    ])->values(),
-])->values();
-$_taJenisNg = $jenisNg->map(fn($j) => ['v' => $j->id, 't' => "{$j->kode} — {$j->nama_ng}"])->values();
-@endphp
-
 @push('scripts')
 <script>
-const taKaryawan = @json($_taKaryawan);
-const taMesin    = @json($_taMesin);
-const taParts    = @json($_taParts);
-const partsData  = @json($_partsData);
-const taJenisNg  = @json($_taJenisNg);
-
 /* ── Filter Mesin multi-select ── */
 const _mesinList     = @json($_mesinForJs);
 const _mesinSelected = @json(array_values($mesinIds));
@@ -815,66 +778,9 @@ const _prosesTA      = @json($_prosesTA);
 const _operatorTA    = @json($_operatorTA);
 const _jenisNgTA     = @json($_jenisNgTA);
 
-/* taField() kini satu definisi di layouts/app.blade.php. */
-
-function produksiPartSelector() {
-    return {
-        ...taField(taParts),
-        prosesList: [],
-        get filtered() {
-            if (!this.query.trim()) return this.items.slice(0, 60);
-            const q = this.query.toLowerCase();
-            return this.items.filter(i => i.t.toLowerCase().includes(q)).slice(0, 60);
-        },
-        pick(item) {
-            this.query = item.t; this.val = item.v; this.open = false; this.idx = -1;
-            const part = partsData.find(p => p.id == item.v);
-            this.prosesList = part ? part.proses : [];
-        },
-    };
-}
-
 /* Bootstrap tooltips */
 document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
     new bootstrap.Tooltip(el, { trigger: 'hover' });
 });
-
-/* Client-side validation */
-(function () {
-    const form = document.getElementById('formProduksi');
-    if (!form) return;
-    function clearErrs() {
-        form.querySelectorAll('.cve').forEach(e => e.remove());
-        form.querySelectorAll('.cvi').forEach(el => el.classList.remove('cvi','is-invalid'));
-    }
-    function mkErr(el, msg) {
-        el.classList.add('is-invalid','cvi');
-        const d = document.createElement('div');
-        d.className = 'invalid-feedback d-block cve'; d.textContent = msg;
-        el.insertAdjacentElement('afterend', d);
-        ['input','change'].forEach(ev => el.addEventListener(ev, () => { el.classList.remove('is-invalid','cvi'); if(d.parentNode) d.remove(); }, {once:true}));
-    }
-    function mkTa(hiddenInput, msg) {
-        const wrap = hiddenInput.closest('.ta-wrap');
-        const vis  = wrap.querySelector('.ta-input');
-        vis.classList.add('is-invalid','cvi');
-        const d = document.createElement('div');
-        d.className = 'invalid-feedback d-block cve'; d.textContent = msg;
-        wrap.insertAdjacentElement('afterend', d);
-        vis.addEventListener('input', () => { vis.classList.remove('is-invalid','cvi'); if(d.parentNode) d.remove(); }, {once:true});
-    }
-    form.addEventListener('submit', function(e) {
-        clearErrs(); const bad = []; const f = n => form.querySelector(`[name="${n}"]`);
-        const tanggal = f('tanggal_produksi'); if (!tanggal.value) { mkErr(tanggal,'Tanggal wajib diisi.'); bad.push(tanggal); }
-        const shift = f('id_shift'); if (!shift.value) { mkErr(shift,'Shift wajib dipilih.'); bad.push(shift); }
-        const kar = f('id_karyawan'); if (!kar.value) { mkTa(kar,'Operator wajib dipilih.'); bad.push(kar.closest('.ta-wrap').querySelector('.ta-input')); }
-        const mes = f('id_mesin'); if (!mes.value) { mkTa(mes,'Mesin wajib dipilih.'); bad.push(mes.closest('.ta-wrap').querySelector('.ta-input')); }
-        const pro = f('id_part_proses'); if (!pro.value) { mkErr(pro, pro.disabled?'Pilih Part dulu.':'Proses wajib dipilih.'); bad.push(pro); }
-        const js = f('jam_start'); if (!js.value) { mkErr(js,'Jam start wajib diisi.'); bad.push(js); }
-        const jf = f('jam_finish'); if (!jf.value) { mkErr(jf,'Jam finish wajib diisi.'); bad.push(jf); }
-        const qty = f('qty_aktual'); if (!qty.value || parseInt(qty.value)<1) { mkErr(qty,'Qty aktual wajib diisi (min 1).'); bad.push(qty); }
-        if (bad.length) { e.preventDefault(); bad[0].scrollIntoView({behavior:'smooth',block:'center'}); }
-    });
-})();
 </script>
 @endpush
