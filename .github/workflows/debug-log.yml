@@ -30,6 +30,7 @@ on:
           - dandorilonggar # kenapa yatim: cocokkan tanpa shift, tanpa part, & jarak hari terdekat
           - dandoripart    # yatim dicocokkan per PART (bukan part_proses) + sebaran mesin/part
           - dandoripartno  # part_name kembar dgn part_no beda; cocokkan per NAMA part
+          - dandoridup     # duplikat baris dandori + sebaran bulan & tanggal import
           - markran        # ⚠️ MENULIS ke tabel migrations
 
 env:
@@ -295,6 +296,57 @@ jobs:
               \$c = \$q(\"SELECT COUNT(*) total, SUM(CASE WHEN x.nm IS NULL THEN 1 ELSE 0 END) yatim FROM (SELECT DISTINCT d.tanggal, d.id_mesin, mp.part_name nm FROM transaksi_dandori_rincian d JOIN master_part_proses pp ON pp.id=d.id_part_proses JOIN master_part mp ON mp.id=pp.id_part WHERE d.deleted_at IS NULL) d LEFT JOIN (SELECT DISTINCT p.tanggal_produksi, p.id_mesin, mp2.part_name nm FROM transaksi_produksi p JOIN master_part_proses pp2 ON pp2.id=p.id_part_proses JOIN master_part mp2 ON mp2.id=pp2.id_part WHERE p.deleted_at IS NULL) x ON x.tanggal_produksi=d.tanggal AND x.id_mesin=d.id_mesin AND x.nm=d.nm\")[0];
               echo \"=== C. Cocokkan per NAMA part (tanggal+mesin+part_name) ===\", PHP_EOL;
               echo \"  total sesi : \", \$c->total, \"   yatim : \", (int) \$c->yatim, PHP_EOL;
+            " < /dev/null'
+
+      # Lanjutan dandoripartno. Satu part — FRAME DR CTR (part_no
+      # 77160-TSV-X000-HI) — memegang 12.283 baris dandori berbanding 51 baris
+      # LHP, dan 12.283 itu 53% dari SELURUH baris dandori di sistem. Rasio
+      # 240:1 pada satu part sementara 243 part lain normal lebih mirip data
+      # terduplikasi daripada pergantian dies yang sungguhan.
+      #
+      # Ini penting jauh melebihi soal form: dandori adalah komponen kerugian
+      # Availability (PR #64) dan masuk rumus jamProduktif(). Kalau separuh
+      # barisnya duplikat, Availability dan Performance ikut salah — termasuk
+      # angka yang sudah tertulis di laporan.
+      #
+      # Read-only. Yang dijawab: apakah barisnya berulang persis, menumpuk di
+      # bulan mana, dan apakah created_at-nya menggerombol di satu waktu import.
+      - name: Cek duplikat baris Dandori (read-only)
+        if: ${{ github.event.inputs.mode == 'dandoridup' }}
+        run: |
+          ssh -p "${{ secrets.SSH_PORT }}" -i ~/.ssh/deploy_key \
+            "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" \
+            'cd ${{ env.REMOTE_PATH }} && ${{ env.REMOTE_PHP }} artisan tinker --execute="
+              \$q = fn(\$sql) => Illuminate\\Support\\Facades\\DB::select(\$sql);
+              \$idPart = \$q(\"SELECT id FROM master_part WHERE part_no=\\\"77160-TSV-X000-HI\\\" LIMIT 1\")[0]->id;
+
+              \$a = \$q(\"SELECT COUNT(*) grup, COALESCE(SUM(n-1),0) berlebih FROM (SELECT COUNT(*) n FROM transaksi_dandori_rincian WHERE deleted_at IS NULL GROUP BY tanggal,id_shift,id_mesin,id_part_proses,id_losstime HAVING n>1) x\")[0];
+              echo \"=== A. Duplikat persis di SELURUH tabel dandori ===\", PHP_EOL;
+              echo \"  (kunci: tanggal+shift+mesin+proses+jenis loss time)\", PHP_EOL;
+              echo \"  grup yang berulang : \", \$a->grup, PHP_EOL;
+              echo \"  baris berlebih     : \", (int) \$a->berlebih, PHP_EOL, PHP_EOL;
+
+              \$b = \$q(\"SELECT COUNT(*) grup, COALESCE(SUM(n-1),0) berlebih FROM (SELECT COUNT(*) n FROM transaksi_dandori_rincian d JOIN master_part_proses pp ON pp.id=d.id_part_proses WHERE pp.id_part=\" . \$idPart . \" AND d.deleted_at IS NULL GROUP BY d.tanggal,d.id_shift,d.id_mesin,d.id_part_proses,d.id_losstime HAVING n>1) x\")[0];
+              echo \"=== B. Duplikat persis khusus FRAME DR CTR ===\", PHP_EOL;
+              echo \"  grup yang berulang : \", \$b->grup, PHP_EOL;
+              echo \"  baris berlebih     : \", (int) \$b->berlebih, PHP_EOL, PHP_EOL;
+
+              echo \"=== C. Lima grup paling sering berulang (FRAME DR CTR) ===\", PHP_EOL;
+              foreach (\$q(\"SELECT d.tanggal, d.id_shift, d.id_mesin, pp.nama_proses, d.id_losstime, COUNT(*) n FROM transaksi_dandori_rincian d JOIN master_part_proses pp ON pp.id=d.id_part_proses WHERE pp.id_part=\" . \$idPart . \" AND d.deleted_at IS NULL GROUP BY d.tanggal,d.id_shift,d.id_mesin,d.id_part_proses,d.id_losstime,pp.nama_proses HAVING n>1 ORDER BY n DESC LIMIT 5\") as \$x) {
+                echo \"  \", \$x->tanggal, \"  shift=\", \$x->id_shift, \"  mesin=\", str_pad(\$x->id_mesin, 4), str_pad(\$x->nama_proses, 14), \"losstime=\", str_pad(\$x->id_losstime, 5), \"berulang \", \$x->n, \"x\", PHP_EOL;
+              }
+              echo PHP_EOL;
+
+              echo \"=== D. Sebaran per bulan (FRAME DR CTR vs seluruh dandori) ===\", PHP_EOL;
+              foreach (\$q(\"SELECT DATE_FORMAT(d.tanggal,\\\"%Y-%m\\\") bln, SUM(CASE WHEN pp.id_part=\" . \$idPart . \" THEN 1 ELSE 0 END) frame, COUNT(*) semua FROM transaksi_dandori_rincian d JOIN master_part_proses pp ON pp.id=d.id_part_proses WHERE d.deleted_at IS NULL GROUP BY bln ORDER BY bln\") as \$x) {
+                echo \"  \", \$x->bln, \"   FRAME DR: \", str_pad(\$x->frame, 8), \"  total: \", \$x->semua, PHP_EOL;
+              }
+              echo PHP_EOL;
+
+              echo \"=== E. Sepuluh tanggal created_at dengan baris terbanyak ===\", PHP_EOL;
+              foreach (\$q(\"SELECT DATE(created_at) tgl, COUNT(*) n FROM transaksi_dandori_rincian WHERE deleted_at IS NULL GROUP BY tgl ORDER BY n DESC LIMIT 10\") as \$x) {
+                echo \"  \", \$x->tgl, \"   \", \$x->n, PHP_EOL;
+              }
             " < /dev/null'
 
       - name: Migrate status (breakdown & tanggal_instalasi)
