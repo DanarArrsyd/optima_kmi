@@ -235,10 +235,14 @@ class DandoriDariLhpTest extends TestCase
         $this->assertSame($this->karyawanLain->id, TransaksiDandoriRincian::first()->id_karyawan);
     }
 
-    public function test_lhp_gagal_tidak_meninggalkan_baris_dandori(): void
+    public function test_validasi_gagal_sebelum_transaksi_menulis_apa_pun(): void
     {
-        // Keduanya ditulis dalam satu transaksi; separuh tersimpan lebih buruk
-        // daripada gagal, karena dandori tanpa LHP tidak terlihat salah.
+        // Ini membuktikan urutan validasi FormRequest terjadi SEBELUM controller
+        // (dan DB::transaction di dalamnya) pernah jalan — bukan membuktikan
+        // rollback. qty_aktual negatif ditolak StoreProduksiRequest, jadi baris
+        // di bawah ini hijau walau transaksinya sendiri tak pernah dibuka.
+        // Kasus rollback-di-dalam-transaksi ada di
+        // test_gagal_di_tengah_transaksi_membatalkan_lhp_dan_dandori di bawah.
         $this->post(route('input.produksi.store'), $this->payloadLhp([
             'qty_aktual' => -5,
             'ada_dandori' => 1,
@@ -247,6 +251,42 @@ class DandoriDariLhpTest extends TestCase
                 ['id_losstime' => $this->losstime->id, 'actual_menit' => 50],
             ],
         ]))->assertSessionHasErrors();
+
+        $this->assertSame(0, TransaksiProduksi::count());
+        $this->assertSame(0, TransaksiDandoriRincian::count());
+    }
+
+    public function test_gagal_di_tengah_transaksi_membatalkan_lhp_dan_dandori(): void
+    {
+        // Beda dari test di atas: di sini validasi LOLOS, jadi controller
+        // sungguh masuk ke DB::transaction() dan TransaksiProduksi::create()
+        // sungguh jalan. Baru setelah itu DandoriRincianService dipaksa
+        // meledak lewat double — membuktikan baris LHP yang sudah tertulis
+        // ikut dibatalkan, bukan cuma request-nya ditolak lebih awal.
+        $this->app->instance(DandoriRincianService::class, new class extends DandoriRincianService
+        {
+            public function simpan(array $sesi, array $rincian): int
+            {
+                throw new \RuntimeException('dandori sengaja gagal untuk menguji rollback');
+            }
+        });
+
+        // Exception dibiarkan tembus (bukan diubah handler jadi respons 500)
+        // supaya test ini deterministik: kalau DB::transaction dicopot, error
+        // ini akan lolos sampai sini TANPA rollback — baris LHP akan bertahan.
+        $this->withoutExceptionHandling();
+
+        try {
+            $this->post(route('input.produksi.store'), $this->payloadLhp([
+                'ada_dandori' => 1,
+                'dandori_count' => 1,
+                'dandori' => [
+                    ['id_losstime' => $this->losstime->id, 'actual_menit' => 50],
+                ],
+            ]));
+        } catch (\RuntimeException $e) {
+            $this->assertSame('dandori sengaja gagal untuk menguji rollback', $e->getMessage());
+        }
 
         $this->assertSame(0, TransaksiProduksi::count());
         $this->assertSame(0, TransaksiDandoriRincian::count());
