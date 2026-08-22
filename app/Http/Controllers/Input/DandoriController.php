@@ -15,6 +15,7 @@ use App\Models\MasterPart;
 use App\Models\MasterPartProses;
 use App\Models\MasterShift;
 use App\Models\TransaksiDandoriRincian;
+use App\Services\DandoriRincianService;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
@@ -23,7 +24,10 @@ class DandoriController extends Controller
 {
     use ResolvesStaffNote;
 
-    public function __construct(private NotificationService $notifSvc) {}
+    public function __construct(
+        private NotificationService $notifSvc,
+        private DandoriRincianService $dandoriRincianService
+    ) {}
 
     public function index(Request $request)
     {
@@ -171,34 +175,13 @@ class DandoriController extends Controller
     {
         $v = $request->validated();
 
-        $partProses = MasterPartProses::findOrFail($v['id_part_proses']);
-        $isProgressive = strtoupper(trim($partProses->nama_proses)) === 'PROGRESSIVE';
-
-        $losstimeIds = collect($v['rincian'])->pluck('id_losstime')->unique();
-        $losstimeMap = MasterLosstime::whereIn('id', $losstimeIds)->get()->keyBy('id');
-
-        foreach ($v['rincian'] as $item) {
-            $losstime = $losstimeMap->get($item['id_losstime']);
-            $stdMenit = $isProgressive
-                ? ($losstime->std_menit_progressive ?? $losstime->std_menit_default ?? 0)
-                : ($losstime->std_menit_default ?? 0);
-            $actualMenit = (float) $item['actual_menit'];
-
-            TransaksiDandoriRincian::create([
-                'tanggal' => $v['tanggal'],
-                'id_shift' => $v['id_shift'],
-                'id_karyawan' => $v['id_karyawan'],
-                'id_mesin' => $v['id_mesin'],
-                'id_part_proses' => $v['id_part_proses'],
-                'id_losstime' => $item['id_losstime'],
-                'actual_menit' => $actualMenit,
-                'std_menit' => $stdMenit,
-                'over_menit' => max(0, $actualMenit - $stdMenit),
-                'created_by' => auth()->id(),
-            ]);
-        }
-
-        $count = count($v['rincian']);
+        $count = $this->dandoriRincianService->simpan([
+            'tanggal' => $v['tanggal'],
+            'id_shift' => $v['id_shift'],
+            'id_karyawan' => $v['id_karyawan'],
+            'id_mesin' => $v['id_mesin'],
+            'id_part_proses' => $v['id_part_proses'],
+        ], $v['rincian']);
 
         return redirect()->route('input.dandori.index')
             ->with('success', "{$count} baris data Dandori berhasil disimpan.");
