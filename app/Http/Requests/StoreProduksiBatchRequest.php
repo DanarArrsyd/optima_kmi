@@ -41,6 +41,40 @@ class StoreProduksiBatchRequest extends FormRequest
         ];
     }
 
+    /**
+     * Kalau ada_ng / ada_dandori tidak dicentang, buang rincian yang
+     * terlanjur terkirim. Samakan dengan StoreProduksiRequest supaya
+     * validated()['rows'] tidak pernah membawa baris rincian yatim ke
+     * ProduksiWriteService. ng_count/dandori_count ikut dinolkan supaya
+     * periksaHitungan() tidak berteriak atas rincian yang baru saja
+     * dikosongkan di sini.
+     */
+    protected function prepareForValidation(): void
+    {
+        $rows = $this->input('rows');
+        if (! is_array($rows)) {
+            return;
+        }
+
+        foreach ($rows as $i => $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            if (! filter_var($row['ada_ng'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+                $rows[$i]['ng'] = [];
+                $rows[$i]['ng_count'] = 0;
+            }
+
+            if (! filter_var($row['ada_dandori'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+                $rows[$i]['dandori'] = [];
+                $rows[$i]['dandori_count'] = 0;
+            }
+        }
+
+        $this->merge(['rows' => $rows]);
+    }
+
     public function withValidator($validator): void
     {
         $validator->after(function ($validator) {
@@ -55,6 +89,9 @@ class StoreProduksiBatchRequest extends FormRequest
                 }
                 $this->periksaHitungan($validator, (int) $i, $row, 'ng');
                 $this->periksaHitungan($validator, (int) $i, $row, 'dandori');
+                $this->periksaCentang($validator, (int) $i, $row, 'ng', 'ada_ng');
+                $this->periksaCentang($validator, (int) $i, $row, 'dandori', 'ada_dandori');
+                $this->periksaDurasiNol($validator, (int) $i, $row);
             }
 
             $bentrok = $this->cariBentrok($rows);
@@ -91,6 +128,45 @@ class StoreProduksiBatchRequest extends FormRequest
                 "rows.{$i}.{$kunciHitungan}",
                 'Baris '.($i + 1).": jumlah rincian yang tercatat ({$diminta}) tidak sama dengan yang terkirim ({$terkirim}). "
                 .'Coba simpan ulang.'
+            );
+        }
+    }
+
+    /**
+     * Centang menyala tapi rinciannya kosong berarti operator mengira sesuatu
+     * tercatat padahal tidak. Form satu baris menolaknya lewat required_if;
+     * versi batch menolaknya di sini supaya perilakunya sama.
+     */
+    private function periksaCentang($validator, int $i, array $row, string $kunci, string $kunciCentang): void
+    {
+        $menyala = filter_var($row[$kunciCentang] ?? false, FILTER_VALIDATE_BOOLEAN);
+        $terkirim = is_array($row[$kunci] ?? null) ? count($row[$kunci]) : 0;
+
+        if ($menyala && $terkirim === 0) {
+            $validator->errors()->add(
+                "rows.{$i}.{$kunci}",
+                'Baris '.($i + 1).': centangnya menyala tapi tidak ada satu pun rincian terkirim.'
+            );
+        }
+    }
+
+    /**
+     * jam_start sama dengan jam_finish itu ambigu: cariBentrok() membaca
+     * selesai<=mulai sebagai lewat tengah malam lalu meregangkannya jadi 24
+     * jam penuh, padahal baris durasi nol tidak berarti apa-apa buat LHP.
+     * Ditolak di sini supaya server tidak punya dua pembacaan yang
+     * bertentangan atas payload yang sama.
+     */
+    private function periksaDurasiNol($validator, int $i, array $row): void
+    {
+        if (empty($row['jam_start']) || empty($row['jam_finish'])) {
+            return;
+        }
+
+        if ($row['jam_start'] === $row['jam_finish']) {
+            $validator->errors()->add(
+                "rows.{$i}.jam_finish",
+                'Baris '.($i + 1).': jam mulai dan jam selesai tidak boleh sama.'
             );
         }
     }

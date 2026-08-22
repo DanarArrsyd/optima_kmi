@@ -229,4 +229,42 @@ class ProduksiBatchTest extends TestCase
 
         $this->assertSame(0, TransaksiProduksi::count());
     }
+
+    public function test_centang_ng_menyala_tanpa_rincian_ditolak(): void
+    {
+        $this->kirim([$this->baris(['ada_ng' => 1, 'ng_count' => 0, 'ng' => []])])
+            ->assertSessionHasErrors('rows.0.ng');
+
+        $this->assertSame(0, TransaksiProduksi::count());
+    }
+
+    public function test_centang_dandori_menyala_tanpa_rincian_ditolak(): void
+    {
+        $this->kirim([$this->baris(['ada_dandori' => 1, 'dandori_count' => 0, 'dandori' => []])])
+            ->assertSessionHasErrors('rows.0.dandori');
+
+        $this->assertSame(0, TransaksiProduksi::count());
+    }
+
+    public function test_rincian_diabaikan_saat_centang_mati(): void
+    {
+        // Centang mati tapi klien tetap mengirim rincian: baris tersimpan
+        // TANPA rincian, bukan ditolak — sama seperti form satu baris.
+        $this->kirim([$this->baris([
+            'ada_ng' => 0,
+            'ng_count' => 1,
+            'ng' => [['id_jenis_ng' => $this->ref['jenisNg']->id, 'qty' => 5]],
+        ])])->assertRedirect();
+
+        $this->assertSame(1, TransaksiProduksi::count());
+        $this->assertSame(0, TransaksiProduksi::first()->ngDetails()->count());
+    }
+
+    public function test_jam_finish_sama_dengan_start_ditolak(): void
+    {
+        $this->kirim([$this->baris(['jam_start' => '07:00', 'jam_finish' => '07:00'])])
+            ->assertSessionHasErrors('rows.0.jam_finish');
+
+        $this->assertSame(0, TransaksiProduksi::count());
+    }
 }
