@@ -155,30 +155,30 @@ jobs:
             'cd ${{ env.REMOTE_PATH }} && ${{ env.REMOTE_PHP }} artisan tinker --execute="
               \$q = fn(\$sql) => Illuminate\\Support\\Facades\\DB::select(\$sql);
 
-              \$r = \$q(\'SELECT COUNT(*) baris, COUNT(DISTINCT CONCAT_WS(0x7c,tanggal,id_shift,id_mesin,id_part_proses)) sesi FROM transaksi_dandori_rincian WHERE deleted_at IS NULL\')[0];
-              echo \'=== 1. Volume dandori ===\', PHP_EOL;
-              echo \'  baris rincian : \', \$r->baris, PHP_EOL;
-              echo \'  sesi (tgl+shift+mesin+part) : \', \$r->sesi, PHP_EOL;
-              echo \'  rata-rata rincian per sesi : \', \$r->sesi ? round(\$r->baris / \$r->sesi, 2) : 0, PHP_EOL, PHP_EOL;
+              \$a = \$q(\"SELECT COUNT(*) baris, COUNT(DISTINCT CONCAT_WS(0x7c,tanggal,id_shift,id_mesin,id_part_proses)) sesi FROM transaksi_dandori_rincian WHERE deleted_at IS NULL\")[0];
+              echo \"=== 1. Volume dandori ===\", PHP_EOL;
+              echo \"  baris rincian : \", \$a->baris, PHP_EOL;
+              echo \"  sesi (tgl+shift+mesin+part) : \", \$a->sesi, PHP_EOL;
+              echo \"  rata-rata rincian per sesi : \", \$a->sesi ? round(\$a->baris / \$a->sesi, 2) : 0, PHP_EOL, PHP_EOL;
 
-              \$r = \$q(\'SELECT SUM(CASE WHEN p.n IS NULL THEN 1 ELSE 0 END) yatim, SUM(CASE WHEN p.n IS NOT NULL THEN 1 ELSE 0 END) berpasangan FROM (SELECT DISTINCT tanggal,id_shift,id_mesin,id_part_proses FROM transaksi_dandori_rincian WHERE deleted_at IS NULL) d LEFT JOIN (SELECT tanggal_produksi,id_shift,id_mesin,id_part_proses,COUNT(*) n FROM transaksi_produksi WHERE deleted_at IS NULL GROUP BY 1,2,3,4) p ON p.tanggal_produksi=d.tanggal AND p.id_shift=d.id_shift AND p.id_mesin=d.id_mesin AND p.id_part_proses=d.id_part_proses\')[0];
-              echo \'=== 2. Sesi dandori punya pasangan LHP? ===\', PHP_EOL;
-              echo \'  berpasangan : \', (int) \$r->berpasangan, PHP_EOL;
-              echo \'  YATIM       : \', (int) \$r->yatim, PHP_EOL, PHP_EOL;
+              \$b = \$q(\"SELECT SUM(CASE WHEN p.n IS NULL THEN 1 ELSE 0 END) yatim, SUM(CASE WHEN p.n IS NOT NULL THEN 1 ELSE 0 END) berpasangan FROM (SELECT DISTINCT tanggal,id_shift,id_mesin,id_part_proses FROM transaksi_dandori_rincian WHERE deleted_at IS NULL) d LEFT JOIN (SELECT tanggal_produksi,id_shift,id_mesin,id_part_proses,COUNT(*) n FROM transaksi_produksi WHERE deleted_at IS NULL GROUP BY 1,2,3,4) p ON p.tanggal_produksi=d.tanggal AND p.id_shift=d.id_shift AND p.id_mesin=d.id_mesin AND p.id_part_proses=d.id_part_proses\")[0];
+              echo \"=== 2. Sesi dandori punya pasangan LHP? ===\", PHP_EOL;
+              echo \"  berpasangan : \", (int) \$b->berpasangan, PHP_EOL;
+              echo \"  YATIM       : \", (int) \$b->yatim, PHP_EOL, PHP_EOL;
 
-              \$r = \$q(\'SELECT COUNT(*) kombinasi, SUM(CASE WHEN n>1 THEN 1 ELSE 0 END) lebih_dari_satu, MAX(n) terbanyak FROM (SELECT COUNT(*) n FROM transaksi_produksi WHERE deleted_at IS NULL GROUP BY tanggal_produksi,id_shift,id_mesin,id_part_proses) x\')[0];
-              echo \'=== 3. Ambiguitas: berapa baris LHP per kombinasi ===\', PHP_EOL;
-              echo \'  total kombinasi    : \', \$r->kombinasi, PHP_EOL;
-              echo \'  punya >1 baris LHP : \', (int) \$r->lebih_dari_satu, PHP_EOL;
-              echo \'  terbanyak dalam satu kombinasi : \', \$r->terbanyak, PHP_EOL, PHP_EOL;
+              \$c = \$q(\"SELECT COUNT(*) kombinasi, SUM(CASE WHEN n>1 THEN 1 ELSE 0 END) lebih_dari_satu, MAX(n) terbanyak FROM (SELECT COUNT(*) n FROM transaksi_produksi WHERE deleted_at IS NULL GROUP BY tanggal_produksi,id_shift,id_mesin,id_part_proses) x\")[0];
+              echo \"=== 3. Ambiguitas: berapa baris LHP per kombinasi ===\", PHP_EOL;
+              echo \"  total kombinasi    : \", \$c->kombinasi, PHP_EOL;
+              echo \"  punya >1 baris LHP : \", (int) \$c->lebih_dari_satu, PHP_EOL;
+              echo \"  terbanyak dalam satu kombinasi : \", \$c->terbanyak, PHP_EOL, PHP_EOL;
 
-              \$r = \$q(\'SELECT COUNT(*) beda FROM (SELECT DISTINCT d.tanggal,d.id_shift,d.id_mesin,d.id_part_proses,d.id_karyawan FROM transaksi_dandori_rincian d WHERE d.deleted_at IS NULL) d JOIN transaksi_produksi p ON p.tanggal_produksi=d.tanggal AND p.id_shift=d.id_shift AND p.id_mesin=d.id_mesin AND p.id_part_proses=d.id_part_proses AND p.deleted_at IS NULL WHERE p.id_karyawan<>d.id_karyawan\')[0];
-              echo \'=== 4. Operator dandori beda dari operator LHP ===\', PHP_EOL;
-              echo \'  sesi dengan operator berbeda : \', \$r->beda, PHP_EOL, PHP_EOL;
+              \$d = \$q(\"SELECT COUNT(*) beda FROM (SELECT DISTINCT d.tanggal,d.id_shift,d.id_mesin,d.id_part_proses,d.id_karyawan FROM transaksi_dandori_rincian d WHERE d.deleted_at IS NULL) d JOIN transaksi_produksi p ON p.tanggal_produksi=d.tanggal AND p.id_shift=d.id_shift AND p.id_mesin=d.id_mesin AND p.id_part_proses=d.id_part_proses AND p.deleted_at IS NULL WHERE p.id_karyawan<>d.id_karyawan\")[0];
+              echo \"=== 4. Operator dandori beda dari operator LHP ===\", PHP_EOL;
+              echo \"  sesi dengan operator berbeda : \", \$d->beda, PHP_EOL, PHP_EOL;
 
-              echo \'=== 5. Sepuluh contoh sesi YATIM (tanggal | shift | mesin | part_proses) ===\', PHP_EOL;
-              foreach (\$q(\'SELECT d.tanggal,d.id_shift,d.id_mesin,d.id_part_proses FROM (SELECT DISTINCT tanggal,id_shift,id_mesin,id_part_proses FROM transaksi_dandori_rincian WHERE deleted_at IS NULL) d LEFT JOIN (SELECT DISTINCT tanggal_produksi,id_shift,id_mesin,id_part_proses FROM transaksi_produksi WHERE deleted_at IS NULL) p ON p.tanggal_produksi=d.tanggal AND p.id_shift=d.id_shift AND p.id_mesin=d.id_mesin AND p.id_part_proses=d.id_part_proses WHERE p.tanggal_produksi IS NULL ORDER BY d.tanggal DESC LIMIT 10\') as \$x) {
-                echo \'  \', \$x->tanggal, \'  shift=\', \$x->id_shift, \'  mesin=\', \$x->id_mesin, \'  part_proses=\', \$x->id_part_proses, PHP_EOL;
+              echo \"=== 5. Sepuluh contoh sesi YATIM ===\", PHP_EOL;
+              foreach (\$q(\"SELECT d.tanggal,d.id_shift,d.id_mesin,d.id_part_proses FROM (SELECT DISTINCT tanggal,id_shift,id_mesin,id_part_proses FROM transaksi_dandori_rincian WHERE deleted_at IS NULL) d LEFT JOIN (SELECT DISTINCT tanggal_produksi,id_shift,id_mesin,id_part_proses FROM transaksi_produksi WHERE deleted_at IS NULL) p ON p.tanggal_produksi=d.tanggal AND p.id_shift=d.id_shift AND p.id_mesin=d.id_mesin AND p.id_part_proses=d.id_part_proses WHERE p.tanggal_produksi IS NULL ORDER BY d.tanggal DESC LIMIT 10\") as \$x) {
+                echo \"  \", \$x->tanggal, \"  shift=\", \$x->id_shift, \"  mesin=\", \$x->id_mesin, \"  part_proses=\", \$x->id_part_proses, PHP_EOL;
               }
             " < /dev/null'
 
