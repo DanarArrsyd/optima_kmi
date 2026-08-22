@@ -136,4 +136,23 @@ class HalamanBatchProduksiTest extends TestCase
         $this->assertGreaterThan(0, $cocok->length,
             'Pemilih Proses berada di luar scope partPicker() — prosesList tidak akan pernah terjangkau Alpine.');
     }
+
+    public function test_halaman_daftar_tidak_lagi_punya_form_penulis(): void
+    {
+        // Laci input dicabut: form penulis turun dari tiga jadi dua (halaman
+        // batch + form Edit). Selama masih ada di sini, field baru bisa
+        // diam-diam terpasang di satu form saja.
+        $html = $this->get(route('input.produksi.index'))->assertOk()->getContent();
+
+        $this->assertStringNotContainsString('name="qty_aktual"', $html);
+        $this->assertStringNotContainsString('name="ada_dandori"', $html);
+        $this->assertStringNotContainsString('id="formProduksi"', $html);
+    }
+
+    public function test_tombol_input_baru_menautkan_ke_halaman_batch(): void
+    {
+        $html = $this->get(route('input.produksi.index'))->assertOk()->getContent();
+
+        $this->assertStringContainsString(route('input.produksi.create'), $html);
+    }
 }

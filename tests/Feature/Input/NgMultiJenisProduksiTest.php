@@ -215,9 +215,13 @@ class NgMultiJenisProduksiTest extends TestCase
         $this->assertCount(2, $trx->ngDetails);
     }
 
-    public function test_drawer_index_tidak_lagi_pakai_field_qty_ng_legacy(): void
+    public function test_form_batch_tidak_lagi_pakai_field_qty_ng_legacy(): void
     {
-        $response = $this->actingAs($this->admin)->get(route('input.produksi.index'));
+        // Dulu menjangkar ke laci di index.blade.php (form penulis paling
+        // sering dipakai). Laci itu dicabut (Task 5, LHP Produksi jadi
+        // halaman batch penuh) — anchor pindah ke halaman batch, yang kini
+        // satu-satunya form create dan me-render partial ng-rows yang sama.
+        $response = $this->actingAs($this->admin)->get(route('input.produksi.create'));
 
         $response->assertOk();
         $response->assertDontSee('name="qty_ng"', false);

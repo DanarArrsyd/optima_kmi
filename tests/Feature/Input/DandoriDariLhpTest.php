@@ -318,16 +318,6 @@ class DandoriDariLhpTest extends TestCase
         $this->assertStringContainsString('dandori_count', $this->blokDandori($html));
     }
 
-    public function test_laci_index_punya_blok_dandori(): void
-    {
-        // Laci di index.blade.php adalah form yang paling sering dipakai
-        // operator, dan yang paling sering kelewat saat menambah field.
-        $html = $this->get(route('input.produksi.index'))->assertOk()->getContent();
-
-        $this->assertStringContainsString('name="ada_dandori"', $html);
-        $this->assertStringContainsString('dandori_count', $this->blokDandori($html));
-    }
-
     public function test_form_edit_tidak_punya_blok_dandori(): void
     {
         // Baris dandori tidak menyimpan tautan ke baris LHP, jadi di Edit tidak
@@ -407,7 +397,6 @@ class DandoriDariLhpTest extends TestCase
     {
         return [
             'create' => ['input.produksi.create'],
-            'laci index' => ['input.produksi.index'],
         ];
     }
 
@@ -510,7 +499,6 @@ class DandoriDariLhpTest extends TestCase
 
         $halaman = [
             route('input.produksi.create'),
-            route('input.produksi.index'),
             route('input.produksi.edit', $produksi),
         ];
 
