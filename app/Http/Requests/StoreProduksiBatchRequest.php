@@ -5,8 +5,8 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * Payload batch: rows[] berisi baris yang bentuknya sama persis dengan payload
- * satu baris pada StoreProduksiRequest.
+ * Payload batch: tiap elemen rows[] punya bentuk field yang sama persis dengan
+ * payload satu baris LHP Produksi versi lama (form single-row yang sudah dicabut).
  */
 class StoreProduksiBatchRequest extends FormRequest
 {
@@ -43,8 +43,7 @@ class StoreProduksiBatchRequest extends FormRequest
 
     /**
      * Kalau ada_ng / ada_dandori tidak dicentang, buang rincian yang
-     * terlanjur terkirim. Samakan dengan StoreProduksiRequest supaya
-     * validated()['rows'] tidak pernah membawa baris rincian yatim ke
+     * terlanjur terkirim, supaya validated()['rows'] tidak pernah membawa baris rincian yatim ke
      * ProduksiWriteService. ng_count/dandori_count ikut dinolkan supaya
      * periksaHitungan() tidak berteriak atas rincian yang baru saja
      * dikosongkan di sini.

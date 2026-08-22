@@ -246,7 +246,7 @@ class DandoriDariLhpTest extends TestCase
     {
         // Ini membuktikan urutan validasi FormRequest terjadi SEBELUM controller
         // (dan DB::transaction di dalamnya) pernah jalan — bukan membuktikan
-        // rollback. qty_aktual negatif ditolak StoreProduksiRequest, jadi baris
+        // rollback. qty_aktual negatif ditolak StoreProduksiBatchRequest, jadi baris
         // di bawah ini hijau walau transaksinya sendiri tak pernah dibuka.
         // Kasus rollback-di-dalam-transaksi ada di
         // test_gagal_di_tengah_transaksi_membatalkan_lhp_dan_dandori di bawah.
