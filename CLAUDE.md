@@ -67,7 +67,8 @@ vendor/bin/pint app tests                 # format (scope Pint = app/ + tests/ s
 | **Akun Guest Read-Only** | ✅ DONE — role `guest`, route default-deny + middleware `DenyGuestWrite`. Akun dibuat admin di Master > Users. |
 | **Gerbang cakupan migrasi** | ✅ DONE (PR #39) — CI menolak migrasi yang tak terdaftar di `deploy.yml`. |
 | **Checksheet PDF Preventive Dies** | ✅ DONE — merged main (PR #34). Upload wajib checksheet PDF (max 2MB) saat input PREVENTIVE dies, disk private, serve via route role-gated, link di history. |
-| **Dandori Migration** | ✅ DONE — sejak Jun 2026, lihat `memory/projects/dandori-migration.md` |
+| **Dandori Migration** | ✅ DONE — sejak Jun 2026 (17.894 baris prod). ⚠️ `memory/projects/dandori-migration.md` masih tertulis 🔴 PENDING, sengaja dibiarkan — jangan dipercaya. |
+| **Dandori Satu Alur** | ✅ DONE — live (PR #111). Centang "Ada Dandori" di form LHP Produksi menulis `transaksi_dandori_rincian`. Nol migrasi, nol rumus disentuh. Blok sengaja TIDAK ada di form Edit. |
 
 ## Catatan operasional
 
