@@ -291,4 +291,56 @@ class DandoriDariLhpTest extends TestCase
         $this->assertSame(0, TransaksiProduksi::count());
         $this->assertSame(0, TransaksiDandoriRincian::count());
     }
+
+    /** Ambil isi satu blok saja — nama field muncul di lebih dari satu tempat di halaman. */
+    private function blokDandori(string $html): string
+    {
+        $awal = strpos($html, 'class="dandori-rows"');
+        $this->assertNotFalse($awal, 'Blok dandori tidak ditemukan.');
+
+        return substr($html, $awal, 3000);
+    }
+
+    public function test_form_create_punya_blok_dandori(): void
+    {
+        $html = $this->get(route('input.produksi.create'))->assertOk()->getContent();
+
+        $this->assertStringContainsString('name="ada_dandori"', $html);
+        $this->assertStringContainsString('dandori_count', $this->blokDandori($html));
+    }
+
+    public function test_laci_index_punya_blok_dandori(): void
+    {
+        // Laci di index.blade.php adalah form yang paling sering dipakai
+        // operator, dan yang paling sering kelewat saat menambah field.
+        $html = $this->get(route('input.produksi.index'))->assertOk()->getContent();
+
+        $this->assertStringContainsString('name="ada_dandori"', $html);
+        $this->assertStringContainsString('dandori_count', $this->blokDandori($html));
+    }
+
+    public function test_form_edit_tidak_punya_blok_dandori(): void
+    {
+        // Baris dandori tidak menyimpan tautan ke baris LHP, jadi di Edit tidak
+        // ada cara jujur untuk tahu baris mana yang "milik" baris LHP ini.
+        $produksi = TransaksiProduksi::create([
+            'tanggal_produksi' => '2026-08-20',
+            'id_shift' => $this->shift->id,
+            'id_karyawan' => $this->karyawan->id,
+            'id_mesin' => $this->mesin->id,
+            'id_part_proses' => $this->proses->id,
+            'jam_start' => '07:00:00',
+            'jam_finish' => '15:00:00',
+            'qty_aktual' => 1000,
+            'created_by' => auth()->id(),
+        ]);
+
+        // Route edit LHP Produksi admin-only — beda dari create/index yang
+        // dipakai staff_produksi di test lain pada berkas ini.
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        $html = $this->get(route('input.produksi.edit', $produksi))->assertOk()->getContent();
+
+        $this->assertStringNotContainsString('name="ada_dandori"', $html);
+    }
 }

@@ -11,6 +11,7 @@ use App\Http\Requests\UpdateProduksiRequest;
 use App\Imports\ProduksiImport;
 use App\Models\MasterJenisNg;
 use App\Models\MasterKaryawan;
+use App\Models\MasterLosstime;
 use App\Models\MasterMesin;
 use App\Models\MasterPart;
 use App\Models\MasterShift;
@@ -121,6 +122,7 @@ class ProduksiController extends Controller
         $mesin = MasterMesin::orderBy('line')->orderBy('id_mesin')->get();
         $parts = MasterPart::with('proses')->orderBy('part_name')->get();
         $jenisNg = MasterJenisNg::orderBy('kode')->get();
+        $losstimes = MasterLosstime::orderBy('kode')->get();
 
         // Data untuk filter lanjutan
         $customers = MasterPart::distinct()->orderBy('customer')->pluck('customer')->filter()->values();
@@ -139,7 +141,7 @@ class ProduksiController extends Controller
             'transaksi', 'dateFrom', 'dateTo', 'search', 'mesinIds',
             'filterCustomer', 'filterPartId', 'filterKarId', 'filterProsesId',
             'filterJenisNgId', 'pakaiTanggal',
-            'shifts', 'karyawan', 'mesin', 'parts', 'jenisNg', 'customers',
+            'shifts', 'karyawan', 'mesin', 'parts', 'jenisNg', 'losstimes', 'customers',
             'myLastRecord', 'myLastOnPage', 'filterActive'
         ));
     }
@@ -151,8 +153,9 @@ class ProduksiController extends Controller
         $mesin = MasterMesin::orderBy('line')->orderBy('id_mesin')->get();
         $parts = MasterPart::with('proses')->orderBy('part_name')->get();
         $jenisNg = MasterJenisNg::orderBy('kode')->get();
+        $losstimes = MasterLosstime::orderBy('kode')->get();
 
-        return view('input.produksi.create', compact('shifts', 'karyawan', 'mesin', 'parts', 'jenisNg'));
+        return view('input.produksi.create', compact('shifts', 'karyawan', 'mesin', 'parts', 'jenisNg', 'losstimes'));
     }
 
     public function store(StoreProduksiRequest $request)
