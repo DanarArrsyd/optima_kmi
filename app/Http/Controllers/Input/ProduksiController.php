@@ -6,6 +6,7 @@ use App\Exports\LhpProduksiExport;
 use App\Exports\ProduksiImportTemplate;
 use App\Http\Controllers\Concerns\ResolvesStaffNote;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreProduksiBatchRequest;
 use App\Http\Requests\StoreProduksiRequest;
 use App\Http\Requests\UpdateProduksiRequest;
 use App\Imports\ProduksiImport;
@@ -164,6 +165,29 @@ class ProduksiController extends Controller
 
         return redirect()->route('input.produksi.index')
             ->with('success', 'LHP Produksi berhasil disimpan.');
+    }
+
+    /**
+     * Menyimpan banyak baris LHP sekali jalan dari halaman batch.
+     *
+     * Satu transaksi untuk seluruh baris: draft di browser tetap utuh saat
+     * gagal, jadi menyimpan separuh akan membuat operator mengirim ulang baris
+     * yang sudah masuk.
+     */
+    public function batch(StoreProduksiBatchRequest $request)
+    {
+        $rows = $request->validated()['rows'];
+
+        DB::transaction(function () use ($rows) {
+            foreach ($rows as $row) {
+                $this->produksiWriteService->simpan($row);
+            }
+        });
+
+        $jumlah = count($rows);
+
+        return redirect()->route('input.produksi.index')
+            ->with('success', "{$jumlah} baris LHP Produksi berhasil disimpan.");
     }
 
     public function edit(TransaksiProduksi $produksi)
