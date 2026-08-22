@@ -82,6 +82,20 @@ class ProduksiBatchTest extends TestCase
         $this->assertStringContainsString('2 baris', session('success'));
     }
 
+    public function test_pesan_validasi_berbahasa_indonesia(): void
+    {
+        $this->kirim([$this->baris(['qty_aktual' => 0])]);
+
+        // session('errors') di sini array mentah, bukan objek ViewErrorBag:
+        // config/session.php pakai 'serialization' => 'json' (Laravel 11+),
+        // jadi objek yang di-flash ke sesi pulang sebagai array biasa setelah
+        // ditulis lalu dibaca ulang dari handler.
+        $pesan = session('errors')['default']['messages']['rows.0.qty_aktual'][0] ?? '';
+
+        $this->assertStringNotContainsString('field must be', $pesan);
+        $this->assertNotSame('', $pesan);
+    }
+
     public function test_rincian_menempel_pada_barisnya_masing_masing(): void
     {
         $this->kirim([

@@ -222,4 +222,81 @@ class StoreProduksiBatchRequest extends FormRequest
 
         return null;
     }
+
+    /**
+     * Tanpa ini, penolakan rule-level (bukan pemeriksaan tangan di
+     * withValidator()) sampai ke operator dalam bahasa Inggris dengan path
+     * bertitik mentah — "The rows.0.qty_aktual field must be at least 1."
+     * :position diisi Laravel dari segmen numerik pertama pada nama atribut
+     * (rows.N....), jadi hasilnya sama gaya "Baris N: ..." dengan pesan
+     * tangan di periksaHitungan()/periksaCentang()/periksaDurasiNol().
+     */
+    public function messages(): array
+    {
+        return [
+            'rows.required' => 'Minimal harus ada 1 baris untuk disimpan.',
+            'rows.min' => 'Minimal harus ada 1 baris untuk disimpan.',
+            'rows.max' => 'Maksimal 50 baris per submit.',
+
+            'rows.*.tanggal_produksi.required' => 'Baris :position: Tanggal Produksi wajib diisi.',
+            'rows.*.tanggal_produksi.date' => 'Baris :position: Tanggal Produksi tidak valid.',
+            'rows.*.tanggal_produksi.after_or_equal' => 'Baris :position: Tanggal Produksi tidak boleh sebelum 2020.',
+            'rows.*.tanggal_produksi.before_or_equal' => 'Baris :position: Tanggal Produksi tidak boleh lebih dari besok.',
+
+            'rows.*.id_shift.required' => 'Baris :position: Shift wajib dipilih.',
+            'rows.*.id_shift.exists' => 'Baris :position: Shift yang dipilih tidak valid.',
+
+            'rows.*.id_karyawan.required' => 'Baris :position: Operator wajib dipilih.',
+            'rows.*.id_karyawan.exists' => 'Baris :position: Operator yang dipilih tidak valid.',
+
+            'rows.*.id_mesin.required' => 'Baris :position: Mesin wajib dipilih.',
+            'rows.*.id_mesin.exists' => 'Baris :position: Mesin yang dipilih tidak valid.',
+
+            'rows.*.id_part_proses.required' => 'Baris :position: Part dan Proses wajib dipilih.',
+            'rows.*.id_part_proses.exists' => 'Baris :position: Part/Proses yang dipilih tidak valid.',
+
+            'rows.*.jam_start.required' => 'Baris :position: Jam Start wajib diisi.',
+            'rows.*.jam_start.date_format' => 'Baris :position: Jam Start harus berformat JJ:MM.',
+
+            'rows.*.jam_finish.required' => 'Baris :position: Jam Finish wajib diisi.',
+            'rows.*.jam_finish.date_format' => 'Baris :position: Jam Finish harus berformat JJ:MM.',
+
+            'rows.*.qty_aktual.required' => 'Baris :position: Qty OK wajib diisi.',
+            'rows.*.qty_aktual.integer' => 'Baris :position: Qty OK harus berupa angka.',
+            'rows.*.qty_aktual.min' => 'Baris :position: Qty OK minimal 1.',
+
+            'rows.*.ng.*.id_jenis_ng.required' => 'Baris :position: pilih jenis NG untuk setiap baris.',
+            'rows.*.ng.*.id_jenis_ng.exists' => 'Baris :position: jenis NG yang dipilih tidak valid.',
+            'rows.*.ng.*.id_jenis_ng.distinct' => 'Baris :position: jenis NG yang sama tidak boleh diisi dua kali.',
+
+            'rows.*.dandori.*.id_losstime.required' => 'Baris :position: pilih jenis loss time untuk setiap baris dandori.',
+            'rows.*.dandori.*.id_losstime.exists' => 'Baris :position: jenis loss time yang dipilih tidak valid.',
+            'rows.*.dandori.*.id_losstime.distinct' => 'Baris :position: jenis loss time yang sama tidak boleh diisi dua kali.',
+        ];
+    }
+
+    /**
+     * Jaring pengaman untuk rule yang tidak ditulis manual di messages() di
+     * atas (mis. dandori.*.actual_menit, ng.*.qty) — kalau default Laravel
+     * tetap dipakai, setidaknya nama field-nya bahasa Indonesia, bukan path
+     * bertitik seperti "rows.0.ng.0.qty".
+     */
+    public function attributes(): array
+    {
+        return [
+            'rows.*.tanggal_produksi' => 'Tanggal Produksi',
+            'rows.*.id_shift' => 'Shift',
+            'rows.*.id_karyawan' => 'Operator',
+            'rows.*.id_mesin' => 'Mesin',
+            'rows.*.id_part_proses' => 'Proses',
+            'rows.*.jam_start' => 'Jam Start',
+            'rows.*.jam_finish' => 'Jam Finish',
+            'rows.*.qty_aktual' => 'Qty OK',
+            'rows.*.ng.*.id_jenis_ng' => 'Jenis NG',
+            'rows.*.ng.*.qty' => 'Qty NG',
+            'rows.*.dandori.*.id_losstime' => 'Jenis Loss Time',
+            'rows.*.dandori.*.actual_menit' => 'Aktual Dandori (menit)',
+            'rows.*.dandori_karyawan_id' => 'Operator Dandori',
+        ];
+    }
 }

@@ -18,6 +18,8 @@
         ])->values(),
     ])->values();
     $_shiftData = $shifts->map(fn ($s) => ['id' => $s->id, 'nama' => $s->nama_shift])->values();
+    $_ngLabel = $jenisNg->mapWithKeys(fn ($j) => [$j->id => $j->nama_ng]);
+    $_ltLabel = $losstimes->mapWithKeys(fn ($l) => [$l->id => $l->jenis_losstime]);
 @endphp
 
 @section('content')
@@ -319,6 +321,8 @@ const taMesin     = @json($_taMesin);
 const taParts     = @json($_taParts);
 const partsData   = @json($_partsData);
 const shiftData   = @json($_shiftData);
+const ngLabel     = @json($_ngLabel);
+const ltLabel     = @json($_ltLabel);
 
 /* SUBMIT DRAFT adalah POST biasa lalu server redirect — tidak ada JS yang
    jalan lagi setelah sukses, jadi mulai() (dijalankan lagi saat operator
@@ -562,12 +566,12 @@ function lhpBatch() {
 
         ringkasNg(r) {
             if (!r.ng.length) return '—';
-            return r.ng.map(n => `#${n.id_jenis_ng} ×${n.qty}`).join(', ');
+            return r.ng.map(n => `${ngLabel[n.id_jenis_ng] ?? n.id_jenis_ng} ×${n.qty}`).join(', ');
         },
 
         ringkasDandori(r) {
             if (!r.dandori.length) return '—';
-            return r.dandori.map(d => `#${d.id_losstime} ${d.actual_menit}mnt`).join(', ');
+            return r.dandori.map(d => `${ltLabel[d.id_losstime] ?? d.id_losstime} ${d.actual_menit}mnt`).join(', ');
         },
 
         batal() {

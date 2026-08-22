@@ -78,6 +78,17 @@ class HalamanBatchProduksiTest extends TestCase
         $this->assertStringContainsString('>Jenis NG<', $html);
     }
 
+    public function test_tabel_draft_punya_label_ng_dan_losstime(): void
+    {
+        // Ringkasan yang menampilkan id mentah (#1 ×5) membuat tabel draft tidak
+        // bisa dipakai memeriksa apa yang tadi diketik — padahal itu satu-satunya
+        // gunanya sebelum SUBMIT.
+        $html = $this->get(route('input.produksi.create'))->assertOk()->getContent();
+
+        $this->assertStringContainsString('GORES', $html);
+        $this->assertStringContainsString('GANTI DIES', $html);
+    }
+
     public function test_kunci_draft_dipisah_per_pengguna(): void
     {
         // Komputer di lantai produksi dipakai bergantian; kunci bersama membuat
