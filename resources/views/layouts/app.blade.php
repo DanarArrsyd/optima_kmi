@@ -729,6 +729,17 @@
         /* ══ Charts (Chart.js wrapper) ═══════════════════════════════ */
         canvas { max-width: 100%; }
 
+        /* ══ Panel blok opsional di form Input ═══════════════════════
+           Kemasan blok "Ada NG Proses?" dan "Ada Dandori". Satu definisi:
+           gaya sebaris yang disalin ulang sudah pernah menyimpang jadi dua
+           bentuk (p-3 vs padding:12px) di dua form yang sama. */
+        .input-panel {
+            background: #fafafa;
+            border: 1px solid #e5e7eb;
+            border-radius: 4px;
+            padding: 12px;
+        }
+
         /* ══ Typeahead / Autocomplete ════════════════════════════════ */
         .ta-wrap { position: relative; }
         .ta-input { width: 100%; }

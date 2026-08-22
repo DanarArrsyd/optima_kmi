@@ -454,4 +454,72 @@ class DandoriDariLhpTest extends TestCase
 
         $this->assertStringContainsString('data-progressive', $html);
     }
+
+    /* ── Kemasan blok dandori seragam dengan blok NG ──────────────────────── */
+
+    /** Benar-benar memeriksa pohon DOM, bukan kedekatan teks di HTML. */
+    private function dibungkusPanel(string $html, string $idCheckbox): bool
+    {
+        $dom = new \DOMDocument;
+        libxml_use_internal_errors(true);
+        $dom->loadHTML('<?xml encoding="UTF-8">'.$html);
+        libxml_clear_errors();
+
+        $xpath = new \DOMXPath($dom);
+        $cocok = $xpath->query(
+            "//input[@id='{$idCheckbox}']/ancestor::div[contains(concat(' ', normalize-space(@class), ' '), ' input-panel ')]"
+        );
+
+        return $cocok !== false && $cocok->length > 0;
+    }
+
+    #[DataProvider('formPembuatan')]
+    public function test_blok_ng_dan_dandori_memakai_kemasan_yang_sama(string $rute): void
+    {
+        $html = $this->get(route($rute))->assertOk()->getContent();
+        $akhiran = $rute === 'input.produksi.index' ? '_drawer' : '';
+
+        $this->assertTrue(
+            $this->dibungkusPanel($html, 'ada_ng'.$akhiran),
+            "Blok NG di {$rute} tidak dibungkus .input-panel."
+        );
+        $this->assertTrue(
+            $this->dibungkusPanel($html, 'ada_dandori'.$akhiran),
+            "Blok Dandori di {$rute} tidak dibungkus .input-panel — kemasannya beda dari blok NG."
+        );
+    }
+
+    public function test_kemasan_panel_tidak_ditulis_ulang_sebaris(): void
+    {
+        // Panel NG sempat punya dua bentuk berbeda (p-3 vs padding:12px) di dua
+        // form. Gaya sebaris yang disalin ulang selalu berakhir menyimpang.
+        $produksi = TransaksiProduksi::create([
+            'tanggal_produksi' => '2026-08-20',
+            'id_shift' => $this->shift->id,
+            'id_karyawan' => $this->karyawan->id,
+            'id_mesin' => $this->mesin->id,
+            'id_part_proses' => $this->proses->id,
+            'jam_start' => '07:00:00',
+            'jam_finish' => '15:00:00',
+            'qty_aktual' => 1000,
+            'created_by' => auth()->id(),
+        ]);
+
+        // Route edit admin-only; admin juga bisa membuka create dan index.
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        $halaman = [
+            route('input.produksi.create'),
+            route('input.produksi.index'),
+            route('input.produksi.edit', $produksi),
+        ];
+
+        foreach ($halaman as $url) {
+            $html = $this->get($url)->assertOk()->getContent();
+
+            $blokNg = substr($html, (int) strpos($html, 'name="ada_ng"') - 600, 600);
+            $this->assertStringNotContainsString('background:#fafafa', $blokNg,
+                "Panel di {$url} masih memakai gaya sebaris, bukan .input-panel.");
+        }
+    }
 }

@@ -194,7 +194,7 @@ $oldAdaNg      = old('ada_ng', false);
 
                 {{-- NG Proses Toggle --}}
                 <div class="col-12" x-data="{ adaNg: {{ $oldAdaNg ? 'true' : 'false' }} }">
-                    <div class="p-3" style="background:#fafafa;border:1px solid #e5e7eb;border-radius:4px">
+                    <div class="input-panel">
                         <div class="form-check mb-0">
                             <input class="form-check-input" type="checkbox" name="ada_ng" id="ada_ng"
                                    value="1" x-model="adaNg"
@@ -220,23 +220,30 @@ $oldAdaNg      = old('ada_ng', false);
                     </div>
                 </div>
 
+                {{-- Ada Dandori? --}}
                 <div class="col-12" x-data="{ adaDandori: {{ old('ada_dandori') ? 'true' : 'false' }} }">
-                    <div class="form-check">
-                        {{-- dandoriSync() satu definisi di partial dandori-rows: melepas
-                             centang MENGOSONGKAN barisnya (bukan sekadar menyembunyikan)
-                             supaya dandori_count konsisten dengan dandori[] yang terkirim,
-                             dan menyalakannya menyiapkan satu baris seperti halaman Dandori. --}}
-                        <input class="form-check-input" type="checkbox" name="ada_dandori"
-                               id="ada_dandori" value="1" x-model="adaDandori"
-                               @change="dandoriSync($el, adaDandori)">
-                        <label class="form-check-label fw-semibold" for="ada_dandori">Ada Dandori</label>
-                    </div>
-                    <div x-show="adaDandori" x-cloak class="mt-2">
-                        @include('input.partials.dandori-rows', [
-                            'losstimes' => $losstimes,
-                            'karyawan' => $karyawan,
-                            'initial' => old('dandori', []),
-                        ])
+                    <div class="input-panel">
+                        <div class="form-check mb-0">
+                            {{-- dandoriSync() satu definisi di partial dandori-rows: melepas
+                                 centang MENGOSONGKAN barisnya (bukan sekadar menyembunyikan)
+                                 supaya dandori_count konsisten dengan dandori[] yang terkirim,
+                                 dan menyalakannya menyiapkan satu baris seperti halaman Dandori. --}}
+                            <input class="form-check-input" type="checkbox" name="ada_dandori"
+                                   id="ada_dandori" value="1" x-model="adaDandori"
+                                   @change="dandoriSync($el, adaDandori)">
+                            <label class="form-check-label fw-semibold" for="ada_dandori"
+                                   style="font-size:0.875rem;color:#374151">
+                                <i class="bi bi-tools me-1 text-secondary"></i>Ada Dandori?
+                            </label>
+                        </div>
+
+                        <div x-show="adaDandori" x-cloak class="mt-2">
+                            @include('input.partials.dandori-rows', [
+                                'losstimes' => $losstimes,
+                                'karyawan' => $karyawan,
+                                'initial' => old('dandori', []),
+                            ])
+                        </div>
                     </div>
                 </div>
 
