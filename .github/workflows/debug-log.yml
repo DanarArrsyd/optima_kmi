@@ -28,6 +28,7 @@ on:
           - backupcheck    # kapasitas backup: mysqldump, disabled_functions, ukuran DB, sisa disk
           - dandoricek     # sesi dandori vs baris LHP: yatim, ambigu, operator beda
           - dandorilonggar # kenapa yatim: cocokkan tanpa shift, tanpa part, & jarak hari terdekat
+          - dandoripart    # yatim dicocokkan per PART (bukan part_proses) + sebaran mesin/part
           - markran        # ⚠️ MENULIS ke tabel migrations
 
 env:
@@ -211,6 +212,49 @@ jobs:
               echo \"=== C. Sesi yatim (kunci ketat): jarak hari ke LHP terdekat, mesin+part sama ===\", PHP_EOL;
               foreach (\$q(\"SELECT CASE WHEN m.jarak IS NULL THEN \\\"z. mesin+part ini TIDAK PERNAH ada LHP\\\" WHEN m.jarak=0 THEN \\\"a. hari sama, shift beda\\\" WHEN m.jarak=1 THEN \\\"b. selisih 1 hari\\\" WHEN m.jarak<=7 THEN \\\"c. selisih 2-7 hari\\\" ELSE \\\"d. selisih lebih dari 7 hari\\\" END ember, COUNT(*) jumlah FROM (SELECT d.tanggal,(SELECT MIN(ABS(DATEDIFF(p.tanggal_produksi,d.tanggal))) FROM transaksi_produksi p WHERE p.deleted_at IS NULL AND p.id_mesin=d.id_mesin AND p.id_part_proses=d.id_part_proses) jarak FROM (SELECT DISTINCT tanggal,id_shift,id_mesin,id_part_proses FROM transaksi_dandori_rincian WHERE deleted_at IS NULL) d LEFT JOIN (SELECT DISTINCT tanggal_produksi,id_shift,id_mesin,id_part_proses FROM transaksi_produksi WHERE deleted_at IS NULL) p2 ON p2.tanggal_produksi=d.tanggal AND p2.id_shift=d.id_shift AND p2.id_mesin=d.id_mesin AND p2.id_part_proses=d.id_part_proses WHERE p2.tanggal_produksi IS NULL) m GROUP BY ember ORDER BY ember\") as \$x) {
                 echo \"  \", str_pad(\$x->ember, 42), \$x->jumlah, PHP_EOL;
+              }
+            " < /dev/null'
+
+      # Lanjutan dandorilonggar. Satu hipotesis belum diuji dan kalau benar ia
+      # menjelaskan hampir seluruh 3.594 sesi "mesin+part tidak pernah ada LHP"
+      # TANPA ada produksi yang hilang:
+      #
+      #   master_part_proses = (id_part, nama_proses) — SATU part punya BANYAK
+      #   proses. Dandori dicatat pada proses yang diesnya diganti, sementara
+      #   LHP-nya bisa tercatat pada proses LAIN dari part yang sama. Kunci
+      #   sebelumnya memakai id_part_proses, jadi pasangan seperti itu terhitung
+      #   yatim padahal produksinya ada.
+      #
+      # Kalau yatimnya kolaps saat dicocokkan per PART, ini soal granularitas —
+      # bukan soal produksi yang tidak dicatat. Kalau tidak kolaps, sebaran per
+      # mesin dan per part menunjukkan apakah kekosongannya terpusat (satu area
+      # produksi memang tidak masuk sistem) atau menyebar tipis (pembatalan yang
+      # wajar). Read-only.
+      - name: Cocokkan Dandori per PART, bukan per proses (read-only)
+        if: ${{ github.event.inputs.mode == 'dandoripart' }}
+        run: |
+          ssh -p "${{ secrets.SSH_PORT }}" -i ~/.ssh/deploy_key \
+            "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" \
+            'cd ${{ env.REMOTE_PATH }} && ${{ env.REMOTE_PHP }} artisan tinker --execute="
+              \$q = fn(\$sql) => Illuminate\\Support\\Facades\\DB::select(\$sql);
+
+              \$a = \$q(\"SELECT COUNT(*) total, SUM(CASE WHEN x.id_part IS NULL THEN 1 ELSE 0 END) yatim FROM (SELECT DISTINCT d.tanggal, d.id_mesin, pp.id_part FROM transaksi_dandori_rincian d JOIN master_part_proses pp ON pp.id=d.id_part_proses WHERE d.deleted_at IS NULL) d LEFT JOIN (SELECT DISTINCT p.tanggal_produksi, p.id_mesin, pp2.id_part FROM transaksi_produksi p JOIN master_part_proses pp2 ON pp2.id=p.id_part_proses WHERE p.deleted_at IS NULL) x ON x.tanggal_produksi=d.tanggal AND x.id_mesin=d.id_mesin AND x.id_part=d.id_part\")[0];
+              echo \"=== A. Cocokkan per PART, hari sama, mesin sama ===\", PHP_EOL;
+              echo \"  total sesi : \", \$a->total, \"   yatim : \", (int) \$a->yatim, PHP_EOL, PHP_EOL;
+
+              \$b = \$q(\"SELECT COUNT(*) total, SUM(CASE WHEN x.id_part IS NULL THEN 1 ELSE 0 END) yatim FROM (SELECT DISTINCT d.id_mesin, pp.id_part FROM transaksi_dandori_rincian d JOIN master_part_proses pp ON pp.id=d.id_part_proses WHERE d.deleted_at IS NULL) d LEFT JOIN (SELECT DISTINCT p.id_mesin, pp2.id_part FROM transaksi_produksi p JOIN master_part_proses pp2 ON pp2.id=p.id_part_proses WHERE p.deleted_at IS NULL) x ON x.id_mesin=d.id_mesin AND x.id_part=d.id_part\")[0];
+              echo \"=== B. Kombinasi mesin+PART: pernah ada LHP kapan pun? ===\", PHP_EOL;
+              echo \"  total kombinasi : \", \$b->total, \"   tidak pernah ada LHP : \", (int) \$b->yatim, PHP_EOL, PHP_EOL;
+
+              echo \"=== C. Sepuluh MESIN penyumbang sesi yatim terbanyak (kunci ketat) ===\", PHP_EOL;
+              foreach (\$q(\"SELECT m.id_mesin nama, COUNT(*) jumlah FROM (SELECT DISTINCT d.tanggal,d.id_shift,d.id_mesin,d.id_part_proses FROM transaksi_dandori_rincian d WHERE d.deleted_at IS NULL) d LEFT JOIN (SELECT DISTINCT tanggal_produksi,id_shift,id_mesin,id_part_proses FROM transaksi_produksi WHERE deleted_at IS NULL) p ON p.tanggal_produksi=d.tanggal AND p.id_shift=d.id_shift AND p.id_mesin=d.id_mesin AND p.id_part_proses=d.id_part_proses JOIN master_mesin m ON m.id=d.id_mesin WHERE p.tanggal_produksi IS NULL GROUP BY m.id_mesin ORDER BY jumlah DESC LIMIT 10\") as \$x) {
+                echo \"  \", str_pad(\$x->nama, 14), \$x->jumlah, PHP_EOL;
+              }
+              echo PHP_EOL;
+
+              echo \"=== D. Sepuluh PART penyumbang sesi yatim terbanyak ===\", PHP_EOL;
+              foreach (\$q(\"SELECT mp.part_name nama, pp.nama_proses proses, COUNT(*) jumlah FROM (SELECT DISTINCT d.tanggal,d.id_shift,d.id_mesin,d.id_part_proses FROM transaksi_dandori_rincian d WHERE d.deleted_at IS NULL) d LEFT JOIN (SELECT DISTINCT tanggal_produksi,id_shift,id_mesin,id_part_proses FROM transaksi_produksi WHERE deleted_at IS NULL) p ON p.tanggal_produksi=d.tanggal AND p.id_shift=d.id_shift AND p.id_mesin=d.id_mesin AND p.id_part_proses=d.id_part_proses JOIN master_part_proses pp ON pp.id=d.id_part_proses JOIN master_part mp ON mp.id=pp.id_part WHERE p.tanggal_produksi IS NULL GROUP BY mp.part_name, pp.nama_proses ORDER BY jumlah DESC LIMIT 10\") as \$x) {
+                echo \"  \", str_pad(substr(\$x->nama, 0, 30), 32), str_pad(\$x->proses, 16), \$x->jumlah, PHP_EOL;
               }
             " < /dev/null'
 
