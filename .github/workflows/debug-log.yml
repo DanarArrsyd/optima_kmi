@@ -29,6 +29,7 @@ on:
           - dandoricek     # sesi dandori vs baris LHP: yatim, ambigu, operator beda
           - dandorilonggar # kenapa yatim: cocokkan tanpa shift, tanpa part, & jarak hari terdekat
           - dandoripart    # yatim dicocokkan per PART (bukan part_proses) + sebaran mesin/part
+          - dandoripartno  # part_name kembar dgn part_no beda; cocokkan per NAMA part
           - markran        # ⚠️ MENULIS ke tabel migrations
 
 env:
@@ -256,6 +257,44 @@ jobs:
               foreach (\$q(\"SELECT mp.part_name nama, pp.nama_proses proses, COUNT(*) jumlah FROM (SELECT DISTINCT d.tanggal,d.id_shift,d.id_mesin,d.id_part_proses FROM transaksi_dandori_rincian d WHERE d.deleted_at IS NULL) d LEFT JOIN (SELECT DISTINCT tanggal_produksi,id_shift,id_mesin,id_part_proses FROM transaksi_produksi WHERE deleted_at IS NULL) p ON p.tanggal_produksi=d.tanggal AND p.id_shift=d.id_shift AND p.id_mesin=d.id_mesin AND p.id_part_proses=d.id_part_proses JOIN master_part_proses pp ON pp.id=d.id_part_proses JOIN master_part mp ON mp.id=pp.id_part WHERE p.tanggal_produksi IS NULL GROUP BY mp.part_name, pp.nama_proses ORDER BY jumlah DESC LIMIT 10\") as \$x) {
                 echo \"  \", str_pad(substr(\$x->nama, 0, 30), 32), str_pad(\$x->proses, 16), \$x->jumlah, PHP_EOL;
               }
+            " < /dev/null'
+
+      # Lanjutan dandoripart. Mencocokkan per id_part menyisakan 44% yatim, dan
+      # satu part (FRAME DR CTR) menyumbang 66% dari seluruh sesi yatim.
+      #
+      # Hipotesis terakhir: unique pada master_part.part_no SUDAH DICABUT
+      # (migrasi 2026_06_10_100000), jadi satu nama part boleh punya beberapa
+      # baris master dengan part_no berbeda. Kalau dandori menunjuk baris yang
+      # satu dan LHP menunjuk baris yang lain, pasangannya terhitung yatim
+      # walaupun produksinya ada — dan id_part pun tidak cukup sebagai kunci.
+      #
+      # Yang diuji: berapa nama part yang punya lebih dari satu baris master,
+      # rincian baris untuk FRAME DR, dan apakah yatim kolaps saat dicocokkan
+      # per NAMA part. Read-only.
+      - name: Cek part_name kembar & cocokkan per nama part (read-only)
+        if: ${{ github.event.inputs.mode == 'dandoripartno' }}
+        run: |
+          ssh -p "${{ secrets.SSH_PORT }}" -i ~/.ssh/deploy_key \
+            "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" \
+            'cd ${{ env.REMOTE_PATH }} && ${{ env.REMOTE_PHP }} artisan tinker --execute="
+              \$q = fn(\$sql) => Illuminate\\Support\\Facades\\DB::select(\$sql);
+
+              \$a = \$q(\"SELECT COUNT(*) nama_unik, SUM(CASE WHEN n>1 THEN 1 ELSE 0 END) nama_kembar, MAX(n) terbanyak FROM (SELECT part_name, COUNT(*) n FROM master_part WHERE deleted_at IS NULL GROUP BY part_name) x\")[0];
+              echo \"=== A. Nama part yang punya lebih dari satu baris master ===\", PHP_EOL;
+              echo \"  nama unik   : \", \$a->nama_unik, PHP_EOL;
+              echo \"  nama kembar : \", (int) \$a->nama_kembar, PHP_EOL;
+              echo \"  terbanyak dalam satu nama : \", \$a->terbanyak, PHP_EOL, PHP_EOL;
+
+              echo \"=== B. Baris master untuk nama mengandung FRAME DR ===\", PHP_EOL;
+              echo \"  id | part_no | customer | proses | baris dandori | baris LHP\", PHP_EOL;
+              foreach (\$q(\"SELECT mp.id, mp.part_no, mp.customer, mp.part_name, (SELECT COUNT(*) FROM master_part_proses pp WHERE pp.id_part=mp.id) proses, (SELECT COUNT(*) FROM transaksi_dandori_rincian d JOIN master_part_proses pp2 ON pp2.id=d.id_part_proses WHERE pp2.id_part=mp.id AND d.deleted_at IS NULL) dandori, (SELECT COUNT(*) FROM transaksi_produksi p JOIN master_part_proses pp3 ON pp3.id=p.id_part_proses WHERE pp3.id_part=mp.id AND p.deleted_at IS NULL) lhp FROM master_part mp WHERE mp.deleted_at IS NULL AND mp.part_name LIKE \\\"%FRAME DR%\\\" ORDER BY dandori DESC LIMIT 15\") as \$x) {
+                echo \"  \", str_pad(\$x->id, 5), str_pad(substr(\$x->part_no, 0, 20), 22), str_pad(substr((string) \$x->customer, 0, 12), 14), str_pad(\$x->proses, 8), str_pad(\$x->dandori, 15), \$x->lhp, PHP_EOL;
+              }
+              echo PHP_EOL;
+
+              \$c = \$q(\"SELECT COUNT(*) total, SUM(CASE WHEN x.nm IS NULL THEN 1 ELSE 0 END) yatim FROM (SELECT DISTINCT d.tanggal, d.id_mesin, mp.part_name nm FROM transaksi_dandori_rincian d JOIN master_part_proses pp ON pp.id=d.id_part_proses JOIN master_part mp ON mp.id=pp.id_part WHERE d.deleted_at IS NULL) d LEFT JOIN (SELECT DISTINCT p.tanggal_produksi, p.id_mesin, mp2.part_name nm FROM transaksi_produksi p JOIN master_part_proses pp2 ON pp2.id=p.id_part_proses JOIN master_part mp2 ON mp2.id=pp2.id_part WHERE p.deleted_at IS NULL) x ON x.tanggal_produksi=d.tanggal AND x.id_mesin=d.id_mesin AND x.nm=d.nm\")[0];
+              echo \"=== C. Cocokkan per NAMA part (tanggal+mesin+part_name) ===\", PHP_EOL;
+              echo \"  total sesi : \", \$c->total, \"   yatim : \", (int) \$c->yatim, PHP_EOL;
             " < /dev/null'
 
       - name: Migrate status (breakdown & tanggal_instalasi)
