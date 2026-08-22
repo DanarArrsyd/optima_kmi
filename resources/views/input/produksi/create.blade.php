@@ -268,7 +268,8 @@
         </div>
 
         {{-- ══ SUBMIT ══ --}}
-        <form method="POST" action="{{ route('input.produksi.batch') }}" id="formBatch" class="mt-3">
+        <form method="POST" action="{{ route('input.produksi.batch') }}" id="formBatch" class="mt-3"
+              @submit="pindahkanKeBackup()">
             @csrf
             <template x-for="(r, i) in rows" :key="r.uid">
                 <div>
@@ -319,6 +320,12 @@ const taParts     = @json($_taParts);
 const partsData   = @json($_partsData);
 const shiftData   = @json($_shiftData);
 
+/* SUBMIT DRAFT adalah POST biasa lalu server redirect — tidak ada JS yang
+   jalan lagi setelah sukses, jadi mulai() (dijalankan lagi saat operator
+   kembali ke halaman ini) yang harus memutuskan apakah submit sebelumnya
+   diterima atau ditolak. Penanda itu adalah keberadaan galat validasi. */
+const adaGalatServer = @json($errors->any());
+
 /* Part memilih part sekaligus mengisi Part No dan daftar prosesnya. */
 function partPicker() {
     return {
@@ -360,6 +367,17 @@ function lhpBatch() {
        bergantian, dan kunci bersama membuat draft operator A muncul di layar
        operator B. */
     const KUNCI = 'optima_draft_lhp_produksi_u{{ auth()->id() }}';
+
+    /* Kunci cadangan: SUBMIT DRAFT adalah POST form biasa yang berakhir di
+       redirect server, jadi tidak ada kesempatan JS menghapus KUNCI tepat
+       saat sukses. Sebaliknya, submit memindahkan isi KUNCI ke sini dulu
+       (lihat pindahkanKeBackup()) lalu mengosongkan KUNCI. Baris ini baru
+       benar-benar dibuang atau dipulihkan belakangan, di mulai(), setelah
+       kita tahu hasil server: batch DITOLAK (ada galat validasi) berarti
+       operator tidak boleh kehilangan ketikannya — dipulihkan; batch
+       DITERIMA berarti baris-baris itu sudah tersimpan di server dan
+       TIDAK BOLEH dikirim ulang — dibuang. */
+    const KUNCI_BACKUP = 'optima_draft_lhp_produksi_terkirim_u{{ auth()->id() }}';
     let seq = 0;
 
     return {
@@ -369,6 +387,24 @@ function lhpBatch() {
         barisGagal: [],
 
         mulai() {
+            /* Selesaikan nasib KUNCI_BACKUP (kalau ada) SEBELUM membaca KUNCI,
+               supaya restorasi normal di bawah otomatis mengambil hasilnya. */
+            try {
+                const backupMentah = localStorage.getItem(KUNCI_BACKUP);
+                if (backupMentah !== null) {
+                    if (adaGalatServer) {
+                        // Batch ditolak server → kembalikan ke KUNCI supaya
+                        // dipulihkan seperti draft biasa di bawah.
+                        localStorage.setItem(KUNCI, backupMentah);
+                    }
+                    // Batch diterima (tidak ada galat) → cukup buang backup;
+                    // KUNCI sudah dikosongkan saat submit, jangan disentuh lagi.
+                    localStorage.removeItem(KUNCI_BACKUP);
+                }
+            } catch (e) {
+                localStorage.removeItem(KUNCI_BACKUP);
+            }
+
             try {
                 const mentah = localStorage.getItem(KUNCI);
                 if (mentah) {
@@ -538,6 +574,25 @@ function lhpBatch() {
             if (this.rows.length && !confirm(`Buang ${this.rows.length} baris draft yang belum dikirim?`)) return;
             localStorage.removeItem(KUNCI);
             window.location = '{{ route('input.produksi.index') }}';
+        },
+
+        /* Dipasang di @submit #formBatch. Form ini POST biasa (bukan
+           @submit.prevent) — begitu handler ini selesai, browser lanjut
+           mengirim form dan halaman ini hilang sebelum JS lain sempat jalan.
+           Jadi draft TIDAK bisa langsung dihapus di sini: kalau server nanti
+           menolak batch (galat validasi), operator akan diarahkan balik ke
+           halaman ini dan berhak mendapatkan ketikannya kembali. Sebagai
+           gantinya draft dipindah ke KUNCI_BACKUP dan KUNCI dikosongkan;
+           mulai() yang membereskan nasib akhirnya saat halaman ini dibuka
+           lagi (lihat komentar di sana). */
+        pindahkanKeBackup() {
+            try {
+                const mentah = localStorage.getItem(KUNCI);
+                if (mentah !== null) localStorage.setItem(KUNCI_BACKUP, mentah);
+                localStorage.removeItem(KUNCI);
+            } catch (e) {
+                // localStorage tak tersedia; biarkan submit tetap jalan apa adanya.
+            }
         },
     };
 }

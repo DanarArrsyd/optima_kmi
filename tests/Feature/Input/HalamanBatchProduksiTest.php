@@ -92,6 +92,17 @@ class HalamanBatchProduksiTest extends TestCase
         $this->get(route('input.produksi.create'))->assertForbidden();
     }
 
+    public function test_draft_dibersihkan_setelah_submit_bukan_dipulihkan_lagi(): void
+    {
+        // Draft yang tidak dibersihkan setelah submit akan "dipulihkan" saat
+        // operator membuka halaman ini lagi, lalu terkirim untuk kedua kalinya —
+        // baris LHP dobel yang menggelembungkan angka produksi tanpa ada yang lapor.
+        $html = $this->get(route('input.produksi.create'))->assertOk()->getContent();
+
+        $this->assertStringContainsString('optima_draft_lhp_produksi_terkirim_u'.auth()->id(), $html);
+        $this->assertStringContainsString('formBatch', $html);
+    }
+
     public function test_pemilih_proses_berada_dalam_scope_part_picker(): void
     {
         // prosesList adalah state partPicker(). Kalau <select> Proses berada di
