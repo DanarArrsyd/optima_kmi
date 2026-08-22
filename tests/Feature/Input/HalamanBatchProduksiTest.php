@@ -64,8 +64,22 @@ class HalamanBatchProduksiTest extends TestCase
     public function test_pilihan_proses_membawa_penanda_progressive(): void
     {
         // Tanpa penanda ini pratinjau Std/Over di blok dandori diam-diam selalu
-        // memakai std_menit_default.
-        $this->assertStringContainsString('data-progressive', $this->halaman());
+        // memakai std_menit_default. `data-progressive` juga muncul sebagai teks
+        // di komentar JS pada dandori-rows.blade.php — jangkarkan ke dalam
+        // <select> Proses itu sendiri, dan ke bentuk bindingnya (:data-progressive),
+        // supaya literal di tempat lain tidak bisa meloloskan asersi ini.
+        $html = $this->halaman();
+
+        $awal = strpos($html, 'name="id_part_proses"');
+        $this->assertNotFalse($awal, '<select> Proses tidak ditemukan.');
+
+        $akhir = strpos($html, '</select>', $awal);
+        $this->assertNotFalse($akhir, 'Penutup <select> Proses tidak ditemukan.');
+
+        $blokSelect = substr($html, $awal, $akhir - $awal);
+
+        $this->assertStringContainsString(':data-progressive="', $blokSelect,
+            'Binding :data-progressive tidak ditemukan di dalam <select> Proses.');
     }
 
     public function test_kolom_dandori_ada_di_tabel_draft(): void
@@ -82,11 +96,28 @@ class HalamanBatchProduksiTest extends TestCase
     {
         // Ringkasan yang menampilkan id mentah (#1 ×5) membuat tabel draft tidak
         // bisa dipakai memeriksa apa yang tadi diketik — padahal itu satu-satunya
-        // gunanya sebelum SUBMIT.
+        // gunanya sebelum SUBMIT. 'GORES' juga muncul di <option> pilihan NG dan
+        // 'GANTI DIES' di data typeahead losstime dandori, jadi jangkarkan ke
+        // deklarasi konstanta JSON ngLabel/ltLabel yang dipakai tabel draft itu
+        // sendiri, bukan ke kemunculan nama di mana pun pada halaman.
         $html = $this->get(route('input.produksi.create'))->assertOk()->getContent();
 
-        $this->assertStringContainsString('GORES', $html);
-        $this->assertStringContainsString('GANTI DIES', $html);
+        $this->assertStringContainsString('GORES', $this->konstanta($html, 'ngLabel'));
+        $this->assertStringContainsString('GANTI DIES', $this->konstanta($html, 'ltLabel'));
+    }
+
+    /** Ambil isi pernyataan `const $nama = ...;` di @push('scripts') — dijangkarkan
+     *  ke deklarasinya sendiri karena nilainya (mis. "GORES") bisa muncul di
+     *  tempat lain pada halaman yang sama tanpa hubungan dengan konstanta ini. */
+    private function konstanta(string $html, string $nama): string
+    {
+        $awal = strpos($html, "const {$nama}");
+        $this->assertNotFalse($awal, "Konstanta {$nama} tidak ditemukan.");
+
+        $akhir = strpos($html, ';', $awal);
+        $this->assertNotFalse($akhir, "Akhir pernyataan konstanta {$nama} tidak ditemukan.");
+
+        return substr($html, $awal, $akhir - $awal);
     }
 
     public function test_kunci_draft_dipisah_per_pengguna(): void
