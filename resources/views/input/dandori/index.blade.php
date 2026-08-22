@@ -81,7 +81,7 @@ $filterActive = ($search ?? '') !== '' || $filterKarId || $filterMesinId || $fil
     {{-- Header --}}
     <div class="erp-drawer-hd">
         <div>
-            <i class="bi bi-tools me-2"></i>Input Dandori
+            <i class="bi bi-tools me-2"></i>Dandori tanpa LHP
         </div>
         <button type="button" @click="drawerOpen = false"
                 >
@@ -374,9 +374,15 @@ $filterActive = ($search ?? '') !== '' || $filterKarId || $filterMesinId || $fil
 
 {{-- ── Strip toolbar ─────────────────────────────────────────── --}}
 <div class="erp-tb">
+    {{-- Jalur sekunder. Alur utama pencatatan dandori sekarang lewat centang
+         "Ada Dandori" di form LHP Produksi; tombol ini untuk 17% kejadian yang
+         memang tidak punya baris LHP — ganti dies yang produksinya batal, atau
+         yang produksinya jalan di shift berikutnya. Gaya `is-new` (hijau,
+         dipakai aksi Tambah utama) sengaja dilepas supaya ia tidak lagi
+         terbaca sebagai jalan masuk utama. --}}
     @if(! auth()->user()->isGuest())
-    <button type="button" class="erp-tb-btn is-new" @click="drawerOpen = true">
-        <i class="bi bi-plus-lg"></i>Input Baru
+    <button type="button" class="erp-tb-btn" @click="drawerOpen = true">
+        <i class="bi bi-plus-lg"></i>Dandori tanpa LHP
     </button>
     @endif
 

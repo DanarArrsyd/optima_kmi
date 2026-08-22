@@ -343,4 +343,52 @@ class DandoriDariLhpTest extends TestCase
 
         $this->assertStringNotContainsString('name="ada_dandori"', $html);
     }
+
+    public function test_halaman_dandori_menandai_input_sebagai_jalur_sekunder(): void
+    {
+        // 17% sesi dandori pada era aplikasi tidak punya baris LHP — ganti dies
+        // yang produksinya batal atau jalan di shift berikutnya. Mencabut
+        // tombolnya membuat kejadian itu tidak bisa dicatat sama sekali.
+        $html = $this->get(route('input.dandori.index'))->assertOk()->getContent();
+
+        $this->assertStringContainsString('Dandori tanpa LHP', $html);
+    }
+
+    public function test_mengubah_lhp_tidak_menyentuh_dandori(): void
+    {
+        $this->post(route('input.produksi.store'), $this->payloadLhp([
+            'ada_dandori' => 1,
+            'dandori_count' => 1,
+            'dandori' => [['id_losstime' => $this->losstime->id, 'actual_menit' => 50]],
+        ]))->assertRedirect();
+
+        $produksi = TransaksiProduksi::first();
+        $sebelum = TransaksiDandoriRincian::first()->only(['id_losstime', 'actual_menit', 'std_menit', 'over_menit']);
+
+        // Route edit/update LHP Produksi admin-only — beda dari create/store
+        // yang dipakai staff_produksi di setUp() dan test lain pada berkas ini.
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        $this->put(route('input.produksi.update', $produksi), $this->payloadLhp([
+            'qty_aktual' => 2000,
+        ]))->assertRedirect();
+
+        $this->assertSame(1, TransaksiDandoriRincian::count());
+        $this->assertSame($sebelum, TransaksiDandoriRincian::first()->only(['id_losstime', 'actual_menit', 'std_menit', 'over_menit']));
+    }
+
+    public function test_menghapus_lhp_tidak_menghapus_dandori(): void
+    {
+        // Keduanya catatan yang berdiri sendiri; dandori tetap sah walau baris
+        // LHP-nya dihapus.
+        $this->post(route('input.produksi.store'), $this->payloadLhp([
+            'ada_dandori' => 1,
+            'dandori_count' => 1,
+            'dandori' => [['id_losstime' => $this->losstime->id, 'actual_menit' => 50]],
+        ]))->assertRedirect();
+
+        $this->delete(route('input.produksi.destroy', TransaksiProduksi::first()))->assertRedirect();
+
+        $this->assertSame(1, TransaksiDandoriRincian::count());
+    }
 }
