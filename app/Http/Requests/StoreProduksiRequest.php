@@ -27,6 +27,12 @@ class StoreProduksiRequest extends FormRequest
             'ng' => 'array|required_if:ada_ng,1',
             'ng.*.id_jenis_ng' => 'required|integer|exists:master_jenis_ng,id|distinct',
             'ng.*.qty' => 'required|integer|min:1',
+            'ada_dandori' => 'nullable|boolean',
+            'dandori_count' => 'nullable|integer|min:0',
+            'dandori' => 'array|required_if:ada_dandori,1',
+            'dandori.*.id_losstime' => 'required|integer|exists:master_losstime,id|distinct',
+            'dandori.*.actual_menit' => 'required|numeric|min:0.01',
+            'dandori_karyawan_id' => 'nullable|integer|exists:master_karyawan,id',
         ];
     }
 
@@ -35,6 +41,11 @@ class StoreProduksiRequest extends FormRequest
         /* Kalau ada_ng tidak dicentang, buang seluruh baris NG. */
         if (! $this->boolean('ada_ng')) {
             $this->merge(['ng' => []]);
+        }
+
+        /* Kalau ada_dandori tidak dicentang, buang seluruh baris dandori. */
+        if (! $this->boolean('ada_dandori')) {
+            $this->merge(['dandori' => []]);
         }
     }
 
@@ -62,6 +73,29 @@ class StoreProduksiRequest extends FormRequest
                     "Jumlah baris NG yang tercatat ({$ngCount}) tidak sama dengan yang terkirim ({$submitted}). "
                     .'Coba simpan ulang.'
                 );
+            }
+
+            /*
+             * Sama seperti ng_count: hitungan ini membuktikan Alpine hidup,
+             * bukan bahwa baris dandori[] benar-benar sampai. Payload dengan
+             * dandori_count=2 tapi dandori[] hilang akan lolos aturan di atas
+             * dan menyimpan NOL baris dandori tanpa satu pun error — operator
+             * mengira sudah tercatat.
+             *
+             * Dilewati kalau dandori_count tidak dikirim sama sekali: request
+             * seperti itu memang tidak menyebut dandori.
+             */
+            if ($this->has('dandori_count')) {
+                $dandoriCount = (int) $this->input('dandori_count', 0);
+                $dandoriTerkirim = is_array($this->input('dandori')) ? count($this->input('dandori')) : 0;
+
+                if ($dandoriCount !== $dandoriTerkirim) {
+                    $validator->errors()->add(
+                        'dandori_count',
+                        "Jumlah baris Dandori yang tercatat ({$dandoriCount}) tidak sama dengan yang terkirim ({$dandoriTerkirim}). "
+                        .'Coba simpan ulang.'
+                    );
+                }
             }
         });
     }

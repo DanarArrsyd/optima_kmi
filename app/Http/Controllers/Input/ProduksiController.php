@@ -15,6 +15,7 @@ use App\Models\MasterMesin;
 use App\Models\MasterPart;
 use App\Models\MasterShift;
 use App\Models\TransaksiProduksi;
+use App\Services\DandoriRincianService;
 use App\Services\NgDetailService;
 use App\Services\NotificationService;
 use App\Services\ProduksiService;
@@ -30,6 +31,7 @@ class ProduksiController extends Controller
         private ProduksiService $produksiService,
         private NotificationService $notifSvc,
         private NgDetailService $ngDetailService,
+        private DandoriRincianService $dandoriRincianService,
     ) {}
 
     public function index(Request $request)
@@ -157,7 +159,13 @@ class ProduksiController extends Controller
     {
         $validated = $request->validated();
         $ngRows = $validated['ng'] ?? [];
-        unset($validated['ng'], $validated['ada_ng'], $validated['ng_count']);
+        $dandoriRows = $validated['dandori'] ?? [];
+        $dandoriKaryawan = $validated['dandori_karyawan_id'] ?? $validated['id_karyawan'];
+        unset(
+            $validated['ng'], $validated['ada_ng'], $validated['ng_count'],
+            $validated['dandori'], $validated['ada_dandori'], $validated['dandori_count'],
+            $validated['dandori_karyawan_id'],
+        );
 
         $cycleTime = $this->produksiService->calculateActualCycleTime(
             $validated['jam_start'].':00',
@@ -165,7 +173,7 @@ class ProduksiController extends Controller
             $validated['qty_aktual']
         );
 
-        DB::transaction(function () use ($validated, $cycleTime, $ngRows) {
+        DB::transaction(function () use ($validated, $cycleTime, $ngRows, $dandoriRows, $dandoriKaryawan) {
             $produksi = TransaksiProduksi::create([
                 ...$validated,
                 'actual_cycle_time' => $cycleTime,
@@ -173,6 +181,21 @@ class ProduksiController extends Controller
             ]);
 
             $this->ngDetailService->syncProduksi($produksi, $ngRows);
+
+            /*
+             * Baris dandori sengaja TIDAK menyimpan tautan ke baris LHP: satu
+             * kombinasi tanggal+shift+mesin+proses bisa punya sampai lima baris
+             * LHP, jadi tautan apa pun butuh aturan sewenang-wenang. Ia cuma
+             * menyalin field sesi — bentuk barisnya identik dengan yang ditulis
+             * form Dandori, sehingga tidak satu pun perhitungan berubah.
+             */
+            $this->dandoriRincianService->simpan([
+                'tanggal' => $validated['tanggal_produksi'],
+                'id_shift' => $validated['id_shift'],
+                'id_karyawan' => $dandoriKaryawan,
+                'id_mesin' => $validated['id_mesin'],
+                'id_part_proses' => $validated['id_part_proses'],
+            ], $dandoriRows);
         });
 
         return redirect()->route('input.produksi.index')

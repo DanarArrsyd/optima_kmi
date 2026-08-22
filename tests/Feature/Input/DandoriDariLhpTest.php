@@ -9,6 +9,7 @@ use App\Models\MasterPart;
 use App\Models\MasterPartProses;
 use App\Models\MasterShift;
 use App\Models\TransaksiDandoriRincian;
+use App\Models\TransaksiProduksi;
 use App\Models\User;
 use App\Services\DandoriRincianService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -38,6 +39,8 @@ class DandoriDariLhpTest extends TestCase
 
     private $losstime;
 
+    private $losstimeKedua;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -65,6 +68,10 @@ class DandoriDariLhpTest extends TestCase
         $this->losstime = MasterLosstime::create([
             'kode' => 'LT1', 'jenis_losstime' => 'GANTI DIES',
             'std_menit_default' => 30, 'std_menit_progressive' => 45,
+        ]);
+        $this->losstimeKedua = MasterLosstime::create([
+            'kode' => 'LT2', 'jenis_losstime' => 'SETTING',
+            'std_menit_default' => 15, 'std_menit_progressive' => 20,
         ]);
 
         $this->actingAs(User::factory()->create(['role' => 'staff_produksi']));
@@ -129,6 +136,119 @@ class DandoriDariLhpTest extends TestCase
         $jumlah = app(DandoriRincianService::class)->simpan($this->sesi(), []);
 
         $this->assertSame(0, $jumlah);
+        $this->assertSame(0, TransaksiDandoriRincian::count());
+    }
+
+    /** Payload LHP minimal yang sah; blok dandori ditambahkan per test. */
+    private function payloadLhp(array $tambahan = []): array
+    {
+        return array_merge([
+            'tanggal_produksi' => '2026-08-20',
+            'id_shift' => $this->shift->id,
+            'id_karyawan' => $this->karyawan->id,
+            'id_mesin' => $this->mesin->id,
+            'id_part_proses' => $this->proses->id,
+            'jam_start' => '07:00',
+            'jam_finish' => '15:00',
+            'qty_aktual' => 1000,
+            'ng_count' => 0,
+        ], $tambahan);
+    }
+
+    public function test_menyimpan_rincian_dandori_bersama_lhp(): void
+    {
+        $this->post(route('input.produksi.store'), $this->payloadLhp([
+            'ada_dandori' => 1,
+            'dandori_count' => 2,
+            'dandori' => [
+                ['id_losstime' => $this->losstime->id, 'actual_menit' => 50],
+                ['id_losstime' => $this->losstimeKedua->id, 'actual_menit' => 10],
+            ],
+        ]))->assertRedirect();
+
+        $this->assertSame(1, TransaksiProduksi::count());
+        $this->assertSame(2, TransaksiDandoriRincian::count());
+
+        // Field sesi harus persis mengikuti baris LHP-nya.
+        $baris = TransaksiDandoriRincian::first();
+        $this->assertSame('2026-08-20', $baris->tanggal->toDateString());
+        $this->assertSame($this->shift->id, $baris->id_shift);
+        $this->assertSame($this->mesin->id, $baris->id_mesin);
+        $this->assertSame($this->proses->id, $baris->id_part_proses);
+        $this->assertSame($this->karyawan->id, $baris->id_karyawan);
+    }
+
+    public function test_tanpa_centang_tidak_menulis_dandori(): void
+    {
+        $this->post(route('input.produksi.store'), $this->payloadLhp([
+            'dandori_count' => 0,
+        ]))->assertRedirect();
+
+        $this->assertSame(1, TransaksiProduksi::count());
+        $this->assertSame(0, TransaksiDandoriRincian::count());
+    }
+
+    public function test_hitungan_tidak_cocok_ditolak(): void
+    {
+        // dandori_count membuktikan Alpine hidup, bukan bahwa baris dandori[]
+        // benar-benar sampai. Tanpa penjaga ini, payload terpotong menyimpan
+        // NOL baris dandori tanpa satu pun error — operator mengira tercatat.
+        $this->post(route('input.produksi.store'), $this->payloadLhp([
+            'ada_dandori' => 1,
+            'dandori_count' => 2,
+            'dandori' => [
+                ['id_losstime' => $this->losstime->id, 'actual_menit' => 50],
+            ],
+        ]))->assertSessionHasErrors('dandori_count');
+
+        $this->assertSame(0, TransaksiProduksi::count());
+        $this->assertSame(0, TransaksiDandoriRincian::count());
+    }
+
+    public function test_jenis_loss_time_kembar_ditolak(): void
+    {
+        $this->post(route('input.produksi.store'), $this->payloadLhp([
+            'ada_dandori' => 1,
+            'dandori_count' => 2,
+            'dandori' => [
+                ['id_losstime' => $this->losstime->id, 'actual_menit' => 50],
+                ['id_losstime' => $this->losstime->id, 'actual_menit' => 20],
+            ],
+        ]))->assertSessionHasErrors('dandori.0.id_losstime');
+
+        $this->assertSame(0, TransaksiDandoriRincian::count());
+    }
+
+    public function test_operator_dandori_bisa_beda_dari_lhp(): void
+    {
+        // Probe prod menemukan 250 sesi dengan operator dandori berbeda dari
+        // operator LHP-nya; mewarisi tanpa bisa diubah memaksa data yang salah.
+        $this->post(route('input.produksi.store'), $this->payloadLhp([
+            'ada_dandori' => 1,
+            'dandori_count' => 1,
+            'dandori_karyawan_id' => $this->karyawanLain->id,
+            'dandori' => [
+                ['id_losstime' => $this->losstime->id, 'actual_menit' => 50],
+            ],
+        ]))->assertRedirect();
+
+        $this->assertSame($this->karyawanLain->id, TransaksiDandoriRincian::first()->id_karyawan);
+    }
+
+    public function test_lhp_gagal_tidak_meninggalkan_baris_dandori(): void
+    {
+        // Keduanya ditulis dalam satu transaksi; separuh tersimpan lebih buruk
+        // daripada gagal, karena dandori tanpa LHP tidak terlihat salah.
+        $this->post(route('input.produksi.store'), $this->payloadLhp([
+            'qty_aktual' => -5,
+            'ada_dandori' => 1,
+            'dandori_count' => 1,
+            'dandori' => [
+                ['id_losstime' => $this->losstime->id, 'actual_menit' => 50],
+            ],
+        ]))->assertSessionHasErrors();
+
+        $this->assertSame(0, TransaksiProduksi::count());
         $this->assertSame(0, TransaksiDandoriRincian::count());
     }
 }
