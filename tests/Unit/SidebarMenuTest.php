@@ -45,10 +45,11 @@ class SidebarMenuTest extends TestCase
         return array_column(SidebarMenu::forRole($role), 'key');
     }
 
-    public function test_admin_melihat_sembilan_baris_tingkat_atas(): void
+    public function test_urutan_dan_kunci_tingkat_atas_admin(): void
     {
+        // Urutan disengaja: pekerjaan harian di atas, administrasi di bawah.
         $this->assertSame(
-            ['chatbot', 'overview', 'anomali', 'input', 'produksi', 'quality', 'mtcmesin', 'mtcdies', 'master'],
+            ['overview', 'chatbot', 'produksi', 'quality', 'mtcmesin', 'mtcdies', 'master', 'sistem'],
             $this->keys('admin')
         );
     }
@@ -93,25 +94,56 @@ class SidebarMenuTest extends TestCase
         $this->assertNotContains('chatbot', $this->keys('guest'));
     }
 
-    public function test_grup_input_menyusut_sesuai_role(): void
+    public function test_grup_quality_menyusut_untuk_manager(): void
     {
-        $grup = collect(SidebarMenu::forRole('staff_qc'))->firstWhere('key', 'input');
+        // staff_qc dan guest sama-sama melihat keempat anak grup quality, jadi
+        // keduanya tidak membuktikan grup ini bisa menyusut. manager satu-
+        // satunya role yang benar-benar kehilangan anak: dia memantau VCB
+        // tapi tidak menginput LHP Quality.
+        $grup = collect(SidebarMenu::forRole('manager'))->firstWhere('key', 'quality');
 
-        $this->assertSame(['LHP Quality'], array_column($grup['items'], 'label'));
+        $this->assertSame(
+            ['VCB Quality', 'VCB NG Total', 'Daftar NG Total'],
+            array_column($grup['items'], 'label')
+        );
+        $this->assertNotContains('LHP Quality', array_column($grup['items'], 'label'));
     }
 
     public function test_manager_melihat_breakdown_tapi_bukan_lhp(): void
     {
-        $grup = collect(SidebarMenu::forRole('manager'))->firstWhere('key', 'input');
+        // manager tidak menginput LHP, tapi memantau breakdown. Sesudah penataan
+        // ulang keduanya ada di grup domain yang sama, jadi penyaringan per-anak
+        // inilah yang menjaga manager tidak kebagian halaman input.
+        $grup = collect(SidebarMenu::forRole('manager'))->firstWhere('key', 'mtcmesin');
 
-        $this->assertSame(['Breakdown Mesin', 'Breakdown Dies'], array_column($grup['items'], 'label'));
+        $this->assertSame(
+            ['Breakdown Mesin', 'MTTR', 'MTBF', 'Availability', 'Control Stroke'],
+            array_column($grup['items'], 'label')
+        );
+
+        $produksi = collect(SidebarMenu::forRole('manager'))->firstWhere('key', 'produksi');
+
+        $this->assertNotContains('LHP Produksi', array_column($produksi['items'], 'label'));
     }
 
     public function test_guest_melihat_lhp_tapi_bukan_breakdown(): void
     {
-        $grup = collect(SidebarMenu::forRole('guest'))->firstWhere('key', 'input');
+        $produksi = collect(SidebarMenu::forRole('guest'))->firstWhere('key', 'produksi');
+        $mtc = collect(SidebarMenu::forRole('guest'))->firstWhere('key', 'mtcmesin');
 
-        $this->assertSame(['LHP Produksi', 'Dandori', 'LHP Quality'], array_column($grup['items'], 'label'));
+        $this->assertContains('LHP Produksi', array_column($produksi['items'], 'label'));
+        $this->assertNotContains('Breakdown Mesin', array_column($mtc['items'], 'label'));
+    }
+
+    public function test_grup_sistem_hanya_untuk_admin(): void
+    {
+        // Satu arsip backup memuat seluruh database; grup ini tidak boleh bocor
+        // ke peran lain lewat menu, sekalipun route-nya sudah dijaga role:admin.
+        $this->assertContains('sistem', $this->keys('admin'));
+
+        foreach (['manager', 'staff_produksi', 'staff_qc', 'staff_maintenance', 'guest'] as $role) {
+            $this->assertNotContains('sistem', $this->keys($role), "Grup sistem bocor ke {$role}.");
+        }
     }
 
     public function test_tiap_item_punya_pola_match_yang_terisi(): void
@@ -155,5 +187,27 @@ class SidebarMenuTest extends TestCase
         $this->get('/profile');
 
         $this->assertNull(SidebarMenu::activeGroup('admin'));
+    }
+
+    public function test_tidak_ada_route_yang_muncul_dua_kali(): void
+    {
+        // Dibaca dari config MENTAH, bukan forRole('admin'), supaya entri yang
+        // hanya terlihat peran lain ikut tercakup.
+        $routes = [];
+
+        foreach (config('sidebar') as $entri) {
+            if (($entri['type'] ?? 'link') === 'link') {
+                $routes[] = $entri['route'];
+
+                continue;
+            }
+            foreach ($entri['items'] as $anak) {
+                $routes[] = $anak['route'];
+            }
+        }
+
+        $ganda = array_keys(array_filter(array_count_values($routes), fn ($n) => $n > 1));
+
+        $this->assertSame([], $ganda, 'Route muncul lebih dari sekali di sidebar: '.implode(', ', $ganda));
     }
 }

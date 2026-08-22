@@ -236,13 +236,34 @@ class BackupHalamanTest extends TestCase
     // halaman nyata yang memuat layouts.app, sama seperti konvensi di
     // tests/Feature/Layout/GuestUiTest.php.
 
-    public function test_admin_melihat_tautan_backup_di_topbar(): void
+    public function test_admin_melihat_tautan_backup_di_sidebar(): void
     {
+        // Dijangkarkan ke <nav id="sidebar"> — route Backup juga muncul di
+        // tempat lain pada halaman, jadi asersi ke seluruh HTML tidak pernah
+        // bisa gagal.
         $admin = User::factory()->create(['role' => 'admin']);
 
-        $this->actingAs($admin)
-            ->get(route('vcb.produksi'))
-            ->assertSee(route('sistem.backup.index'), false);
+        $html = $this->actingAs($admin)->get(route('vcb.produksi'))->assertOk()->getContent();
+        $awal = strpos($html, '<nav id="sidebar"');
+        $this->assertNotFalse($awal, 'Sidebar tidak ditemukan.');
+        $sidebar = substr($html, $awal, strpos($html, '</nav>', $awal) - $awal);
+
+        $this->assertStringContainsString(route('sistem.backup.index'), $sidebar);
+    }
+
+    public function test_backup_tidak_lagi_ada_di_dropdown_topbar(): void
+    {
+        // Dua pintu masuk untuk satu halaman membuat orang ragu mana yang benar.
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $html = $this->actingAs($admin)->get(route('vcb.produksi'))->assertOk()->getContent();
+        $awal = strpos($html, 'class="topbar-item user-block"');
+        $this->assertNotFalse($awal, 'Blok user topbar tidak ditemukan.');
+        $dropdown = substr($html, $awal, 1600);
+
+        $this->assertStringNotContainsString(route('sistem.backup.index'), $dropdown);
+        // Logout tetap di tempatnya, tetap POST ber-CSRF.
+        $this->assertStringContainsString(route('logout'), $dropdown);
     }
 
     public function test_bukan_admin_tidak_melihat_tautan_backup(): void
