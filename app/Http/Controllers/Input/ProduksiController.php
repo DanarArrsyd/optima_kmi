@@ -16,7 +16,6 @@ use App\Models\MasterMesin;
 use App\Models\MasterPart;
 use App\Models\MasterShift;
 use App\Models\TransaksiProduksi;
-use App\Services\DandoriRincianService;
 use App\Services\NgDetailService;
 use App\Services\NotificationService;
 use App\Services\ProduksiService;
@@ -33,7 +32,6 @@ class ProduksiController extends Controller
         private ProduksiService $produksiService,
         private NotificationService $notifSvc,
         private NgDetailService $ngDetailService,
-        private DandoriRincianService $dandoriRincianService,
         private ProduksiWriteService $produksiWriteService,
     ) {}
 
