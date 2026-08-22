@@ -91,4 +91,27 @@ class HalamanBatchProduksiTest extends TestCase
 
         $this->get(route('input.produksi.create'))->assertForbidden();
     }
+
+    public function test_pemilih_proses_berada_dalam_scope_part_picker(): void
+    {
+        // prosesList adalah state partPicker(). Kalau <select> Proses berada di
+        // LUAR elemen itu, Alpine tidak pernah bisa mengevaluasinya: daftar
+        // proses tak pernah terisi dan tidak satu pun baris bisa disimpan.
+        // Test render server tidak melihat ini — makanya diperiksa strukturnya.
+        $html = $this->get(route('input.produksi.create'))->assertOk()->getContent();
+
+        $dom = new \DOMDocument;
+        libxml_use_internal_errors(true);
+        $dom->loadHTML('<?xml encoding="UTF-8">'.$html);
+        libxml_clear_errors();
+
+        $xpath = new \DOMXPath($dom);
+        $cocok = $xpath->query(
+            "//select[@name='id_part_proses']/ancestor::*[contains(@x-data, 'partPicker')]"
+        );
+
+        $this->assertNotFalse($cocok);
+        $this->assertGreaterThan(0, $cocok->length,
+            'Pemilih Proses berada di luar scope partPicker() — prosesList tidak akan pernah terjangkau Alpine.');
+    }
 }

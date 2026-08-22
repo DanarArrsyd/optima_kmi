@@ -97,42 +97,46 @@
                     </div>
                 </div>
 
-                <div class="col-md-4" x-data="partPicker()">
-                    <label class="form-label">Part <span class="text-danger">*</span></label>
-                    <div class="ta-wrap">
-                        <input type="text" class="form-control ta-input" x-model="query"
-                               @focus="open = true; idx = -1" @blur="tutup()" @keydown="tombol($event)"
-                               @input="val = null; open = true; idx = -1"
-                               placeholder="Ketik part no atau nama...">
-                        <div class="ta-dropdown" x-show="open" x-cloak>
-                            <template x-if="tersaring.length === 0">
-                                <div class="ta-empty">Tidak ditemukan</div>
-                            </template>
-                            <template x-for="(item, i) in tersaring" :key="item.v">
-                                <div class="ta-item" :class="{ 'ta-active': i === idx }"
-                                     @mousedown.prevent="pilih(item)" x-text="item.t"></div>
-                            </template>
+                <div class="col-md-8" x-data="partPicker()">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Part <span class="text-danger">*</span></label>
+                            <div class="ta-wrap">
+                                <input type="text" class="form-control ta-input" x-model="query"
+                                       @focus="open = true; idx = -1" @blur="tutup()" @keydown="tombol($event)"
+                                       @input="val = null; open = true; idx = -1"
+                                       placeholder="Ketik part no atau nama...">
+                                <div class="ta-dropdown" x-show="open" x-cloak>
+                                    <template x-if="tersaring.length === 0">
+                                        <div class="ta-empty">Tidak ditemukan</div>
+                                    </template>
+                                    <template x-for="(item, i) in tersaring" :key="item.v">
+                                        <div class="ta-item" :class="{ 'ta-active': i === idx }"
+                                             @mousedown.prevent="pilih(item)" x-text="item.t"></div>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <label class="form-label mt-2">Part No.</label>
+                            <input type="text" class="form-control" id="partNoTampil" :value="partNo" readonly
+                                   placeholder="Terisi otomatis dari Part">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Proses <span class="text-danger">*</span></label>
+                            <select name="id_part_proses" class="form-select" :disabled="prosesList.length === 0">
+                                <option value="">-- Pilih Part dulu --</option>
+                                <template x-for="p in prosesList" :key="p.id">
+                                    {{-- data-progressive dibaca blok dandori untuk memilih
+                                         std_menit_progressive. Penanda, bukan teks pilihan. --}}
+                                    <option :value="p.id"
+                                            :data-progressive="p.nama_proses.trim().toUpperCase() === 'PROGRESSIVE' ? '1' : '0'"
+                                            x-text="`${p.id_proses} – ${p.nama_proses} (SPH Std: ${p.sph_standar_produksi})`">
+                                    </option>
+                                </template>
+                            </select>
                         </div>
                     </div>
-
-                    <label class="form-label mt-2">Part No.</label>
-                    <input type="text" class="form-control" id="partNoTampil" :value="partNo" readonly
-                           placeholder="Terisi otomatis dari Part">
-                </div>
-
-                <div class="col-md-4">
-                    <label class="form-label">Proses <span class="text-danger">*</span></label>
-                    <select name="id_part_proses" class="form-select" :disabled="prosesList.length === 0">
-                        <option value="">-- Pilih Part dulu --</option>
-                        <template x-for="p in prosesList" :key="p.id">
-                            {{-- data-progressive dibaca blok dandori untuk memilih
-                                 std_menit_progressive. Penanda, bukan teks pilihan. --}}
-                            <option :value="p.id"
-                                    :data-progressive="p.nama_proses.trim().toUpperCase() === 'PROGRESSIVE' ? '1' : '0'"
-                                    x-text="`${p.id_proses} – ${p.nama_proses} (SPH Std: ${p.sph_standar_produksi})`">
-                            </option>
-                        </template>
-                    </select>
                 </div>
 
                 <div class="col-md-4">
