@@ -169,7 +169,11 @@ $oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->n
                             :disabled="prosesList.length===0">
                         <option value="">-- Pilih Part dulu --</option>
                         <template x-for="p in prosesList" :key="p.id">
+                            {{-- data-progressive dibaca blok dandori untuk memilih
+                                 std_menit_progressive. Penanda, bukan teks pilihan:
+                                 format teksnya bisa berubah, penandanya tidak. --}}
                             <option :value="p.id"
+                                    :data-progressive="p.nama_proses.trim().toUpperCase() === 'PROGRESSIVE' ? '1' : '0'"
                                     x-text="`${p.id_proses} – ${p.nama_proses} (SPH: ${p.sph_standar_produksi})`">
                             </option>
                         </template>
@@ -230,12 +234,13 @@ $oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->n
                 {{-- Ada Dandori? --}}
                 <div class="col-12" x-data="{ adaDandori: {{ old('ada_dandori') ? 'true' : 'false' }} }">
                     <div class="form-check">
-                        {{-- Melepas centang MENGOSONGKAN baris dandori-rows, bukan sekadar
-                             menyembunyikannya, supaya dandori_count selalu konsisten
-                             dengan dandori[] yang terkirim. --}}
+                        {{-- dandoriSync() satu definisi di partial dandori-rows: melepas
+                             centang MENGOSONGKAN barisnya (bukan sekadar menyembunyikan)
+                             supaya dandori_count konsisten dengan dandori[] yang terkirim,
+                             dan menyalakannya menyiapkan satu baris seperti halaman Dandori. --}}
                         <input class="form-check-input" type="checkbox" name="ada_dandori"
                                id="ada_dandori_drawer" value="1" x-model="adaDandori"
-                               @change="if (!adaDandori) { const w = $el.closest('[x-data]').querySelector('.dandori-rows'); if (w) Alpine.$data(w).rows = []; }">
+                               @change="dandoriSync($el, adaDandori)">
                         <label class="form-check-label fw-semibold" for="ada_dandori_drawer">Ada Dandori</label>
                     </div>
                     <div x-show="adaDandori" x-cloak class="mt-2">
