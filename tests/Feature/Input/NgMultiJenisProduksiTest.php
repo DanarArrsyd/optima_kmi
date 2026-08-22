@@ -59,9 +59,15 @@ class NgMultiJenisProduksiTest extends TestCase
         $this->crack = MasterJenisNg::create(['kode' => 'CRK', 'nama_ng' => 'Crack']);
     }
 
+    /** Satu baris dikirim lewat endpoint batch. */
+    private function simpanLhp(array $payload)
+    {
+        return $this->post(route('input.produksi.batch'), ['rows' => [$payload]]);
+    }
+
     public function test_simpan_dengan_dua_jenis_ng(): void
     {
-        $response = $this->actingAs($this->admin)->post(route('input.produksi.store'), [
+        $response = $this->actingAs($this->admin)->simpanLhp([
             ...$this->base,
             'ada_ng' => 1,
             'ng_count' => 2,
@@ -80,7 +86,7 @@ class NgMultiJenisProduksiTest extends TestCase
 
     public function test_jenis_ng_dobel_ditolak_validasi(): void
     {
-        $response = $this->actingAs($this->admin)->post(route('input.produksi.store'), [
+        $response = $this->actingAs($this->admin)->simpanLhp([
             ...$this->base,
             'ada_ng' => 1,
             'ng_count' => 2,
@@ -90,25 +96,25 @@ class NgMultiJenisProduksiTest extends TestCase
             ],
         ]);
 
-        $response->assertSessionHasErrors('ng.1.id_jenis_ng');
+        $response->assertSessionHasErrors('rows.0.ng.1.id_jenis_ng');
         $this->assertSame(0, TransaksiProduksi::count());
     }
 
     public function test_ada_ng_dicentang_tapi_baris_kosong_ditolak(): void
     {
-        $response = $this->actingAs($this->admin)->post(route('input.produksi.store'), [
+        $response = $this->actingAs($this->admin)->simpanLhp([
             ...$this->base,
             'ada_ng' => 1,
             'ng_count' => 0,
             'ng' => [],
         ]);
 
-        $response->assertSessionHasErrors('ng');
+        $response->assertSessionHasErrors('rows.0.ng');
     }
 
     public function test_tanpa_ng_menyimpan_qty_ng_nol(): void
     {
-        $this->actingAs($this->admin)->post(route('input.produksi.store'), [
+        $this->actingAs($this->admin)->simpanLhp([
             ...$this->base,
             'ng_count' => 0,
         ]);
@@ -120,7 +126,7 @@ class NgMultiJenisProduksiTest extends TestCase
 
     public function test_edit_mengurangi_jenis_menurunkan_qty_ng(): void
     {
-        $this->actingAs($this->admin)->post(route('input.produksi.store'), [
+        $this->actingAs($this->admin)->simpanLhp([
             ...$this->base,
             'ada_ng' => 1,
             'ng_count' => 2,
@@ -152,7 +158,7 @@ class NgMultiJenisProduksiTest extends TestCase
         // dirender server, browser tetap mengirim ada_ng=1) tapi baris ng[] tidak
         // pernah ter-render (hidup di dalam x-for Alpine), jadi field `ng` sama
         // sekali tidak ada di body POST.
-        $this->actingAs($this->admin)->post(route('input.produksi.store'), [
+        $this->actingAs($this->admin)->simpanLhp([
             ...$this->base,
             'ada_ng' => 1,
             'ng_count' => 2,
@@ -185,7 +191,7 @@ class NgMultiJenisProduksiTest extends TestCase
         // Baris ini SUDAH punya 2 baris detail (bukan baris legacy) — guard
         // legacy di UpdateProduksiRequest hanya menyala saat
         // ngDetails()->count() === 0, jadi tidak menjangkau kasus ini.
-        $this->actingAs($this->admin)->post(route('input.produksi.store'), [
+        $this->actingAs($this->admin)->simpanLhp([
             ...$this->base,
             'ng_count' => 2,
             'ada_ng' => 1,
@@ -239,7 +245,7 @@ class NgMultiJenisProduksiTest extends TestCase
         // dan syncProduksi([]) menghapus 2 baris detail + menulis qty_ng = 0 tanpa
         // error apa pun. Setelah perbaikan, cross-check jalan tanpa syarat dan
         // menolak payload ini.
-        $this->actingAs($this->admin)->post(route('input.produksi.store'), [
+        $this->actingAs($this->admin)->simpanLhp([
             ...$this->base,
             'ada_ng' => 1,
             'ng_count' => 2,
@@ -272,7 +278,7 @@ class NgMultiJenisProduksiTest extends TestCase
         // yang dikirim: ada_ng absen, ng absen, ng_count=0. Ini HARUS tetap
         // berhasil dan menol-kan qty_ng; perbaikan gerbang tidak boleh menolak
         // jalur operator yang genuine ini.
-        $this->actingAs($this->admin)->post(route('input.produksi.store'), [
+        $this->actingAs($this->admin)->simpanLhp([
             ...$this->base,
             'ada_ng' => 1,
             'ng_count' => 2,

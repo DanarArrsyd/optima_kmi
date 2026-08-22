@@ -7,7 +7,6 @@ use App\Exports\ProduksiImportTemplate;
 use App\Http\Controllers\Concerns\ResolvesStaffNote;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreProduksiBatchRequest;
-use App\Http\Requests\StoreProduksiRequest;
 use App\Http\Requests\UpdateProduksiRequest;
 use App\Imports\ProduksiImport;
 use App\Models\MasterJenisNg;
@@ -157,14 +156,6 @@ class ProduksiController extends Controller
         $losstimes = MasterLosstime::orderBy('kode')->get();
 
         return view('input.produksi.create', compact('shifts', 'karyawan', 'mesin', 'parts', 'jenisNg', 'losstimes'));
-    }
-
-    public function store(StoreProduksiRequest $request)
-    {
-        DB::transaction(fn () => $this->produksiWriteService->simpan($request->validated()));
-
-        return redirect()->route('input.produksi.index')
-            ->with('success', 'LHP Produksi berhasil disimpan.');
     }
 
     /**

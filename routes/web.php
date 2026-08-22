@@ -99,7 +99,7 @@ Route::middleware('auth')->group(function () {
     // --- INPUT PRODUKSI: tulis & export (guest TIDAK boleh) ---
     Route::middleware('role:admin,staff_produksi')->prefix('input')->name('input.')->group(function () {
         Route::post('produksi/batch', [ProduksiController::class, 'batch'])->name('produksi.batch');
-        Route::resource('produksi', ProduksiController::class)->only(['create', 'store', 'destroy']);
+        Route::resource('produksi', ProduksiController::class)->only(['create', 'destroy']);
         Route::post('produksi/import', [ProduksiController::class, 'import'])->name('produksi.import');
         Route::get('produksi/import-template', [ProduksiController::class, 'importTemplate'])->name('produksi.import-template');
         Route::get('produksi/export', [ProduksiController::class, 'export'])->name('produksi.export');
