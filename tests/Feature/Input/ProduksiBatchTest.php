@@ -336,4 +336,32 @@ class ProduksiBatchTest extends TestCase
 
         $this->assertSame(50, TransaksiProduksi::count());
     }
+
+    public function test_string_kosong_di_rows_json_jadi_null(): void
+    {
+        // Middleware bawaan Laravel mengubah '' jadi null pada field POST biasa,
+        // tapi isi di dalam satu string JSON tidak terlihat olehnya. Sebelum
+        // perbaikan ini, dandori_karyawan_id = '' lolos utuh, `??` tidak
+        // menangkapnya (itu cuma menangkap null), dan MySQL menolak insert:
+        // "Incorrect integer value: '' for column id_karyawan". Prod 500.
+        $baris = $this->baris([
+            'ada_dandori' => 1,
+            'dandori_count' => 1,
+            'dandori' => [['id_losstime' => $this->ref['losstime']->id, 'actual_menit' => 20]],
+            'dandori_karyawan_id' => '',
+        ]);
+
+        $this->post(route('input.produksi.batch'), [
+            'rows_json' => json_encode([$baris]),
+        ])->assertRedirect();
+
+        $this->assertSame(1, TransaksiProduksi::count());
+        $this->assertSame(1, TransaksiDandoriRincian::count());
+
+        // Kosong berarti "ikut operator LHP", bukan "operator nomor nol".
+        $this->assertSame(
+            $this->ref['karyawan']->id,
+            TransaksiDandoriRincian::first()->id_karyawan
+        );
+    }
 }
