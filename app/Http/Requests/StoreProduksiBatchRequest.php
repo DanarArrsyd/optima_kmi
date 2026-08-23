@@ -35,7 +35,13 @@ class StoreProduksiBatchRequest extends FormRequest
             'rows.*.ada_dandori' => 'nullable|boolean',
             'rows.*.dandori_count' => 'nullable|integer|min:0',
             'rows.*.dandori' => 'nullable|array',
-            'rows.*.dandori.*.id_losstime' => 'required|integer|exists:master_losstime,id|distinct',
+            /* SENGAJA tanpa `distinct`, tidak seperti NG di atasnya. Satu sesi
+             * bisa punya beberapa pergantian dies, dan tiap pergantian
+             * memunculkan jenis loss time yang sama lagi — itu kejadian normal
+             * di lantai produksi, bukan salah ketik. Halaman Dandori memang
+             * tidak pernah melarangnya; jalur batch sempat melarang dan bikin
+             * operator buntu tepat pada kasus yang paling sering terjadi. */
+            'rows.*.dandori.*.id_losstime' => 'required|integer|exists:master_losstime,id',
             'rows.*.dandori.*.actual_menit' => 'required|numeric|min:0.01',
             'rows.*.dandori_karyawan_id' => 'nullable|integer|exists:master_karyawan,id',
         ];
@@ -317,7 +323,6 @@ class StoreProduksiBatchRequest extends FormRequest
 
             'rows.*.dandori.*.id_losstime.required' => 'Baris :position: pilih jenis loss time untuk setiap baris dandori.',
             'rows.*.dandori.*.id_losstime.exists' => 'Baris :position: jenis loss time yang dipilih tidak valid.',
-            'rows.*.dandori.*.id_losstime.distinct' => 'Baris :position: jenis loss time yang sama tidak boleh diisi dua kali.',
         ];
     }
 
