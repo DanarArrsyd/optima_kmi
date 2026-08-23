@@ -50,6 +50,24 @@ class StoreProduksiBatchRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
+        /* 50 baris (batas rows.max di rules()) × field flat (13 pokok +
+         * hingga 4 NG + 4 dandori) bisa melewati max_input_vars bawaan PHP
+         * (1000) — dikonfirmasi 1000 di mesin ini, dan hosting produksi
+         * kemungkinan sama. PHP memotong $_POST diam-diam kalau itu
+         * terjadi, cuma menulis warning ke log. create.blade.php sekarang
+         * mengirim rows sebagai satu field JSON (rows_json) supaya jumlah
+         * baris tidak lagi terikat batas variabel input. Kondisional: kalau
+         * 'rows' sudah terkirim langsung (payload lama, dipakai test yang
+         * ada), biarkan seperti semula tanpa disentuh.
+         */
+        if ($this->has('rows_json') && ! $this->has('rows')) {
+            $decoded = json_decode((string) $this->input('rows_json'), true);
+            // JSON rusak → gabungkan array kosong supaya aturan 'rows' yang
+            // sudah ada (required|array|min:1) menolaknya dengan pesan
+            // normal, bukan meledak di sini.
+            $this->merge(['rows' => is_array($decoded) ? $decoded : []]);
+        }
+
         $rows = $this->input('rows');
         if (! is_array($rows)) {
             return;
@@ -153,8 +171,13 @@ class StoreProduksiBatchRequest extends FormRequest
      * jam_start sama dengan jam_finish itu ambigu: cariBentrok() membaca
      * selesai<=mulai sebagai lewat tengah malam lalu meregangkannya jadi 24
      * jam penuh, padahal baris durasi nol tidak berarti apa-apa buat LHP.
-     * Ditolak di sini supaya server tidak punya dua pembacaan yang
-     * bertentangan atas payload yang sama.
+     * Ditolak di sini SEBAGAI TAMBAHAN, bukan pengganti, pemeriksaan
+     * cariBentrok() — baris durasi nol tetap ikut diperiksa bentrok seperti
+     * baris lain, jadi bisa saja menarik dua galat sekaligus ("jam mulai
+     * sama dengan selesai" dan "tumpang tindih"). Itu tidak masalah: baris
+     * begitu tetap ditolak juga tanpa aturan ini, dan UI di client sudah
+     * mencegahnya sampai ke draft lebih dulu (lihat simpanKeDraft() di
+     * create.blade.php). Aturan ini murni jaring pengaman di server.
      */
     private function periksaDurasiNol($validator, int $i, array $row): void
     {

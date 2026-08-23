@@ -116,13 +116,11 @@ class ProduksiController extends Controller
             ->paginate(30)
             ->withQueryString();
 
-        // Master data untuk drawer form
-        $shifts = MasterShift::orderBy('jam_start')->get();
+        // Master data untuk tabel & filter
         $karyawan = MasterKaryawan::where('departemen', 'Produksi')->aktif()->orderBy('nama_karyawan')->get();
         $mesin = MasterMesin::orderBy('line')->orderBy('id_mesin')->get();
         $parts = MasterPart::with('proses')->orderBy('part_name')->get();
         $jenisNg = MasterJenisNg::orderBy('kode')->get();
-        $losstimes = MasterLosstime::orderBy('kode')->get();
 
         // Data untuk filter lanjutan
         $customers = MasterPart::distinct()->orderBy('customer')->pluck('customer')->filter()->values();
@@ -141,7 +139,7 @@ class ProduksiController extends Controller
             'transaksi', 'dateFrom', 'dateTo', 'search', 'mesinIds',
             'filterCustomer', 'filterPartId', 'filterKarId', 'filterProsesId',
             'filterJenisNgId', 'pakaiTanggal',
-            'shifts', 'karyawan', 'mesin', 'parts', 'jenisNg', 'losstimes', 'customers',
+            'karyawan', 'mesin', 'parts', 'jenisNg', 'customers',
             'myLastRecord', 'myLastOnPage', 'filterActive'
         ));
     }
@@ -177,8 +175,16 @@ class ProduksiController extends Controller
 
         $jumlah = count($rows);
 
+        /* batch_tersimpan adalah bukti sukses yang dibaca index.blade.php
+         * untuk membuang draft di localStorage (KUNCI dan KUNCI_BACKUP di
+         * create.blade.php). Draft hanya boleh dibuang setelah server
+         * MEMBUKTIKAN barisnya tersimpan — bukan cuma karena create.blade.php
+         * tidak melihat galat validasi, yang juga terjadi saat request tidak
+         * pernah sampai sini sama sekali (419 sesi habis, 500, jaringan putus).
+         */
         return redirect()->route('input.produksi.index')
-            ->with('success', "{$jumlah} baris LHP Produksi berhasil disimpan.");
+            ->with('success', "{$jumlah} baris LHP Produksi berhasil disimpan.")
+            ->with('batch_tersimpan', $jumlah);
     }
 
     public function edit(TransaksiProduksi $produksi)

@@ -273,35 +273,15 @@
         <form method="POST" action="{{ route('input.produksi.batch') }}" id="formBatch" class="mt-3"
               @submit="pindahkanKeBackup()">
             @csrf
-            <template x-for="(r, i) in rows" :key="r.uid">
-                <div>
-                    <input type="hidden" :name="`rows[${i}][tanggal_produksi]`" :value="r.tanggal_produksi">
-                    <input type="hidden" :name="`rows[${i}][id_shift]`" :value="r.id_shift">
-                    <input type="hidden" :name="`rows[${i}][id_karyawan]`" :value="r.id_karyawan">
-                    <input type="hidden" :name="`rows[${i}][id_mesin]`" :value="r.id_mesin">
-                    <input type="hidden" :name="`rows[${i}][id_part_proses]`" :value="r.id_part_proses">
-                    <input type="hidden" :name="`rows[${i}][jam_start]`" :value="r.jam_start">
-                    <input type="hidden" :name="`rows[${i}][jam_finish]`" :value="r.jam_finish">
-                    <input type="hidden" :name="`rows[${i}][qty_aktual]`" :value="r.qty_aktual">
-                    <input type="hidden" :name="`rows[${i}][ng_count]`" :value="r.ng.length">
-                    <input type="hidden" :name="`rows[${i}][ada_ng]`" :value="r.ng.length > 0 ? 1 : 0">
-                    <template x-for="(n, j) in r.ng" :key="j">
-                        <div>
-                            <input type="hidden" :name="`rows[${i}][ng][${j}][id_jenis_ng]`" :value="n.id_jenis_ng">
-                            <input type="hidden" :name="`rows[${i}][ng][${j}][qty]`" :value="n.qty">
-                        </div>
-                    </template>
-                    <input type="hidden" :name="`rows[${i}][dandori_count]`" :value="r.dandori.length">
-                    <input type="hidden" :name="`rows[${i}][ada_dandori]`" :value="r.dandori.length > 0 ? 1 : 0">
-                    <input type="hidden" :name="`rows[${i}][dandori_karyawan_id]`" :value="r.dandori_karyawan_id">
-                    <template x-for="(d, j) in r.dandori" :key="j">
-                        <div>
-                            <input type="hidden" :name="`rows[${i}][dandori][${j}][id_losstime]`" :value="d.id_losstime">
-                            <input type="hidden" :name="`rows[${i}][dandori][${j}][actual_menit]`" :value="d.actual_menit">
-                        </div>
-                    </template>
-                </div>
-            </template>
+            {{-- 50 baris (batas server) × field flat (13 pokok + hingga 4 NG
+                 + 4 dandori) bisa melewati max_input_vars bawaan PHP (1000).
+                 PHP memotong $_POST diam-diam kalau itu terjadi — cuma
+                 menulis warning ke log, sementara batch tampak ditolak tanpa
+                 alasan yang bisa ditindaklanjuti operator, atau malah
+                 diterima tapi terpotong pas di batas baris. Dikirim sebagai
+                 satu field JSON supaya jumlah baris tidak lagi terikat
+                 batas variabel input sama sekali. --}}
+            <input type="hidden" name="rows_json" :value="JSON.stringify(payloadRows())">
 
             <div class="d-flex gap-2 justify-content-end">
                 <button type="submit" class="btn btn-success" :disabled="rows.length === 0">
@@ -324,11 +304,16 @@ const shiftData   = @json($_shiftData);
 const ngLabel     = @json($_ngLabel);
 const ltLabel     = @json($_ltLabel);
 
-/* SUBMIT DRAFT adalah POST biasa lalu server redirect — tidak ada JS yang
-   jalan lagi setelah sukses, jadi mulai() (dijalankan lagi saat operator
-   kembali ke halaman ini) yang harus memutuskan apakah submit sebelumnya
-   diterima atau ditolak. Penanda itu adalah keberadaan galat validasi. */
-const adaGalatServer = @json($errors->any());
+/* Halaman yang dipulihkan dari bfcache (tombol Back setelah submit sukses)
+   masih menampilkan baris-baris yang SUDAH tersimpan di server — x-init
+   "mulai()" tidak jalan lagi karena Alpine tidak di-reinit, dan tombol
+   SUBMIT tetap aktif. Mengirim ulang baris yang sama menulis LHP dobel;
+   tidak ada unique constraint di transaksi_produksi yang mencegahnya. Muat
+   ulang supaya mulai() benar-benar jalan lagi dan memutuskan nasib draft
+   dari kondisi server yang sebenarnya. */
+window.addEventListener('pageshow', (e) => {
+    if (e.persisted) window.location.reload();
+});
 
 /* Part memilih part sekaligus mengisi Part No dan daftar prosesnya. */
 function partPicker() {
@@ -375,12 +360,16 @@ function lhpBatch() {
     /* Kunci cadangan: SUBMIT DRAFT adalah POST form biasa yang berakhir di
        redirect server, jadi tidak ada kesempatan JS menghapus KUNCI tepat
        saat sukses. Sebaliknya, submit memindahkan isi KUNCI ke sini dulu
-       (lihat pindahkanKeBackup()) lalu mengosongkan KUNCI. Baris ini baru
-       benar-benar dibuang atau dipulihkan belakangan, di mulai(), setelah
-       kita tahu hasil server: batch DITOLAK (ada galat validasi) berarti
-       operator tidak boleh kehilangan ketikannya — dipulihkan; batch
-       DITERIMA berarti baris-baris itu sudah tersimpan di server dan
-       TIDAK BOLEH dikirim ulang — dibuang. */
+       (lihat pindahkanKeBackup()) lalu mengosongkan KUNCI.
+       Draft di sini hanya hidup di browser, jadi hanya boleh dibuang kalau
+       server sudah MEMBUKTIKAN baris-barisnya tersimpan — bukan sekadar
+       ketiadaan galat validasi di halaman ini. Bukti itu adalah flash
+       batch_tersimpan yang dibaca dan dieksekusi di index.blade.php
+       (lihat skrip di sana): index-lah yang menghapus KUNCI_BACKUP ini.
+       Kalau operator kembali ke SINI dan backup masih ada — baik karena
+       galat validasi, 419 sesi habis, 500 di server, maupun jaringan
+       putus sebelum POST-nya mendarat — submit itu belum terbukti sukses,
+       jadi mulai() memulihkannya, bukan membuangnya. */
     const KUNCI_BACKUP = 'optima_draft_lhp_produksi_terkirim_u{{ auth()->id() }}';
     let seq = 0;
 
@@ -392,21 +381,18 @@ function lhpBatch() {
 
         mulai() {
             /* Selesaikan nasib KUNCI_BACKUP (kalau ada) SEBELUM membaca KUNCI,
-               supaya restorasi normal di bawah otomatis mengambil hasilnya. */
+               supaya restorasi normal di bawah otomatis mengambil hasilnya.
+               Sampai di SINI berarti index.blade.php belum sempat membuktikan
+               sukses (lihat komentar di deklarasi KUNCI_BACKUP) — jadi backup
+               SELALU dipulihkan, tanpa syarat ada/tidaknya galat validasi. */
             try {
                 const backupMentah = localStorage.getItem(KUNCI_BACKUP);
                 if (backupMentah !== null) {
-                    if (adaGalatServer) {
-                        // Batch ditolak server → kembalikan ke KUNCI supaya
-                        // dipulihkan seperti draft biasa di bawah.
-                        localStorage.setItem(KUNCI, backupMentah);
-                    }
-                    // Batch diterima (tidak ada galat) → cukup buang backup;
-                    // KUNCI sudah dikosongkan saat submit, jangan disentuh lagi.
+                    localStorage.setItem(KUNCI, backupMentah);
                     localStorage.removeItem(KUNCI_BACKUP);
                 }
             } catch (e) {
-                localStorage.removeItem(KUNCI_BACKUP);
+                // localStorage tak bisa dibaca/ditulis; lewati saja.
             }
 
             try {
@@ -564,6 +550,31 @@ function lhpBatch() {
 
         hapus(i) { this.rows.splice(i, 1); this.barisGagal = []; },
 
+        /* Bentuk field yang dikirim ke server (rows_json) — sama persis
+           dengan yang dulu dirakit lewat input tersembunyi per baris,
+           termasuk ng_count/dandori_count yang dihitung terpisah dari
+           panjang array ng/dandori (lihat komentar periksaHitungan() di
+           StoreProduksiBatchRequest soal kenapa itu penting). */
+        payloadRows() {
+            return this.rows.map(r => ({
+                tanggal_produksi: r.tanggal_produksi,
+                id_shift: r.id_shift,
+                id_karyawan: r.id_karyawan,
+                id_mesin: r.id_mesin,
+                id_part_proses: r.id_part_proses,
+                jam_start: r.jam_start,
+                jam_finish: r.jam_finish,
+                qty_aktual: r.qty_aktual,
+                ng_count: r.ng.length,
+                ada_ng: r.ng.length > 0 ? 1 : 0,
+                ng: r.ng.map(n => ({ id_jenis_ng: n.id_jenis_ng, qty: n.qty })),
+                dandori_count: r.dandori.length,
+                ada_dandori: r.dandori.length > 0 ? 1 : 0,
+                dandori_karyawan_id: r.dandori_karyawan_id,
+                dandori: r.dandori.map(d => ({ id_losstime: d.id_losstime, actual_menit: d.actual_menit })),
+            }));
+        },
+
         ringkasNg(r) {
             if (!r.ng.length) return '—';
             return r.ng.map(n => `${ngLabel[n.id_jenis_ng] ?? n.id_jenis_ng} ×${n.qty}`).join(', ');
@@ -592,8 +603,18 @@ function lhpBatch() {
         pindahkanKeBackup() {
             try {
                 const mentah = localStorage.getItem(KUNCI);
-                if (mentah !== null) localStorage.setItem(KUNCI_BACKUP, mentah);
-                localStorage.removeItem(KUNCI);
+                if (mentah !== null) {
+                    /* Kalau setItem(KUNCI_BACKUP) di bawah gagal (mis. kuota
+                       localStorage penuh), KUNCI tetap WAJIB dikosongkan di
+                       finally — kalau tidak, draft yang baru saja berhasil
+                       disimpan ke server akan ditawarkan lagi ke operator dan
+                       terkirim dobel. */
+                    try {
+                        localStorage.setItem(KUNCI_BACKUP, mentah);
+                    } finally {
+                        localStorage.removeItem(KUNCI);
+                    }
+                }
             } catch (e) {
                 // localStorage tak tersedia; biarkan submit tetap jalan apa adanya.
             }
