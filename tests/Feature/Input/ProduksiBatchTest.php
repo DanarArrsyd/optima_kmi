@@ -64,6 +64,13 @@ class ProduksiBatchTest extends TestCase
         return $this->post(route('input.produksi.batch'), ['rows' => $rows]);
     }
 
+    /** Jalur baru create.blade.php: rows dikirim sebagai satu field JSON
+     *  supaya jumlah baris tidak terikat max_input_vars PHP. */
+    private function kirimJson(array $rows)
+    {
+        return $this->post(route('input.produksi.batch'), ['rows_json' => json_encode($rows)]);
+    }
+
     public function test_satu_submit_menulis_semua_baris(): void
     {
         $this->kirim([
@@ -280,5 +287,53 @@ class ProduksiBatchTest extends TestCase
             ->assertSessionHasErrors('rows.0.jam_finish');
 
         $this->assertSame(0, TransaksiProduksi::count());
+    }
+
+    public function test_rows_json_menyimpan_baris(): void
+    {
+        // Jalur rows_json (dipakai create.blade.php) harus menyimpan sama
+        // seperti jalur rows[] langsung (dipakai test lain di berkas ini).
+        $this->kirimJson([
+            $this->baris(),
+            $this->baris(['jam_start' => '09:00', 'jam_finish' => '11:00']),
+        ])->assertRedirect(route('input.produksi.index'))->assertSessionHas('success');
+
+        $this->assertSame(2, TransaksiProduksi::count());
+    }
+
+    public function test_rows_json_rusak_ditolak_bukan_meledak(): void
+    {
+        // JSON tidak valid harus jatuh ke validasi 'rows' biasa (array kosong
+        // → required|min:1 menolak), bukan melempar exception json_decode.
+        $response = $this->post(route('input.produksi.batch'), ['rows_json' => '{ini bukan json valid']);
+
+        $response->assertSessionHasErrors('rows');
+        $this->assertSame(0, TransaksiProduksi::count());
+    }
+
+    public function test_rows_json_menampung_50_baris_batas_server(): void
+    {
+        // 50 baris lewat rows[] flat (cara lama) melebihi max_input_vars PHP
+        // (1051 > 1000 bawaan) sebelum sampai ke sini sama sekali — PHP akan
+        // memotong $_POST diam-diam. Lewat rows_json jumlah variabel POST
+        // tetap konstan berapa pun banyaknya baris, jadi batas 50 baris di
+        // rules() (bukan max_input_vars) yang jadi penentu. Satu mesin per
+        // baris supaya tidak ada satu pun yang bentrok jam — itu di luar apa
+        // yang mau dibuktikan test ini.
+        $rows = [];
+        for ($i = 0; $i < 50; $i++) {
+            $mesin = MasterMesin::create([
+                'id_mesin' => sprintf('B-%03d', $i),
+                'nama_mesin' => "MESIN {$i}",
+                'line' => 'B',
+                'tipe_mesin' => 'PRESS',
+                'kapasitas_max_stroke' => 100,
+            ]);
+            $rows[] = $this->baris(['id_mesin' => $mesin->id]);
+        }
+
+        $this->kirimJson($rows)->assertRedirect(route('input.produksi.index'))->assertSessionHas('success');
+
+        $this->assertSame(50, TransaksiProduksi::count());
     }
 }

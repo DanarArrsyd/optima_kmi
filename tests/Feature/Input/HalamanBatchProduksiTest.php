@@ -186,4 +186,45 @@ class HalamanBatchProduksiTest extends TestCase
 
         $this->assertStringContainsString(route('input.produksi.create'), $html);
     }
+
+    public function test_form_submit_kirim_rows_json_bukan_input_per_baris(): void
+    {
+        // 50 baris (batas server) × field flat per baris tembus max_input_vars
+        // bawaan PHP; rows_json satu field menghindarinya. Jangkarkan ke markup
+        // <form id="formBatch"> itu sendiri, bukan seluruh halaman — formBaris
+        // (form SAVE TO DRAFT) juga punya banyak <input> yang tidak relevan.
+        $html = $this->halaman();
+
+        $idPos = strpos($html, 'id="formBatch"');
+        $this->assertNotFalse($idPos, '<form id="formBatch"> tidak ditemukan.');
+
+        $awal = strrpos(substr($html, 0, $idPos), '<form');
+        $this->assertNotFalse($awal, 'Tag pembuka <form id="formBatch"> tidak ditemukan.');
+
+        $akhir = strpos($html, '</form>', $idPos);
+        $this->assertNotFalse($akhir, 'Penutup <form id="formBatch"> tidak ditemukan.');
+
+        $blokForm = substr($html, $awal, $akhir - $awal);
+
+        $this->assertStringContainsString('name="rows_json"', $blokForm);
+        $this->assertStringNotContainsString('rows[${i}]', $blokForm);
+    }
+
+    public function test_div_tags_seimbang_di_halaman_batch(): void
+    {
+        // index.blade.php dijaga GuestMarkupBalanceTest dan ErpWorkspaceMarkupTest,
+        // tapi create.blade.php (halaman yang sekarang paling sering disentuh
+        // saat menambah field) tidak punya penjaga sama sekali. Tidak ikut
+        // digabung ke salah satu tabel yang ada: GuestMarkupBalanceTest
+        // mengasumsikan guest bisa membuka halamannya (route ini 403 untuk
+        // guest — lihat test_guest_tidak_bisa_membuka_halaman_batch di atas),
+        // dan ErpWorkspaceMarkupTest mengasumsikan susunan .erp-ws yang
+        // memang sengaja tidak dipakai halaman ini (lihat .erp-panel).
+        $html = $this->halaman();
+
+        $open = preg_match_all('/<div\b/i', $html);
+        $close = preg_match_all('/<\/div>/i', $html);
+
+        $this->assertSame($close, $open, 'Div tidak seimbang di halaman batch produksi.');
+    }
 }
