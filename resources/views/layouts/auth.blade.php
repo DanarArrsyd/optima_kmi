@@ -28,10 +28,19 @@
            login_page.png sudah memuat SELURUH tampilan: lockup perusahaan,
            maskot, garis kaki, dan panel abu kosong tempat form duduk.
 
-           Kanvas dikunci pada rasio aslinya (1920×1080) dan diskalakan utuh,
-           BUKAN dipasang background-size:cover. cover akan memotong sisi
-           gambar begitu rasio layar berbeda, dan panel abunya ikut bergeser —
-           form akan meleset dari kotaknya di layar yang bukan 16:9. */
+           Kanvas MENGISI PENUH layar dan gambarnya diregangkan mengikuti,
+           bukan dipasang background-size:cover.
+
+           cover memotong sisi gambar begitu rasio layar berbeda, dan yang ikut
+           bergeser bukan cuma hiasan tapi PANEL ABUNYA — form akan meleset dari
+           kotaknya, beda-beda di tiap layar. Meregangkan tidak memotong apa
+           pun, dan karena panel diposisikan dalam PERSEN dari kanvas, ia tetap
+           duduk tepat di kotaknya walau gambarnya sedikit meregang.
+
+           Mengunci rasio 16:9 juga sudah dicoba: hasilnya bilah kosong di sisi
+           layar yang rasionya berbeda, dan tepi gambar ini tidak satu warna
+           (kiri #e6e6e6 di tengah, kanan #d8edfa) jadi bilah itu mustahil
+           disamarkan dengan satu warna latar. */
         .auth-layar {
             min-height: 100%;
             display: flex;
@@ -42,8 +51,8 @@
 
         .auth-kanvas {
             position: relative;
-            width: min(100vw, calc(100vh * 16 / 9));
-            aspect-ratio: 16 / 9;
+            width: 100vw;
+            height: 100vh;
             background-image: url('{{ asset('img/login_page.png') }}');
             background-size: 100% 100%;
             background-repeat: no-repeat;
@@ -72,6 +81,7 @@
             font-weight: 700;
             letter-spacing: -0.02em;
             margin: 0;
+            text-align: center;
         }
         .auth-garis {
             height: 0.22cqw;
@@ -186,13 +196,24 @@
            Di bawah 820px kanvas 16:9 membuat form mengecil sampai tak terbaca.
            Desainnya dilepas dan form kembali jadi halaman biasa dengan ukuran
            piksel — halaman login harus tetap bisa dipakai dari ponsel. */
-        @media (max-width: 820px) {
+        /* Di layar yang sangat persegi (rasio di bawah 1.4, mis. monitor 5:4
+           lama) regangannya sudah terlalu jauh — maskotnya kelihatan gepeng.
+           Di situ desainnya dilepas, sama seperti perlakuan layar sempit. */
+        @media (max-width: 820px), (max-aspect-ratio: 7 / 5) {
             .auth-kanvas {
                 width: 100%;
+                height: auto;
+                min-height: 100vh;
                 aspect-ratio: auto;
                 background-image: none;
                 container-type: normal;
                 padding: 26px 18px 34px;
+
+                /* Tanpa ini isinya nempel ke atas dan menyisakan ruang kosong
+                   besar di bawah — kanvasnya setinggi layar, isinya tidak. */
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
             }
             .auth-panel {
                 position: static;
