@@ -227,4 +227,48 @@ class HalamanBatchProduksiTest extends TestCase
 
         $this->assertSame($close, $open, 'Div tidak seimbang di halaman batch produksi.');
     }
+
+    public function test_field_form_tersusun_satu_kolom_dengan_lebar_seragam(): void
+    {
+        // Susunan empat kolom memotong Part Name yang panjang, dan lebar kotak
+        // yang berbeda-beda bikin mata operator melompat tiap baris. Diperiksa
+        // strukturnya, bukan kehadiran nama kelas di suatu tempat di halaman.
+        $html = $this->get(route('input.produksi.create'))->assertOk()->getContent();
+
+        $dom = new \DOMDocument;
+        libxml_use_internal_errors(true);
+        $dom->loadHTML('<?xml encoding="UTF-8">'.$html);
+        libxml_clear_errors();
+        $xpath = new \DOMXPath($dom);
+
+        $field = [
+            'tanggal_produksi', 'id_shift', 'jam_start', 'jam_finish', 'qty_aktual',
+        ];
+
+        foreach ($field as $nama) {
+            $cocok = $xpath->query(
+                "//*[@name='{$nama}']/ancestor::div[contains(concat(' ', normalize-space(@class), ' '), ' lhp-baris ')]"
+            );
+
+            $this->assertNotFalse($cocok);
+            $this->assertGreaterThan(0, $cocok->length,
+                "Field {$nama} tidak berada dalam baris .lhp-baris — susunannya kembali ke grid.");
+        }
+
+        // Kotak Part Name dan Proses ikut baris yang sama, lewat id-nya
+        // (keduanya tidak punya name sendiri / name-nya di elemen lain).
+        foreach (['f_part', 'partNoTampil', 'f_proses'] as $id) {
+            $cocok = $xpath->query(
+                "//*[@id='{$id}']/ancestor::div[contains(concat(' ', normalize-space(@class), ' '), ' lhp-baris ')]"
+            );
+
+            $this->assertGreaterThan(0, $cocok->length,
+                "Kotak {$id} tidak berada dalam baris .lhp-baris.");
+        }
+
+        // Satu definisi lebar: semua kotak duduk di .lhp-isi yang lebarnya
+        // ditetapkan sekali di CSS, bukan per field.
+        $this->assertGreaterThanOrEqual(9, substr_count($html, 'class="lhp-baris"')
+            + substr_count($html, 'class="lhp-baris" '));
+    }
 }

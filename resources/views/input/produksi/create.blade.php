@@ -22,6 +22,44 @@
     $_ltLabel = $losstimes->mapWithKeys(fn ($l) => [$l->id => $l->jenis_losstime]);
 @endphp
 
+@push('styles')
+<style>
+/* Baris form LHP: label kiri, kotak input SATU lebar untuk semua field.
+   Lebar seragam disengaja — Part Name di pabrik ini panjang, dan kotak
+   yang lebarnya berbeda-beda membuat mata operator melompat tiap baris. */
+.lhp-baris {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+.lhp-baris > label {
+    flex: 0 0 150px;
+    margin: 0;
+    font-size: 0.875rem;
+    color: #374151;
+}
+.lhp-isi {
+    flex: 0 1 640px;
+    min-width: 0;
+}
+.lhp-waktu {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.lhp-waktu > .form-control { flex: 1 1 0; min-width: 0; }
+.lhp-to { flex: 0 0 auto; font-size: 0.875rem; color: #6b7280; }
+
+/* Di layar sempit label naik ke atas kotaknya, bukan menggencet kotaknya. */
+@media (max-width: 767.98px) {
+    .lhp-baris { flex-direction: column; align-items: stretch; gap: 4px; }
+    .lhp-baris > label { flex: none; }
+    .lhp-isi { flex: none; }
+}
+</style>
+@endpush
+
 @section('content')
 <div class="erp-panel" x-data="lhpBatch()" x-init="mulai()">
     <div class="erp-panel-header">Input LHP Produksi</div>
@@ -42,29 +80,38 @@
             </div>
         @endif
 
-        {{-- ══ FORM SATU BARIS ══ --}}
+        {{-- ══ FORM SATU BARIS ══
+             Satu kolom ke bawah, label kiri, kotak input SATU lebar untuk semua
+             field. Susunan empat kolom sebelumnya memotong Part Name yang panjang
+             (nama part di pabrik ini bisa "BRACE COMP LEG SHIELD ..."), dan lebar
+             kotak yang berbeda-beda bikin mata operator melompat tiap baris. --}}
         <form id="formBaris" novalidate @submit.prevent="simpanKeDraft()">
-            <div class="row g-3">
-                <div class="col-md-3">
-                    <label class="form-label">Tanggal Produksi <span class="text-danger">*</span></label>
-                    <input type="date" name="tanggal_produksi" class="form-control"
+
+            <div class="lhp-baris">
+                <label for="f_tanggal">Tanggal Produksi <span class="text-danger">*</span></label>
+                <div class="lhp-isi">
+                    <input type="date" id="f_tanggal" name="tanggal_produksi" class="form-control"
                            value="{{ now()->format('Y-m-d') }}">
                 </div>
+            </div>
 
-                <div class="col-md-3">
-                    <label class="form-label">Shift <span class="text-danger">*</span></label>
-                    <select name="id_shift" class="form-select">
+            <div class="lhp-baris">
+                <label for="f_shift">Shift <span class="text-danger">*</span></label>
+                <div class="lhp-isi">
+                    <select id="f_shift" name="id_shift" class="form-select">
                         <option value="">-- Pilih Shift --</option>
                         @foreach ($shifts as $s)
                             <option value="{{ $s->id }}">{{ $s->nama_shift }}</option>
                         @endforeach
                     </select>
                 </div>
+            </div>
 
-                <div class="col-md-3" x-data="taField(taKaryawan)">
-                    <label class="form-label">Operator <span class="text-danger">*</span></label>
+            <div class="lhp-baris" x-data="taField(taKaryawan)">
+                <label for="f_operator">Operator <span class="text-danger">*</span></label>
+                <div class="lhp-isi">
                     <div class="ta-wrap">
-                        <input type="text" class="form-control ta-input" x-model="query"
+                        <input type="text" id="f_operator" class="form-control ta-input" x-model="query"
                                @focus="openDd()" @blur="closeDd()" @keydown="onKey($event)" @input="onInput()"
                                placeholder="Ketik nama operator...">
                         <input type="hidden" name="id_karyawan" :value="val">
@@ -79,11 +126,13 @@
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <div class="col-md-3" x-data="taField(taMesin)">
-                    <label class="form-label">Mesin <span class="text-danger">*</span></label>
+            <div class="lhp-baris" x-data="taField(taMesin)">
+                <label for="f_mesin">Mesin <span class="text-danger">*</span></label>
+                <div class="lhp-isi">
                     <div class="ta-wrap">
-                        <input type="text" class="form-control ta-input" x-model="query"
+                        <input type="text" id="f_mesin" class="form-control ta-input" x-model="query"
                                @focus="openDd()" @blur="closeDd()" @keydown="onKey($event)" @input="onInput()"
                                placeholder="Ketik ID atau nama mesin...">
                         <input type="hidden" name="id_mesin" :value="val">
@@ -98,66 +147,77 @@
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <div class="col-md-8" x-data="partPicker()">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Part <span class="text-danger">*</span></label>
-                            <div class="ta-wrap">
-                                <input type="text" class="form-control ta-input" x-model="query"
-                                       @focus="open = true; idx = -1" @blur="tutup()" @keydown="tombol($event)"
-                                       @input="val = null; open = true; idx = -1"
-                                       placeholder="Ketik part no atau nama...">
-                                <div class="ta-dropdown" x-show="open" x-cloak>
-                                    <template x-if="tersaring.length === 0">
-                                        <div class="ta-empty">Tidak ditemukan</div>
-                                    </template>
-                                    <template x-for="(item, i) in tersaring" :key="item.v">
-                                        <div class="ta-item" :class="{ 'ta-active': i === idx }"
-                                             @mousedown.prevent="pilih(item)" x-text="item.t"></div>
-                                    </template>
-                                </div>
-                            </div>
-
-                            <label class="form-label mt-2">Part No.</label>
-                            <input type="text" class="form-control" id="partNoTampil" :value="partNo" readonly
-                                   placeholder="Terisi otomatis dari Part">
-                        </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label">Proses <span class="text-danger">*</span></label>
-                            <select name="id_part_proses" class="form-select" :disabled="prosesList.length === 0">
-                                <option value="">-- Pilih Part dulu --</option>
-                                <template x-for="p in prosesList" :key="p.id">
-                                    {{-- data-progressive dibaca blok dandori untuk memilih
-                                         std_menit_progressive. Penanda, bukan teks pilihan. --}}
-                                    <option :value="p.id"
-                                            :data-progressive="p.nama_proses.trim().toUpperCase() === 'PROGRESSIVE' ? '1' : '0'"
-                                            x-text="`${p.id_proses} – ${p.nama_proses} (SPH Std: ${p.sph_standar_produksi})`">
-                                    </option>
+            {{-- Part, Part No., dan Proses WAJIB satu scope partPicker():
+                 prosesList milik komponen itu. Pernah dipisah jadi bersebelahan —
+                 daftar proses tak pernah terisi dan nol baris bisa disimpan. --}}
+            <div x-data="partPicker()">
+                <div class="lhp-baris">
+                    <label for="f_part">Part Name <span class="text-danger">*</span></label>
+                    <div class="lhp-isi">
+                        <div class="ta-wrap">
+                            <input type="text" id="f_part" class="form-control ta-input" x-model="query"
+                                   @focus="open = true; idx = -1" @blur="tutup()" @keydown="tombol($event)"
+                                   @input="val = null; open = true; idx = -1"
+                                   placeholder="Ketik part no atau nama...">
+                            <div class="ta-dropdown" x-show="open" x-cloak>
+                                <template x-if="tersaring.length === 0">
+                                    <div class="ta-empty">Tidak ditemukan</div>
                                 </template>
-                            </select>
+                                <template x-for="(item, i) in tersaring" :key="item.v">
+                                    <div class="ta-item" :class="{ 'ta-active': i === idx }"
+                                         @mousedown.prevent="pilih(item)" x-text="item.t"></div>
+                                </template>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="col-md-4">
-                    <div class="row g-2">
-                        <div class="col-4">
-                            <label class="form-label">Jam Start <span class="text-danger">*</span></label>
-                            <input type="time" name="jam_start" class="form-control">
-                        </div>
-                        <div class="col-4">
-                            <label class="form-label">Jam Finish <span class="text-danger">*</span></label>
-                            <input type="time" name="jam_finish" class="form-control">
-                        </div>
-                        <div class="col-4">
-                            <label class="form-label">Qty OK <span class="text-danger">*</span></label>
-                            <input type="number" name="qty_aktual" class="form-control" min="1">
-                        </div>
+                <div class="lhp-baris">
+                    <label for="partNoTampil">Part No.</label>
+                    <div class="lhp-isi">
+                        <input type="text" class="form-control" id="partNoTampil" :value="partNo" readonly
+                               placeholder="Terisi otomatis dari Part Name">
                     </div>
                 </div>
 
+                <div class="lhp-baris">
+                    <label for="f_proses">Proses <span class="text-danger">*</span></label>
+                    <div class="lhp-isi">
+                        <select id="f_proses" name="id_part_proses" class="form-select"
+                                :disabled="prosesList.length === 0">
+                            <option value="">-- Pilih Part dulu --</option>
+                            <template x-for="p in prosesList" :key="p.id">
+                                {{-- data-progressive dibaca blok dandori untuk memilih
+                                     std_menit_progressive. Penanda, bukan teks pilihan. --}}
+                                <option :value="p.id"
+                                        :data-progressive="p.nama_proses.trim().toUpperCase() === 'PROGRESSIVE' ? '1' : '0'"
+                                        x-text="`${p.id_proses} – ${p.nama_proses} (SPH Std: ${p.sph_standar_produksi})`">
+                                </option>
+                            </template>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lhp-baris">
+                <label for="f_jam_start">Waktu Kerja <span class="text-danger">*</span></label>
+                <div class="lhp-isi lhp-waktu">
+                    <input type="time" id="f_jam_start" name="jam_start" class="form-control">
+                    <span class="lhp-to">To</span>
+                    <input type="time" id="f_jam_finish" name="jam_finish" class="form-control">
+                </div>
+            </div>
+
+            <div class="lhp-baris">
+                <label for="f_qty">Qty OK <span class="text-danger">*</span></label>
+                <div class="lhp-isi">
+                    <input type="number" id="f_qty" name="qty_aktual" class="form-control" min="1">
+                </div>
+            </div>
+
+            <div class="row g-3 mt-1">
                 {{-- Ada NG? --}}
                 <div class="col-12" x-data="{ adaNg: false }">
                     <div class="input-panel">
