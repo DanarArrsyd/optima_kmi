@@ -24,80 +24,72 @@
             color: #111827;
         }
 
-        /* Latar: gradien biru muda menyapu dari kanan bawah, seperti langit. */
-        .auth-bg {
-            position: fixed;
-            inset: 0;
-            background:
-                radial-gradient(120% 90% at 100% 60%, #dbeafe 0%, #eff6ff 38%, #ffffff 70%),
-                linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-            z-index: 0;
-        }
+        /* ══ Kanvas desain ══
+           login_page.png sudah memuat SELURUH tampilan: lockup perusahaan,
+           maskot, garis kaki, dan panel abu kosong tempat form duduk.
 
-        .auth-page {
-            position: relative;
-            z-index: 1;
+           Kanvas dikunci pada rasio aslinya (1920×1080) dan diskalakan utuh,
+           BUKAN dipasang background-size:cover. cover akan memotong sisi
+           gambar begitu rasio layar berbeda, dan panel abunya ikut bergeser —
+           form akan meleset dari kotaknya di layar yang bukan 16:9. */
+        .auth-layar {
             min-height: 100%;
             display: flex;
-            flex-direction: column;
-            padding: 22px clamp(16px, 4vw, 56px) 0;
-        }
-
-        /* ── Kepala: lockup perusahaan, rata kanan ── */
-        .auth-kepala {
-            display: flex;
-            justify-content: flex-end;
-        }
-        .auth-lockup {
-            /* Berkasnya RGB tanpa alpha — latarnya putih solid. multiply
-               melebur putih itu ke latar gradien, jadi tidak ada kotak putih
-               menggantung. Kalau suatu saat asetnya diganti PNG transparan,
-               baris ini boleh dicabut. */
-            mix-blend-mode: multiply;
-            height: clamp(38px, 5vw, 62px);
-            width: auto;
-        }
-
-        /* ── Badan: panel kiri + maskot kanan ── */
-        .auth-badan {
-            flex: 1;
-            display: grid;
-            grid-template-columns: minmax(0, 520px) minmax(0, 1fr);
             align-items: center;
-            gap: clamp(16px, 4vw, 48px);
+            justify-content: center;
+            background: #fff;
         }
 
-        .auth-panel {
-            background: #eceef1;
-            border-radius: 26px;
-            padding: clamp(24px, 3vw, 44px) clamp(22px, 3vw, 46px) clamp(30px, 4vw, 52px);
+        .auth-kanvas {
             position: relative;
-            overflow: hidden;
+            width: min(100vw, calc(100vh * 16 / 9));
+            aspect-ratio: 16 / 9;
+            background-image: url('{{ asset('img/login_page.png') }}');
+            background-size: 100% 100%;
+            background-repeat: no-repeat;
+
+            /* Semua ukuran di dalam kanvas memakai satuan cqw, jadi form
+               menyekala PERSIS bersama gambarnya di layar mana pun. */
+            container-type: size;
+        }
+
+        /* Panel abu di desain: kira-kira 0–48.7% mendatar, 8–90% menurun.
+           Form ditaruh di dalamnya dengan sisa ruang di tiap sisi. */
+        .auth-panel {
+            position: absolute;
+            left: 3.2%;
+            top: 12%;
+            width: 41%;
+            height: 72%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            overflow: auto;
         }
 
         .login-title {
-            font-size: clamp(26px, 3.4vw, 44px);
+            font-size: 3.1cqw;
             font-weight: 700;
-            letter-spacing: -0.5px;
+            letter-spacing: -0.02em;
             margin: 0;
         }
         .auth-garis {
-            height: 3px;
+            height: 0.22cqw;
             background: #1f3a63;
-            margin: 14px 0 12px;
+            margin: 1.1cqw 0 0.9cqw;
         }
         .login-subtitle {
             text-align: center;
-            font-size: 15px;
+            font-size: 1.05cqw;
             color: #374151;
-            margin-bottom: 26px;
+            margin-bottom: 1.9cqw;
         }
 
         .form-label {
             display: block;
-            font-size: 14px;
+            font-size: 1cqw;
             font-weight: 700;
-            margin-bottom: 7px;
+            margin-bottom: 0.5cqw;
             color: #111827;
         }
 
@@ -106,162 +98,140 @@
         .input-group-icon { position: relative; }
         .input-group-icon > i {
             position: absolute;
-            left: 16px;
+            left: 1.1cqw;
             top: 50%;
             transform: translateY(-50%);
-            font-size: 20px;
+            font-size: 1.4cqw;
             color: #6b7280;
             pointer-events: none;
         }
         .form-control {
             width: 100%;
-            height: 54px;
+            height: 3.7cqw;
             border: 1px solid #9ca3af;
-            border-radius: 12px;
+            border-radius: 0.85cqw;
             background: #fff;
-            padding: 0 16px 0 48px;
-            font-size: 16px;
+            padding: 0 1.1cqw 0 3.3cqw;
+            font-size: 1.1cqw;
             color: #111827;
         }
         .form-control::placeholder { color: #9ca3af; font-style: italic; }
         .form-control:focus {
             outline: none;
             border-color: #1f3a63;
-            box-shadow: 0 0 0 3px rgba(31, 58, 99, .12);
+            box-shadow: 0 0 0 0.2cqw rgba(31, 58, 99, .14);
         }
         .form-control.is-invalid { border-color: #b91c1c; }
         .invalid-feedback {
             display: block;
-            font-size: 12px;
+            font-size: 0.85cqw;
             color: #b91c1c;
-            margin-top: 6px;
+            margin-top: 0.4cqw;
         }
 
         .lihat-sandi {
             position: absolute;
-            right: 10px;
+            right: 0.7cqw;
             top: 50%;
             transform: translateY(-50%);
             border: 0;
             background: transparent;
             color: #4b5563;
-            font-size: 20px;
+            font-size: 1.4cqw;
             line-height: 1;
-            padding: 6px 8px;
+            padding: 0.4cqw 0.5cqw;
             cursor: pointer;
         }
 
         .form-check {
             display: flex;
             align-items: center;
-            gap: 8px;
-            margin: 14px 0 0;
-            font-size: 13px;
+            gap: 0.55cqw;
+            margin-top: 1cqw;
+            font-size: 0.9cqw;
             color: #374151;
         }
-        .form-check-input { width: 15px; height: 15px; margin: 0; }
+        .form-check-input { width: 1cqw; height: 1cqw; margin: 0; }
 
-        /* ── Tombol + awan ── */
-        .gas-wrap {
-            position: relative;
-            margin-top: 26px;
-            padding-bottom: 6px;
-            display: flex;
-            justify-content: center;
-        }
         .btn-login {
+            display: block;
+            margin: 1.9cqw auto 0;
             border: 0;
-            border-radius: 8px;
+            border-radius: 0.55cqw;
             background: #374151;
             color: #fff;
-            font-size: 17px;
+            font-size: 1.2cqw;
             font-weight: 700;
-            letter-spacing: .3px;
-            padding: 16px 42px;
+            letter-spacing: .02em;
+            padding: 1.1cqw 3cqw;
             cursor: pointer;
         }
         .btn-login:hover { background: #1f2937; }
-        .btn-login:focus-visible { outline: 3px solid #1f3a63; outline-offset: 3px; }
-
-        /* Awan HANYA lapisan tampilan. pointer-events:none supaya ia tidak
-           pernah bisa menelan klik, dan tombolnya tetap bisa ditekan lewat
-           Tab + Enter meski sedang tertutup. Halaman login adalah satu-satunya
-           halaman yang kalau salah bikin SEMUA orang tidak bisa masuk. */
-        .awan {
-            position: absolute;
-            left: 50%;
-            bottom: -34px;
-            width: 420px;
-            max-width: 132%;
-            filter: drop-shadow(0 6px 14px rgba(31, 58, 99, .13));
-            transform: translate(-50%, 130%);
-            opacity: 0;
-            pointer-events: none;
-            transition: transform .6s cubic-bezier(.22, .61, .36, 1), opacity .4s ease;
-            will-change: transform;
-        }
-        /* Kelas ini dipasang JS. Tanpa JS, awannya tidak pernah menutup dan
-           tombolnya kelihatan biasa — gagal ke arah yang aman. */
-        .awan.awan-aktif { transform: translate(-50%, 0); opacity: 1; }
-        .awan.awan-turun { transform: translate(-50%, 130%); opacity: 0; }
-
-        @media (prefers-reduced-motion: reduce) {
-            .awan { transition: opacity .2s linear; }
-        }
+        .btn-login:focus-visible { outline: 0.2cqw solid #1f3a63; outline-offset: 0.2cqw; }
 
         .login-footer {
             text-align: center;
-            font-size: 13px;
+            font-size: 0.9cqw;
             color: #1f3a63;
-            margin-top: 22px;
+            margin-top: 1.5cqw;
         }
 
-        /* ── Maskot ── */
-        .auth-maskot-kotak {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        .auth-maskot {
-            /* Sama seperti lockup: berkasnya berlatar putih solid. */
-            mix-blend-mode: multiply;
-            width: 100%;
-            max-width: 540px;
-            height: auto;
+        /* Lockup hanya muncul saat kanvas desainnya dilepas (layar sempit).
+           Aturan dasar ini WAJIB berada di atas media query di bawahnya:
+           kekhususannya sama, jadi yang ditulis belakangan yang menang. */
+        .auth-kepala-mini { display: none; text-align: center; margin-bottom: 18px; }
+        .auth-kepala-mini img { max-width: 300px; width: 76%; height: auto; }
+
+        /* ══ Layar sempit ══
+           Di bawah 820px kanvas 16:9 membuat form mengecil sampai tak terbaca.
+           Desainnya dilepas dan form kembali jadi halaman biasa dengan ukuran
+           piksel — halaman login harus tetap bisa dipakai dari ponsel. */
+        @media (max-width: 820px) {
+            .auth-kanvas {
+                width: 100%;
+                aspect-ratio: auto;
+                background-image: none;
+                container-type: normal;
+                padding: 26px 18px 34px;
+            }
+            .auth-panel {
+                position: static;
+                width: 100%;
+                height: auto;
+                max-width: 460px;
+                margin: 0 auto;
+                background: #eceef1;
+                border-radius: 22px;
+                padding: 26px 22px 30px;
+            }
+            .auth-kepala-mini { display: block; }
+
+            .login-title { font-size: 30px; }
+            .auth-garis { height: 3px; margin: 12px 0 10px; }
+            .login-subtitle { font-size: 14px; margin-bottom: 20px; }
+            .form-label { font-size: 14px; margin-bottom: 6px; }
+            .input-group-icon > i { left: 14px; font-size: 18px; }
+            .form-control { height: 50px; border-radius: 12px; padding: 0 14px 0 44px; font-size: 16px; }
+            .invalid-feedback { font-size: 12px; margin-top: 5px; }
+            .lihat-sandi { right: 8px; font-size: 18px; padding: 6px 8px; }
+            .form-check { gap: 8px; margin-top: 12px; font-size: 13px; }
+            .form-check-input { width: 15px; height: 15px; }
+            .btn-login { margin-top: 20px; border-radius: 8px; font-size: 16px; padding: 14px 34px; }
+            .login-footer { font-size: 12px; margin-top: 16px; }
         }
 
-        /* ── Kaki halaman ── */
-        .auth-kaki {
-            border-top: 3px solid #1f3a63;
-            margin-top: 18px;
-            padding: 12px 0 16px;
-            text-align: right;
-            font-style: italic;
-            font-size: clamp(13px, 1.5vw, 19px);
-            color: #1f3a63;
-        }
-
-        @media (max-width: 900px) {
-            .auth-badan { grid-template-columns: 1fr; }
-            .auth-maskot-kotak { order: -1; }
-            .auth-maskot { max-width: 320px; }
-            .auth-kaki { text-align: center; }
-        }
     </style>
 </head>
 <body>
 
-<div class="auth-bg"></div>
+<div class="auth-layar">
+    <div class="auth-kanvas">
 
-<div class="auth-page">
-
-    <div class="auth-kepala">
-        <img src="{{ asset('img/kmi-lockup.png') }}"
-             alt="PT. Kenco Manufactur Indonesia — Dies, Jigs &amp; Parts Manufacturing"
-             class="auth-lockup">
-    </div>
-
-    <div class="auth-badan">
+        {{-- Hanya tampil di layar sempit, saat kanvas desainnya dilepas. --}}
+        <div class="auth-kepala-mini">
+            <img src="{{ asset('img/kmi-lockup.png') }}"
+                 alt="PT. Kenco Manufactur Indonesia — Dies, Jigs &amp; Parts Manufacturing">
+        </div>
 
         <div class="auth-panel">
             <h1 class="login-title">@yield('auth_title', 'Welcome to OPTIMA')</h1>
@@ -275,16 +245,7 @@
             </div>
         </div>
 
-        <div class="auth-maskot-kotak">
-            <img src="{{ asset('img/kmi-maskot.png') }}" alt="" aria-hidden="true" class="auth-maskot">
-        </div>
-
     </div>
-
-    <div class="auth-kaki">
-        OPTIMA | Copyright {{ date('Y') }} PT. Kenco Manufactur Indonesia
-    </div>
-
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
