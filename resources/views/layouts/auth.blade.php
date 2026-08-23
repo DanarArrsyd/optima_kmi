@@ -20,334 +20,274 @@
         html, body {
             height: 100%;
             margin: 0;
-            background: #0f1117;
+            background: #fff;
+            color: #111827;
         }
 
-        .login-wrapper {
-            display: flex;
-            min-height: 100vh;
+        /* Latar: gradien biru muda menyapu dari kanan bawah, seperti langit. */
+        .auth-bg {
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(120% 90% at 100% 60%, #dbeafe 0%, #eff6ff 38%, #ffffff 70%),
+                linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+            z-index: 0;
         }
 
-        /* ── LEFT PANEL ─────────────────────────────────────────── */
-        .login-left {
-            flex: 1;
-            background: #111827;
+        .auth-page {
+            position: relative;
+            z-index: 1;
+            min-height: 100%;
             display: flex;
             flex-direction: column;
+            padding: 22px clamp(16px, 4vw, 56px) 0;
+        }
+
+        /* ── Kepala: lockup perusahaan, rata kanan ── */
+        .auth-kepala {
+            display: flex;
+            justify-content: flex-end;
+        }
+        .auth-lockup {
+            /* Berkasnya RGB tanpa alpha — latarnya putih solid. multiply
+               melebur putih itu ke latar gradien, jadi tidak ada kotak putih
+               menggantung. Kalau suatu saat asetnya diganti PNG transparan,
+               baris ini boleh dicabut. */
+            mix-blend-mode: multiply;
+            height: clamp(38px, 5vw, 62px);
+            width: auto;
+        }
+
+        /* ── Badan: panel kiri + maskot kanan ── */
+        .auth-badan {
+            flex: 1;
+            display: grid;
+            grid-template-columns: minmax(0, 520px) minmax(0, 1fr);
             align-items: center;
-            justify-content: center;
-            padding: 48px 40px;
+            gap: clamp(16px, 4vw, 48px);
+        }
+
+        .auth-panel {
+            background: #eceef1;
+            border-radius: 26px;
+            padding: clamp(24px, 3vw, 44px) clamp(22px, 3vw, 46px) clamp(30px, 4vw, 52px);
             position: relative;
             overflow: hidden;
         }
 
-        /* Subtle grid pattern */
-        .login-left::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background-image:
-                linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
-            background-size: 40px 40px;
-            pointer-events: none;
-        }
-
-        /* Top accent line */
-        .login-left::after {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, #4b5563, #9ca3af, #4b5563, transparent);
-        }
-
-        .brand-logo {
-            width: 120px;
-            height: 120px;
-            object-fit: contain;
-            margin-bottom: 28px;
-            position: relative;
-            z-index: 1;
-            filter: drop-shadow(0 0 24px rgba(255,255,255,0.08));
-        }
-
-        .brand-name {
-            font-size: 28px;
-            font-weight: 800;
-            color: #f3f4f6;
-            letter-spacing: 3px;
-            text-transform: uppercase;
-            position: relative;
-            z-index: 1;
-            margin-bottom: 8px;
-        }
-
-        .brand-tag {
-            display: inline-block;
-            font-size: 9px;
-            font-weight: 700;
-            color: #6b7280;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            border: 1px solid #374151;
-            padding: 3px 10px;
-            margin-bottom: 40px;
-            position: relative;
-            z-index: 1;
-        }
-
-        .brand-desc {
-            font-size: 11px;
-            color: #4b5563;
-            text-align: center;
-            line-height: 1.8;
-            letter-spacing: 0.3px;
-            max-width: 280px;
-            position: relative;
-            z-index: 1;
-        }
-
-        .brand-divider {
-            width: 40px;
-            height: 1px;
-            background: #374151;
-            margin: 28px auto;
-            position: relative;
-            z-index: 1;
-        }
-
-        .brand-stats {
-            display: flex;
-            gap: 32px;
-            position: relative;
-            z-index: 1;
-        }
-        .stat-item {
-            text-align: center;
-        }
-        .stat-item .stat-num {
-            font-size: 18px;
-            font-weight: 700;
-            color: #9ca3af;
-            letter-spacing: 1px;
-        }
-        .stat-item .stat-lbl {
-            font-size: 9px;
-            color: #4b5563;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-top: 2px;
-        }
-
-        .corner-mark {
-            position: absolute;
-            bottom: 24px;
-            left: 24px;
-            font-size: 9px;
-            color: #374151;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-        }
-
-        /* ── RIGHT PANEL ────────────────────────────────────────── */
-        .login-right {
-            width: 440px;
-            min-width: 440px;
-            background: #f3f4f6;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 48px 40px;
-            border-left: 1px solid #1f2937;
-        }
-
-        .login-card {
-            width: 100%;
-            max-width: 360px;
-        }
-
         .login-title {
-            font-size: 16px;
+            font-size: clamp(26px, 3.4vw, 44px);
             font-weight: 700;
-            color: #111827;
-            margin-bottom: 4px;
-            letter-spacing: 0.3px;
+            letter-spacing: -0.5px;
+            margin: 0;
+        }
+        .auth-garis {
+            height: 3px;
+            background: #1f3a63;
+            margin: 14px 0 12px;
         }
         .login-subtitle {
-            font-size: 11.5px;
-            color: #6b7280;
-            margin-bottom: 28px;
+            text-align: center;
+            font-size: 15px;
+            color: #374151;
+            margin-bottom: 26px;
         }
 
         .form-label {
-            font-size: 10.5px;
-            font-weight: 700;
-            color: #374151;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 5px;
             display: block;
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 7px;
+            color: #111827;
         }
 
-        .form-control {
-            border-radius: 2px;
-            border: 1px solid #d1d5db;
-            font-size: 13px;
-            padding: 8px 11px;
-            color: #111827;
-            background: #ffffff;
-            width: 100%;
-            transition: border-color 0.15s;
+        /* Kotak input berikon — dipakai juga oleh halaman lupa/atur-ulang
+           password, jadi nama kelasnya jangan diubah. */
+        .input-group-icon { position: relative; }
+        .input-group-icon > i {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 20px;
+            color: #6b7280;
+            pointer-events: none;
         }
+        .form-control {
+            width: 100%;
+            height: 54px;
+            border: 1px solid #9ca3af;
+            border-radius: 12px;
+            background: #fff;
+            padding: 0 16px 0 48px;
+            font-size: 16px;
+            color: #111827;
+        }
+        .form-control::placeholder { color: #9ca3af; font-style: italic; }
         .form-control:focus {
-            border-color: #374151;
             outline: none;
-            box-shadow: none;
+            border-color: #1f3a63;
+            box-shadow: 0 0 0 3px rgba(31, 58, 99, .12);
         }
         .form-control.is-invalid { border-color: #b91c1c; }
         .invalid-feedback {
-            font-size: 11px;
-            color: #b91c1c;
-            margin-top: 4px;
             display: block;
+            font-size: 12px;
+            color: #b91c1c;
+            margin-top: 6px;
         }
 
-        .input-group-icon {
-            position: relative;
-            margin-bottom: 16px;
-        }
-        .input-group-icon i {
+        .lihat-sandi {
             position: absolute;
-            left: 10px;
+            right: 10px;
             top: 50%;
             transform: translateY(-50%);
-            color: #9ca3af;
-            font-size: 14px;
-            pointer-events: none;
-        }
-        .input-group-icon .form-control {
-            padding-left: 34px;
+            border: 0;
+            background: transparent;
+            color: #4b5563;
+            font-size: 20px;
+            line-height: 1;
+            padding: 6px 8px;
+            cursor: pointer;
         }
 
         .form-check {
             display: flex;
             align-items: center;
             gap: 8px;
-            margin-bottom: 24px;
+            margin: 14px 0 0;
+            font-size: 13px;
+            color: #374151;
         }
-        .form-check-input {
-            width: 14px;
-            height: 14px;
-            border-radius: 2px;
-            border: 1px solid #d1d5db;
-            cursor: pointer;
-            accent-color: #374151;
-        }
-        .form-check-label {
-            font-size: 12px;
-            color: #6b7280;
-            cursor: pointer;
-        }
+        .form-check-input { width: 15px; height: 15px; margin: 0; }
 
+        /* ── Tombol + awan ── */
+        .gas-wrap {
+            position: relative;
+            margin-top: 26px;
+            padding-bottom: 6px;
+            display: flex;
+            justify-content: center;
+        }
         .btn-login {
-            width: 100%;
-            background: #111827;
-            border: none;
+            border: 0;
+            border-radius: 8px;
+            background: #374151;
             color: #fff;
-            font-size: 12px;
+            font-size: 17px;
             font-weight: 700;
-            letter-spacing: 0.8px;
-            text-transform: uppercase;
-            padding: 11px;
-            border-radius: 2px;
+            letter-spacing: .3px;
+            padding: 16px 42px;
             cursor: pointer;
-            transition: background 0.15s;
         }
         .btn-login:hover { background: #1f2937; }
-        .btn-login:active { background: #374151; }
+        .btn-login:focus-visible { outline: 3px solid #1f3a63; outline-offset: 3px; }
 
-        .login-footer {
-            margin-top: 36px;
-            font-size: 10px;
-            color: #9ca3af;
-            text-align: center;
-            letter-spacing: 0.3px;
+        /* Awan HANYA lapisan tampilan. pointer-events:none supaya ia tidak
+           pernah bisa menelan klik, dan tombolnya tetap bisa ditekan lewat
+           Tab + Enter meski sedang tertutup. Halaman login adalah satu-satunya
+           halaman yang kalau salah bikin SEMUA orang tidak bisa masuk. */
+        .awan {
+            position: absolute;
+            left: 50%;
+            bottom: -34px;
+            width: 420px;
+            max-width: 132%;
+            filter: drop-shadow(0 6px 14px rgba(31, 58, 99, .13));
+            transform: translate(-50%, 130%);
+            opacity: 0;
+            pointer-events: none;
+            transition: transform .6s cubic-bezier(.22, .61, .36, 1), opacity .4s ease;
+            will-change: transform;
+        }
+        /* Kelas ini dipasang JS. Tanpa JS, awannya tidak pernah menutup dan
+           tombolnya kelihatan biasa — gagal ke arah yang aman. */
+        .awan.awan-aktif { transform: translate(-50%, 0); opacity: 1; }
+        .awan.awan-turun { transform: translate(-50%, 130%); opacity: 0; }
+
+        @media (prefers-reduced-motion: reduce) {
+            .awan { transition: opacity .2s linear; }
         }
 
-        /* ── Responsive ─────────────────────────────────────────── */
-        @media (max-width: 768px) {
-            .login-left { display: none; }
-            .login-right {
-                width: 100%;
-                min-width: 0;
-                border-left: none;
-                background: #111827;
-                padding: 32px 24px;
-            }
-            .login-title { color: #f3f4f6; }
-            .login-subtitle { color: #6b7280; }
-            .form-label { color: #9ca3af; }
-            .form-control { background: #1f2937; border-color: #374151; color: #f3f4f6; }
-            .form-check-label { color: #6b7280; }
+        .login-footer {
+            text-align: center;
+            font-size: 13px;
+            color: #1f3a63;
+            margin-top: 22px;
+        }
+
+        /* ── Maskot ── */
+        .auth-maskot-kotak {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .auth-maskot {
+            /* Sama seperti lockup: berkasnya berlatar putih solid. */
+            mix-blend-mode: multiply;
+            width: 100%;
+            max-width: 540px;
+            height: auto;
+        }
+
+        /* ── Kaki halaman ── */
+        .auth-kaki {
+            border-top: 3px solid #1f3a63;
+            margin-top: 18px;
+            padding: 12px 0 16px;
+            text-align: right;
+            font-style: italic;
+            font-size: clamp(13px, 1.5vw, 19px);
+            color: #1f3a63;
+        }
+
+        @media (max-width: 900px) {
+            .auth-badan { grid-template-columns: 1fr; }
+            .auth-maskot-kotak { order: -1; }
+            .auth-maskot { max-width: 320px; }
+            .auth-kaki { text-align: center; }
         }
     </style>
 </head>
 <body>
 
-<div class="login-wrapper">
+<div class="auth-bg"></div>
 
-    {{-- ── LEFT PANEL ── --}}
-    <div class="login-left">
+<div class="auth-page">
 
-        <img src="{{ asset('logo.png') }}" alt="Logo" class="brand-logo">
-
-        <div class="brand-name">OPTIMA</div>
-        <div class="brand-tag">MES</div>
-
-        <div class="brand-desc">
-            Operator & Production Tracking<br>
-            Information Management System
-        </div>
-
-        <div class="brand-divider"></div>
-
-        <div class="brand-stats">
-            <div class="stat-item">
-                <div class="stat-num">VCB</div>
-                <div class="stat-lbl">Dashboard</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-num">LHP</div>
-                <div class="stat-lbl">Produksi</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-num">QC</div>
-                <div class="stat-lbl">Quality</div>
-            </div>
-        </div>
-
-        <div class="corner-mark">v1.0 &nbsp;&bull;&nbsp; OPTIMA MES</div>
+    <div class="auth-kepala">
+        <img src="{{ asset('img/kmi-lockup.png') }}"
+             alt="PT. Kenco Manufactur Indonesia — Dies, Jigs &amp; Parts Manufacturing"
+             class="auth-lockup">
     </div>
 
-    {{-- ── RIGHT PANEL ── --}}
-    <div class="login-right">
-        <div class="login-card">
+    <div class="auth-badan">
 
-            <div class="login-title">@yield('auth_title', 'Selamat Datang')</div>
-            <div class="login-subtitle">@yield('auth_subtitle', 'Masuk ke sistem OPTIMA MES')</div>
+        <div class="auth-panel">
+            <h1 class="login-title">@yield('auth_title', 'Welcome to OPTIMA')</h1>
+            <div class="auth-garis"></div>
+            <div class="login-subtitle">@yield('auth_subtitle', 'Gas Login buat akses sistem ini')</div>
 
             @yield('content')
 
             <div class="login-footer">
-                &copy; {{ date('Y') }} OPTIMA &mdash; Manufactured Excellence System
+                @yield('auth_footer', 'OPTIMA - PT. Kenco Manufactur Indonesia')
             </div>
         </div>
+
+        <div class="auth-maskot-kotak">
+            <img src="{{ asset('img/kmi-maskot.png') }}" alt="" aria-hidden="true" class="auth-maskot">
+        </div>
+
+    </div>
+
+    <div class="auth-kaki">
+        OPTIMA | Copyright {{ date('Y') }} PT. Kenco Manufactur Indonesia
     </div>
 
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+@stack('scripts')
 </body>
 </html>
