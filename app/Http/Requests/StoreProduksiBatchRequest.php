@@ -48,6 +48,30 @@ class StoreProduksiBatchRequest extends FormRequest
      * periksaHitungan() tidak berteriak atas rincian yang baru saja
      * dikosongkan di sini.
      */
+    /**
+     * Ubah string kosong jadi null, rekursif.
+     *
+     * Laravel punya middleware bawaan yang melakukan ini untuk field POST
+     * biasa, dan seluruh kode di belakangnya bergantung pada itu — mis.
+     * `$baris['dandori_karyawan_id'] ?? $baris['id_karyawan']`, yang hanya
+     * menangkap null, bukan ''. Isi di dalam satu string JSON tidak terlihat
+     * oleh middleware itu, jadi '' lolos utuh sampai ke INSERT dan MySQL
+     * menolaknya: "Incorrect integer value: '' for column id_karyawan".
+     * Fungsi ini mengembalikan perlakuan yang sama untuk payload JSON.
+     */
+    private function kosongJadiNull(array $data): array
+    {
+        foreach ($data as $kunci => $nilai) {
+            if (is_array($nilai)) {
+                $data[$kunci] = $this->kosongJadiNull($nilai);
+            } elseif ($nilai === '') {
+                $data[$kunci] = null;
+            }
+        }
+
+        return $data;
+    }
+
     protected function prepareForValidation(): void
     {
         /* 50 baris (batas rows.max di rules()) × field flat (13 pokok +
@@ -65,7 +89,7 @@ class StoreProduksiBatchRequest extends FormRequest
             // JSON rusak → gabungkan array kosong supaya aturan 'rows' yang
             // sudah ada (required|array|min:1) menolaknya dengan pesan
             // normal, bukan meledak di sini.
-            $this->merge(['rows' => is_array($decoded) ? $decoded : []]);
+            $this->merge(['rows' => is_array($decoded) ? $this->kosongJadiNull($decoded) : []]);
         }
 
         $rows = $this->input('rows');
