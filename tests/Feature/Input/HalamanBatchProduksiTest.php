@@ -271,4 +271,37 @@ class HalamanBatchProduksiTest extends TestCase
         $this->assertGreaterThanOrEqual(9, substr_count($html, 'class="lhp-baris"')
             + substr_count($html, 'class="lhp-baris" '));
     }
+
+    public function test_tabel_draft_tidak_membungkus_teks(): void
+    {
+        // Bootstrap menyetel .table ke width:100%, yang memaksa kolom saling
+        // menggencet lalu memecah "BASE JACK BRACKET" jadi dua baris. Tabel ini
+        // dipakai operator memeriksa apa yang tadi diketik sebelum SUBMIT, jadi
+        // isinya harus terbaca satu baris — kelebihannya digulir mendatar.
+        $html = $this->get(route('input.produksi.create'))->assertOk()->getContent();
+
+        $dom = new \DOMDocument;
+        libxml_use_internal_errors(true);
+        $dom->loadHTML('<?xml encoding="UTF-8">'.$html);
+        libxml_clear_errors();
+        $xpath = new \DOMXPath($dom);
+
+        $tabel = $xpath->query(
+            "//table[contains(concat(' ', normalize-space(@class), ' '), ' lhp-draft ')]"
+        );
+        $this->assertGreaterThan(0, $tabel->length, 'Tabel draft tidak memakai kelas .lhp-draft.');
+
+        // Pembungkus penggulir mendatar harus jadi induknya, bukan sekadar ada
+        // di suatu tempat pada halaman.
+        $pembungkus = $xpath->query(
+            "//table[contains(concat(' ', normalize-space(@class), ' '), ' lhp-draft ')]"
+            ."/ancestor::div[contains(concat(' ', normalize-space(@class), ' '), ' table-responsive ')]"
+        );
+        $this->assertGreaterThan(0, $pembungkus->length,
+            'Tabel draft tidak dibungkus .table-responsive — nowrap tanpa penggulir memotong kolom terakhir.');
+
+        // Aturannya satu definisi di CSS, bukan gaya sebaris per sel.
+        $this->assertStringContainsString('.lhp-draft th,', $html);
+        $this->assertStringContainsString('white-space: nowrap;', $html);
+    }
 }

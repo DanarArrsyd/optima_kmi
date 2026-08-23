@@ -51,6 +51,21 @@
 .lhp-waktu > .form-control { flex: 1 1 0; min-width: 0; }
 .lhp-to { flex: 0 0 auto; font-size: 0.875rem; color: #6b7280; }
 
+/* Tabel draft: NOL pembungkusan teks. Lebar tiap kolom mengikuti isi
+   terpanjangnya, dan kelebihannya digulir mendatar oleh .table-responsive.
+   Bootstrap menyetel .table ke width:100%, yang memaksa kolom saling
+   menggencet lalu memotong "BASE JACK BRACKET" jadi dua baris — operator
+   memakai tabel ini untuk memeriksa apa yang tadi diketik sebelum SUBMIT,
+   jadi isinya harus terbaca dalam satu baris. */
+.lhp-draft {
+    width: auto;
+    max-width: none;
+}
+.lhp-draft th,
+.lhp-draft td {
+    white-space: nowrap;
+}
+
 /* Di layar sempit label naik ke atas kotaknya, bukan menggencet kotaknya. */
 @media (max-width: 767.98px) {
     .lhp-baris { flex-direction: column; align-items: stretch; gap: 4px; }
@@ -278,7 +293,7 @@
         <div class="fw-semibold mb-2">DRAFT TERSIMPAN <span x-text="`(${rows.length})`"></span></div>
 
         <div class="table-responsive">
-            <table class="table table-bordered table-sm align-middle mb-0">
+            <table class="table table-bordered table-sm align-middle mb-0 lhp-draft">
                 <thead class="table-light">
                     <tr>
                         <th>Tanggal</th><th>Shift</th><th>Operator</th><th>Mesin</th>
