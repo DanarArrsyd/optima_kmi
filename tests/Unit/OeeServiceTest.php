@@ -113,8 +113,8 @@ class OeeServiceTest extends TestCase
     }
 
     /**
-     * Tidak ada validasi qty_ng <= qty_aktual di form (StoreProduksiRequest
-     * hanya min:1), jadi qty_ng lebih besar itu mungkin. Rumus lama
+     * Tidak ada validasi qty_ng <= qty_aktual di form (rule-nya di
+     * StoreProduksiBatchRequest cuma min:1), jadi qty_ng lebih besar itu mungkin. Rumus lama
      * menghasilkan Quality NEGATIF — mustahil secara fisik dan merusak
      * perkalian OEE. Rumus rasio tidak bisa negatif.
      */

@@ -5,274 +5,10 @@
      jadi padding bawaan #main dilepas untuk halaman ini. --}}
 @section('main_mod', 'erp-flush')
 
-@php
-$oldKaryawanId  = old('id_karyawan');
-$oldKaryawan    = $karyawan->firstWhere('id', $oldKaryawanId);
-$oldKaryawanTxt = $oldKaryawan?->nama_karyawan ?? '';
-
-$oldMesinId  = old('id_mesin');
-$oldMesinObj = $mesin->firstWhere('id', $oldMesinId);
-$oldMesinTxt = $oldMesinObj ? "{$oldMesinObj->id_mesin} - {$oldMesinObj->nama_mesin} (Line {$oldMesinObj->line})" : '';
-
-$oldAdaNg      = old('ada_ng', false);
-$oldJenisNgId  = old('id_jenis_ng');
-$oldJenisNgObj = $jenisNg->firstWhere('id', $oldJenisNgId);
-$oldJenisNgTxt = $oldJenisNgObj ? "{$oldJenisNgObj->kode} — {$oldJenisNgObj->nama_ng}" : '';
-@endphp
-
 @section('content')
 
-{{-- ══ SATU ALPINE SCOPE — mengontrol drawer sekaligus konten halaman ══ --}}
-<div x-data="{ drawerOpen: {{ $errors->any() ? 'true' : 'false' }}, filterOpen: false }">
-
-@if(! auth()->user()->isGuest())
-{{-- ── DRAWER BACKDROP ──────────────────────────────────────────── --}}
-<div x-show="drawerOpen"
-     x-cloak
-     @click="drawerOpen = false"
-     x-transition:enter="transition ease-out duration-200"
-     x-transition:enter-start="opacity-0"
-     x-transition:enter-end="opacity-100"
-     x-transition:leave="transition ease-in duration-150"
-     x-transition:leave-start="opacity-100"
-     x-transition:leave-end="opacity-0"
-     style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1190">
-</div>
-
-{{-- ── DRAWER PANEL ─────────────────────────────────────────────── --}}
-<div x-show="drawerOpen"
-     x-cloak
-     x-transition:enter="transition ease-out duration-250"
-     x-transition:enter-start="transform translate-x-full"
-     x-transition:enter-end="transform translate-x-0"
-     x-transition:leave="transition ease-in duration-200"
-     x-transition:leave-start="transform translate-x-0"
-     x-transition:leave-end="transform translate-x-full"
-     style="position:fixed;top:0;right:0;height:100dvh;width:640px;max-width:100vw;z-index:1200">
-    <div class="erp-drawer" style="display:flex;flex-direction:column;height:100%;background:#fff;box-shadow:-4px 0 24px rgba(0,0,0,.18)">
-
-    {{-- Header --}}
-    <div class="erp-drawer-hd">
-        <div>
-            <i class="bi bi-clipboard-data me-2"></i>Input LHP Produksi
-        </div>
-        <button type="button" @click="drawerOpen = false"
-                >
-            <i class="bi bi-x-lg"></i>
-        </button>
-    </div>
-
-    {{-- Body (scrollable) --}}
-    <div style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:24px;overscroll-behavior:contain">
-
-        @if($errors->any())
-        <div class="alert alert-danger mb-3" >
-            <ul class="mb-0 ps-3">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
-        </div>
-        @endif
-
-        @if($karyawan->isEmpty() || $mesin->isEmpty() || $parts->isEmpty())
-        <div class="alert alert-warning mb-3" >
-            <strong>Master data belum lengkap:</strong>
-            @if($karyawan->isEmpty()) <a href="{{ route('master.karyawan.index') }}">Tambah Karyawan/Operator</a>. @endif
-            @if($mesin->isEmpty()) <a href="{{ route('master.mesin.index') }}">Tambah Mesin</a>. @endif
-            @if($parts->isEmpty()) <a href="{{ route('master.part.index') }}">Tambah Part</a>. @endif
-        </div>
-        @endif
-
-        <form method="POST" action="{{ route('input.produksi.store') }}" id="formProduksi" novalidate>
-            @csrf
-            <div class="row g-3">
-
-                {{-- Tanggal + Shift --}}
-                <div class="col-6">
-                    <label class="form-label" >Tanggal Produksi <span class="text-danger">*</span></label>
-                    <input type="date" name="tanggal_produksi"
-                           class="form-control @error('tanggal_produksi') is-invalid @enderror"
-                           value="{{ old('tanggal_produksi', date('Y-m-d')) }}">
-                    @error('tanggal_produksi')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                </div>
-                <div class="col-6">
-                    <label class="form-label" >Shift <span class="text-danger">*</span></label>
-                    <select name="id_shift" class="form-select @error('id_shift') is-invalid @enderror">
-                        <option value="">-- Pilih --</option>
-                        @foreach($shifts as $s)
-                            <option value="{{ $s->id }}" {{ old('id_shift') == $s->id ? 'selected' : '' }}>
-                                {{ $s->nama_shift }}
-                            </option>
-                        @endforeach
-                    </select>
-                    @error('id_shift')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                </div>
-
-                {{-- Operator --}}
-                <div class="col-12"
-                     x-data="taField(taKaryawan, '{{ $oldKaryawanTxt }}', {{ $oldKaryawanId ?: 'null' }})">
-                    <label class="form-label" >Operator <span class="text-danger">*</span></label>
-                    <div class="ta-wrap">
-                        <input type="text" class="form-control ta-input @error('id_karyawan') is-invalid @enderror"
-                               x-model="query" @focus="openDd()" @blur="closeDd()"
-                               @keydown="onKey($event)" @input="onInput()"
-                               placeholder="Ketik nama operator...">
-                        <input type="hidden" name="id_karyawan" :value="val">
-                        <div class="ta-dropdown" x-show="open" x-cloak>
-                            <template x-if="filtered.length===0"><div class="ta-empty">Tidak ditemukan</div></template>
-                            <template x-for="(item,i) in filtered" :key="item.v">
-                                <div class="ta-item" :class="{'ta-active':i===idx}"
-                                     @mousedown.prevent="pick(item)" x-text="item.t"></div>
-                            </template>
-                        </div>
-                    </div>
-                    @error('id_karyawan')<div class="invalid-feedback d-block" >{{ $message }}</div>@enderror
-                </div>
-
-                {{-- Mesin --}}
-                <div class="col-12"
-                     x-data="taField(taMesin, '{{ $oldMesinTxt }}', {{ $oldMesinId ?: 'null' }})">
-                    <label class="form-label" >Mesin <span class="text-danger">*</span></label>
-                    <div class="ta-wrap">
-                        <input type="text" class="form-control ta-input @error('id_mesin') is-invalid @enderror"
-                               x-model="query" @focus="openDd()" @blur="closeDd()"
-                               @keydown="onKey($event)" @input="onInput()"
-                               placeholder="Ketik ID atau nama mesin...">
-                        <input type="hidden" name="id_mesin" :value="val">
-                        <div class="ta-dropdown" x-show="open" x-cloak>
-                            <template x-if="filtered.length===0"><div class="ta-empty">Tidak ditemukan</div></template>
-                            <template x-for="(item,i) in filtered" :key="item.v">
-                                <div class="ta-item" :class="{'ta-active':i===idx}"
-                                     @mousedown.prevent="pick(item)" x-text="item.t"></div>
-                            </template>
-                        </div>
-                    </div>
-                    @error('id_mesin')<div class="invalid-feedback d-block" >{{ $message }}</div>@enderror
-                </div>
-
-                {{-- Part + Proses --}}
-                <div class="col-12" x-data="produksiPartSelector()">
-                    <label class="form-label" >Part <span class="text-danger">*</span></label>
-                    <div class="ta-wrap" style="margin-bottom:8px">
-                        <input type="text" class="form-control ta-input"
-                               x-model="query" @focus="openDd()" @blur="closeDd()"
-                               @keydown="onKey($event)" @input="onInput()"
-                               placeholder="Ketik part no atau nama...">
-                        <div class="ta-dropdown" x-show="open" x-cloak>
-                            <template x-if="filtered.length===0"><div class="ta-empty">Tidak ditemukan</div></template>
-                            <template x-for="(item,i) in filtered" :key="item.v">
-                                <div class="ta-item" :class="{'ta-active':i===idx}"
-                                     @mousedown.prevent="pick(item)" x-text="item.t"></div>
-                            </template>
-                        </div>
-                    </div>
-                    <label class="form-label" >Proses <span class="text-danger">*</span></label>
-                    <select name="id_part_proses"
-                            class="form-select @error('id_part_proses') is-invalid @enderror"
-                            :disabled="prosesList.length===0">
-                        <option value="">-- Pilih Part dulu --</option>
-                        <template x-for="p in prosesList" :key="p.id">
-                            {{-- data-progressive dibaca blok dandori untuk memilih
-                                 std_menit_progressive. Penanda, bukan teks pilihan:
-                                 format teksnya bisa berubah, penandanya tidak. --}}
-                            <option :value="p.id"
-                                    :data-progressive="p.nama_proses.trim().toUpperCase() === 'PROGRESSIVE' ? '1' : '0'"
-                                    x-text="`${p.id_proses} – ${p.nama_proses} (SPH: ${p.sph_standar_produksi})`">
-                            </option>
-                        </template>
-                    </select>
-                    @error('id_part_proses')<div class="invalid-feedback d-block" >{{ $message }}</div>@enderror
-                </div>
-
-                {{-- Jam Start / Finish / Qty --}}
-                <div class="col-4">
-                    <label class="form-label" >Jam Start <span class="text-danger">*</span></label>
-                    <input type="time" name="jam_start"
-                           class="form-control @error('jam_start') is-invalid @enderror"
-                           value="{{ old('jam_start') }}">
-                    @error('jam_start')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                </div>
-                <div class="col-4">
-                    <label class="form-label" >Jam Finish <span class="text-danger">*</span></label>
-                    <input type="time" name="jam_finish"
-                           class="form-control @error('jam_finish') is-invalid @enderror"
-                           value="{{ old('jam_finish') }}">
-                    @error('jam_finish')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                </div>
-                <div class="col-4">
-                    <label class="form-label" >Qty Aktual <span class="text-danger">*</span></label>
-                    <input type="number" name="qty_aktual"
-                           class="form-control @error('qty_aktual') is-invalid @enderror"
-                           value="{{ old('qty_aktual') }}" min="1">
-                    @error('qty_aktual')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                </div>
-
-                {{-- Ada NG? --}}
-                <div class="col-12" x-data="{ adaNg: {{ $oldAdaNg ? 'true' : 'false' }} }">
-                    <div class="input-panel">
-                        <div class="form-check mb-0">
-                            <input class="form-check-input" type="checkbox" name="ada_ng"
-                                   id="ada_ng_drawer" value="1" x-model="adaNg"
-                                   {{-- Un-tick harus benar-benar mengosongkan rows Alpine di partial
-                                        ng-rows (bukan cuma menyembunyikannya lewat x-show), supaya
-                                        ng_count ikut jadi 0 dan konsisten dengan ng=[] yang dikirim
-                                        prepareForValidation(). Tanpa ini ng_count bisa membawa sisa
-                                        hitungan baris lama saat checkbox dilepas. --}}
-                                   @change="if (!adaNg) { const w = $el.closest('[x-data]').querySelector('.ng-rows'); if (w) Alpine.$data(w).rows = []; }"
-                                   {{ $oldAdaNg ? 'checked' : '' }}>
-                            <label class="form-check-label fw-semibold" for="ada_ng_drawer"
-                                   style="color:#374151">
-                                <i class="bi bi-exclamation-triangle me-1 text-warning"></i>Ada NG Proses?
-                            </label>
-                        </div>
-                        <div x-show="adaNg" x-cloak class="mt-2">
-                            @include('input.partials.ng-rows', [
-                                'jenisNg' => $jenisNg,
-                                'initial' => old('ng', []),
-                            ])
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Ada Dandori? --}}
-                <div class="col-12" x-data="{ adaDandori: {{ old('ada_dandori') ? 'true' : 'false' }} }">
-                    <div class="input-panel">
-                        <div class="form-check mb-0">
-                            {{-- dandoriSync() satu definisi di partial dandori-rows: melepas
-                                 centang MENGOSONGKAN barisnya (bukan sekadar menyembunyikan)
-                                 supaya dandori_count konsisten dengan dandori[] yang terkirim,
-                                 dan menyalakannya menyiapkan satu baris seperti halaman Dandori. --}}
-                            <input class="form-check-input" type="checkbox" name="ada_dandori"
-                                   id="ada_dandori_drawer" value="1" x-model="adaDandori"
-                                   @change="dandoriSync($el, adaDandori)">
-                            <label class="form-check-label fw-semibold" for="ada_dandori_drawer"
-                                   style="font-size:0.875rem;color:#374151">
-                                <i class="bi bi-tools me-1 text-secondary"></i>Ada Dandori?
-                            </label>
-                        </div>
-
-                        <div x-show="adaDandori" x-cloak class="mt-2">
-                            @include('input.partials.dandori-rows', [
-                                'losstimes' => $losstimes,
-                                'karyawan' => $karyawan,
-                                'initial' => old('dandori', []),
-                            ])
-                        </div>
-                    </div>
-                </div>
-
-            </div>{{-- /row --}}
-
-            <div style="margin-top:20px;padding-top:16px;border-top:1px solid #e5e7eb;display:flex;gap:8px">
-                <button type="submit" class="btn btn-primary" style="flex:1">
-                    <i class="bi bi-save me-1"></i>Simpan LHP
-                </button>
-                <button type="button" @click="drawerOpen = false" class="btn btn-outline-secondary" >
-                    Batal
-                </button>
-            </div>
-        </form>
-    </div>{{-- /drawer body --}}
-    </div>{{-- /inner flex container --}}
-</div>{{-- /drawer panel --}}
-@endif
+{{-- ══ SATU ALPINE SCOPE — mengontrol konten halaman ══ --}}
+<div x-data="{ filterOpen: false }">
 
 {{-- ══ KONTEN HALAMAN ══════════════════════════════════════════ --}}
 @php
@@ -336,9 +72,9 @@ $lastUrl = $myLastRecord
 {{-- ── Strip toolbar ─────────────────────────────────────────── --}}
 <div class="erp-tb">
     @if(! auth()->user()->isGuest())
-    <button type="button" class="erp-tb-btn is-new" @click="drawerOpen = true">
-        <i class="bi bi-plus-lg"></i>Input Baru
-    </button>
+    <a href="{{ route('input.produksi.create') }}" class="erp-tb-btn is-new">
+        <i class="bi bi-plus-lg me-1"></i>Input Baru
+    </a>
     @endif
 
     <button type="button" class="erp-tb-btn" :class="filterOpen ? 'is-on' : ''"
@@ -1008,35 +744,30 @@ function openNoteDrawer(type, id, existingNote, isAdmin, updatedAt, noteAt, reso
         row.querySelectorAll('td').forEach(td => { td.style.transition = 'background 1.5s ease'; td.style.background = ''; });
     }, 2000);
 })();
+
+@if (session('batch_tersimpan'))
+(function() {
+    /* Draft di localStorage cuma hidup di browser, jadi cuma boleh dibuang
+       kalau server sudah MEMBUKTIKAN barisnya tersimpan — flash
+       batch_tersimpan dari ProduksiController::batch() adalah bukti itu.
+       Kunci dibaca dengan pola yang SAMA PERSIS dengan create.blade.php
+       (KUNCI dan KUNCI_BACKUP di lhpBatch()) supaya keduanya selalu
+       menunjuk baris yang sama untuk pengguna yang sama. */
+    try {
+        localStorage.removeItem('optima_draft_lhp_produksi_u{{ auth()->id() }}');
+        localStorage.removeItem('optima_draft_lhp_produksi_terkirim_u{{ auth()->id() }}');
+    } catch (e) {
+        // localStorage tak tersedia; tidak ada yang perlu dibuang.
+    }
+})();
+@endif
 </script>
 
 </div>{{-- /alpine outer scope --}}
 @endsection
 
-@php
-$_taKaryawan = $karyawan->map(fn($k) => ['v' => $k->id, 't' => $k->nama_karyawan])->values();
-$_taMesin    = $mesin->map(fn($m) => ['v' => $m->id, 't' => "{$m->id_mesin} - {$m->nama_mesin} (Line {$m->line})"])->values();
-$_taParts    = $parts->map(fn($p) => ['v' => $p->id, 't' => "{$p->part_no} — {$p->part_name}"])->values();
-$_partsData  = $parts->map(fn($p) => [
-    'id'     => $p->id,
-    'proses' => $p->proses->map(fn($pr) => [
-        'id'                   => $pr->id,
-        'id_proses'            => $pr->id_proses,
-        'nama_proses'          => $pr->nama_proses,
-        'sph_standar_produksi' => $pr->sph_standar_produksi,
-    ])->values(),
-])->values();
-$_taJenisNg = $jenisNg->map(fn($j) => ['v' => $j->id, 't' => "{$j->kode} — {$j->nama_ng}"])->values();
-@endphp
-
 @push('scripts')
 <script>
-const taKaryawan = @json($_taKaryawan);
-const taMesin    = @json($_taMesin);
-const taParts    = @json($_taParts);
-const partsData  = @json($_partsData);
-const taJenisNg  = @json($_taJenisNg);
-
 /* ── Filter Mesin multi-select ── */
 const _mesinList     = @json($_mesinForJs);
 const _mesinSelected = @json(array_values($mesinIds));
@@ -1064,66 +795,9 @@ const _prosesTA      = @json($_prosesTA);
 const _operatorTA    = @json($_operatorTA);
 const _jenisNgTA     = @json($_jenisNgTA);
 
-/* taField() kini satu definisi di layouts/app.blade.php. */
-
-function produksiPartSelector() {
-    return {
-        ...taField(taParts),
-        prosesList: [],
-        get filtered() {
-            if (!this.query.trim()) return this.items.slice(0, 60);
-            const q = this.query.toLowerCase();
-            return this.items.filter(i => i.t.toLowerCase().includes(q)).slice(0, 60);
-        },
-        pick(item) {
-            this.query = item.t; this.val = item.v; this.open = false; this.idx = -1;
-            const part = partsData.find(p => p.id == item.v);
-            this.prosesList = part ? part.proses : [];
-        },
-    };
-}
-
 /* Bootstrap tooltips */
 document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
     new bootstrap.Tooltip(el, { trigger: 'hover' });
 });
-
-/* Client-side validation */
-(function () {
-    const form = document.getElementById('formProduksi');
-    if (!form) return;
-    function clearErrs() {
-        form.querySelectorAll('.cve').forEach(e => e.remove());
-        form.querySelectorAll('.cvi').forEach(el => el.classList.remove('cvi','is-invalid'));
-    }
-    function mkErr(el, msg) {
-        el.classList.add('is-invalid','cvi');
-        const d = document.createElement('div');
-        d.className = 'invalid-feedback d-block cve'; d.textContent = msg;
-        el.insertAdjacentElement('afterend', d);
-        ['input','change'].forEach(ev => el.addEventListener(ev, () => { el.classList.remove('is-invalid','cvi'); if(d.parentNode) d.remove(); }, {once:true}));
-    }
-    function mkTa(hiddenInput, msg) {
-        const wrap = hiddenInput.closest('.ta-wrap');
-        const vis  = wrap.querySelector('.ta-input');
-        vis.classList.add('is-invalid','cvi');
-        const d = document.createElement('div');
-        d.className = 'invalid-feedback d-block cve'; d.textContent = msg;
-        wrap.insertAdjacentElement('afterend', d);
-        vis.addEventListener('input', () => { vis.classList.remove('is-invalid','cvi'); if(d.parentNode) d.remove(); }, {once:true});
-    }
-    form.addEventListener('submit', function(e) {
-        clearErrs(); const bad = []; const f = n => form.querySelector(`[name="${n}"]`);
-        const tanggal = f('tanggal_produksi'); if (!tanggal.value) { mkErr(tanggal,'Tanggal wajib diisi.'); bad.push(tanggal); }
-        const shift = f('id_shift'); if (!shift.value) { mkErr(shift,'Shift wajib dipilih.'); bad.push(shift); }
-        const kar = f('id_karyawan'); if (!kar.value) { mkTa(kar,'Operator wajib dipilih.'); bad.push(kar.closest('.ta-wrap').querySelector('.ta-input')); }
-        const mes = f('id_mesin'); if (!mes.value) { mkTa(mes,'Mesin wajib dipilih.'); bad.push(mes.closest('.ta-wrap').querySelector('.ta-input')); }
-        const pro = f('id_part_proses'); if (!pro.value) { mkErr(pro, pro.disabled?'Pilih Part dulu.':'Proses wajib dipilih.'); bad.push(pro); }
-        const js = f('jam_start'); if (!js.value) { mkErr(js,'Jam start wajib diisi.'); bad.push(js); }
-        const jf = f('jam_finish'); if (!jf.value) { mkErr(jf,'Jam finish wajib diisi.'); bad.push(jf); }
-        const qty = f('qty_aktual'); if (!qty.value || parseInt(qty.value)<1) { mkErr(qty,'Qty aktual wajib diisi (min 1).'); bad.push(qty); }
-        if (bad.length) { e.preventDefault(); bad[0].scrollIntoView({behavior:'smooth',block:'center'}); }
-    });
-})();
 </script>
 @endpush

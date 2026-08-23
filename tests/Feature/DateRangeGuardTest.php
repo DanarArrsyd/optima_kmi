@@ -7,7 +7,7 @@ use App\Http\Requests\StoreBreakdownMesinRequest;
 use App\Http\Requests\StoreDandoriRequest;
 use App\Http\Requests\StoreMasterMesinRequest;
 use App\Http\Requests\StoreMasterPartRequest;
-use App\Http\Requests\StoreProduksiRequest;
+use App\Http\Requests\StoreProduksiBatchRequest;
 use App\Http\Requests\StoreQcRequest;
 use App\Http\Requests\UpdateBreakdownDiesRequest;
 use App\Http\Requests\UpdateBreakdownMesinRequest;
@@ -41,7 +41,7 @@ class DateRangeGuardTest extends TestCase
     public static function dateFields(): array
     {
         return [
-            'produksi store' => [StoreProduksiRequest::class,        'tanggal_produksi',          '2024-05-10', []],
+            'produksi batch' => [StoreProduksiBatchRequest::class,   'rows.*.tanggal_produksi',   '2024-05-10', []],
             'produksi update' => [UpdateProduksiRequest::class,       'tanggal_produksi',          '2024-05-10', []],
             'qc store cek' => [StoreQcRequest::class,              'tgl_pengecekan',            '2024-05-10', []],
             'qc store part' => [StoreQcRequest::class,              'tgl_produksi_part',         '2024-05-10', []],
@@ -67,6 +67,22 @@ class DateRangeGuardTest extends TestCase
         $rules = $request->rules();
 
         $this->assertArrayHasKey($field, $rules, "{$requestClass} tidak lagi punya field {$field}.");
+
+        /*
+         * StoreProduksiBatchRequest menyimpan tanggalnya di dalam baris berulang
+         * (rows.*.tanggal_produksi), bukan di kunci datar. Validator butuh nilainya
+         * betulan bersarang di rows[0] supaya rule wildcard-nya kepakai — guard yang
+         * tak bisa melihat field bersarang akan diam-diam berhenti menjaga field yang
+         * justru sedang benar-benar dipakai di produksi.
+         */
+        if (preg_match('/^(\w+)\.\*\.(\w+)$/', $field, $m)) {
+            [, $prefix, $leaf] = $m;
+
+            return Validator::make(
+                [$prefix => [array_merge($context, [$leaf => $value])]],
+                [$field => $rules[$field]],
+            );
+        }
 
         return Validator::make(
             array_merge($context, [$field => $value]),

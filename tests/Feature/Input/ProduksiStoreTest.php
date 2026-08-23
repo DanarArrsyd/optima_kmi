@@ -42,13 +42,19 @@ class ProduksiStoreTest extends TestCase
         ], $override);
     }
 
+    /** Satu baris dikirim lewat endpoint batch. */
+    private function simpanLhp(array $payload)
+    {
+        return $this->post(route('input.produksi.batch'), ['rows' => [$payload]]);
+    }
+
     public function test_staff_produksi_can_store_and_cycle_time_is_computed(): void
     {
         $user = User::factory()->create(['role' => 'staff_produksi']);
         $r = $this->refs();
 
         $this->actingAs($user)
-            ->post(route('input.produksi.store'), $this->payload($r))
+            ->simpanLhp($this->payload($r))
             ->assertRedirect(route('input.produksi.index'))
             ->assertSessionHas('success');
 
@@ -66,8 +72,8 @@ class ProduksiStoreTest extends TestCase
         $r = $this->refs();
 
         $this->actingAs($user)
-            ->post(route('input.produksi.store'), $this->payload($r, ['qty_aktual' => null]))
-            ->assertSessionHasErrors('qty_aktual');
+            ->simpanLhp($this->payload($r, ['qty_aktual' => null]))
+            ->assertSessionHasErrors('rows.0.qty_aktual');
 
         $this->assertSame(0, TransaksiProduksi::count());
     }
@@ -78,7 +84,7 @@ class ProduksiStoreTest extends TestCase
         $r = $this->refs();
 
         $this->actingAs($user)
-            ->post(route('input.produksi.store'), $this->payload($r))
+            ->simpanLhp($this->payload($r))
             ->assertForbidden();
     }
 
@@ -87,7 +93,7 @@ class ProduksiStoreTest extends TestCase
         $owner = User::factory()->create(['role' => 'staff_produksi']);
         $other = User::factory()->create(['role' => 'staff_produksi']);
         $r = $this->refs();
-        $this->actingAs($owner)->post(route('input.produksi.store'), $this->payload($r));
+        $this->actingAs($owner)->simpanLhp($this->payload($r));
         $row = TransaksiProduksi::first();
 
         $this->actingAs($other)->delete(route('input.produksi.destroy', $row))->assertForbidden();
@@ -98,7 +104,7 @@ class ProduksiStoreTest extends TestCase
     {
         $owner = User::factory()->create(['role' => 'staff_produksi']);
         $r = $this->refs();
-        $this->actingAs($owner)->post(route('input.produksi.store'), $this->payload($r));
+        $this->actingAs($owner)->simpanLhp($this->payload($r));
         $row = TransaksiProduksi::first();
 
         $this->actingAs($owner)->delete(route('input.produksi.destroy', $row))->assertRedirect(route('input.produksi.index'));
@@ -110,7 +116,7 @@ class ProduksiStoreTest extends TestCase
         $owner = User::factory()->create(['role' => 'staff_produksi']);
         $admin = User::factory()->create(['role' => 'admin']);
         $r = $this->refs();
-        $this->actingAs($owner)->post(route('input.produksi.store'), $this->payload($r));
+        $this->actingAs($owner)->simpanLhp($this->payload($r));
         $row = TransaksiProduksi::first();
 
         $this->actingAs($admin)->delete(route('input.produksi.destroy', $row))->assertRedirect(route('input.produksi.index'));

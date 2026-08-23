@@ -6,7 +6,7 @@ use App\Exports\LhpProduksiExport;
 use App\Exports\ProduksiImportTemplate;
 use App\Http\Controllers\Concerns\ResolvesStaffNote;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\StoreProduksiRequest;
+use App\Http\Requests\StoreProduksiBatchRequest;
 use App\Http\Requests\UpdateProduksiRequest;
 use App\Imports\ProduksiImport;
 use App\Models\MasterJenisNg;
@@ -16,10 +16,10 @@ use App\Models\MasterMesin;
 use App\Models\MasterPart;
 use App\Models\MasterShift;
 use App\Models\TransaksiProduksi;
-use App\Services\DandoriRincianService;
 use App\Services\NgDetailService;
 use App\Services\NotificationService;
 use App\Services\ProduksiService;
+use App\Services\ProduksiWriteService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
@@ -32,7 +32,7 @@ class ProduksiController extends Controller
         private ProduksiService $produksiService,
         private NotificationService $notifSvc,
         private NgDetailService $ngDetailService,
-        private DandoriRincianService $dandoriRincianService,
+        private ProduksiWriteService $produksiWriteService,
     ) {}
 
     public function index(Request $request)
@@ -116,13 +116,11 @@ class ProduksiController extends Controller
             ->paginate(30)
             ->withQueryString();
 
-        // Master data untuk drawer form
-        $shifts = MasterShift::orderBy('jam_start')->get();
+        // Master data untuk tabel & filter
         $karyawan = MasterKaryawan::where('departemen', 'Produksi')->aktif()->orderBy('nama_karyawan')->get();
         $mesin = MasterMesin::orderBy('line')->orderBy('id_mesin')->get();
         $parts = MasterPart::with('proses')->orderBy('part_name')->get();
         $jenisNg = MasterJenisNg::orderBy('kode')->get();
-        $losstimes = MasterLosstime::orderBy('kode')->get();
 
         // Data untuk filter lanjutan
         $customers = MasterPart::distinct()->orderBy('customer')->pluck('customer')->filter()->values();
@@ -141,7 +139,7 @@ class ProduksiController extends Controller
             'transaksi', 'dateFrom', 'dateTo', 'search', 'mesinIds',
             'filterCustomer', 'filterPartId', 'filterKarId', 'filterProsesId',
             'filterJenisNgId', 'pakaiTanggal',
-            'shifts', 'karyawan', 'mesin', 'parts', 'jenisNg', 'losstimes', 'customers',
+            'karyawan', 'mesin', 'parts', 'jenisNg', 'customers',
             'myLastRecord', 'myLastOnPage', 'filterActive'
         ));
     }
@@ -158,51 +156,35 @@ class ProduksiController extends Controller
         return view('input.produksi.create', compact('shifts', 'karyawan', 'mesin', 'parts', 'jenisNg', 'losstimes'));
     }
 
-    public function store(StoreProduksiRequest $request)
+    /**
+     * Menyimpan banyak baris LHP sekali jalan dari halaman batch.
+     *
+     * Satu transaksi untuk seluruh baris: draft di browser tetap utuh saat
+     * gagal, jadi menyimpan separuh akan membuat operator mengirim ulang baris
+     * yang sudah masuk.
+     */
+    public function batch(StoreProduksiBatchRequest $request)
     {
-        $validated = $request->validated();
-        $ngRows = $validated['ng'] ?? [];
-        $dandoriRows = $validated['dandori'] ?? [];
-        $dandoriKaryawan = $validated['dandori_karyawan_id'] ?? $validated['id_karyawan'];
-        unset(
-            $validated['ng'], $validated['ada_ng'], $validated['ng_count'],
-            $validated['dandori'], $validated['ada_dandori'], $validated['dandori_count'],
-            $validated['dandori_karyawan_id'],
-        );
+        $rows = $request->validated()['rows'];
 
-        $cycleTime = $this->produksiService->calculateActualCycleTime(
-            $validated['jam_start'].':00',
-            $validated['jam_finish'].':00',
-            $validated['qty_aktual']
-        );
-
-        DB::transaction(function () use ($validated, $cycleTime, $ngRows, $dandoriRows, $dandoriKaryawan) {
-            $produksi = TransaksiProduksi::create([
-                ...$validated,
-                'actual_cycle_time' => $cycleTime,
-                'created_by' => auth()->id(),
-            ]);
-
-            $this->ngDetailService->syncProduksi($produksi, $ngRows);
-
-            /*
-             * Baris dandori sengaja TIDAK menyimpan tautan ke baris LHP: satu
-             * kombinasi tanggal+shift+mesin+proses bisa punya sampai lima baris
-             * LHP, jadi tautan apa pun butuh aturan sewenang-wenang. Ia cuma
-             * menyalin field sesi — bentuk barisnya identik dengan yang ditulis
-             * form Dandori, sehingga tidak satu pun perhitungan berubah.
-             */
-            $this->dandoriRincianService->simpan([
-                'tanggal' => $validated['tanggal_produksi'],
-                'id_shift' => $validated['id_shift'],
-                'id_karyawan' => $dandoriKaryawan,
-                'id_mesin' => $validated['id_mesin'],
-                'id_part_proses' => $validated['id_part_proses'],
-            ], $dandoriRows);
+        DB::transaction(function () use ($rows) {
+            foreach ($rows as $row) {
+                $this->produksiWriteService->simpan($row);
+            }
         });
 
+        $jumlah = count($rows);
+
+        /* batch_tersimpan adalah bukti sukses yang dibaca index.blade.php
+         * untuk membuang draft di localStorage (KUNCI dan KUNCI_BACKUP di
+         * create.blade.php). Draft hanya boleh dibuang setelah server
+         * MEMBUKTIKAN barisnya tersimpan — bukan cuma karena create.blade.php
+         * tidak melihat galat validasi, yang juga terjadi saat request tidak
+         * pernah sampai sini sama sekali (419 sesi habis, 500, jaringan putus).
+         */
         return redirect()->route('input.produksi.index')
-            ->with('success', 'LHP Produksi berhasil disimpan.');
+            ->with('success', "{$jumlah} baris LHP Produksi berhasil disimpan.")
+            ->with('batch_tersimpan', $jumlah);
     }
 
     public function edit(TransaksiProduksi $produksi)

@@ -156,9 +156,15 @@ class DandoriDariLhpTest extends TestCase
         ], $tambahan);
     }
 
+    /** Satu baris dikirim lewat endpoint batch. */
+    private function simpanLhp(array $payload)
+    {
+        return $this->post(route('input.produksi.batch'), ['rows' => [$payload]]);
+    }
+
     public function test_menyimpan_rincian_dandori_bersama_lhp(): void
     {
-        $this->post(route('input.produksi.store'), $this->payloadLhp([
+        $this->simpanLhp($this->payloadLhp([
             'ada_dandori' => 1,
             'dandori_count' => 2,
             'dandori' => [
@@ -181,7 +187,7 @@ class DandoriDariLhpTest extends TestCase
 
     public function test_tanpa_centang_tidak_menulis_dandori(): void
     {
-        $this->post(route('input.produksi.store'), $this->payloadLhp([
+        $this->simpanLhp($this->payloadLhp([
             'dandori_count' => 0,
         ]))->assertRedirect();
 
@@ -194,13 +200,13 @@ class DandoriDariLhpTest extends TestCase
         // dandori_count membuktikan Alpine hidup, bukan bahwa baris dandori[]
         // benar-benar sampai. Tanpa penjaga ini, payload terpotong menyimpan
         // NOL baris dandori tanpa satu pun error — operator mengira tercatat.
-        $this->post(route('input.produksi.store'), $this->payloadLhp([
+        $this->simpanLhp($this->payloadLhp([
             'ada_dandori' => 1,
             'dandori_count' => 2,
             'dandori' => [
                 ['id_losstime' => $this->losstime->id, 'actual_menit' => 50],
             ],
-        ]))->assertSessionHasErrors('dandori_count');
+        ]))->assertSessionHasErrors('rows.0.dandori_count');
 
         $this->assertSame(0, TransaksiProduksi::count());
         $this->assertSame(0, TransaksiDandoriRincian::count());
@@ -208,14 +214,14 @@ class DandoriDariLhpTest extends TestCase
 
     public function test_jenis_loss_time_kembar_ditolak(): void
     {
-        $this->post(route('input.produksi.store'), $this->payloadLhp([
+        $this->simpanLhp($this->payloadLhp([
             'ada_dandori' => 1,
             'dandori_count' => 2,
             'dandori' => [
                 ['id_losstime' => $this->losstime->id, 'actual_menit' => 50],
                 ['id_losstime' => $this->losstime->id, 'actual_menit' => 20],
             ],
-        ]))->assertSessionHasErrors('dandori.0.id_losstime');
+        ]))->assertSessionHasErrors('rows.0.dandori.0.id_losstime');
 
         $this->assertSame(0, TransaksiDandoriRincian::count());
     }
@@ -224,7 +230,7 @@ class DandoriDariLhpTest extends TestCase
     {
         // Probe prod menemukan 250 sesi dengan operator dandori berbeda dari
         // operator LHP-nya; mewarisi tanpa bisa diubah memaksa data yang salah.
-        $this->post(route('input.produksi.store'), $this->payloadLhp([
+        $this->simpanLhp($this->payloadLhp([
             'ada_dandori' => 1,
             'dandori_count' => 1,
             'dandori_karyawan_id' => $this->karyawanLain->id,
@@ -240,11 +246,11 @@ class DandoriDariLhpTest extends TestCase
     {
         // Ini membuktikan urutan validasi FormRequest terjadi SEBELUM controller
         // (dan DB::transaction di dalamnya) pernah jalan — bukan membuktikan
-        // rollback. qty_aktual negatif ditolak StoreProduksiRequest, jadi baris
+        // rollback. qty_aktual negatif ditolak StoreProduksiBatchRequest, jadi baris
         // di bawah ini hijau walau transaksinya sendiri tak pernah dibuka.
         // Kasus rollback-di-dalam-transaksi ada di
         // test_gagal_di_tengah_transaksi_membatalkan_lhp_dan_dandori di bawah.
-        $this->post(route('input.produksi.store'), $this->payloadLhp([
+        $this->simpanLhp($this->payloadLhp([
             'qty_aktual' => -5,
             'ada_dandori' => 1,
             'dandori_count' => 1,
@@ -278,7 +284,7 @@ class DandoriDariLhpTest extends TestCase
         $this->withoutExceptionHandling();
 
         try {
-            $this->post(route('input.produksi.store'), $this->payloadLhp([
+            $this->simpanLhp($this->payloadLhp([
                 'ada_dandori' => 1,
                 'dandori_count' => 1,
                 'dandori' => [
@@ -313,16 +319,6 @@ class DandoriDariLhpTest extends TestCase
     public function test_form_create_punya_blok_dandori(): void
     {
         $html = $this->get(route('input.produksi.create'))->assertOk()->getContent();
-
-        $this->assertStringContainsString('name="ada_dandori"', $html);
-        $this->assertStringContainsString('dandori_count', $this->blokDandori($html));
-    }
-
-    public function test_laci_index_punya_blok_dandori(): void
-    {
-        // Laci di index.blade.php adalah form yang paling sering dipakai
-        // operator, dan yang paling sering kelewat saat menambah field.
-        $html = $this->get(route('input.produksi.index'))->assertOk()->getContent();
 
         $this->assertStringContainsString('name="ada_dandori"', $html);
         $this->assertStringContainsString('dandori_count', $this->blokDandori($html));
@@ -365,7 +361,7 @@ class DandoriDariLhpTest extends TestCase
 
     public function test_mengubah_lhp_tidak_menyentuh_dandori(): void
     {
-        $this->post(route('input.produksi.store'), $this->payloadLhp([
+        $this->simpanLhp($this->payloadLhp([
             'ada_dandori' => 1,
             'dandori_count' => 1,
             'dandori' => [['id_losstime' => $this->losstime->id, 'actual_menit' => 50]],
@@ -390,7 +386,7 @@ class DandoriDariLhpTest extends TestCase
     {
         // Keduanya catatan yang berdiri sendiri; dandori tetap sah walau baris
         // LHP-nya dihapus.
-        $this->post(route('input.produksi.store'), $this->payloadLhp([
+        $this->simpanLhp($this->payloadLhp([
             'ada_dandori' => 1,
             'dandori_count' => 1,
             'dandori' => [['id_losstime' => $this->losstime->id, 'actual_menit' => 50]],
@@ -407,7 +403,6 @@ class DandoriDariLhpTest extends TestCase
     {
         return [
             'create' => ['input.produksi.create'],
-            'laci index' => ['input.produksi.index'],
         ];
     }
 
@@ -510,7 +505,6 @@ class DandoriDariLhpTest extends TestCase
 
         $halaman = [
             route('input.produksi.create'),
-            route('input.produksi.index'),
             route('input.produksi.edit', $produksi),
         ];
 
