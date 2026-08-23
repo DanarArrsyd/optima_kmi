@@ -30,7 +30,17 @@ class StoreProduksiBatchRequest extends FormRequest
             'rows.*.ada_ng' => 'nullable|boolean',
             'rows.*.ng_count' => 'required|integer|min:0',
             'rows.*.ng' => 'nullable|array',
-            'rows.*.ng.*.id_jenis_ng' => 'required|integer|exists:master_jenis_ng,id|distinct',
+            /* Tanpa `distinct`, sama seperti dandori di bawah: operator boleh
+             * mencatat jenis NG yang sama dua kali dalam satu baris, mis.
+             * ketemu gores di dua waktu berbeda selama sesi itu.
+             *
+             * Bedanya dengan dandori: tabel transaksi_produksi_ng punya indeks
+             * unik uniq_prod_ng (id_transaksi_produksi, id_jenis_ng), jadi dua
+             * baris jenis sama tidak bisa berdiri sendiri di sana.
+             * NgDetailService::normalize() menjumlahkannya jadi satu baris —
+             * dan itu memang arti qty per jenis NG. Yang dicabut cuma
+             * blokirnya, bukan bentuk penyimpanannya. */
+            'rows.*.ng.*.id_jenis_ng' => 'required|integer|exists:master_jenis_ng,id',
             'rows.*.ng.*.qty' => 'required|integer|min:1',
             'rows.*.ada_dandori' => 'nullable|boolean',
             'rows.*.dandori_count' => 'nullable|integer|min:0',
@@ -319,7 +329,6 @@ class StoreProduksiBatchRequest extends FormRequest
 
             'rows.*.ng.*.id_jenis_ng.required' => 'Baris :position: pilih jenis NG untuk setiap baris.',
             'rows.*.ng.*.id_jenis_ng.exists' => 'Baris :position: jenis NG yang dipilih tidak valid.',
-            'rows.*.ng.*.id_jenis_ng.distinct' => 'Baris :position: jenis NG yang sama tidak boleh diisi dua kali.',
 
             'rows.*.dandori.*.id_losstime.required' => 'Baris :position: pilih jenis loss time untuk setiap baris dandori.',
             'rows.*.dandori.*.id_losstime.exists' => 'Baris :position: jenis loss time yang dipilih tidak valid.',
