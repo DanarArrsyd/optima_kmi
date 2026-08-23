@@ -364,4 +364,33 @@ class ProduksiBatchTest extends TestCase
             TransaksiDandoriRincian::first()->id_karyawan
         );
     }
+
+    public function test_jenis_ng_kembar_diterima_dan_qty_dijumlah(): void
+    {
+        // Operator boleh mencatat jenis NG yang sama dua kali dalam satu baris
+        // — mis. ketemu gores di dua waktu berbeda selama sesi itu.
+        //
+        // BEDA dari dandori: tabel transaksi_produksi_ng punya indeks unik
+        // uniq_prod_ng (id_transaksi_produksi, id_jenis_ng), jadi dua baris
+        // jenis sama MUSTAHIL tersimpan terpisah. NgDetailService::normalize()
+        // menjumlahkannya jadi satu baris, dan itu memang arti qty per jenis NG.
+        // Yang dicabut cuma blokirnya, bukan bentuk penyimpanannya.
+        $this->kirim([$this->baris([
+            'ada_ng' => 1,
+            'ng_count' => 2,
+            'ng' => [
+                ['id_jenis_ng' => $this->ref['jenisNg']->id, 'qty' => 5],
+                ['id_jenis_ng' => $this->ref['jenisNg']->id, 'qty' => 3],
+            ],
+        ])])->assertRedirect();
+
+        $this->assertSame(1, TransaksiProduksi::count());
+
+        $lhp = TransaksiProduksi::first();
+        $this->assertSame(1, $lhp->ngDetails()->count());
+        $this->assertSame(8, (int) $lhp->ngDetails()->first()->qty);
+
+        // qty_ng di baris LHP ikut totalnya, bukan salah satunya.
+        $this->assertSame(8, (int) $lhp->qty_ng);
+    }
 }

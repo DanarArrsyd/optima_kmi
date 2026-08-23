@@ -84,8 +84,16 @@ class NgMultiJenisProduksiTest extends TestCase
         $this->assertSame(7, (int) $trx->qty_ng);
     }
 
-    public function test_jenis_ng_dobel_ditolak_validasi(): void
+    public function test_jenis_ng_dobel_diterima_dan_qty_dijumlah(): void
     {
+        // Operator boleh mencatat jenis NG yang sama dua kali dalam satu baris,
+        // mis. ketemu penyok di dua waktu berbeda selama sesi itu. Dulu ditolak
+        // validasi, dan itu memblokir kejadian yang wajar di lantai produksi.
+        //
+        // Tersimpan sebagai SATU baris dengan qty dijumlah: tabel
+        // transaksi_produksi_ng punya indeks unik uniq_prod_ng
+        // (id_transaksi_produksi, id_jenis_ng), jadi dua baris jenis sama tidak
+        // bisa berdiri sendiri di sana — dan qty per jenis NG memang satu angka.
         $response = $this->actingAs($this->admin)->simpanLhp([
             ...$this->base,
             'ada_ng' => 1,
@@ -96,8 +104,12 @@ class NgMultiJenisProduksiTest extends TestCase
             ],
         ]);
 
-        $response->assertSessionHasErrors('rows.0.ng.1.id_jenis_ng');
-        $this->assertSame(0, TransaksiProduksi::count());
+        $response->assertRedirect(route('input.produksi.index'));
+
+        $trx = TransaksiProduksi::latest('id')->first();
+        $this->assertCount(1, $trx->ngDetails);
+        $this->assertSame(7, (int) $trx->ngDetails->first()->qty);
+        $this->assertSame(7, (int) $trx->qty_ng);
     }
 
     public function test_ada_ng_dicentang_tapi_baris_kosong_ditolak(): void
