@@ -212,8 +212,13 @@ class DandoriDariLhpTest extends TestCase
         $this->assertSame(0, TransaksiDandoriRincian::count());
     }
 
-    public function test_jenis_loss_time_kembar_ditolak(): void
+    public function test_jenis_loss_time_kembar_diterima(): void
     {
+        // Satu sesi bisa punya beberapa pergantian dies, dan tiap pergantian
+        // memunculkan jenis loss time yang sama lagi — itu kejadian normal di
+        // lantai produksi, bukan salah ketik. Halaman Dandori memang sudah
+        // mengizinkannya; jalur batch sempat menolaknya dan bikin operator
+        // buntu. Dua-duanya tersimpan sebagai baris terpisah, menitnya utuh.
         $this->simpanLhp($this->payloadLhp([
             'ada_dandori' => 1,
             'dandori_count' => 2,
@@ -221,9 +226,19 @@ class DandoriDariLhpTest extends TestCase
                 ['id_losstime' => $this->losstime->id, 'actual_menit' => 50],
                 ['id_losstime' => $this->losstime->id, 'actual_menit' => 20],
             ],
-        ]))->assertSessionHasErrors('rows.0.dandori.0.id_losstime');
+        ]))->assertRedirect();
 
-        $this->assertSame(0, TransaksiDandoriRincian::count());
+        $this->assertSame(2, TransaksiDandoriRincian::count());
+
+        $menit = TransaksiDandoriRincian::orderBy('id')->pluck('actual_menit')
+            ->map(fn ($m) => (float) $m)->all();
+        $this->assertSame([50.0, 20.0], $menit);
+
+        // Keduanya jenis yang sama — tidak digabung jadi satu baris 70 menit.
+        $this->assertSame(
+            [$this->losstime->id, $this->losstime->id],
+            TransaksiDandoriRincian::orderBy('id')->pluck('id_losstime')->all()
+        );
     }
 
     public function test_operator_dandori_bisa_beda_dari_lhp(): void
