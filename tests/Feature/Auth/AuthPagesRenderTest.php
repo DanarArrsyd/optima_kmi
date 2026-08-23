@@ -22,7 +22,7 @@ class AuthPagesRenderTest extends TestCase
         // Penanda layoutnya diganti saat halaman login didesain ulang
         // (login-wrapper → auth-page). Yang dijaga tetap sama: halaman auth
         // memakai layouts.auth, bukan layout aplikasi yang butuh Vite.
-        $this->assertStringContainsString('auth-page', $html, 'Halaman harus pakai layouts.auth.');
+        $this->assertStringContainsString('auth-kanvas', $html, 'Halaman harus pakai layouts.auth.');
         $this->assertStringContainsString('form-control', $html, 'Kontrak kelas form layouts.auth hilang.');
         $this->assertStringNotContainsString('/build/', $html, 'Tidak boleh ada asset Vite hasil build.');
         $this->assertStringNotContainsString('@vite', $html);
