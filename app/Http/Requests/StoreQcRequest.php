@@ -24,7 +24,16 @@ class StoreQcRequest extends FormRequest
             'qty_ok' => 'required|integer|min:0',
             'ng_count' => 'required|integer|min:0',
             'ng' => 'array',
-            'ng.*.id_jenis_ng' => 'required|integer|exists:master_jenis_ng,id|distinct',
+            /* Tanpa `distinct`, sama seperti jalur produksi: inspector boleh
+             * mencatat jenis NG yang sama dua kali dalam satu sesi, mis. ketemu
+             * penyok di dua waktu berbeda selama pengecekan itu.
+             *
+             * Tersimpan sebagai SATU baris dengan qty dijumlah: transaksi_qc_ng
+             * punya indeks unik uniq_qc_ng (id_transaksi_qc, id_jenis_ng), jadi
+             * dua baris jenis sama tidak bisa berdiri sendiri di sana, dan
+             * NgDetailService::normalize() sudah menjumlahkannya sejak dulu.
+             * Yang dicabut cuma blokirnya, bukan bentuk penyimpanannya. */
+            'ng.*.id_jenis_ng' => 'required|integer|exists:master_jenis_ng,id',
             'ng.*.qty' => 'required|integer|min:1',
         ];
     }
@@ -61,7 +70,6 @@ class StoreQcRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'ng.*.id_jenis_ng.distinct' => 'Jenis NG yang sama tidak boleh diisi dua kali dalam satu sesi.',
             'ng.*.id_jenis_ng.required' => 'Pilih jenis NG untuk setiap baris.',
             'ng.*.qty.min' => 'Qty NG minimal 1.',
         ];

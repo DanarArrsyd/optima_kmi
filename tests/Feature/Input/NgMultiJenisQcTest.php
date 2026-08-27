@@ -111,8 +111,16 @@ class NgMultiJenisQcTest extends TestCase
         $this->assertSame(3, (int) TransaksiQc::latest('id')->first()->qty_ng);
     }
 
-    public function test_jenis_ng_dobel_ditolak_validasi(): void
+    public function test_jenis_ng_dobel_diterima_dan_qty_dijumlah(): void
     {
+        // Inspector boleh mencatat jenis NG yang sama dua kali dalam satu sesi,
+        // mis. ketemu penyok di dua waktu berbeda selama pengecekan itu. Dulu
+        // ditolak validasi, dan itu memblokir kejadian yang wajar di lapangan.
+        //
+        // Tersimpan sebagai SATU baris dengan qty dijumlah: transaksi_qc_ng punya
+        // indeks unik uniq_qc_ng (id_transaksi_qc, id_jenis_ng), jadi dua baris
+        // jenis sama tidak bisa berdiri sendiri di sana — dan qty per jenis NG
+        // memang satu angka.
         $response = $this->actingAs($this->admin)->post(route('input.qc.store'), [
             ...$this->base,
             'ng_count' => 2,
@@ -122,7 +130,43 @@ class NgMultiJenisQcTest extends TestCase
             ],
         ]);
 
-        $response->assertSessionHasErrors('ng.1.id_jenis_ng');
+        $response->assertRedirect(route('input.qc.index'));
+
+        $trx = TransaksiQc::latest('id')->first();
+        $this->assertCount(1, $trx->ngDetails);
+        $this->assertSame(10, (int) $trx->ngDetails->first()->qty);
+        $this->assertSame(10, (int) $trx->qty_ng);
+    }
+
+    public function test_edit_qc_jenis_ng_dobel_diterima_dan_qty_dijumlah(): void
+    {
+        // Form edit harus seragam dengan form input. Kalau edit masih melarang
+        // sementara input membolehkan, baris yang sah jadi tidak bisa dikoreksi.
+        $this->actingAs($this->admin)->post(route('input.qc.store'), [
+            ...$this->base,
+            'ng_count' => 1,
+            'ng' => [
+                ['id_jenis_ng' => $this->dented->id, 'qty' => 6],
+            ],
+        ]);
+
+        $trx = TransaksiQc::latest('id')->first();
+
+        $response = $this->actingAs($this->admin)->put(route('input.qc.update', $trx), [
+            ...$this->base,
+            'ng_count' => 2,
+            'ng' => [
+                ['id_jenis_ng' => $this->dented->id, 'qty' => 5],
+                ['id_jenis_ng' => $this->dented->id, 'qty' => 3],
+            ],
+        ]);
+
+        $response->assertSessionHasNoErrors();
+
+        $trx->refresh();
+        $this->assertCount(1, $trx->ngDetails);
+        $this->assertSame(8, (int) $trx->ngDetails->first()->qty);
+        $this->assertSame(8, (int) $trx->qty_ng);
     }
 
     public function test_ng_count_kosong_akibat_alpine_gagal_ditolak(): void

@@ -164,6 +164,40 @@ class NgMultiJenisProduksiTest extends TestCase
         $this->assertSame(4, (int) $trx->qty_ng);
     }
 
+    public function test_edit_jenis_ng_dobel_diterima_dan_qty_dijumlah(): void
+    {
+        // Form edit harus seragam dengan halaman batch yang sudah mencabut
+        // larangannya. Kalau edit masih melarang sementara input membolehkan,
+        // baris yang sah jadi tidak bisa dikoreksi.
+        $this->actingAs($this->admin)->simpanLhp([
+            ...$this->base,
+            'ada_ng' => 1,
+            'ng_count' => 1,
+            'ng' => [
+                ['id_jenis_ng' => $this->dented->id, 'qty' => 5],
+            ],
+        ]);
+
+        $trx = TransaksiProduksi::latest('id')->first();
+
+        $response = $this->actingAs($this->admin)->put(route('input.produksi.update', $trx), [
+            ...$this->base,
+            'ada_ng' => 1,
+            'ng_count' => 2,
+            'ng' => [
+                ['id_jenis_ng' => $this->dented->id, 'qty' => 5],
+                ['id_jenis_ng' => $this->dented->id, 'qty' => 3],
+            ],
+        ]);
+
+        $response->assertSessionHasNoErrors();
+
+        $trx->refresh();
+        $this->assertCount(1, $trx->ngDetails);
+        $this->assertSame(8, (int) $trx->ngDetails->first()->qty);
+        $this->assertSame(8, (int) $trx->qty_ng);
+    }
+
     public function test_update_tanpa_field_ng_tidak_boleh_menghapus_detail(): void
     {
         // Simulasi checkbox "ada_ng" survive kegagalan Alpine (checked attribute
