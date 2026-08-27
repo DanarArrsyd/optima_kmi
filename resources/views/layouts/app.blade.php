@@ -1703,6 +1703,281 @@ function saringOrangNonaktif(selectId, dateFromId, noteId) {
     };
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   partPicker — ketik-cari part yang sekaligus mengisi Part No, Part
+   Name, dan daftar prosesnya.
+
+   Beda dari taField: taField hanya mengembalikan satu nilai, sementara
+   yang ini punya muatan turunan (partNo/partName/prosesList) yang harus
+   ikut berubah tiap kali pilihan berganti — dan ikut dikosongkan saat
+   pilihan dibatalkan, kalau tidak Part No lama menggantung di layar
+   sementara val sudah null.
+
+   Data masuk lewat argumen, bukan dibaca dari konstanta global halaman,
+   supaya halaman mana pun bisa memakainya (lihat taField di atas).
+   ══════════════════════════════════════════════════════════════════ */
+function partPicker(items, partsData) {
+    return {
+        items, partsData,
+        query: '', val: null, open: false, idx: -1,
+        partNo: '', partName: '', prosesList: [],
+
+        get tersaring() {
+            if (!this.query.trim()) return this.items.slice(0, 60);
+            const q = this.query.toLowerCase();
+            return this.items.filter(i => i.t.toLowerCase().includes(q)).slice(0, 60);
+        },
+        pilih(item) {
+            this.query = item.t; this.val = item.v; this.open = false; this.idx = -1;
+            const part = this.partsData.find(p => p.id == item.v);
+            this.partNo     = part ? part.part_no : '';
+            this.partName   = part ? part.part_name : '';
+            this.prosesList = part ? part.proses : [];
+        },
+        tutup() {
+            setTimeout(() => {
+                this.open = false;
+                if (this.val && !this.items.find(i => i.v == this.val && i.t === this.query)) {
+                    this.val = null; this.query = ''; this.partNo = ''; this.partName = '';
+                    this.prosesList = [];
+                }
+            }, 180);
+        },
+        tombol(e) {
+            if (e.key === 'ArrowDown') { e.preventDefault(); this.open = true; this.idx = Math.min(this.idx + 1, this.tersaring.length - 1); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); this.idx = Math.max(this.idx - 1, 0); }
+            else if (e.key === 'Enter') { e.preventDefault(); if (this.idx >= 0 && this.tersaring[this.idx]) this.pilih(this.tersaring[this.idx]); }
+            else if (e.key === 'Escape') { this.open = false; }
+        },
+    };
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   batchDraft — kerangka halaman input batch: form satu baris di atas,
+   tabel draft di bawah, satu SUBMIT mengirim semuanya.
+
+   Yang ADA di sini adalah yang nol hubungannya dengan modul mana pun:
+   penyimpanan draft, pemulihan setelah submit ditolak, pembacaan form,
+   dan penjaga pengiriman ganda. Empat hal itu justru yang paling mahal
+   kalau salah, dan mode gagalnya senyap — draft hilang tidak melempar
+   error, cuma menyisakan tabel kosong yang operator kira memang belum
+   diisi. Karena itu dia hidup satu kali di sini, bukan disalin per modul.
+
+   Yang TIDAK ada di sini: field apa yang dikumpulkan, mana yang wajib,
+   pemeriksaan antar-baris, dan bentuk payload. Itu semua masuk lewat cfg.
+
+   Kunci localStorage (cfg.kunci, cfg.kunciBackup) sengaja disuplai UTUH oleh
+   tiap modul, bukan dirakit di sini dari potongan (mis. id pengguna). Layout
+   ini murni JS generik tanpa akses ke Blade/auth, dan merakit kunci di JS
+   runtime membuat literalnya berhenti muncul di HTML server — dua test
+   pre-existing yang menjangkar ke literal kunci itu butuh teksnya utuh di
+   response mentah. Nilai kedua kunci HARUS sama persis dengan yang dihapus
+   halaman daftar modul itu (lihat komentar di batal() dan pindahkanKeBackup()
+   di bawah) — kunci yang tidak cocok berarti draft/backup jadi yatim,
+   tersimpan di browser tapi tidak pernah lagi dibaca atau dibersihkan. */
+function batchDraft(cfg) {
+    /* Kunci cfg yang hilang gagal SENYAP kalau tidak dijaga di sini — mis.
+       kunciBackup yang lupa dioper membuat KUNCI_BACKUP bernilai undefined,
+       dan localStorage.setItem(undefined, …) tidak melempar apa-apa, ia
+       menulis ke kunci literal "undefined". Lempar galat jelas SEKARANG,
+       saat modul pertama kali dipasang, daripada membiarkan operator
+       menemukan draft yang tidak pernah tersimpan/terhapus dengan benar. */
+    for (const k of ['kunci', 'kunciBackup', 'formId', 'indexUrl', 'kumpulkan', 'wajib', 'payload']) {
+        if (cfg[k] === undefined) throw new Error(`batchDraft: cfg.${k} wajib diisi.`);
+    }
+
+    /* Kunci dipisah per pengguna: komputer di lantai produksi dipakai
+       bergantian, dan kunci bersama membuat draft operator A muncul di
+       layar operator B. Modul pemanggil yang menyusun id pengguna ke dalam
+       cfg.kunci (lihat konfigLhp() di create.blade.php). */
+    const KUNCI = cfg.kunci;
+
+    /* Kunci cadangan: SUBMIT DRAFT adalah POST form biasa yang berakhir di
+       redirect server, jadi tidak ada kesempatan JS menghapus KUNCI tepat
+       saat sukses. Sebaliknya, submit memindahkan isi KUNCI ke sini dulu
+       (lihat pindahkanKeBackup()) lalu mengosongkan KUNCI.
+       Draft di sini hanya hidup di browser, jadi hanya boleh dibuang kalau
+       server sudah MEMBUKTIKAN baris-barisnya tersimpan — bukan sekadar
+       ketiadaan galat validasi di halaman ini. Bukti itu adalah flash
+       batch_tersimpan yang dibaca dan dieksekusi di halaman daftar:
+       halaman daftar-lah yang menghapus KUNCI_BACKUP ini.
+       Kalau operator kembali ke SINI dan backup masih ada — baik karena
+       galat validasi, 419 sesi habis, 500 di server, maupun jaringan
+       putus sebelum POST-nya mendarat — submit itu belum terbukti sukses,
+       jadi mulai() memulihkannya, bukan membuangnya. */
+    const KUNCI_BACKUP = cfg.kunciBackup;
+    let seq = 0;
+
+    return {
+        /* Spread cfg.metode di PALING AWAL supaya kerangka selalu menang atas
+           cfg.metode — baik state maupun method. Dalam object literal JS,
+           kunci yang datang belakangan menang atas kunci yang sama dari
+           sebaran sebelumnya. Empat modul akan memakai batchDraft(); kalau
+           cfg.metode modul kebetulan mendefinisikan nama yang sama dengan
+           state atau method kerangka (mis. "rows", "pesan", "mulai", atau
+           "hapus"), kerangka WAJIB tetap yang menang — bukan tertimpa senyap
+           oleh cfg.metode. */
+        ...(cfg.metode || {}),
+
+        rows: [],
+        pesan: '',
+        galat: '',
+        barisGagal: [],
+
+        mulai() {
+            /* Halaman batch yang dipulihkan dari bfcache (tombol Back setelah
+               submit sukses) masih menampilkan baris-baris yang SUDAH tersimpan
+               di server — x-init "mulai()" tidak jalan lagi karena Alpine tidak
+               di-reinit, dan tombol SUBMIT tetap aktif. Mengirim ulang baris
+               yang sama menulis data dobel; tidak ada unique constraint yang
+               mencegahnya. Muat ulang supaya mulai() benar-benar jalan lagi dan
+               memutuskan nasib draft dari kondisi server yang sebenarnya.
+
+               Didaftarkan DI SINI, bukan di lingkup layout: layout dimuat semua
+               halaman, dan memaksa reload bfcache di halaman yang tidak punya
+               draft adalah perubahan perilaku yang tidak diminta siapa pun.
+               Konsekuensinya, penjaga ini baru aktif setelah Alpine boot dan
+               memanggil mulai() lewat x-init — beda dari sebelum ekstraksi,
+               saat listener ini didaftarkan di parse-time script halaman. */
+            window.addEventListener('pageshow', (e) => {
+                if (e.persisted) window.location.reload();
+            });
+
+            /* Selesaikan nasib KUNCI_BACKUP (kalau ada) SEBELUM membaca KUNCI,
+               supaya restorasi normal di bawah otomatis mengambil hasilnya.
+               Sampai di SINI berarti halaman daftar belum sempat membuktikan
+               sukses (lihat komentar di deklarasi KUNCI_BACKUP) — jadi backup
+               SELALU dipulihkan, tanpa syarat ada/tidaknya galat validasi. */
+            try {
+                const backupMentah = localStorage.getItem(KUNCI_BACKUP);
+                if (backupMentah !== null) {
+                    localStorage.setItem(KUNCI, backupMentah);
+                    localStorage.removeItem(KUNCI_BACKUP);
+                }
+            } catch (e) {
+                // localStorage tak bisa dibaca/ditulis; lewati saja.
+            }
+
+            try {
+                const mentah = localStorage.getItem(KUNCI);
+                if (mentah) {
+                    this.rows = JSON.parse(mentah).map(r => ({ ...r, uid: seq++ }));
+                    if (this.rows.length) this.pesan = `${this.rows.length} baris draft dipulihkan.`;
+                }
+            } catch (e) {
+                localStorage.removeItem(KUNCI);
+            }
+            this.$watch('rows', () => localStorage.setItem(KUNCI, JSON.stringify(this.rows)));
+
+            /* Server menolak batch → tandai barisnya, draft JANGAN dibuang. */
+            this.barisGagal = (cfg.galatServer || [])
+                .map(k => (k.match(/^rows\.(\d+)\./) || [])[1])
+                .filter(v => v !== undefined)
+                .map(Number);
+        },
+
+        form() { return document.getElementById(cfg.formId); },
+
+        nilai(nama) {
+            const el = this.form().querySelector(`[name="${nama}"]`);
+            return el ? el.value : '';
+        },
+
+        teksTerpilih(nama) {
+            const el = this.form().querySelector(`[name="${nama}"]`);
+            if (!el || el.tagName !== 'SELECT') return '';
+            return el.selectedOptions[0] ? el.selectedOptions[0].textContent.trim() : '';
+        },
+
+        blok(kelas) {
+            const el = this.form().querySelector(kelas);
+            return el ? Alpine.$data(el) : null;
+        },
+
+        detik(jam) {
+            const [h, m] = (jam || '0:0').split(':').map(Number);
+            return (h * 3600) + (m * 60);
+        },
+
+        durasiDetik(mulai, selesai) {
+            const a = this.detik(mulai), b = this.detik(selesai);
+            return b >= a ? b - a : (86400 - a) + b;
+        },
+
+        simpanKeDraft() {
+            this.galat = '';
+
+            const calon = { uid: seq++, ...cfg.kumpulkan(this) };
+
+            for (const [kunci, label] of Object.entries(cfg.wajib)) {
+                if (!calon[kunci]) { this.galat = `${label} wajib diisi.`; return; }
+            }
+
+            const galat = cfg.periksa ? cfg.periksa(calon, this.rows, this) : null;
+            if (galat) { this.galat = galat; return; }
+
+            if (cfg.pratinjau) cfg.pratinjau(calon, this);
+
+            this.rows.push(calon);
+            this.pesan = '';
+            this.barisGagal = [];
+            this.resetSebagian();
+        },
+
+        /* Field yang TIDAK disebut cfg.resetField sengaja dipertahankan:
+           biasanya tanggal, shift, dan orang — ketiganya konstan sepanjang
+           satu sesi kerja, dan mengetik ulang tiap baris bikin operator
+           berhenti memakai halaman ini. */
+        resetSebagian() {
+            const f = this.form();
+            (cfg.resetField || []).forEach(n => {
+                const el = f.querySelector(`[name="${n}"]`);
+                if (el) el.value = '';
+            });
+
+            if (cfg.resetLain) cfg.resetLain(this);
+        },
+
+        hapus(i) { this.rows.splice(i, 1); this.barisGagal = []; },
+
+        payloadRows() { return this.rows.map(r => cfg.payload(r)); },
+
+        batal() {
+            if (this.rows.length && !confirm(`Buang ${this.rows.length} baris draft yang belum dikirim?`)) return;
+            localStorage.removeItem(KUNCI);
+            window.location = cfg.indexUrl;
+        },
+
+        /* Dipasang di @submit form batch. Form itu POST biasa (bukan
+           @submit.prevent) — begitu handler ini selesai, browser lanjut
+           mengirim form dan halaman ini hilang sebelum JS lain sempat jalan.
+           Jadi draft TIDAK bisa langsung dihapus di sini: kalau server nanti
+           menolak batch (galat validasi), operator akan diarahkan balik ke
+           halaman ini dan berhak mendapatkan ketikannya kembali. Sebagai
+           gantinya draft dipindah ke KUNCI_BACKUP dan KUNCI dikosongkan;
+           mulai() yang membereskan nasib akhirnya saat halaman dibuka lagi. */
+        pindahkanKeBackup() {
+            try {
+                const mentah = localStorage.getItem(KUNCI);
+                if (mentah !== null) {
+                    /* Kalau setItem(KUNCI_BACKUP) di bawah gagal (mis. kuota
+                       localStorage penuh), KUNCI tetap WAJIB dikosongkan di
+                       finally — kalau tidak, draft yang baru saja berhasil
+                       disimpan ke server akan ditawarkan lagi ke operator dan
+                       terkirim dobel. */
+                    try {
+                        localStorage.setItem(KUNCI_BACKUP, mentah);
+                    } finally {
+                        localStorage.removeItem(KUNCI);
+                    }
+                }
+            } catch (e) {
+                // localStorage tak tersedia; biarkan submit tetap jalan apa adanya.
+            }
+        },
+    };
+}
+
 function sbToggle() {
     if (isMobile()) {
         $body.classList.toggle('sb-mobile-open');
