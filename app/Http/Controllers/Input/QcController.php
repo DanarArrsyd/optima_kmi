@@ -6,6 +6,7 @@ use App\Exports\LhpQcExport;
 use App\Exports\QcImportTemplate;
 use App\Http\Controllers\Concerns\ResolvesStaffNote;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreQcBatchRequest;
 use App\Http\Requests\StoreQcRequest;
 use App\Http\Requests\UpdateQcRequest;
 use App\Imports\QcImport;
@@ -169,6 +170,35 @@ class QcController extends Controller
         DB::transaction(fn () => $this->qcWriteService->simpan($request->validated()));
 
         return redirect()->route('input.qc.index')->with('success', 'LHP Quality berhasil disimpan.');
+    }
+
+    /**
+     * Menyimpan banyak baris LHP Quality sekali jalan dari halaman batch.
+     *
+     * Satu transaksi untuk seluruh baris: draft di browser tetap utuh saat
+     * gagal, jadi menyimpan separuh akan membuat inspector mengirim ulang
+     * baris yang sudah masuk.
+     */
+    public function batch(StoreQcBatchRequest $request)
+    {
+        $rows = $request->validated()['rows'];
+
+        DB::transaction(function () use ($rows) {
+            foreach ($rows as $row) {
+                $this->qcWriteService->simpan($row);
+            }
+        });
+
+        $jumlah = count($rows);
+
+        /* batch_tersimpan adalah bukti sukses yang dibaca index.blade.php untuk
+         * membuang draft di localStorage. Draft hanya boleh dibuang setelah
+         * server MEMBUKTIKAN barisnya tersimpan — bukan cuma karena halaman
+         * batch tidak melihat galat validasi, yang juga terjadi saat request
+         * tidak pernah sampai sini (419 sesi habis, 500, jaringan putus). */
+        return redirect()->route('input.qc.index')
+            ->with('success', "{$jumlah} baris LHP Quality berhasil disimpan.")
+            ->with('batch_tersimpan', $jumlah);
     }
 
     public function edit(TransaksiQc $qc)

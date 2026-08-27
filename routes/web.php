@@ -139,6 +139,7 @@ Route::middleware('auth')->group(function () {
 
     // --- INPUT QC: tulis & export (guest TIDAK boleh) ---
     Route::middleware('role:admin,staff_qc')->prefix('input')->name('input.')->group(function () {
+        Route::post('qc/batch', [QcController::class, 'batch'])->name('qc.batch');
         Route::resource('qc', QcController::class)->only(['create', 'store', 'destroy']);
         Route::post('qc/import', [QcController::class, 'import'])->name('qc.import');
         Route::get('qc/import-template', [QcController::class, 'importTemplate'])->name('qc.import-template');
