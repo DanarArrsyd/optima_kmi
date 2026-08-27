@@ -167,7 +167,7 @@
             {{-- Part, Part No., dan Proses WAJIB satu scope partPicker():
                  prosesList milik komponen itu. Pernah dipisah jadi bersebelahan —
                  daftar proses tak pernah terisi dan nol baris bisa disimpan. --}}
-            <div x-data="partPicker()">
+            <div x-data="partPicker(taParts, partsData)">
                 <div class="lhp-baris">
                     <label for="f_part">Part Name <span class="text-danger">*</span></label>
                     <div class="lhp-isi">
@@ -389,42 +389,6 @@ const ltLabel     = @json($_ltLabel);
 window.addEventListener('pageshow', (e) => {
     if (e.persisted) window.location.reload();
 });
-
-/* Part memilih part sekaligus mengisi Part No dan daftar prosesnya. */
-function partPicker() {
-    return {
-        query: '', val: null, open: false, idx: -1,
-        partNo: '', partName: '', prosesList: [],
-
-        get tersaring() {
-            if (!this.query.trim()) return taParts.slice(0, 60);
-            const q = this.query.toLowerCase();
-            return taParts.filter(i => i.t.toLowerCase().includes(q)).slice(0, 60);
-        },
-        pilih(item) {
-            this.query = item.t; this.val = item.v; this.open = false; this.idx = -1;
-            const part = partsData.find(p => p.id == item.v);
-            this.partNo     = part ? part.part_no : '';
-            this.partName   = part ? part.part_name : '';
-            this.prosesList = part ? part.proses : [];
-        },
-        tutup() {
-            setTimeout(() => {
-                this.open = false;
-                if (this.val && !taParts.find(i => i.v == this.val && i.t === this.query)) {
-                    this.val = null; this.query = ''; this.partNo = ''; this.partName = '';
-                    this.prosesList = [];
-                }
-            }, 180);
-        },
-        tombol(e) {
-            if (e.key === 'ArrowDown') { e.preventDefault(); this.open = true; this.idx = Math.min(this.idx + 1, this.tersaring.length - 1); }
-            else if (e.key === 'ArrowUp') { e.preventDefault(); this.idx = Math.max(this.idx - 1, 0); }
-            else if (e.key === 'Enter') { e.preventDefault(); if (this.idx >= 0 && this.tersaring[this.idx]) this.pilih(this.tersaring[this.idx]); }
-            else if (e.key === 'Escape') { this.open = false; }
-        },
-    };
-}
 
 function lhpBatch() {
     /* Kunci dipisah per pengguna: komputer di lantai produksi dipakai

@@ -1703,6 +1703,55 @@ function saringOrangNonaktif(selectId, dateFromId, noteId) {
     };
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   partPicker — ketik-cari part yang sekaligus mengisi Part No, Part
+   Name, dan daftar prosesnya.
+
+   Beda dari taField: taField hanya mengembalikan satu nilai, sementara
+   yang ini punya muatan turunan (partNo/partName/prosesList) yang harus
+   ikut berubah tiap kali pilihan berganti — dan ikut dikosongkan saat
+   pilihan dibatalkan, kalau tidak Part No lama menggantung di layar
+   sementara val sudah null.
+
+   Data masuk lewat argumen, bukan dibaca dari konstanta global halaman,
+   supaya halaman mana pun bisa memakainya (lihat taField di atas).
+   ══════════════════════════════════════════════════════════════════ */
+function partPicker(items, partsData) {
+    return {
+        items, partsData,
+        query: '', val: null, open: false, idx: -1,
+        partNo: '', partName: '', prosesList: [],
+
+        get tersaring() {
+            if (!this.query.trim()) return this.items.slice(0, 60);
+            const q = this.query.toLowerCase();
+            return this.items.filter(i => i.t.toLowerCase().includes(q)).slice(0, 60);
+        },
+        pilih(item) {
+            this.query = item.t; this.val = item.v; this.open = false; this.idx = -1;
+            const part = this.partsData.find(p => p.id == item.v);
+            this.partNo     = part ? part.part_no : '';
+            this.partName   = part ? part.part_name : '';
+            this.prosesList = part ? part.proses : [];
+        },
+        tutup() {
+            setTimeout(() => {
+                this.open = false;
+                if (this.val && !this.items.find(i => i.v == this.val && i.t === this.query)) {
+                    this.val = null; this.query = ''; this.partNo = ''; this.partName = '';
+                    this.prosesList = [];
+                }
+            }, 180);
+        },
+        tombol(e) {
+            if (e.key === 'ArrowDown') { e.preventDefault(); this.open = true; this.idx = Math.min(this.idx + 1, this.tersaring.length - 1); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); this.idx = Math.max(this.idx - 1, 0); }
+            else if (e.key === 'Enter') { e.preventDefault(); if (this.idx >= 0 && this.tersaring[this.idx]) this.pilih(this.tersaring[this.idx]); }
+            else if (e.key === 'Escape') { this.open = false; }
+        },
+    };
+}
+
 function sbToggle() {
     if (isMobile()) {
         $body.classList.toggle('sb-mobile-open');
