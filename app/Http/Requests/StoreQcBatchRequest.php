@@ -122,6 +122,10 @@ class StoreQcBatchRequest extends FormRequest
      */
     private function periksaHitunganNg($validator, int $i, array $row): void
     {
+        if (! array_key_exists('ng_count', $row)) {
+            return;
+        }
+
         $ngCount = (int) ($row['ng_count'] ?? 0);
         $submitted = is_array($row['ng'] ?? null) ? count($row['ng']) : 0;
 

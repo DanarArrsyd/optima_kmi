@@ -9,6 +9,9 @@ use App\Models\MasterPartProses;
 use App\Models\MasterShift;
 use App\Models\TransaksiQc;
 use App\Models\User;
+use App\Services\NgDetailService;
+use App\Services\QcService;
+use App\Services\QcWriteService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -89,6 +92,20 @@ class QcBatchTest extends TestCase
             ->assertSessionHas('batch_tersimpan', 2);
     }
 
+    public function test_pesan_validasi_berbahasa_indonesia(): void
+    {
+        $this->kirim([$this->baris(['id_shift' => null])]);
+
+        // session('errors') di sini array mentah, bukan objek ViewErrorBag:
+        // config/session.php pakai 'serialization' => 'json' (Laravel 11+),
+        // jadi objek yang di-flash ke sesi pulang sebagai array biasa setelah
+        // ditulis lalu dibaca ulang dari handler.
+        $pesan = session('errors')['default']['messages']['rows.0.id_shift'][0] ?? '';
+
+        $this->assertStringNotContainsString('field must be', $pesan);
+        $this->assertNotSame('', $pesan);
+    }
+
     public function test_rincian_ng_menempel_pada_barisnya_masing_masing(): void
     {
         $this->kirim([
@@ -101,22 +118,18 @@ class QcBatchTest extends TestCase
         $this->assertSame(0, (int) $baris[1]->qty_ng);
     }
 
-    public function test_satu_baris_gagal_membatalkan_semuanya(): void
-    {
-        $response = $this->kirim([
-            $this->baris(),
-            $this->baris(['id_shift' => 999999]),
-        ]);
-
-        $response->assertSessionHasErrors('rows.1.id_shift');
-        $this->assertSame(0, TransaksiQc::count());
-    }
-
     public function test_qty_ok_nol_tanpa_ng_ditolak_per_baris(): void
     {
         // Aturan yang sama dengan StoreQcRequest: total qty check harus > 0.
-        $this->kirim([$this->baris(['qty_ok' => 0, 'ng_count' => 0, 'ng' => []])])
-            ->assertSessionHasErrors('rows.0.qty_ok');
+        // Baris baik dikirim lebih dulu supaya index bukan kebetulan cocok:
+        // implementasi yang hardcode rows.0 (atau meleset satu index) akan
+        // tetap lolos kalau baris pelanggar selalu diletakkan di index 0.
+        $this->kirim([
+            $this->baris(),
+            $this->baris(['qty_ok' => 0, 'ng_count' => 0, 'ng' => []]),
+        ])
+            ->assertSessionHasErrors('rows.1.qty_ok')
+            ->assertSessionDoesntHaveErrors('rows.0.qty_ok');
 
         $this->assertSame(0, TransaksiQc::count());
     }
@@ -135,8 +148,14 @@ class QcBatchTest extends TestCase
     public function test_hitungan_ng_tidak_cocok_ditolak_per_baris(): void
     {
         // ng_count membuktikan Alpine hidup, bukan bahwa baris ng[] sampai.
-        $this->kirim([$this->baris(['ng_count' => 2, 'ng' => [['id_jenis_ng' => $this->ref['dented'], 'qty' => 3]]])])
-            ->assertSessionHasErrors('rows.0.ng_count');
+        // Baris baik dikirim lebih dulu supaya index bukan kebetulan cocok
+        // (lihat catatan di test_qty_ok_nol_tanpa_ng_ditolak_per_baris).
+        $this->kirim([
+            $this->baris(),
+            $this->baris(['ng_count' => 2, 'ng' => [['id_jenis_ng' => $this->ref['dented'], 'qty' => 3]]]),
+        ])
+            ->assertSessionHasErrors('rows.1.ng_count')
+            ->assertSessionDoesntHaveErrors('rows.0.ng_count');
 
         $this->assertSame(0, TransaksiQc::count());
     }
@@ -211,10 +230,76 @@ class QcBatchTest extends TestCase
     public function test_string_kosong_di_rows_json_jadi_null(): void
     {
         // Browser mengirim "" untuk field yang tidak diisi. Tanpa normalisasi,
-        // "" lolos `nullable` tapi gagal `integer` dengan pesan membingungkan.
-        $this->kirimJson([$this->baris(['ng' => [], 'ng_count' => 0])])
+        // isi di dalam satu string JSON (rows_json) tidak terlihat oleh
+        // middleware bawaan Laravel yang biasanya mengubah '' jadi null pada
+        // field POST biasa, jadi '' lolos utuh sampai ke rules().
+        //
+        // `ng` adalah satu-satunya field QC di mana normalisasi ini benar-
+        // benar mengubah hasil: aturannya `nullable|array`, dan '' gagal
+        // `array` sementara null lolos `nullable`. Semua field lain wajib
+        // (`required`), yang menolak '' dan null sama saja — makanya field
+        // itu yang dipilih di sini, bukan sekadar mengulang default baris().
+        $this->kirimJson([$this->baris(['ng' => '', 'ng_count' => 0])])
             ->assertRedirect(route('input.qc.index'));
 
         $this->assertSame(1, TransaksiQc::count());
+    }
+
+    public function test_satu_baris_gagal_membatalkan_semuanya_di_validasi(): void
+    {
+        // Baris ke-2 memakai id_shift yang tidak ada: request DITOLAK di
+        // FormRequest, controller tidak pernah dimasuki, jadi tidak ada
+        // satu pun baris yang sempat ditulis untuk dibatalkan. Ini beda
+        // dari test_gagal_di_tengah_transaksi_tidak_menyisakan_baris di
+        // bawah, yang membuktikan DB::transaction() SUNGGUH membatalkan
+        // baris yang sudah tertulis.
+        $response = $this->kirim([
+            $this->baris(),
+            $this->baris(['id_shift' => 999999]),
+        ]);
+
+        $response->assertSessionHasErrors('rows.1.id_shift');
+        $this->assertSame(0, TransaksiQc::count());
+    }
+
+    public function test_gagal_di_tengah_transaksi_tidak_menyisakan_baris(): void
+    {
+        // Validasi LOLOS, jadi controller sungguh masuk DB::transaction() dan
+        // baris pertama sungguh tertulis ke DB (double di bawah memanggil
+        // parent::simpan() sungguhan untuk panggilan pertama). Baru pada
+        // panggilan kedua QcWriteService dipaksa meledak — membuktikan baris
+        // pertama ikut dibatalkan oleh transaksi, bukan sekadar request
+        // ditolak lebih awal oleh validasi seperti test di atas.
+        $this->app->instance(QcWriteService::class, new class($this->app->make(QcService::class), $this->app->make(NgDetailService::class)) extends QcWriteService
+        {
+            private int $panggilan = 0;
+
+            public function simpan(array $baris): TransaksiQc
+            {
+                $this->panggilan++;
+
+                if ($this->panggilan >= 2) {
+                    throw new \RuntimeException('baris kedua sengaja gagal untuk menguji rollback');
+                }
+
+                return parent::simpan($baris);
+            }
+        });
+
+        // Exception dibiarkan tembus supaya test ini deterministik: kalau
+        // DB::transaction dicopot, error ini lolos sampai sini TANPA rollback
+        // dan baris pertama akan bertahan.
+        $this->withoutExceptionHandling();
+
+        try {
+            $this->kirim([
+                $this->baris(),
+                $this->baris(['jam_start' => '13:00', 'jam_finish' => '16:00']),
+            ]);
+        } catch (\RuntimeException $e) {
+            $this->assertSame('baris kedua sengaja gagal untuk menguji rollback', $e->getMessage());
+        }
+
+        $this->assertSame(0, TransaksiQc::count());
     }
 }
