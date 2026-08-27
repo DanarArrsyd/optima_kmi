@@ -127,6 +127,48 @@ class HalamanBatchProduksiTest extends TestCase
         $this->assertStringContainsString('optima_draft_lhp_produksi_u'.auth()->id(), $this->halaman());
     }
 
+    public function test_halaman_daftar_menghapus_kunci_draft_yang_sama_dengan_create(): void
+    {
+        // create.blade.php merender literal cfg.kunci/cfg.kunciBackup ke HTML
+        // (lihat test_kunci_draft_dipisah_per_pengguna dan
+        // test_draft_dibersihkan_setelah_submit_bukan_dipulihkan_lagi di atas).
+        // index.blade.php WAJIB menghapus persis kunci yang sama lewat
+        // localStorage.removeItem(...) di halaman daftar setelah flash
+        // batch_tersimpan — kalau kuncinya tidak cocok (typo salin-tempel),
+        // backup draft yang sudah tersimpan di server tidak pernah dibersihkan,
+        // mulai() memulihkannya lagi di kunjungan berikutnya, dan operator
+        // mengirim ulang batch yang sudah tersimpan. Nol test yang sudah ada
+        // menjangkar dua sisi ini SEKALIGUS satu sama lain.
+        //
+        // Kuncinya diekstrak dari HTML create yang BENAR-BENAR dirender, bukan
+        // dihardcode dua kali di sini — kalau begitu, test ini akan tetap hijau
+        // walau salah satu sisi (create ATAU index) berubah sendirian, sama
+        // seperti asersi yang tak bisa gagal.
+        $create = $this->halaman();
+
+        preg_match('/\bkunci:\s*\'([^\']+)\'/', $create, $mKunci);
+        preg_match('/\bkunciBackup:\s*\'([^\']+)\'/', $create, $mBackup);
+
+        $this->assertNotEmpty($mKunci, 'cfg.kunci tidak ditemukan di halaman create — regex perlu disesuaikan.');
+        $this->assertNotEmpty($mBackup, 'cfg.kunciBackup tidak ditemukan di halaman create — regex perlu disesuaikan.');
+
+        $kunci = $mKunci[1];
+        $kunciBackup = $mBackup[1];
+
+        // Blok yang menghapus kunci di index.blade.php hanya dirender kalau
+        // sesi punya flash batch_tersimpan (bukti sukses dari
+        // ProduksiController::batch()) — di luar itu index tidak menyentuh
+        // localStorage sama sekali, dan itu benar (lihat komentar di
+        // batchDraft()/pindahkanKeBackup() soal kenapa penghapusan bersyarat).
+        $index = $this->withSession(['batch_tersimpan' => 3])
+            ->get(route('input.produksi.index'))->assertOk()->getContent();
+
+        $this->assertStringContainsString($kunci, $index,
+            "Kunci draft '{$kunci}' dari halaman create tidak dihapus di halaman daftar.");
+        $this->assertStringContainsString($kunciBackup, $index,
+            "Kunci backup '{$kunciBackup}' dari halaman create tidak dihapus di halaman daftar.");
+    }
+
     public function test_guest_tidak_bisa_membuka_halaman_batch(): void
     {
         $this->actingAs(User::factory()->create(['role' => 'guest']));
@@ -147,14 +189,14 @@ class HalamanBatchProduksiTest extends TestCase
 
     public function test_halaman_batch_memakai_kerangka_bersama(): void
     {
-        // Kerangka draft (localStorage, KUNCI_BACKUP, penjaga bfcache) hidup di
-        // layout supaya empat modul berikutnya tidak menyalinnya. Kalau halaman
-        // ini diam-diam kembali punya kerangka sendiri, salinan itu akan
-        // menyimpang tanpa ada yang tahu — persis riwayat taField.
+        // Membuktikan halaman ini memanggil kerangka bersama lewat x-data
+        // (bukan lagi lhpBatch() lokal). Ini TIDAK membuktikan halaman tidak
+        // punya salinan kerangkanya sendiri di bawah nama lain — penjaga
+        // satu-definisi lintas resources/views itu tugas KomponenBersamaTest,
+        // bukan test ini.
         $html = $this->halaman();
 
         $this->assertStringContainsString('x-data="batchDraft(', $html);
-        $this->assertStringNotContainsString('function lhpBatch(', $html);
     }
 
     public function test_pemilih_proses_berada_dalam_scope_part_picker(): void
