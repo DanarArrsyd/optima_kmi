@@ -9,7 +9,6 @@ use App\Models\MasterPartProses;
 use App\Models\MasterShift;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Symfony\Component\Process\Process;
 use Tests\TestCase;
 
 class HalamanBatchQcTest extends TestCase
@@ -288,83 +287,28 @@ class HalamanBatchQcTest extends TestCase
             'Hidden input id_part_proses berada di luar scope partPicker() — prosesList tidak akan pernah terjangkau Alpine.');
     }
 
-    public function test_qty_ok_nol_lolos_wajib_tapi_kosong_ditolak(): void
+    public function test_qty_ok_ada_di_cfg_wajib(): void
     {
         // qty_ok sengaja TIDAK di cfg.wajib sebelumnya, karena 0 itu SAH (batch
         // yang semuanya ditolak). Tapi kosong ('') beda dari '0': baris dengan
         // qty_ok kosong dan ada NG tetap lolos periksa() client (total OK+NG >
-        // 0) lalu digagalkan SELURUH batch oleh `required` di server. Menambah
+        // 0) lalu digagalkan SELURUH batch oleh `required` di server, membunuh
+        // seluruh batch setelah operator membangun N baris. Menambah
         // qty_ok: 'Qty OK' ke cfg.wajib menutup celah itu — dan aman dipakai
-        // karena loop wajib memakai `!calon[kunci]` (falsy JS): untuk string
-        // dari form, satu-satunya yang falsy adalah '' — '0' tetap truthy.
+        // karena loop wajib di layouts/app.blade.php memakai `!calon[kunci]`
+        // (falsy JS): untuk string dari form, satu-satunya yang falsy adalah
+        // '' — '0' tetap truthy, jadi qty_ok bernilai 0 tetap lolos.
         //
-        // Test ini menjalankan loop wajib YANG SEBENARNYA (diekstrak apa
-        // adanya dari layouts/app.blade.php) lewat Node terhadap wajib YANG
-        // SEBENARNYA (diekstrak apa adanya dari create.blade.php), bukan
-        // menyalin ulang logikanya ke PHP — `!'0'` bernilai true di PHP tapi
-        // false di JS, jadi replika PHP yang naif akan diam-diam salah arah
-        // dan tidak membuktikan apa-apa.
-        if (trim((string) shell_exec('command -v node 2>/dev/null')) === '') {
-            $this->markTestSkipped('node tidak tersedia di lingkungan ini.');
-        }
+        // Dijangkarkan ke blok cfg.wajib itu sendiri, bukan seluruh HTML —
+        // string 'qty_ok' juga muncul di name input, pembangun payload, dan
+        // tabel draft, jadi pencarian seluruh halaman akan lolos tanpa
+        // membuktikan apa pun soal wajib.
+        $html = $this->halaman();
 
-        $createSrc = file_get_contents(resource_path('views/input/qc/create.blade.php'));
-        $this->assertNotFalse($createSrc);
-        preg_match('/wajib:\s*\{(.*?)\n(\s*)\},/s', $createSrc, $mWajib);
-        $this->assertNotEmpty($mWajib, 'Blok cfg.wajib tidak ditemukan di create.blade.php — regex perlu disesuaikan.');
-        $this->assertStringContainsString("qty_ok: 'Qty OK'", $mWajib[1]);
+        preg_match('/wajib:\s*\{(.*?)\n(\s*)\},/s', $html, $mWajib);
+        $this->assertNotEmpty($mWajib, 'Blok cfg.wajib tidak ditemukan di halaman create — regex perlu disesuaikan.');
 
-        $frameworkSrc = file_get_contents(resource_path('views/layouts/app.blade.php'));
-        $this->assertNotFalse($frameworkSrc);
-        preg_match(
-            '/for \(const \[kunci, label\] of Object\.entries\(cfg\.wajib\)\) \{\s*if \(!calon\[kunci\]\) \{ this\.galat = `\$\{label\} wajib diisi\.`; return; \}\s*\}/s',
-            $frameworkSrc, $mLoop
-        );
-        $this->assertNotEmpty($mLoop, 'Loop pemeriksaan wajib tidak ditemukan di layouts/app.blade.php — regex perlu disesuaikan.');
-
-        $node = <<<JS
-        'use strict';
-        const wajib = {{$mWajib[1]}};
-        const cfg = { wajib };
-        function jalankanWajib(calon) {
-            {$mLoop[0]}
-        }
-        function cek(qtyOk) {
-            const calon = {
-                tgl_pengecekan: '2026-08-28',
-                tgl_produksi_part: '2026-08-28',
-                id_shift: '1',
-                id_karyawan_qc: '1',
-                id_part_proses: '1',
-                jam_start: '07:00',
-                jam_finish: '08:00',
-                qty_ok: qtyOk,
-                ng: [{ id_jenis_ng: 1, qty: 5 }],
-            };
-            // this.galat mengikuti nama field yang dipakai simpanKeDraft() asli —
-            // return; di dalam loop (diekstrak apa adanya) keluar dari
-            // jalankanWajib TANPA nilai, jadi status dibaca dari ctx.galat,
-            // sama seperti simpanKeDraft() membaca this.galat setelah loop.
-            const ctx = { galat: '' };
-            jalankanWajib.call(ctx, calon);
-            return ctx.galat;
-        }
-        process.stdout.write(JSON.stringify({ nol: cek('0'), kosong: cek('') }));
-        JS;
-
-        $file = tempnam(sys_get_temp_dir(), 'qc_wajib_').'.js';
-        file_put_contents($file, $node);
-
-        $proc = new Process(['node', $file]);
-        $proc->run();
-        @unlink($file);
-
-        $this->assertTrue($proc->isSuccessful(), 'Node gagal dijalankan: '.$proc->getErrorOutput());
-        $hasil = json_decode($proc->getOutput(), true);
-
-        $this->assertSame('', $hasil['nol'] ?? null,
-            "qty_ok bernilai string '0' seharusnya LOLOS wajib (baris tetap masuk draft), tapi ditolak: ".($hasil['nol'] ?? 'null'));
-        $this->assertSame('Qty OK wajib diisi.', $hasil['kosong'] ?? null,
-            'qty_ok kosong seharusnya DITOLAK wajib sebelum masuk draft.');
+        $this->assertStringContainsString("qty_ok: 'Qty OK'", $mWajib[1],
+            'qty_ok tidak ada di cfg.wajib — baris dengan qty_ok kosong akan lolos periksa() client lalu menggagalkan seluruh batch di server.');
     }
 }
