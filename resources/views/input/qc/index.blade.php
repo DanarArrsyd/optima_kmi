@@ -818,6 +818,23 @@ function openNoteDrawer(type, id, existingNote, isAdmin, updatedAt, noteAt, reso
         row.querySelectorAll('td').forEach(td => { td.style.transition = 'background 1.5s ease'; td.style.background = ''; });
     }, 2000);
 })();
+
+@if (session('batch_tersimpan'))
+(function() {
+    /* Draft di localStorage cuma hidup di browser, jadi cuma boleh dibuang
+       kalau server sudah MEMBUKTIKAN barisnya tersimpan — flash
+       batch_tersimpan dari QcController::batch() adalah bukti itu.
+       Kunci dibaca dengan pola yang SAMA PERSIS dengan create.blade.php
+       (`kunci` dan `kunciBackup` di konfigQc()) supaya keduanya selalu
+       menunjuk baris yang sama untuk pengguna yang sama. */
+    try {
+        localStorage.removeItem('optima_draft_lhp_qc_u{{ auth()->id() }}');
+        localStorage.removeItem('optima_draft_lhp_qc_terkirim_u{{ auth()->id() }}');
+    } catch (e) {
+        // localStorage tak tersedia; tidak ada yang perlu dibuang.
+    }
+})();
+@endif
 </script>
 
 </div>{{-- /alpine outer scope --}}

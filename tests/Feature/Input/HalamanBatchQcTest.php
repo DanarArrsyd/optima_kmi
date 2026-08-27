@@ -102,20 +102,47 @@ class HalamanBatchQcTest extends TestCase
         $this->assertStringContainsString('optima_draft_lhp_qc_u'.auth()->id(), $this->halaman());
     }
 
-    /*
-     * test_kunci_draft_cocok_dengan_yang_dihapus_index SENGAJA TIDAK ditulis
-     * di sini. Padanannya di produksi (test_halaman_daftar_menghapus_kunci_
-     * draft_yang_sama_dengan_create, commit ee84415) hanya ditambahkan SETELAH
-     * index.blade.php produksi lebih dulu mendapat blok penghapus
-     * localStorage-nya sendiri (commit ce45edd) — dan commit itu pun baru
-     * datang belakangan, terpisah dari PR halaman batch (#114) maupun PR
-     * pencabutan laci. resources/views/input/qc/index.blade.php belum punya
-     * blok @if (session('batch_tersimpan')) semacam itu sama sekali, dan
-     * tugas ini secara eksplisit dilarang menyentuh berkas tersebut. Menulis
-     * test yang menjangkar ke sisi yang belum ada hanya akan gagal karena
-     * berkas yang sengaja tidak disentuh, bukan karena cacat di halaman ini.
-     * Lihat laporan tugas untuk detail dan tindak lanjut yang disarankan.
-     */
+    public function test_kunci_draft_cocok_dengan_yang_dihapus_index(): void
+    {
+        // create.blade.php merender literal cfg.kunci/cfg.kunciBackup ke HTML
+        // (lihat test_kunci_draft_dipisah_per_pengguna dan
+        // test_draft_dibersihkan_setelah_submit_bukan_dipulihkan_lagi di atas).
+        // index.blade.php WAJIB menghapus persis kunci yang sama lewat
+        // localStorage.removeItem(...) di halaman daftar setelah flash
+        // batch_tersimpan — kalau kuncinya tidak cocok (typo salin-tempel),
+        // backup draft yang sudah tersimpan di server tidak pernah dibersihkan,
+        // mulai() memulihkannya lagi di kunjungan berikutnya, dan inspector
+        // mengirim ulang batch yang sudah tersimpan. Nol test yang sudah ada
+        // menjangkar dua sisi ini SEKALIGUS satu sama lain.
+        //
+        // Kuncinya diekstrak dari HTML create yang BENAR-BENAR dirender, bukan
+        // dihardcode dua kali di sini — kalau begitu, test ini akan tetap hijau
+        // walau salah satu sisi (create ATAU index) berubah sendirian, sama
+        // seperti asersi yang tak bisa gagal.
+        $create = $this->halaman();
+
+        preg_match('/\bkunci:\s*\'([^\']+)\'/', $create, $mKunci);
+        preg_match('/\bkunciBackup:\s*\'([^\']+)\'/', $create, $mBackup);
+
+        $this->assertNotEmpty($mKunci, 'cfg.kunci tidak ditemukan di halaman create — regex perlu disesuaikan.');
+        $this->assertNotEmpty($mBackup, 'cfg.kunciBackup tidak ditemukan di halaman create — regex perlu disesuaikan.');
+
+        $kunci = $mKunci[1];
+        $kunciBackup = $mBackup[1];
+
+        // Blok yang menghapus kunci di index.blade.php hanya dirender kalau
+        // sesi punya flash batch_tersimpan (bukti sukses dari
+        // QcController::batch()) — di luar itu index tidak menyentuh
+        // localStorage sama sekali, dan itu benar (lihat komentar di
+        // batchDraft()/pindahkanKeBackup() soal kenapa penghapusan bersyarat).
+        $index = $this->withSession(['batch_tersimpan' => 3])
+            ->get(route('input.qc.index'))->assertOk()->getContent();
+
+        $this->assertStringContainsString($kunci, $index,
+            "Kunci draft '{$kunci}' dari halaman create tidak dihapus di halaman daftar.");
+        $this->assertStringContainsString($kunciBackup, $index,
+            "Kunci backup '{$kunciBackup}' dari halaman create tidak dihapus di halaman daftar.");
+    }
 
     public function test_halaman_memuat_blok_ng(): void
     {
