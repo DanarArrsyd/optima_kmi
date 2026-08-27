@@ -1799,19 +1799,20 @@ function batchDraft(cfg) {
     let seq = 0;
 
     return {
+        /* Spread cfg.metode di PALING AWAL supaya kerangka selalu menang atas
+           cfg.metode — baik state maupun method. Dalam object literal JS,
+           kunci yang datang belakangan menang atas kunci yang sama dari
+           sebaran sebelumnya. Empat modul akan memakai batchDraft(); kalau
+           cfg.metode modul kebetulan mendefinisikan nama yang sama dengan
+           state atau method kerangka (mis. "rows", "pesan", "mulai", atau
+           "hapus"), kerangka WAJIB tetap yang menang — bukan tertimpa senyap
+           oleh cfg.metode. */
+        ...(cfg.metode || {}),
+
         rows: [],
         pesan: '',
         galat: '',
         barisGagal: [],
-
-        /* Disebar di SINI, sebelum method-method kerangka di bawah — dalam
-           object literal JS, kunci yang datang belakangan menang atas kunci
-           yang sama dari sebaran sebelumnya. Empat modul akan memakai
-           batchDraft(); kalau cfg.metode modul kebetulan mendefinisikan
-           nama yang sama dengan method kerangka (mis. "mulai" atau "hapus"),
-           method kerangka WAJIB tetap yang jalan — bukan tertimpa senyap
-           oleh cfg.metode. */
-        ...(cfg.metode || {}),
 
         mulai() {
             /* Halaman batch yang dipulihkan dari bfcache (tombol Back setelah
