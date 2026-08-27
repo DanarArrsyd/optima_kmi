@@ -94,16 +94,28 @@ class QcBatchTest extends TestCase
 
     public function test_pesan_validasi_berbahasa_indonesia(): void
     {
-        $this->kirim([$this->baris(['id_shift' => null])]);
+        // Rule 'rows.*.ng.*.qty' => 'required|integer|min:1' dipicu dengan
+        // qty NG = 0 (bukan id_shift null): default Inggris Laravel untuk
+        // required adalah "The :attribute field is required." — TIDAK
+        // mengandung "field must be", jadi assertion lama lolos apapun isi
+        // messages()/attributes(), bahkan kalau dua-duanya dihapus total.
+        // min:1 defaultnya genuinely "The :attribute field must be at least
+        // 1.", beda kata dengan versi custom, jadi baru rule ini yang
+        // membuktikan messages() dipakai. ng_count tetap disamakan dengan
+        // jumlah baris ng[] supaya baris ditolak oleh aturan min, bukan oleh
+        // guard periksaHitunganNg().
+        $this->kirim([$this->baris([
+            'ng_count' => 1,
+            'ng' => [['id_jenis_ng' => $this->ref['dented'], 'qty' => 0]],
+        ])]);
 
         // session('errors') di sini array mentah, bukan objek ViewErrorBag:
         // config/session.php pakai 'serialization' => 'json' (Laravel 11+),
         // jadi objek yang di-flash ke sesi pulang sebagai array biasa setelah
         // ditulis lalu dibaca ulang dari handler.
-        $pesan = session('errors')['default']['messages']['rows.0.id_shift'][0] ?? '';
+        $pesan = session('errors')['default']['messages']['rows.0.ng.0.qty'][0] ?? '';
 
-        $this->assertStringNotContainsString('field must be', $pesan);
-        $this->assertNotSame('', $pesan);
+        $this->assertSame('Baris 1: Qty NG minimal 1.', $pesan);
     }
 
     public function test_rincian_ng_menempel_pada_barisnya_masing_masing(): void
