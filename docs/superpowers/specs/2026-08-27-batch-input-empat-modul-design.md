@@ -80,7 +80,10 @@ Kerangka menjadi satu factory di `resources/views/layouts/app.blade.php`:
 
 ```js
 batchDraft({
-  kunci,        // string dasar kunci localStorage (ditambah id pengguna)
+  kunci,        // string kunci localStorage LENGKAP, dirakit Blade, mis.
+                // 'optima_draft_lhp_produksi_u{{ auth()->id() }}'
+  kunciBackup,  // string kunci cadangan LENGKAP, sama polanya, mis.
+                // 'optima_draft_lhp_produksi_terkirim_u{{ auth()->id() }}'
   indexUrl,     // tujuan tombol CANCEL
   kumpulkan,    // () => calon: baca form, hasilkan objek baris
   wajib,        // { namaField: 'Label' } untuk pesan "X wajib diisi"
@@ -88,9 +91,24 @@ batchDraft({
   pratinjau,    // (calon) => void: isi kolom hitungan (opsional)
   payload,      // (r) => objek yang dikirim ke server
   resetField,   // [nama field] yang dikosongkan setelah baris masuk draft
-  resetBlok,    // [selector blok Alpine] yang dikosongkan
+  resetLain,    // (diri) => void: pembersihan yang tidak bisa diungkapkan
+                // lewat resetField (bukan array selector — sebuah callback)
 })
 ```
+
+**Kenapa `kunci`/`kunciBackup` string lengkap, bukan nama dasar + `userId`:**
+merakit kunci di JS runtime (mis. `` `optima_draft_${kunci}_u${userId}` ``)
+membuat literalnya berhenti muncul di HTML server. Versi itu sempat dicoba di
+branch ini dan dua test penjaga tetap HIJAU walau kuncinya salah rakit, murni
+karena sebuah *komentar* di Blade kebetulan memuat teks kunci yang sama —
+assertion-nya lolos tanpa benar-benar memeriksa kunci yang dipakai
+`localStorage`. Konsekuensi konkretnya: modul yang cuma mengoper `kunci` dan
+lupa `kunciBackup` membuat `KUNCI_BACKUP` bernilai `undefined`, dan
+`localStorage.setItem(undefined, …)` TIDAK melempar error — ia menulis ke
+kunci literal string `"undefined"`. Halaman daftar modul itu lalu menghapus
+kunci yang tidak pernah ditulis siapa pun, backup tidak pernah bersih,
+`mulai()` memulihkannya di kunjungan berikutnya, dan operator mengirim ulang
+batch yang sudah tersimpan — baris dobel, tanpa error di mana pun.
 
 `partPicker()` juga naik ke layout. Hari ini ada dua salinan yang mengerjakan
 hal sama: `partPicker()` di `input/produksi/create.blade.php` dan
@@ -159,6 +177,43 @@ Di browser, `nomor_urut` menaik sendiri tiap baris masuk draft (nilai awal dari
 bisa disunting — dia usulan, bukan kunci; server yang memutuskan.
 
 Field lengket: tanggal breakdown, PIC maintenance.
+
+#### Masalah `nomor_urut` di jalur pemulihan draft
+
+`mulai()` di `batchDraft` (PR 1) memulihkan baris-baris draft dari
+`localStorage` tapi tidak pernah memanggil balik ke `cfg` setelah selesai.
+Ini tidak masalah untuk produksi/QC/Dandori — tidak satu pun field mereka
+perlu tahu kapan pemulihan terjadi. Breakdown Mesin/Dies berbeda: `nomor_urut`
+baris berikutnya perlu terus naik dari nilai TERTINGGI yang ada di draft,
+bukan cuma dari nilai yang server render ke form saat halaman dimuat.
+
+Skenario konkret: server merender nomor urut berikutnya ke form (mis. 9,
+karena 8 baris terakhir sudah tersimpan). Operator membuka halaman ini lagi
+setelah galat validasi round-trip atau setelah menutup tab — `mulai()`
+memulihkan 8 baris draft yang belum sempat terkirim. Form di layar masih
+menampilkan nomor 9 (angka yang dirender server saat itu), tapi 8 baris di
+draft SUDAH memakai nomor 1–8 di sesi sebelumnya, sehingga baris ke-9 yang
+baru mestinya memakai nomor 9 — namun bila draft yang dipulihkan sendiri
+sudah berisi nomor hingga 9 (mis. operator sempat menambah baris ke-9 sebelum
+menutup tab), baris ke-10 berikutnya akan mengusulkan nomor 9 lagi karena
+tidak ada yang memberi tahu form bahwa draft sudah punya nomor setinggi itu.
+Batch ditolak server karena No LKM bentrok, sementara tampilan di layar
+terlihat baik-baik saja — sama persis tiap kali round-trip validasi terjadi,
+bukan cuma sekali.
+
+Modul TIDAK BISA mengakali ini sendiri dengan membungkus `mulai()` lewat
+`cfg.metode`: `...(cfg.metode || {})` disebar PALING AWAL di `batchDraft`
+justru supaya kerangka selalu menang atas nama method yang sama dari modul
+(lihat catatan di §1) — sebuah `metode.mulai` custom akan KALAH dari
+`mulai()` bawaan kerangka, bukan membungkusnya.
+
+**Bukan diperbaiki di PR ini.** Menambah hook sekarang berarti kode yang
+tidak terpakai dan tidak teruji di PR 1 (belum ada modul yang butuh). PR 4
+(Breakdown Mesin + Dies) yang menambahkan `cfg.setelahPulih(diri)` — callback
+opsional yang dipanggil `batchDraft` di UJUNG `mulai()`, setelah `this.rows`
+terisi — beserta konsumen nyata pertamanya (menghitung ulang `nomor_urut`
+dari `rows` yang dipulihkan) dan test yang membuktikan baris ke-N setelah
+pemulihan tidak lagi bentrok dengan baris yang sudah ada di draft.
 
 Halaman yatim `maintenance/breakdown/create.blade.php` **dihapus**, dan route
 `maintenance.breakdown.create` menunjuk halaman batch yang baru. Modul itu

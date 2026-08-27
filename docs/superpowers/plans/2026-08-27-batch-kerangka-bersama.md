@@ -157,8 +157,8 @@ Ini inti PR-nya. `lhpBatch()` sekarang mencampur kerangka draft dengan isian LHP
 
   | Kunci | Tipe | Wajib | Arti |
   |---|---|---|---|
-  | `kunci` | string | ya | nama dasar kunci `localStorage`, mis. `'lhp_produksi'` |
-  | `userId` | number | ya | `auth()->id()`, dipakai memisah draft antar pengguna |
+  | `kunci` | string | ya | kunci `localStorage` LENGKAP, dirakit oleh Blade di halaman modul, mis. `'optima_draft_lhp_produksi_u{{ auth()->id() }}'` — bukan nama dasar yang dirakit di JS |
+  | `kunciBackup` | string | ya | kunci `localStorage` cadangan, sama polanya, mis. `'optima_draft_lhp_produksi_terkirim_u{{ auth()->id() }}'` |
   | `formId` | string | ya | id elemen `<form>` baris, mis. `'formBaris'` |
   | `indexUrl` | string | ya | tujuan tombol CANCEL |
   | `galatServer` | array<string> | ya | `$errors->keys()`, dipakai menandai baris yang ditolak |
@@ -172,6 +172,16 @@ Ini inti PR-nya. `lhpBatch()` sekarang mencampur kerangka draft dengan isian LHP
   | `metode` | object | tidak | metode tambahan yang disebar ke objek Alpine (mis. `ringkasNg`) |
 
   Metode yang tersedia untuk halaman: `mulai()`, `form()`, `nilai(nama)`, `teksTerpilih(nama)`, `blok(kelas)`, `detik(jam)`, `durasiDetik(mulai, selesai)`, `simpanKeDraft()`, `resetSebagian()`, `hapus(i)`, `payloadRows()`, `batal()`, `pindahkanKeBackup()`. State: `rows`, `pesan`, `galat`, `barisGagal`.
+
+  **Kenapa `kunci`/`kunciBackup` dirakit oleh Blade, bukan di runtime JS:**
+  merakit di JS (mis. `` `optima_draft_${cfg.kunci}_u${cfg.userId}` ``) membuat
+  literal kunci lengkap berhenti muncul di HTML yang dikirim server — dan
+  `HalamanBatchProduksiTest` menjangkar ke literal itu di response mentah.
+  Versi runtime-composed sempat dicoba di branch ini dan dua test penjaga
+  tetap HIJAU walau kuncinya salah rakit, murni karena sebuah *komentar* di
+  Blade kebetulan memuat teks kunci yang sama — assertion-nya lolos tanpa
+  benar-benar memeriksa kunci yang dipakai `localStorage`. Karena itu `cfg`
+  sekarang mewajibkan string kunci yang SUDAH utuh.
 
 - [ ] **Step 1: Tulis test yang gagal**
 
@@ -231,12 +241,24 @@ Di `resources/views/layouts/app.blade.php`, tepat setelah kurung tutup `partPick
 
    Yang TIDAK ada di sini: field apa yang dikumpulkan, mana yang wajib,
    pemeriksaan antar-baris, dan bentuk payload. Itu semua masuk lewat cfg.
+
+   Kunci localStorage (cfg.kunci, cfg.kunciBackup) sengaja disuplai UTUH oleh
+   tiap modul, bukan dirakit di sini dari potongan (mis. id pengguna). Layout
+   ini murni JS generik tanpa akses ke Blade/auth, dan merakit kunci di JS
+   runtime membuat literalnya berhenti muncul di HTML server — dua test
+   pre-existing yang menjangkar ke literal kunci itu butuh teksnya utuh di
+   response mentah. Nilai kedua kunci HARUS sama persis dengan yang dihapus
+   halaman daftar modul itu (lihat komentar di batal() dan pindahkanKeBackup()
+   di bawah) — kunci yang tidak cocok berarti draft/backup jadi yatim,
+   tersimpan di browser tapi tidak pernah lagi dibaca atau dibersihkan.
    ══════════════════════════════════════════════════════════════════ */
 function batchDraft(cfg) {
     /* Kunci dipisah per pengguna: komputer di lantai produksi dipakai
        bergantian, dan kunci bersama membuat draft operator A muncul di
-       layar operator B. */
-    const KUNCI = `optima_draft_${cfg.kunci}_u${cfg.userId}`;
+       layar operator B. Modul pemanggil yang menyusun id pengguna ke dalam
+       cfg.kunci (lihat konfigLhp() di create.blade.php) — lihat catatan di
+       atas soal kenapa perakitannya di Blade, bukan di sini. */
+    const KUNCI = cfg.kunci;
 
     /* Kunci cadangan: SUBMIT DRAFT adalah POST form biasa yang berakhir di
        redirect server, jadi tidak ada kesempatan JS menghapus KUNCI tepat
@@ -251,10 +273,20 @@ function batchDraft(cfg) {
        galat validasi, 419 sesi habis, 500 di server, maupun jaringan
        putus sebelum POST-nya mendarat — submit itu belum terbukti sukses,
        jadi mulai() memulihkannya, bukan membuangnya. */
-    const KUNCI_BACKUP = `optima_draft_${cfg.kunci}_terkirim_u${cfg.userId}`;
+    const KUNCI_BACKUP = cfg.kunciBackup;
     let seq = 0;
 
     return {
+        /* Spread cfg.metode di PALING AWAL supaya kerangka selalu menang atas
+           cfg.metode — baik state maupun method. Dalam object literal JS,
+           kunci yang datang belakangan menang atas kunci yang sama dari
+           sebaran sebelumnya. Empat modul akan memakai batchDraft(); kalau
+           cfg.metode modul kebetulan mendefinisikan nama yang sama dengan
+           state atau method kerangka (mis. "rows", "pesan", "mulai", atau
+           "hapus"), kerangka WAJIB tetap yang menang — bukan tertimpa senyap
+           oleh cfg.metode. */
+        ...(cfg.metode || {}),
+
         rows: [],
         pesan: '',
         galat: '',
@@ -408,8 +440,6 @@ function batchDraft(cfg) {
                 // localStorage tak tersedia; biarkan submit tetap jalan apa adanya.
             }
         },
-
-        ...(cfg.metode || {}),
     };
 }
 ```
@@ -444,8 +474,8 @@ function konfigLhp() {
     const picker = () => Alpine.$data(document.getElementById('partNoTampil').closest('[x-data]'));
 
     return {
-        kunci: 'lhp_produksi',
-        userId: {{ auth()->id() }},
+        kunci:       'optima_draft_lhp_produksi_u{{ auth()->id() }}',
+        kunciBackup: 'optima_draft_lhp_produksi_terkirim_u{{ auth()->id() }}',
         formId: 'formBaris',
         indexUrl: '{{ route('input.produksi.index') }}',
         galatServer: @json($errors->keys()),
