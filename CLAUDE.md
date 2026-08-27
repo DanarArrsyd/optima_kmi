@@ -8,7 +8,7 @@ Path: `/Applications/XAMPP/xamppfiles/htdocs/optima/`
 ## Stack
 | Item | Detail |
 |------|--------|
-| Framework | Laravel 13, PHP 8.5.4 |
+| Framework | Laravel 13. PHP lokal 8.5.4, **CI & prod 8.4** — sintaks yang cuma ada di 8.5 lolos lokal lalu bikin CI merah |
 | DB | MySQL via XAMPP (`optima_db`) |
 | Frontend | Bootstrap 5.3.3, Bootstrap Icons 1.11.3, Alpine.js 3.14.1, Chart.js 4.4.4 |
 | Excel | maatwebsite/excel 4.x |
@@ -56,7 +56,7 @@ dijamin tiba bersamaan.
 ## Perintah
 
 ```bash
-php artisan test                          # 762 test, SQLite in-memory (tidak butuh DB lokal)
+php artisan test                          # SQLite in-memory (tidak butuh DB lokal)
 ./scripts/check-migration-coverage.sh     # gerbang cakupan migrasi
 vendor/bin/pint app tests                 # format (scope Pint = app/ + tests/ saja)
 ```
@@ -69,6 +69,8 @@ vendor/bin/pint app tests                 # format (scope Pint = app/ + tests/ s
 | **Checksheet PDF Preventive Dies** | ✅ DONE — merged main (PR #34). Upload wajib checksheet PDF (max 2MB) saat input PREVENTIVE dies, disk private, serve via route role-gated, link di history. |
 | **Dandori Migration** | ✅ DONE — sejak Jun 2026 (17.894 baris prod). ⚠️ `memory/projects/dandori-migration.md` masih tertulis 🔴 PENDING, sengaja dibiarkan — jangan dipercaya. |
 | **Dandori Satu Alur** | ✅ DONE — live (PR #111). Centang "Ada Dandori" di form LHP Produksi menulis `transaksi_dandori_rincian`. Nol migrasi, nol rumus disentuh. Blok sengaja TIDAK ada di form Edit. |
+| **LHP Batch Input** | ✅ DONE — live (PR #114). Input LHP Produksi jadi halaman batch sendiri, laci penulis di halaman daftar dicabut, `input.produksi.store` pensiun (tinggal `input.produksi.batch`). Draft di `localStorage`, nol migrasi. ⚠️ 50 baris dikirim sebagai satu `rows_json` — `max_input_vars`=1000 memotong input per-baris secara SENYAP. ⚠️ QC, Dandori, Breakdown Mesin & Breakdown Dies MASIH pakai laci; laci sisa di `input/produksi/index.blade.php` itu laci **note**, bukan penulis — jangan ikut dicabut. |
+| **Halaman Login** | ✅ DONE — live (PR #120–122). `public/img/login_page.png` dipakai sebagai kanvas utuh yang mengisi penuh layar; panel diposisikan dalam persen, ukuran pakai `cqw`. ⚠️ JANGAN `background-size:cover` dan JANGAN kunci rasio 16:9 (dua-duanya menggeser panel/menyisakan bilah kosong). Aturan CSS dasar wajib DI ATAS media query-nya. Tombol login tidak boleh pernah `disabled` — ada test penjaganya. |
 
 ## Catatan operasional
 
