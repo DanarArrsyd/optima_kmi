@@ -17,6 +17,7 @@ use App\Models\TransaksiQc;
 use App\Services\NgDetailService;
 use App\Services\NotificationService;
 use App\Services\QcService;
+use App\Services\QcWriteService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
@@ -29,6 +30,7 @@ class QcController extends Controller
         private QcService $qcService,
         private NotificationService $notifSvc,
         private NgDetailService $ngDetailService,
+        private QcWriteService $qcWriteService,
     ) {}
 
     public function index(Request $request)
@@ -164,29 +166,7 @@ class QcController extends Controller
 
     public function store(StoreQcRequest $request)
     {
-        $validated = $request->validated();
-        $ngRows = $validated['ng'] ?? [];
-        unset($validated['ng'], $validated['ng_count']);
-
-        $qtyNg = array_sum(array_column($ngRows, 'qty'));
-
-        $cycleTime = $this->qcService->calculateActualCycleTime(
-            $validated['jam_start'].':00',
-            $validated['jam_finish'].':00',
-            (int) $validated['qty_ok'],
-            (int) $qtyNg
-        );
-
-        DB::transaction(function () use ($validated, $cycleTime, $ngRows) {
-            $qc = TransaksiQc::create([
-                ...$validated,
-                'qty_ng' => 0,
-                'actual_cycle_time' => $cycleTime,
-                'created_by' => auth()->id(),
-            ]);
-
-            $this->ngDetailService->syncQc($qc, $ngRows);
-        });
+        DB::transaction(fn () => $this->qcWriteService->simpan($request->validated()));
 
         return redirect()->route('input.qc.index')->with('success', 'LHP Quality berhasil disimpan.');
     }
