@@ -7,7 +7,6 @@ use App\Exports\QcImportTemplate;
 use App\Http\Controllers\Concerns\ResolvesStaffNote;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreQcBatchRequest;
-use App\Http\Requests\StoreQcRequest;
 use App\Http\Requests\UpdateQcRequest;
 use App\Imports\QcImport;
 use App\Models\MasterJenisNg;
@@ -163,13 +162,6 @@ class QcController extends Controller
         $jenisNg = MasterJenisNg::orderBy('kode')->get();
 
         return view('input.qc.create', compact('shifts', 'karyawan', 'parts', 'jenisNg'));
-    }
-
-    public function store(StoreQcRequest $request)
-    {
-        DB::transaction(fn () => $this->qcWriteService->simpan($request->validated()));
-
-        return redirect()->route('input.qc.index')->with('success', 'LHP Quality berhasil disimpan.');
     }
 
     /**

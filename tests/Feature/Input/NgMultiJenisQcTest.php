@@ -54,9 +54,15 @@ class NgMultiJenisQcTest extends TestCase
         $this->crack = MasterJenisNg::create(['kode' => 'CRK', 'nama_ng' => 'Crack']);
     }
 
+    /** Satu baris dikirim lewat endpoint batch. */
+    private function simpanLhp(array $payload)
+    {
+        return $this->post(route('input.qc.batch'), ['rows' => [$payload]]);
+    }
+
     public function test_simpan_dengan_dua_jenis_ng(): void
     {
-        $response = $this->actingAs($this->admin)->post(route('input.qc.store'), [
+        $response = $this->actingAs($this->admin)->simpanLhp([
             ...$this->base,
             'ng_count' => 2,
             'ng' => [
@@ -74,7 +80,7 @@ class NgMultiJenisQcTest extends TestCase
 
     public function test_tanpa_ng_menyimpan_qty_ng_nol(): void
     {
-        $this->actingAs($this->admin)->post(route('input.qc.store'), [
+        $this->actingAs($this->admin)->simpanLhp([
             ...$this->base,
             'ng_count' => 0,
         ]);
@@ -86,19 +92,19 @@ class NgMultiJenisQcTest extends TestCase
 
     public function test_qty_ok_nol_dan_tanpa_ng_ditolak(): void
     {
-        $response = $this->actingAs($this->admin)->post(route('input.qc.store'), [
+        $response = $this->actingAs($this->admin)->simpanLhp([
             ...$this->base,
             'qty_ok' => 0,
             'ng_count' => 0,
             'ng' => [],
         ]);
 
-        $response->assertSessionHasErrors('qty_ok');
+        $response->assertSessionHasErrors('rows.0.qty_ok');
     }
 
     public function test_qty_ok_nol_tapi_ada_ng_diterima(): void
     {
-        $response = $this->actingAs($this->admin)->post(route('input.qc.store'), [
+        $response = $this->actingAs($this->admin)->simpanLhp([
             ...$this->base,
             'qty_ok' => 0,
             'ng_count' => 1,
@@ -121,7 +127,7 @@ class NgMultiJenisQcTest extends TestCase
         // indeks unik uniq_qc_ng (id_transaksi_qc, id_jenis_ng), jadi dua baris
         // jenis sama tidak bisa berdiri sendiri di sana — dan qty per jenis NG
         // memang satu angka.
-        $response = $this->actingAs($this->admin)->post(route('input.qc.store'), [
+        $response = $this->actingAs($this->admin)->simpanLhp([
             ...$this->base,
             'ng_count' => 2,
             'ng' => [
@@ -140,9 +146,9 @@ class NgMultiJenisQcTest extends TestCase
 
     public function test_edit_qc_jenis_ng_dobel_diterima_dan_qty_dijumlah(): void
     {
-        // Form edit harus seragam dengan form input. Kalau edit masih melarang
+        // Form edit harus seragam dengan halaman batch. Kalau edit masih melarang
         // sementara input membolehkan, baris yang sah jadi tidak bisa dikoreksi.
-        $this->actingAs($this->admin)->post(route('input.qc.store'), [
+        $this->actingAs($this->admin)->simpanLhp([
             ...$this->base,
             'ng_count' => 1,
             'ng' => [
@@ -174,12 +180,12 @@ class NgMultiJenisQcTest extends TestCase
         // Simulasi Alpine gagal boot: binding :value="rows.length" tidak pernah
         // dievaluasi, browser mengirim string kosong untuk ng_count, dan baris
         // ng[] (hidup di dalam x-for) sama sekali tidak ter-render.
-        $response = $this->actingAs($this->admin)->post(route('input.qc.store'), [
+        $response = $this->actingAs($this->admin)->simpanLhp([
             ...$this->base,
             'ng_count' => '',
         ]);
 
-        $response->assertSessionHasErrors('ng_count');
+        $response->assertSessionHasErrors('rows.0.ng_count');
         $this->assertSame(0, TransaksiQc::count());
     }
 
@@ -207,7 +213,7 @@ class NgMultiJenisQcTest extends TestCase
 
     public function test_update_ng_count_kosong_akibat_alpine_gagal_tidak_menghapus_detail(): void
     {
-        $this->actingAs($this->admin)->post(route('input.qc.store'), [
+        $this->actingAs($this->admin)->simpanLhp([
             ...$this->base,
             'ng_count' => 2,
             'ng' => [
@@ -237,7 +243,7 @@ class NgMultiJenisQcTest extends TestCase
         // Baris ini SUDAH punya 2 baris detail (bukan baris legacy) — guard
         // legacy di UpdateQcRequest hanya menyala saat ngDetails()->count() === 0,
         // jadi tidak menjangkau kasus ini.
-        $this->actingAs($this->admin)->post(route('input.qc.store'), [
+        $this->actingAs($this->admin)->simpanLhp([
             ...$this->base,
             'ng_count' => 2,
             'ng' => [
@@ -264,9 +270,13 @@ class NgMultiJenisQcTest extends TestCase
         $this->assertCount(2, $trx->ngDetails);
     }
 
-    public function test_drawer_index_tidak_lagi_pakai_field_qty_ng_legacy(): void
+    public function test_form_batch_tidak_lagi_pakai_field_qty_ng_legacy(): void
     {
-        $response = $this->actingAs($this->admin)->get(route('input.qc.index'));
+        // Dulu menjangkar ke laci di index.blade.php (form penulis paling
+        // sering dipakai). Laci itu dicabut (Task 4, LHP Quality jadi halaman
+        // batch penuh) — anchor pindah ke halaman batch, yang kini satu-satunya
+        // form create dan me-render partial ng-rows yang sama.
+        $response = $this->actingAs($this->admin)->get(route('input.qc.create'));
 
         $response->assertOk();
         $response->assertDontSee('name="qty_ng"', false);

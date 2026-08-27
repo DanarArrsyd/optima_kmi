@@ -28,9 +28,9 @@ class UpdateQcRequest extends FormRequest
             'qty_ok' => 'required|integer|min:0',
             'ng_count' => 'required|integer|min:0',
             'ng' => 'array',
-            /* Tanpa `distinct`, seragam dengan StoreQcRequest — kalau form edit
-             * masih melarang sementara form input membolehkan, baris yang sah
-             * jadi tidak bisa dikoreksi. Penjumlahannya lihat komentar di sana. */
+            /* Tanpa `distinct`, seragam dengan StoreQcBatchRequest — kalau form
+             * edit masih melarang sementara form input membolehkan, baris yang
+             * sah jadi tidak bisa dikoreksi. Penjumlahannya lihat komentar di sana. */
             'ng.*.id_jenis_ng' => 'required|integer|exists:master_jenis_ng,id',
             'ng.*.qty' => 'required|integer|min:1',
         ];

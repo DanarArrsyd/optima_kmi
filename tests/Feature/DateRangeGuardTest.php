@@ -8,7 +8,7 @@ use App\Http\Requests\StoreDandoriRequest;
 use App\Http\Requests\StoreMasterMesinRequest;
 use App\Http\Requests\StoreMasterPartRequest;
 use App\Http\Requests\StoreProduksiBatchRequest;
-use App\Http\Requests\StoreQcRequest;
+use App\Http\Requests\StoreQcBatchRequest;
 use App\Http\Requests\UpdateBreakdownDiesRequest;
 use App\Http\Requests\UpdateBreakdownMesinRequest;
 use App\Http\Requests\UpdateProduksiRequest;
@@ -43,8 +43,8 @@ class DateRangeGuardTest extends TestCase
         return [
             'produksi batch' => [StoreProduksiBatchRequest::class,   'rows.*.tanggal_produksi',   '2024-05-10', []],
             'produksi update' => [UpdateProduksiRequest::class,       'tanggal_produksi',          '2024-05-10', []],
-            'qc store cek' => [StoreQcRequest::class,              'tgl_pengecekan',            '2024-05-10', []],
-            'qc store part' => [StoreQcRequest::class,              'tgl_produksi_part',         '2024-05-10', []],
+            'qc batch cek' => [StoreQcBatchRequest::class,         'rows.*.tgl_pengecekan',     '2024-05-10', []],
+            'qc batch part' => [StoreQcBatchRequest::class,         'rows.*.tgl_produksi_part',  '2024-05-10', []],
             'qc update cek' => [UpdateQcRequest::class,             'tgl_pengecekan',            '2024-05-10', []],
             'qc update part' => [UpdateQcRequest::class,             'tgl_produksi_part',         '2024-05-10', []],
             'dandori store' => [StoreDandoriRequest::class,         'tanggal',                   '2024-05-10', []],

@@ -6,7 +6,8 @@ use Illuminate\Foundation\Http\FormRequest;
 
 /**
  * Payload batch: tiap elemen rows[] punya bentuk field yang sama persis dengan
- * payload satu baris LHP Quality (StoreQcRequest, form single-row lama).
+ * payload satu baris LHP Quality (dulu form single-row terpisah, route
+ * `input.qc.store`, sudah pensiun sejak halaman batch menggantikannya).
  */
 class StoreQcBatchRequest extends FormRequest
 {
@@ -29,7 +30,7 @@ class StoreQcBatchRequest extends FormRequest
             'rows.*.qty_ok' => 'required|integer|min:0',
             'rows.*.ng_count' => 'required|integer|min:0',
             'rows.*.ng' => 'nullable|array',
-            /* Tanpa `distinct`, sama seperti StoreQcRequest — inspector boleh
+            /* Tanpa `distinct`, sama seperti UpdateQcRequest — inspector boleh
              * mencatat jenis NG yang sama dua kali dalam satu sesi. uniq_qc_ng +
              * normalize() menjadikannya satu baris dengan qty dijumlah (lihat
              * PR #123). */

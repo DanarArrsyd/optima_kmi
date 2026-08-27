@@ -132,7 +132,7 @@ class QcBatchTest extends TestCase
 
     public function test_qty_ok_nol_tanpa_ng_ditolak_per_baris(): void
     {
-        // Aturan yang sama dengan StoreQcRequest: total qty check harus > 0.
+        // periksaTotalQty(): total qty check (OK + NG) harus > 0 per baris.
         // Baris baik dikirim lebih dulu supaya index bukan kebetulan cocok:
         // implementasi yang hardcode rows.0 (atau meleset satu index) akan
         // tetap lolos kalau baris pelanggar selalu diletakkan di index 0.
