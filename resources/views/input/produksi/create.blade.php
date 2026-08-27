@@ -76,7 +76,7 @@
 @endpush
 
 @section('content')
-<div class="erp-panel" x-data="lhpBatch()" x-init="mulai()">
+<div class="erp-panel" x-data="batchDraft(konfigLhp())" x-init="mulai()">
     <div class="erp-panel-header">Input LHP Produksi</div>
     <div class="erp-panel-body">
 
@@ -379,201 +379,100 @@ const shiftData   = @json($_shiftData);
 const ngLabel     = @json($_ngLabel);
 const ltLabel     = @json($_ltLabel);
 
-/* Halaman yang dipulihkan dari bfcache (tombol Back setelah submit sukses)
-   masih menampilkan baris-baris yang SUDAH tersimpan di server — x-init
-   "mulai()" tidak jalan lagi karena Alpine tidak di-reinit, dan tombol
-   SUBMIT tetap aktif. Mengirim ulang baris yang sama menulis LHP dobel;
-   tidak ada unique constraint di transaksi_produksi yang mencegahnya. Muat
-   ulang supaya mulai() benar-benar jalan lagi dan memutuskan nasib draft
-   dari kondisi server yang sebenarnya. */
-window.addEventListener('pageshow', (e) => {
-    if (e.persisted) window.location.reload();
-});
+function konfigLhp() {
+    /* batchDraft() merakit KUNCI/KUNCI_BACKUP dari `kunci` + `userId` di
+       bawah lewat template literal JS — perakitannya jadi murni runtime,
+       tidak lagi tampak sebagai teks jadi di HTML server seperti sebelum
+       diekstrak. Perilakunya identik: kunci aktifnya tetap
+       optima_draft_lhp_produksi_u{{ auth()->id() }}, cadangannya
+       optima_draft_lhp_produksi_terkirim_u{{ auth()->id() }}. */
 
-function lhpBatch() {
-    /* Kunci dipisah per pengguna: komputer di lantai produksi dipakai
-       bergantian, dan kunci bersama membuat draft operator A muncul di layar
-       operator B. */
-    const KUNCI = 'optima_draft_lhp_produksi_u{{ auth()->id() }}';
+    /* Rentang mutlak, supaya baris yang melewati tengah malam ikut benar.
+       durasiDetik() diambil dari batchDraft lewat `diri`, tidak disalin ke
+       sini — menyalin pembantu waktu adalah awal dari dua definisi yang
+       pelan-pelan menyimpang. */
+    const rentang = (diri, r) => {
+        const mulai = Date.parse(`${r.tanggal_produksi}T${r.jam_start}:00`);
+        return { mulai, selesai: mulai + (diri.durasiDetik(r.jam_start, r.jam_finish) * 1000) };
+    };
 
-    /* Kunci cadangan: SUBMIT DRAFT adalah POST form biasa yang berakhir di
-       redirect server, jadi tidak ada kesempatan JS menghapus KUNCI tepat
-       saat sukses. Sebaliknya, submit memindahkan isi KUNCI ke sini dulu
-       (lihat pindahkanKeBackup()) lalu mengosongkan KUNCI.
-       Draft di sini hanya hidup di browser, jadi hanya boleh dibuang kalau
-       server sudah MEMBUKTIKAN baris-barisnya tersimpan — bukan sekadar
-       ketiadaan galat validasi di halaman ini. Bukti itu adalah flash
-       batch_tersimpan yang dibaca dan dieksekusi di index.blade.php
-       (lihat skrip di sana): index-lah yang menghapus KUNCI_BACKUP ini.
-       Kalau operator kembali ke SINI dan backup masih ada — baik karena
-       galat validasi, 419 sesi habis, 500 di server, maupun jaringan
-       putus sebelum POST-nya mendarat — submit itu belum terbukti sukses,
-       jadi mulai() memulihkannya, bukan membuangnya. */
-    const KUNCI_BACKUP = 'optima_draft_lhp_produksi_terkirim_u{{ auth()->id() }}';
-    let seq = 0;
+    const picker = () => Alpine.$data(document.getElementById('partNoTampil').closest('[x-data]'));
 
     return {
-        rows: [],
-        pesan: '',
-        galat: '',
-        barisGagal: [],
+        kunci: 'lhp_produksi',
+        userId: {{ auth()->id() }},
+        formId: 'formBaris',
+        indexUrl: '{{ route('input.produksi.index') }}',
+        galatServer: @json($errors->keys()),
 
-        mulai() {
-            /* Selesaikan nasib KUNCI_BACKUP (kalau ada) SEBELUM membaca KUNCI,
-               supaya restorasi normal di bawah otomatis mengambil hasilnya.
-               Sampai di SINI berarti index.blade.php belum sempat membuktikan
-               sukses (lihat komentar di deklarasi KUNCI_BACKUP) — jadi backup
-               SELALU dipulihkan, tanpa syarat ada/tidaknya galat validasi. */
-            try {
-                const backupMentah = localStorage.getItem(KUNCI_BACKUP);
-                if (backupMentah !== null) {
-                    localStorage.setItem(KUNCI, backupMentah);
-                    localStorage.removeItem(KUNCI_BACKUP);
-                }
-            } catch (e) {
-                // localStorage tak bisa dibaca/ditulis; lewati saja.
-            }
-
-            try {
-                const mentah = localStorage.getItem(KUNCI);
-                if (mentah) {
-                    this.rows = JSON.parse(mentah).map(r => ({ ...r, uid: seq++ }));
-                    if (this.rows.length) this.pesan = `${this.rows.length} baris draft dipulihkan.`;
-                }
-            } catch (e) {
-                localStorage.removeItem(KUNCI);
-            }
-            this.$watch('rows', () => localStorage.setItem(KUNCI, JSON.stringify(this.rows)));
-
-            /* Server menolak batch → tandai barisnya, draft JANGAN dibuang. */
-            const gagal = @json($errors->keys());
-            this.barisGagal = gagal
-                .map(k => (k.match(/^rows\.(\d+)\./) || [])[1])
-                .filter(v => v !== undefined)
-                .map(Number);
+        wajib: {
+            tanggal_produksi: 'Tanggal', id_shift: 'Shift', id_karyawan: 'Operator',
+            id_mesin: 'Mesin', id_part_proses: 'Proses', jam_start: 'Jam Start',
+            jam_finish: 'Jam Finish', qty_aktual: 'Qty OK',
         },
 
-        form() { return document.getElementById('formBaris'); },
+        kumpulkan(diri) {
+            const p = picker();
 
-        nilai(nama) {
-            const el = this.form().querySelector(`[name="${nama}"]`);
-            return el ? el.value : '';
-        },
-
-        teksTerpilih(nama) {
-            const el = this.form().querySelector(`[name="${nama}"]`);
-            if (!el || el.tagName !== 'SELECT') return '';
-            return el.selectedOptions[0] ? el.selectedOptions[0].textContent.trim() : '';
-        },
-
-        blok(kelas) {
-            const el = this.form().querySelector(kelas);
-            return el ? Alpine.$data(el) : null;
-        },
-
-        picker() {
-            return Alpine.$data(document.getElementById('partNoTampil').closest('[x-data]'));
-        },
-
-        detik(jam) {
-            const [h, m] = (jam || '0:0').split(':').map(Number);
-            return (h * 3600) + (m * 60);
-        },
-
-        durasiDetik(mulai, selesai) {
-            const a = this.detik(mulai), b = this.detik(selesai);
-            return b >= a ? b - a : (86400 - a) + b;
-        },
-
-        /* Rentang mutlak, supaya baris yang melewati tengah malam ikut benar. */
-        rentang(r) {
-            const mulai = Date.parse(`${r.tanggal_produksi}T${r.jam_start}:00`);
-            return { mulai, selesai: mulai + (this.durasiDetik(r.jam_start, r.jam_finish) * 1000) };
-        },
-
-        bentrokDengan(calon) {
-            for (let i = 0; i < this.rows.length; i++) {
-                const r = this.rows[i];
-                if (r.id_mesin != calon.id_mesin) continue;
-                const a = this.rentang(r), b = this.rentang(calon);
-                if (a.mulai < b.selesai && b.mulai < a.selesai) return i;
-            }
-            return -1;
-        },
-
-        simpanKeDraft() {
-            this.galat = '';
-            const picker = this.picker();
-
-            const calon = {
-                uid: seq++,
-                tanggal_produksi: this.nilai('tanggal_produksi'),
-                id_shift: this.nilai('id_shift'),
-                shift_teks: this.teksTerpilih('id_shift'),
-                id_karyawan: this.nilai('id_karyawan'),
-                karyawan_teks: (taKaryawan.find(k => k.v == this.nilai('id_karyawan')) || {}).t || '',
-                id_mesin: this.nilai('id_mesin'),
-                mesin_teks: (taMesin.find(m => m.v == this.nilai('id_mesin')) || {}).t || '',
-                id_part_proses: this.nilai('id_part_proses'),
-                proses_teks: this.teksTerpilih('id_part_proses'),
-                part_no: picker.partNo,
-                part_name: picker.partName,
-                jam_start: this.nilai('jam_start'),
-                jam_finish: this.nilai('jam_finish'),
-                qty_aktual: this.nilai('qty_aktual'),
-                ng: (this.blok('.ng-rows') || { rows: [] }).rows.map(n => ({ id_jenis_ng: n.id_jenis_ng, qty: n.qty })),
-                dandori: (this.blok('.dandori-rows') || { rows: [] }).rows.map(d => ({ id_losstime: d.id_losstime, actual_menit: d.actual_menit })),
-                dandori_karyawan_id: this.nilai('dandori_karyawan_id'),
+            return {
+                tanggal_produksi: diri.nilai('tanggal_produksi'),
+                id_shift: diri.nilai('id_shift'),
+                shift_teks: diri.teksTerpilih('id_shift'),
+                id_karyawan: diri.nilai('id_karyawan'),
+                karyawan_teks: (taKaryawan.find(k => k.v == diri.nilai('id_karyawan')) || {}).t || '',
+                id_mesin: diri.nilai('id_mesin'),
+                mesin_teks: (taMesin.find(m => m.v == diri.nilai('id_mesin')) || {}).t || '',
+                id_part_proses: diri.nilai('id_part_proses'),
+                proses_teks: diri.teksTerpilih('id_part_proses'),
+                part_no: p.partNo,
+                part_name: p.partName,
+                jam_start: diri.nilai('jam_start'),
+                jam_finish: diri.nilai('jam_finish'),
+                qty_aktual: diri.nilai('qty_aktual'),
+                ng: (diri.blok('.ng-rows') || { rows: [] }).rows.map(n => ({ id_jenis_ng: n.id_jenis_ng, qty: n.qty })),
+                dandori: (diri.blok('.dandori-rows') || { rows: [] }).rows.map(d => ({ id_losstime: d.id_losstime, actual_menit: d.actual_menit })),
+                dandori_karyawan_id: diri.nilai('dandori_karyawan_id'),
             };
+        },
 
-            const wajib = {
-                tanggal_produksi: 'Tanggal', id_shift: 'Shift', id_karyawan: 'Operator',
-                id_mesin: 'Mesin', id_part_proses: 'Proses', jam_start: 'Jam Start',
-                jam_finish: 'Jam Finish', qty_aktual: 'Qty OK',
-            };
-            for (const [kunci, label] of Object.entries(wajib)) {
-                if (!calon[kunci]) { this.galat = `${label} wajib diisi.`; return; }
-            }
-            if (Number(calon.qty_aktual) < 1) { this.galat = 'Qty OK minimal 1.'; return; }
-            if (this.durasiDetik(calon.jam_start, calon.jam_finish) === 0) {
-                this.galat = 'Jam Finish tidak boleh sama dengan Jam Start.'; return;
+        periksa(calon, rows, diri) {
+            if (Number(calon.qty_aktual) < 1) return 'Qty OK minimal 1.';
+            if (diri.durasiDetik(calon.jam_start, calon.jam_finish) === 0) {
+                return 'Jam Finish tidak boleh sama dengan Jam Start.';
             }
 
-            const bentrok = this.bentrokDengan(calon);
-            if (bentrok >= 0) {
-                this.galat = `Jam tumpang tindih dengan baris ${bentrok + 1} pada mesin dan tanggal yang sama.`;
-                return;
+            for (let i = 0; i < rows.length; i++) {
+                if (rows[i].id_mesin != calon.id_mesin) continue;
+                const a = rentang(diri, rows[i]), b = rentang(diri, calon);
+                if (a.mulai < b.selesai && b.mulai < a.selesai) {
+                    return `Jam tumpang tindih dengan baris ${i + 1} pada mesin dan tanggal yang sama.`;
+                }
             }
 
-            /* Pratinjau; server yang menghitung angka yang tersimpan. */
-            const jamKerja = this.durasiDetik(calon.jam_start, calon.jam_finish) / 3600;
+            return null;
+        },
+
+        /* Pratinjau; server yang menghitung angka yang tersimpan. */
+        pratinjau(calon, diri) {
+            const jamKerja = diri.durasiDetik(calon.jam_start, calon.jam_finish) / 3600;
             const proses = partsData.flatMap(p => p.proses).find(p => p.id == calon.id_part_proses);
             calon.jam_kerja = jamKerja;
             calon.sph_std = proses ? proses.sph_standar_produksi : 0;
             calon.sph_act = jamKerja > 0 ? Number(calon.qty_aktual) / jamKerja : 0;
             calon.ct_act = Number(calon.qty_aktual) > 0 ? (jamKerja * 3600) / Number(calon.qty_aktual) : 0;
             calon.persen = calon.sph_std > 0 ? (calon.sph_act / calon.sph_std) * 100 : 0;
-
-            this.rows.push(calon);
-            this.pesan = '';
-            this.barisGagal = [];
-            this.resetSebagian();
         },
 
-        /* Tanggal, Shift, Operator, dan Mesin sengaja dipertahankan: keempatnya
-           konstan sepanjang satu sesi kerja. */
-        resetSebagian() {
-            const f = this.form();
-            ['jam_start', 'jam_finish', 'qty_aktual'].forEach(n => {
-                const el = f.querySelector(`[name="${n}"]`);
-                if (el) el.value = '';
-            });
+        /* Tanggal, Shift, Operator, dan Mesin sengaja TIDAK di sini:
+           keempatnya konstan sepanjang satu sesi kerja. */
+        resetField: ['jam_start', 'jam_finish', 'qty_aktual'],
 
-            const picker = this.picker();
-            picker.query = ''; picker.val = null; picker.partNo = '';
-            picker.partName = ''; picker.prosesList = [];
+        resetLain(diri) {
+            const p = picker();
+            p.query = ''; p.val = null; p.partNo = '';
+            p.partName = ''; p.prosesList = [];
 
-            const proses = f.querySelector('[name="id_part_proses"]');
+            const proses = diri.form().querySelector('[name="id_part_proses"]');
             if (proses) proses.value = '';
 
             ['ada_ng', 'ada_dandori'].forEach(id => {
@@ -583,19 +482,17 @@ function lhpBatch() {
                 Alpine.$data(cb.closest('[x-data]'))[id === 'ada_ng' ? 'adaNg' : 'adaDandori'] = false;
             });
 
-            const ng = this.blok('.ng-rows'); if (ng) ng.rows = [];
-            const dandori = this.blok('.dandori-rows'); if (dandori) dandori.rows = [];
+            const ng = diri.blok('.ng-rows'); if (ng) ng.rows = [];
+            const dandori = diri.blok('.dandori-rows'); if (dandori) dandori.rows = [];
         },
-
-        hapus(i) { this.rows.splice(i, 1); this.barisGagal = []; },
 
         /* Bentuk field yang dikirim ke server (rows_json) — sama persis
            dengan yang dulu dirakit lewat input tersembunyi per baris,
            termasuk ng_count/dandori_count yang dihitung terpisah dari
            panjang array ng/dandori (lihat komentar periksaHitungan() di
            StoreProduksiBatchRequest soal kenapa itu penting). */
-        payloadRows() {
-            return this.rows.map(r => ({
+        payload(r) {
+            return {
                 tanggal_produksi: r.tanggal_produksi,
                 id_shift: r.id_shift,
                 id_karyawan: r.id_karyawan,
@@ -611,52 +508,19 @@ function lhpBatch() {
                 ada_dandori: r.dandori.length > 0 ? 1 : 0,
                 dandori_karyawan_id: r.dandori_karyawan_id,
                 dandori: r.dandori.map(d => ({ id_losstime: d.id_losstime, actual_menit: d.actual_menit })),
-            }));
+            };
         },
 
-        ringkasNg(r) {
-            if (!r.ng.length) return '—';
-            return r.ng.map(n => `${ngLabel[n.id_jenis_ng] ?? n.id_jenis_ng} ×${n.qty}`).join(', ');
-        },
+        metode: {
+            ringkasNg(r) {
+                if (!r.ng.length) return '—';
+                return r.ng.map(n => `${ngLabel[n.id_jenis_ng] ?? n.id_jenis_ng} ×${n.qty}`).join(', ');
+            },
 
-        ringkasDandori(r) {
-            if (!r.dandori.length) return '—';
-            return r.dandori.map(d => `${ltLabel[d.id_losstime] ?? d.id_losstime} ${d.actual_menit}mnt`).join(', ');
-        },
-
-        batal() {
-            if (this.rows.length && !confirm(`Buang ${this.rows.length} baris draft yang belum dikirim?`)) return;
-            localStorage.removeItem(KUNCI);
-            window.location = '{{ route('input.produksi.index') }}';
-        },
-
-        /* Dipasang di @submit #formBatch. Form ini POST biasa (bukan
-           @submit.prevent) — begitu handler ini selesai, browser lanjut
-           mengirim form dan halaman ini hilang sebelum JS lain sempat jalan.
-           Jadi draft TIDAK bisa langsung dihapus di sini: kalau server nanti
-           menolak batch (galat validasi), operator akan diarahkan balik ke
-           halaman ini dan berhak mendapatkan ketikannya kembali. Sebagai
-           gantinya draft dipindah ke KUNCI_BACKUP dan KUNCI dikosongkan;
-           mulai() yang membereskan nasib akhirnya saat halaman ini dibuka
-           lagi (lihat komentar di sana). */
-        pindahkanKeBackup() {
-            try {
-                const mentah = localStorage.getItem(KUNCI);
-                if (mentah !== null) {
-                    /* Kalau setItem(KUNCI_BACKUP) di bawah gagal (mis. kuota
-                       localStorage penuh), KUNCI tetap WAJIB dikosongkan di
-                       finally — kalau tidak, draft yang baru saja berhasil
-                       disimpan ke server akan ditawarkan lagi ke operator dan
-                       terkirim dobel. */
-                    try {
-                        localStorage.setItem(KUNCI_BACKUP, mentah);
-                    } finally {
-                        localStorage.removeItem(KUNCI);
-                    }
-                }
-            } catch (e) {
-                // localStorage tak tersedia; biarkan submit tetap jalan apa adanya.
-            }
+            ringkasDandori(r) {
+                if (!r.dandori.length) return '—';
+                return r.dandori.map(d => `${ltLabel[d.id_losstime] ?? d.id_losstime} ${d.actual_menit}mnt`).join(', ');
+            },
         },
     };
 }

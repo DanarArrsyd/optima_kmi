@@ -145,6 +145,18 @@ class HalamanBatchProduksiTest extends TestCase
         $this->assertStringContainsString('formBatch', $html);
     }
 
+    public function test_halaman_batch_memakai_kerangka_bersama(): void
+    {
+        // Kerangka draft (localStorage, KUNCI_BACKUP, penjaga bfcache) hidup di
+        // layout supaya empat modul berikutnya tidak menyalinnya. Kalau halaman
+        // ini diam-diam kembali punya kerangka sendiri, salinan itu akan
+        // menyimpang tanpa ada yang tahu — persis riwayat taField.
+        $html = $this->halaman();
+
+        $this->assertStringContainsString('x-data="batchDraft(', $html);
+        $this->assertStringNotContainsString('function lhpBatch(', $html);
+    }
+
     public function test_pemilih_proses_berada_dalam_scope_part_picker(): void
     {
         // prosesList adalah state partPicker(). Kalau <select> Proses berada di

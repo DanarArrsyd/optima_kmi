@@ -25,6 +25,7 @@ class KomponenBersamaTest extends TestCase
         'function erpToggleDock(',
         'function saringOrangNonaktif(',
         'function partPicker(',
+        'function batchDraft(',
     ];
 
     public static function komponen(): array
