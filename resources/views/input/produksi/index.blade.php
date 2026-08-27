@@ -751,7 +751,7 @@ function openNoteDrawer(type, id, existingNote, isAdmin, updatedAt, noteAt, reso
        kalau server sudah MEMBUKTIKAN barisnya tersimpan — flash
        batch_tersimpan dari ProduksiController::batch() adalah bukti itu.
        Kunci dibaca dengan pola yang SAMA PERSIS dengan create.blade.php
-       (KUNCI dan KUNCI_BACKUP di lhpBatch()) supaya keduanya selalu
+       (`kunci` dan `kunciBackup` di konfigLhp()) supaya keduanya selalu
        menunjuk baris yang sama untuk pengguna yang sama. */
     try {
         localStorage.removeItem('optima_draft_lhp_produksi_u{{ auth()->id() }}');

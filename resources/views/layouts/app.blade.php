@@ -1765,12 +1765,22 @@ function partPicker(items, partsData) {
 
    Yang TIDAK ada di sini: field apa yang dikumpulkan, mana yang wajib,
    pemeriksaan antar-baris, dan bentuk payload. Itu semua masuk lewat cfg.
-   ══════════════════════════════════════════════════════════════════ */
+
+   Kunci localStorage (cfg.kunci, cfg.kunciBackup) sengaja disuplai UTUH oleh
+   tiap modul, bukan dirakit di sini dari potongan (mis. id pengguna). Layout
+   ini murni JS generik tanpa akses ke Blade/auth, dan merakit kunci di JS
+   runtime membuat literalnya berhenti muncul di HTML server — dua test
+   pre-existing yang menjangkar ke literal kunci itu butuh teksnya utuh di
+   response mentah. Nilai kedua kunci HARUS sama persis dengan yang dihapus
+   halaman daftar modul itu (lihat komentar di batal() dan pindahkanKeBackup()
+   di bawah) — kunci yang tidak cocok berarti draft/backup jadi yatim,
+   tersimpan di browser tapi tidak pernah lagi dibaca atau dibersihkan. */
 function batchDraft(cfg) {
     /* Kunci dipisah per pengguna: komputer di lantai produksi dipakai
        bergantian, dan kunci bersama membuat draft operator A muncul di
-       layar operator B. */
-    const KUNCI = `optima_draft_${cfg.kunci}_u${cfg.userId}`;
+       layar operator B. Modul pemanggil yang menyusun id pengguna ke dalam
+       cfg.kunci (lihat konfigLhp() di create.blade.php). */
+    const KUNCI = cfg.kunci;
 
     /* Kunci cadangan: SUBMIT DRAFT adalah POST form biasa yang berakhir di
        redirect server, jadi tidak ada kesempatan JS menghapus KUNCI tepat
@@ -1785,7 +1795,7 @@ function batchDraft(cfg) {
        galat validasi, 419 sesi habis, 500 di server, maupun jaringan
        putus sebelum POST-nya mendarat — submit itu belum terbukti sukses,
        jadi mulai() memulihkannya, bukan membuangnya. */
-    const KUNCI_BACKUP = `optima_draft_${cfg.kunci}_terkirim_u${cfg.userId}`;
+    const KUNCI_BACKUP = cfg.kunciBackup;
     let seq = 0;
 
     return {
@@ -1793,6 +1803,15 @@ function batchDraft(cfg) {
         pesan: '',
         galat: '',
         barisGagal: [],
+
+        /* Disebar di SINI, sebelum method-method kerangka di bawah — dalam
+           object literal JS, kunci yang datang belakangan menang atas kunci
+           yang sama dari sebaran sebelumnya. Empat modul akan memakai
+           batchDraft(); kalau cfg.metode modul kebetulan mendefinisikan
+           nama yang sama dengan method kerangka (mis. "mulai" atau "hapus"),
+           method kerangka WAJIB tetap yang jalan — bukan tertimpa senyap
+           oleh cfg.metode. */
+        ...(cfg.metode || {}),
 
         mulai() {
             /* Halaman batch yang dipulihkan dari bfcache (tombol Back setelah
@@ -1942,8 +1961,6 @@ function batchDraft(cfg) {
                 // localStorage tak tersedia; biarkan submit tetap jalan apa adanya.
             }
         },
-
-        ...(cfg.metode || {}),
     };
 }
 

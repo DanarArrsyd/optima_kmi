@@ -380,13 +380,6 @@ const ngLabel     = @json($_ngLabel);
 const ltLabel     = @json($_ltLabel);
 
 function konfigLhp() {
-    /* batchDraft() merakit KUNCI/KUNCI_BACKUP dari `kunci` + `userId` di
-       bawah lewat template literal JS — perakitannya jadi murni runtime,
-       tidak lagi tampak sebagai teks jadi di HTML server seperti sebelum
-       diekstrak. Perilakunya identik: kunci aktifnya tetap
-       optima_draft_lhp_produksi_u{{ auth()->id() }}, cadangannya
-       optima_draft_lhp_produksi_terkirim_u{{ auth()->id() }}. */
-
     /* Rentang mutlak, supaya baris yang melewati tengah malam ikut benar.
        durasiDetik() diambil dari batchDraft lewat `diri`, tidak disalin ke
        sini — menyalin pembantu waktu adalah awal dari dua definisi yang
@@ -399,8 +392,8 @@ function konfigLhp() {
     const picker = () => Alpine.$data(document.getElementById('partNoTampil').closest('[x-data]'));
 
     return {
-        kunci: 'lhp_produksi',
-        userId: {{ auth()->id() }},
+        kunci:       'optima_draft_lhp_produksi_u{{ auth()->id() }}',
+        kunciBackup: 'optima_draft_lhp_produksi_terkirim_u{{ auth()->id() }}',
         formId: 'formBaris',
         indexUrl: '{{ route('input.produksi.index') }}',
         galatServer: @json($errors->keys()),
