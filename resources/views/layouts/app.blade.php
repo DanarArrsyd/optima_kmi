@@ -1776,6 +1776,16 @@ function partPicker(items, partsData) {
    di bawah) — kunci yang tidak cocok berarti draft/backup jadi yatim,
    tersimpan di browser tapi tidak pernah lagi dibaca atau dibersihkan. */
 function batchDraft(cfg) {
+    /* Kunci cfg yang hilang gagal SENYAP kalau tidak dijaga di sini — mis.
+       kunciBackup yang lupa dioper membuat KUNCI_BACKUP bernilai undefined,
+       dan localStorage.setItem(undefined, …) tidak melempar apa-apa, ia
+       menulis ke kunci literal "undefined". Lempar galat jelas SEKARANG,
+       saat modul pertama kali dipasang, daripada membiarkan operator
+       menemukan draft yang tidak pernah tersimpan/terhapus dengan benar. */
+    for (const k of ['kunci', 'kunciBackup', 'formId', 'indexUrl', 'kumpulkan', 'wajib', 'payload']) {
+        if (cfg[k] === undefined) throw new Error(`batchDraft: cfg.${k} wajib diisi.`);
+    }
+
     /* Kunci dipisah per pengguna: komputer di lantai produksi dipakai
        bergantian, dan kunci bersama membuat draft operator A muncul di
        layar operator B. Modul pemanggil yang menyusun id pengguna ke dalam
@@ -1825,7 +1835,10 @@ function batchDraft(cfg) {
 
                Didaftarkan DI SINI, bukan di lingkup layout: layout dimuat semua
                halaman, dan memaksa reload bfcache di halaman yang tidak punya
-               draft adalah perubahan perilaku yang tidak diminta siapa pun. */
+               draft adalah perubahan perilaku yang tidak diminta siapa pun.
+               Konsekuensinya, penjaga ini baru aktif setelah Alpine boot dan
+               memanggil mulai() lewat x-init — beda dari sebelum ekstraksi,
+               saat listener ini didaftarkan di parse-time script halaman. */
             window.addEventListener('pageshow', (e) => {
                 if (e.persisted) window.location.reload();
             });
