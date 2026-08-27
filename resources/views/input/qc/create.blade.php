@@ -346,6 +346,7 @@ function konfigQc() {
             id_part_proses: 'Part',
             jam_start: 'Jam Start',
             jam_finish: 'Jam Finish',
+            qty_ok: 'Qty OK',
         },
 
         kumpulkan(diri) {
