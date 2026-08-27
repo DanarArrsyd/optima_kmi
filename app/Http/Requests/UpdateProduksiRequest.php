@@ -30,7 +30,12 @@ class UpdateProduksiRequest extends FormRequest
             'ada_ng' => 'nullable|boolean',
             'ng_count' => 'required|integer|min:0',
             'ng' => 'array|required_if:ada_ng,1',
-            'ng.*.id_jenis_ng' => 'required|integer|exists:master_jenis_ng,id|distinct',
+            /* Tanpa `distinct`, seragam dengan StoreProduksiBatchRequest yang
+             * sudah mencabutnya. Kalau form edit masih melarang sementara form
+             * input membolehkan, baris yang sah jadi tidak bisa dikoreksi.
+             * uniq_prod_ng + NgDetailService::normalize() tetap menjadikannya
+             * satu baris dengan qty dijumlah. */
+            'ng.*.id_jenis_ng' => 'required|integer|exists:master_jenis_ng,id',
             'ng.*.qty' => 'required|integer|min:1',
         ];
     }
@@ -105,7 +110,6 @@ class UpdateProduksiRequest extends FormRequest
     {
         return [
             'ng.required_if' => 'Centang "ada NG" berarti minimal satu jenis NG harus diisi.',
-            'ng.*.id_jenis_ng.distinct' => 'Jenis NG yang sama tidak boleh diisi dua kali dalam satu sesi.',
             'ng.*.id_jenis_ng.required' => 'Pilih jenis NG untuk setiap baris.',
             'ng.*.qty.min' => 'Qty NG minimal 1.',
         ];
