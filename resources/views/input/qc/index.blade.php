@@ -224,6 +224,28 @@ $filterActive = ($search ?? '') !== '' || $filterKarId || $filterJenisNgId
 
 <div class="erp-ws-main">
 
+{{-- Bag error validasi bawaan Laravel (mis. upload import gagal: file kosong,
+     tipe bukan xlsx/xls/csv, atau lebih dari 10MB). Drawer lama yang dulu
+     merender $errors sudah dicabut bareng laci penulis — tanpa blok ini,
+     kegagalan validasi cuma redirect balik ke halaman ini tanpa pesan apa
+     pun, seolah tidak terjadi apa-apa. --}}
+@if ($errors->any())
+    <div class="alert alert-danger alert-dismissible fade show mb-3" role="alert">
+        <div class="d-flex align-items-start gap-2">
+            <i class="bi bi-exclamation-triangle-fill fs-5 mt-1 flex-shrink-0"></i>
+            <div>
+                <strong>Import gagal:</strong>
+                <ul class="mb-0">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+@endif
+
 @if(! auth()->user()->isGuest())
 {{-- Export Panel --}}
 <x-export-modal

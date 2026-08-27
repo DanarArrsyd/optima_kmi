@@ -100,5 +100,18 @@ class GuestUiTest extends TestCase
         $this->actingAs($staff)->get(route('input.produksi.index'))
             ->assertOk()
             ->assertSee('Input Baru');
+
+        // Kontrol pembanding untuk halaman QC: test guest di atas
+        // (test_lhp_pages_hide_write_buttons_for_guest) hanya lulus kalau
+        // "Input Baru" DISEMBUNYIKAN dari guest. Tanpa pasangan positif ini,
+        // kalau gerbang @if(! isGuest()) atau jangkarnya sendiri kebobol
+        // hilang dari input.qc.index, test guest tetap lolos (staf QC pun
+        // tidak akan melihat tombolnya) — kegagalannya tidak akan pernah
+        // ketahuan.
+        $staffQc = User::factory()->create(['role' => 'staff_qc']);
+
+        $this->actingAs($staffQc)->get(route('input.qc.index'))
+            ->assertOk()
+            ->assertSee('Input Baru');
     }
 }

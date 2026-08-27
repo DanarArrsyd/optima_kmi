@@ -110,7 +110,6 @@ class QcController extends Controller
             ->paginate(30)
             ->withQueryString();
 
-        $shifts = MasterShift::orderBy('jam_start')->get();
         $karyawan = MasterKaryawan::where('departemen', 'QC')->aktif()->orderBy('nama_karyawan')->get();
         $parts = MasterPart::with(['proses' => fn ($q) => $q->orderByDesc('id_proses')])
             ->has('proses')
@@ -135,7 +134,7 @@ class QcController extends Controller
 
         return view('input.qc.index', compact(
             'transaksi', 'dateFrom', 'dateTo', 'search',
-            'shifts', 'karyawan', 'parts', 'jenisNg', 'customers',
+            'karyawan', 'parts', 'jenisNg', 'customers',
             'pakaiTanggal', 'filterKarId', 'filterJenisNgId',
             'filterCustomer', 'filterPartId', 'filterProsesId',
             'myLastRecord', 'myLastOnPage'

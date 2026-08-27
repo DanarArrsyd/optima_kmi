@@ -9,6 +9,8 @@ use App\Models\MasterPartProses;
 use App\Models\MasterShift;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class HalamanBatchQcTest extends TestCase
@@ -310,5 +312,42 @@ class HalamanBatchQcTest extends TestCase
 
         $this->assertStringContainsString("qty_ok: 'Qty OK'", $mWajib[1],
             'qty_ok tidak ada di cfg.wajib — baris dengan qty_ok kosong akan lolos periksa() client lalu menggagalkan seluruh batch di server.');
+    }
+
+    public function test_import_gagal_menampilkan_pesan_error_di_halaman_daftar(): void
+    {
+        // Laci penulis lama satu-satunya yang merender bag $errors bawaan
+        // Laravel; setelah dicabut, kegagalan validasi upload (mis. file
+        // bukan xlsx/xls/csv) redirect balik ke input.qc.index TANPA pesan
+        // apa pun kalau blok penggantinya hilang. assertSessionHasErrors saja
+        // tidak cukup — itu membuktikan session-nya benar, bukan bahwa
+        // halamannya menampilkan sesuatu ke user. Maka di sini dijangkarkan
+        // ke TEKS pesan yang benar-benar DIRENDER pada request berikutnya
+        // (sengaja TANPA assertSessionHasErrors di antaranya — memanggil
+        // session()->start() manual di antara dua request nyata mengganggu
+        // marshalling ulang $errors dari JSON gara-gara 'serialization' =>
+        // 'json' di config/session.php, membuat pengujian ini gagal
+        // dengan alasan yang salah walau perbaikannya sendiri benar).
+        Storage::fake('local');
+
+        $filePdf = UploadedFile::fake()->create('data.pdf', 10, 'application/pdf');
+
+        $response = $this->from(route('input.qc.index'))
+            ->post(route('input.qc.import'), ['file' => $filePdf]);
+
+        $response->assertRedirect(route('input.qc.index'));
+
+        $halaman = $this->get(route('input.qc.index'))->assertOk()->getContent();
+
+        $this->assertStringContainsString(
+            'Import gagal',
+            $halaman,
+            'Halaman input.qc.index tidak menampilkan pesan error validasi import — user melihat halaman seolah tidak terjadi apa-apa.'
+        );
+        $this->assertStringContainsString(
+            'type: xlsx, xls, csv',
+            $halaman,
+            'Pesan error yang dirender tidak memuat detail validasi mimes dari Laravel.'
+        );
     }
 }
