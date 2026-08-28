@@ -947,6 +947,24 @@ function openNoteDrawer(type, id, existingNote, isAdmin, updatedAt, noteAt, reso
         row.querySelectorAll('td').forEach(td => { td.style.transition = 'background 1.5s ease'; td.style.background = ''; });
     }, 2000);
 })();
+
+@if (session('batch_tersimpan'))
+(function() {
+    /* Draft di localStorage cuma hidup di browser, jadi cuma boleh dibuang
+       kalau server sudah MEMBUKTIKAN barisnya tersimpan — flash
+       batch_tersimpan dari DandoriController::batch() adalah bukti itu.
+       Kunci ditulis SAMA PERSIS dengan `kunci` dan `kunciBackup` di
+       konfigDandori() (create.blade.php) supaya keduanya selalu menunjuk
+       baris yang sama untuk pengguna yang sama. Dijaga
+       HalamanBatchDandoriTest::test_kunci_draft_cocok_dengan_yang_dihapus_index. */
+    try {
+        localStorage.removeItem('optima_draft_dandori_u{{ auth()->id() }}');
+        localStorage.removeItem('optima_draft_dandori_terkirim_u{{ auth()->id() }}');
+    } catch (e) {
+        // localStorage tak tersedia; tidak ada yang perlu dibuang.
+    }
+})();
+@endif
 </script>
 
 </div>{{-- /alpine outer scope --}}

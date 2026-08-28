@@ -1,89 +1,121 @@
 @extends('layouts.app')
+
 @section('title', 'Input Dandori')
 
 @php
-$oldKaryawanId  = old('id_karyawan');
-$oldKaryawanObj = $karyawan->firstWhere('id', $oldKaryawanId);
-$oldKaryawanTxt = $oldKaryawanObj?->nama_karyawan ?? '';
-
-$oldMesinId  = old('id_mesin');
-$oldMesinObj = $mesin->firstWhere('id', $oldMesinId);
-$oldMesinTxt = $oldMesinObj ? "{$oldMesinObj->id_mesin} - {$oldMesinObj->nama_mesin} (Line {$oldMesinObj->line})" : '';
+    $_taOperator = $karyawan->map(fn ($k) => ['v' => $k->id, 't' => $k->nama_karyawan])->values();
+    $_taMesin = $mesin->map(fn ($m) => ['v' => $m->id, 't' => "{$m->id_mesin} - {$m->nama_mesin} (Line {$m->line})"])->values();
+    $_taParts = $parts->map(fn ($p) => ['v' => $p->id, 't' => "{$p->part_no} — {$p->part_name}"])->values();
+    $_partsData = $parts->map(fn ($p) => [
+        'id' => $p->id,
+        'part_no' => $p->part_no,
+        'part_name' => $p->part_name,
+        'proses' => $p->proses->map(fn ($pr) => [
+            'id' => $pr->id,
+            'id_proses' => $pr->id_proses,
+            'nama_proses' => $pr->nama_proses,
+        ])->values(),
+    ])->values();
+    $_ltLabel = $losstimes->mapWithKeys(fn ($l) => [$l->id => $l->jenis_losstime]);
 @endphp
 
+@push('styles')
+<style>
+/* Baris form LHP: label kiri, kotak input SATU lebar untuk semua field.
+   Lebar seragam disengaja — Part Name di pabrik ini panjang, dan kotak
+   yang lebarnya berbeda-beda membuat mata operator melompat tiap baris. */
+.lhp-baris {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+.lhp-baris > label {
+    flex: 0 0 150px;
+    margin: 0;
+    font-size: 0.875rem;
+    color: #374151;
+}
+.lhp-isi {
+    flex: 0 1 640px;
+    min-width: 0;
+}
+
+/* Tabel draft: NOL pembungkusan teks. Lebar tiap kolom mengikuti isi
+   terpanjangnya, dan kelebihannya digulir mendatar oleh .table-responsive.
+   Bootstrap menyetel .table ke width:100%, yang memaksa kolom saling
+   menggencet lalu memotong "BASE JACK BRACKET" jadi dua baris — operator
+   memakai tabel ini untuk memeriksa apa yang tadi diketik sebelum SUBMIT,
+   jadi isinya harus terbaca dalam satu baris. */
+.lhp-draft {
+    width: auto;
+    max-width: none;
+}
+.lhp-draft th,
+.lhp-draft td {
+    white-space: nowrap;
+}
+
+/* Di layar sempit label naik ke atas kotaknya, bukan menggencet kotaknya. */
+@media (max-width: 767.98px) {
+    .lhp-baris { flex-direction: column; align-items: stretch; gap: 4px; }
+    .lhp-baris > label { flex: none; }
+    .lhp-isi { flex: none; }
+}
+</style>
+@endpush
+
 @section('content')
-<div class="page-header">
-    <h1 class="page-title"><i class="bi bi-tools"></i>Input Dandori</h1>
-    <a href="{{ route('input.dandori.index') }}" class="btn btn-outline-secondary btn-sm">
-        <i class="bi bi-arrow-left me-1"></i>Kembali
-    </a>
-</div>
+<div class="erp-panel" x-data="batchDraft(konfigDandori())" x-init="mulai()">
+    <div class="erp-panel-header">Input Dandori</div>
+    <div class="erp-panel-body">
 
-@if($errors->any())
-    <div class="alert alert-danger">
-        <ul class="mb-0">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
-    </div>
-@endif
+        <template x-if="pesan">
+            <div class="alert alert-info py-2" x-text="pesan"></div>
+        </template>
 
-@if($karyawan->isEmpty() || $mesin->isEmpty() || $parts->isEmpty() || $losstimes->isEmpty())
-    <div class="alert alert-warning d-flex align-items-start gap-2">
-        <i class="bi bi-exclamation-triangle-fill fs-5 mt-1"></i>
-        <div>
-            <strong>Master data belum lengkap.</strong> Sebelum input Dandori, lengkapi dulu:
-            <ul class="mb-1 mt-1">
-                @if($karyawan->isEmpty())  <li><a href="{{ route('master.karyawan.index') }}">Karyawan</a> — belum ada operator (departemen: Produksi)</li> @endif
-                @if($mesin->isEmpty())     <li><a href="{{ route('master.mesin.index') }}">Mesin</a> — belum ada data mesin</li> @endif
-                @if($parts->isEmpty())    <li><a href="{{ route('master.part.index') }}">Part / Dies</a> — belum ada data part dan proses</li> @endif
-                @if($losstimes->isEmpty()) <li><a href="{{ route('master.losstime.index') }}">Loss Time</a> — belum ada jenis loss time</li> @endif
-            </ul>
-        </div>
-    </div>
-@endif
-
-<div class="erp-panel" style="max-width:960px">
-    <div class="erp-panel-header">Form Input Dandori</div>
-    <div class="erp-panel-body" x-data="dandoriMain()">
-        <form method="POST" action="{{ route('input.dandori.store') }}" id="formDandori" novalidate>
-            @csrf
-
-            {{-- ── SESI FIELDS ──────────────────────────────────────── --}}
-            <div class="section-label mb-2" style="font-size:0.75rem;font-weight:700;letter-spacing:.06em;color:#6b7280;text-transform:uppercase">
-                Informasi Sesi
+        @if ($errors->any())
+            <div class="alert alert-danger py-2">
+                <div class="fw-semibold mb-1">Draft ditolak server:</div>
+                <ul class="mb-0 ps-3">
+                    @foreach ($errors->all() as $pesanGalat)
+                        <li>{{ $pesanGalat }}</li>
+                    @endforeach
+                </ul>
             </div>
-            <div class="row g-3 mb-4 pb-3" style="border-bottom:1px solid #e5e7eb">
+        @endif
 
-                {{-- Tanggal --}}
-                <div class="col-md-3">
-                    <label class="form-label">Tanggal <span class="text-danger">*</span></label>
-                    <input type="date" name="tanggal"
-                           class="form-control @error('tanggal') is-invalid @enderror"
-                           value="{{ old('tanggal', date('Y-m-d')) }}">
-                    @error('tanggal')<div class="invalid-feedback">{{ $message }}</div>@enderror
+        {{-- ══ FORM SATU BARIS ══
+             Satu kolom ke bawah, label kiri, kotak input SATU lebar untuk semua
+             field — sama susunannya dengan input/produksi/create.blade.php. --}}
+        <form id="formBaris" novalidate @submit.prevent="simpanKeDraft()">
+
+            <div class="lhp-baris">
+                <label for="f_tanggal">Tanggal <span class="text-danger">*</span></label>
+                <div class="lhp-isi">
+                    <input type="date" id="f_tanggal" name="tanggal" class="form-control"
+                           value="{{ now()->format('Y-m-d') }}">
                 </div>
+            </div>
 
-                {{-- Shift --}}
-                <div class="col-md-3">
-                    <label class="form-label">Shift <span class="text-danger">*</span></label>
-                    <select name="id_shift" class="form-select @error('id_shift') is-invalid @enderror">
+            <div class="lhp-baris">
+                <label for="f_shift">Shift <span class="text-danger">*</span></label>
+                <div class="lhp-isi">
+                    <select id="f_shift" name="id_shift" class="form-select">
                         <option value="">-- Pilih Shift --</option>
-                        @foreach($shifts as $shift)
-                            <option value="{{ $shift->id }}" {{ old('id_shift') == $shift->id ? 'selected' : '' }}>
-                                {{ $shift->nama_shift }} ({{ $shift->jam_start }}–{{ $shift->jam_finish }})
-                            </option>
+                        @foreach ($shifts as $s)
+                            <option value="{{ $s->id }}">{{ $s->nama_shift }}</option>
                         @endforeach
                     </select>
-                    @error('id_shift')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
+            </div>
 
-                {{-- Operator — typeahead (independent x-data) --}}
-                <div class="col-md-6"
-                     x-data="taField(taKaryawan, '{{ $oldKaryawanTxt }}', {{ $oldKaryawanId ?: 'null' }})">
-                    <label class="form-label">Operator <span class="text-danger">*</span></label>
+            <div class="lhp-baris" x-data="taField(taOperator)">
+                <label for="f_operator">Operator <span class="text-danger">*</span></label>
+                <div class="lhp-isi">
                     <div class="ta-wrap">
-                        <input type="text"
-                               class="form-control ta-input @error('id_karyawan') is-invalid @enderror"
-                               x-model="query" @focus="openDd()" @blur="closeDd()"
-                               @keydown="onKey($event)" @input="onInput()"
+                        <input type="text" id="f_operator" class="form-control ta-input" x-model="query"
+                               @focus="openDd()" @blur="closeDd()" @keydown="onKey($event)" @input="onInput()"
                                placeholder="Ketik nama operator...">
                         <input type="hidden" name="id_karyawan" :value="val">
                         <div class="ta-dropdown" x-show="open" x-cloak>
@@ -96,18 +128,15 @@ $oldMesinTxt = $oldMesinObj ? "{$oldMesinObj->id_mesin} - {$oldMesinObj->nama_me
                             </template>
                         </div>
                     </div>
-                    @error('id_karyawan')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                 </div>
+            </div>
 
-                {{-- Mesin — typeahead (independent x-data) --}}
-                <div class="col-md-6"
-                     x-data="taField(taMesin, '{{ $oldMesinTxt }}', {{ $oldMesinId ?: 'null' }})">
-                    <label class="form-label">Mesin <span class="text-danger">*</span></label>
+            <div class="lhp-baris" x-data="taField(taMesin)">
+                <label for="f_mesin">Mesin <span class="text-danger">*</span></label>
+                <div class="lhp-isi">
                     <div class="ta-wrap">
-                        <input type="text"
-                               class="form-control ta-input @error('id_mesin') is-invalid @enderror"
-                               x-model="query" @focus="openDd()" @blur="closeDd()"
-                               @keydown="onKey($event)" @input="onInput()"
+                        <input type="text" id="f_mesin" class="form-control ta-input" x-model="query"
+                               @focus="openDd()" @blur="closeDd()" @keydown="onKey($event)" @input="onInput()"
                                placeholder="Ketik ID atau nama mesin...">
                         <input type="hidden" name="id_mesin" :value="val">
                         <div class="ta-dropdown" x-show="open" x-cloak>
@@ -120,459 +149,273 @@ $oldMesinTxt = $oldMesinObj ? "{$oldMesinObj->id_mesin} - {$oldMesinObj->nama_me
                             </template>
                         </div>
                     </div>
-                    @error('id_mesin')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                 </div>
+            </div>
 
-                {{-- Part — typeahead (state managed by dandoriMain) --}}
-                <div class="col-md-6">
-                    <label class="form-label">Part <span class="text-danger">*</span></label>
-                    <div class="ta-wrap" id="partTaWrapDandori">
-                        <input type="text"
-                               class="form-control ta-input"
-                               x-model="partQuery"
-                               @focus="partOpen = true; partIdx = -1"
-                               @blur="partCloseDd()"
-                               @keydown="partKey($event)"
-                               @input="partVal = null; partOpen = true; partIdx = -1"
-                               placeholder="Ketik part no atau nama part...">
-                        <div class="ta-dropdown" x-show="partOpen" x-cloak>
-                            <template x-if="partFiltered.length === 0">
-                                <div class="ta-empty">Tidak ditemukan</div>
-                            </template>
-                            <template x-for="(item, i) in partFiltered" :key="item.v">
-                                <div class="ta-item" :class="{ 'ta-active': i === partIdx }"
-                                     @mousedown.prevent="partPick(item)" x-text="item.t"></div>
-                            </template>
+            {{-- Part, Part No., dan Proses WAJIB satu scope partPicker():
+                 prosesList milik komponen itu. Dandori memakai SEMUA proses
+                 (bukan cuma finish good seperti QC), jadi Proses di sini
+                 tetap <select> yang dipilih manual — sama seperti
+                 input/produksi/create.blade.php, bukan kotak info seperti QC. --}}
+            <div x-data="partPicker(taParts, partsData)">
+                <div class="lhp-baris">
+                    <label for="f_part">Part Name <span class="text-danger">*</span></label>
+                    <div class="lhp-isi">
+                        <div class="ta-wrap">
+                            <input type="text" id="f_part" class="form-control ta-input" x-model="query"
+                                   @focus="open = true; idx = -1" @blur="tutup()" @keydown="tombol($event)"
+                                   @input="val = null; open = true; idx = -1"
+                                   placeholder="Ketik part no atau nama...">
+                            <div class="ta-dropdown" x-show="open" x-cloak>
+                                <template x-if="tersaring.length === 0">
+                                    <div class="ta-empty">Tidak ditemukan</div>
+                                </template>
+                                <template x-for="(item, i) in tersaring" :key="item.v">
+                                    <div class="ta-item" :class="{ 'ta-active': i === idx }"
+                                         @mousedown.prevent="pilih(item)" x-text="item.t"></div>
+                                </template>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                {{-- Proses — populated after part selected --}}
-                <div class="col-md-6">
-                    <label class="form-label">Proses <span class="text-danger">*</span></label>
-                    <select name="id_part_proses"
-                            class="form-select @error('id_part_proses') is-invalid @enderror"
-                            :disabled="prosesList.length === 0"
-                            @change="onProsesChange($event.target.value)">
-                        <option value="">{{ '-- Pilih Part dulu --' }}</option>
-                        <template x-for="p in prosesList" :key="p.id">
-                            <option :value="p.id" x-text="`${p.id_proses} – ${p.nama_proses}`"></option>
-                        </template>
-                    </select>
-                    @error('id_part_proses')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                </div>
-
-                {{-- Progressive badge --}}
-                <div class="col-12" x-show="isProgressive" x-cloak>
-                    <div class="alert alert-info py-2 mb-0 d-flex align-items-center gap-2" style="font-size:0.82rem">
-                        <i class="bi bi-info-circle-fill"></i>
-                        <span>Proses <strong>PROGRESSIVE</strong> aktif — standar waktu menggunakan kolom
-                            <code>std_menit_progressive</code> dari master loss time.</span>
+                <div class="lhp-baris">
+                    <label for="dandoriPartNoTampil">Part No.</label>
+                    <div class="lhp-isi">
+                        <input type="text" class="form-control" id="dandoriPartNoTampil" :value="partNo" readonly
+                               placeholder="Terisi otomatis dari Part Name">
                     </div>
                 </div>
 
-            </div>{{-- /session fields --}}
-
-            {{-- ── RINCIAN LOSS TIME ─────────────────────────────────── --}}
-            <div class="section-label mb-2" style="font-size:0.75rem;font-weight:700;letter-spacing:.06em;color:#6b7280;text-transform:uppercase">
-                Rincian Loss Time
+                <div class="lhp-baris">
+                    <label for="f_proses">Proses <span class="text-danger">*</span></label>
+                    <div class="lhp-isi">
+                        <select id="f_proses" name="id_part_proses" class="form-select"
+                                :disabled="prosesList.length === 0">
+                            <option value="">-- Pilih Part dulu --</option>
+                            <template x-for="p in prosesList" :key="p.id">
+                                {{-- data-progressive dibaca dandori-rows.blade.php untuk
+                                     memilih std_menit_progressive. Penanda, bukan teks
+                                     pilihan — lihat komentar init()/syncProgressive() di
+                                     partial itu. --}}
+                                <option :value="p.id"
+                                        :data-progressive="p.nama_proses.trim().toUpperCase() === 'PROGRESSIVE' ? '1' : '0'"
+                                        x-text="`${p.id_proses} – ${p.nama_proses}`">
+                                </option>
+                            </template>
+                        </select>
+                    </div>
+                </div>
             </div>
 
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <span class="text-muted" style="font-size:0.83rem">
-                    Tambahkan setiap jenis aktivitas loss time yang terjadi selama sesi dandori ini.
-                </span>
-                <button type="button" class="btn btn-sm btn-outline-secondary" @click="addRow()">
-                    <i class="bi bi-plus-lg me-1"></i>Tambah Baris
+            {{-- ══ RINCIAN LOSS TIME ══
+                 Dandori WAJIB minimal 1 rincian, jadi blok ini SELALU tampil
+                 — beda dari blok NG di QC/Produksi yang dibungkus checkbox
+                 opsional. periksa() di konfigDandori() yang menolak SAVE TO
+                 DRAFT kalau rincian masih kosong. --}}
+            <div class="row g-3 mt-1">
+                <div class="col-12">
+                    <div class="input-panel">
+                        <div class="fw-semibold mb-2" style="font-size:0.875rem;color:#374151">
+                            <i class="bi bi-tools me-1 text-secondary"></i>Rincian Loss Time
+                            <span class="text-danger">*</span>
+                        </div>
+                        @include('input.partials.dandori-rows', [
+                            'losstimes' => $losstimes,
+                            'karyawan' => $karyawan,
+                        ])
+                    </div>
+                </div>
+            </div>
+
+            <template x-if="galat">
+                <div class="alert alert-danger py-2 mt-3 mb-0" x-text="galat"></div>
+            </template>
+
+            <div class="d-flex justify-content-end mt-3">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-download me-1"></i>SAVE TO DRAFT
                 </button>
             </div>
+        </form>
 
-            @error('rincian')<div class="text-danger small mb-2">{{ $message }}</div>@enderror
+        <hr class="my-4">
 
-            <div class="table-responsive mb-1">
-                <table class="table table-bordered table-sm align-middle mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Jenis Loss Time</th>
-                            <th style="width:130px">Aktual (mnt) <span class="text-danger">*</span></th>
-                            <th style="width:105px" class="text-center">Std (mnt)</th>
-                            <th style="width:105px" class="text-center">Over (mnt)</th>
-                            <th style="width:44px"></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <template x-for="(row, index) in rows" :key="index">
-                            <tr>
-                                <td>
-                                    <div class="ta-wrap">
-                                        <input type="text"
-                                               class="form-control form-control-sm ta-input"
-                                               x-model="row.ltQuery"
-                                               @focus="row.ltOpen = true; row.ltIdx = -1"
-                                               @blur="ltClose(row)"
-                                               @keydown="ltKey(row, $event)"
-                                               @input="row.id_losstime = ''; row.ltOpen = true; row.ltIdx = -1; onLosstimeChange(row)"
-                                               placeholder="Ketik kode atau jenis...">
-                                        <input type="hidden"
-                                               :name="`rincian[${index}][id_losstime]`"
-                                               :value="row.id_losstime">
-                                        <div class="ta-dropdown" x-show="row.ltOpen" x-cloak>
-                                            <template x-if="ltFiltered(row).length === 0">
-                                                <div class="ta-empty">Tidak ditemukan</div>
-                                            </template>
-                                            <template x-for="(item, i) in ltFiltered(row)" :key="item.v">
-                                                <div class="ta-item"
-                                                     :class="{ 'ta-active': i === row.ltIdx }"
-                                                     @mousedown.prevent="ltPick(row, item)"
-                                                     x-text="item.t"></div>
-                                            </template>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td>
-                                    <input type="number"
-                                           :name="`rincian[${index}][actual_menit]`"
-                                           class="form-control form-control-sm"
-                                           x-model.number="row.actual_menit"
-                                           @input="onActualChange(row)"
-                                           step="0.1" min="0.1"
-                                           placeholder="0.0" required>
-                                </td>
-                                <td class="text-center text-muted" style="font-size:0.88rem"
-                                    x-text="row.std_menit > 0 ? row.std_menit.toFixed(1) : '—'">
-                                </td>
-                                <td class="text-center fw-semibold" style="font-size:0.88rem"
-                                    :class="row.over_menit > 0 ? 'text-danger' : (row.std_menit > 0 ? 'text-success' : 'text-muted')"
-                                    x-text="row.std_menit > 0
-                                        ? (row.over_menit > 0 ? '+' + row.over_menit.toFixed(1) : 'OK')
-                                        : '—'">
-                                </td>
-                                <td class="text-center">
-                                    <button type="button"
-                                            class="btn btn-sm btn-outline-danger py-0 px-1"
-                                            @click="removeRow(index)"
-                                            :disabled="rows.length === 1"
-                                            title="Hapus baris">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                        </template>
-                    </tbody>
-                    <tfoot class="table-light">
-                        <tr class="fw-semibold" style="font-size:0.88rem">
-                            <td class="text-end pe-2" style="color:#374151">Total</td>
-                            <td x-text="totalActual.toFixed(1) + ' mnt'" style="color:#374151"></td>
-                            <td></td>
-                            <td class="text-center"
-                                :class="totalOver > 0 ? 'text-danger' : 'text-success'"
-                                x-text="totalOver > 0 ? '+' + totalOver.toFixed(1) + ' mnt' : 'OK'">
+        {{-- ══ DRAFT TERSIMPAN ══ --}}
+        <div class="fw-semibold mb-2">DRAFT TERSIMPAN <span x-text="`(${rows.length})`"></span></div>
+
+        <div class="table-responsive">
+            <table class="table table-bordered table-sm align-middle mb-0 lhp-draft">
+                <thead class="table-light">
+                    <tr>
+                        <th>Tanggal</th><th>Shift</th><th>Operator</th><th>Mesin</th>
+                        <th>Part No.</th><th>Part Name</th><th>Proses</th>
+                        <th>Rincian</th><th>Total Menit</th>
+                        <th style="width:36px"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-if="rows.length === 0">
+                        <tr><td colspan="10" class="text-center text-muted py-3">
+                            Belum ada baris draft. Isi form di atas lalu klik SAVE TO DRAFT.
+                        </td></tr>
+                    </template>
+                    <template x-for="(r, i) in rows" :key="r.uid">
+                        <tr :class="barisGagal.includes(i) ? 'table-danger' : ''">
+                            <td x-text="r.tanggal"></td>
+                            <td x-text="r.shift_teks"></td>
+                            <td x-text="r.karyawan_teks"></td>
+                            <td x-text="r.mesin_teks"></td>
+                            <td x-text="r.part_no"></td>
+                            <td x-text="r.part_name"></td>
+                            <td x-text="r.proses_teks"></td>
+                            <td x-text="ringkasRincian(r)"></td>
+                            <td x-text="r.total_menit.toFixed(1)"></td>
+                            <td class="text-center">
+                                <button type="button" class="btn btn-sm btn-outline-danger"
+                                        @click="hapus(i)" title="Hapus baris">
+                                    <i class="bi bi-trash"></i>
+                                </button>
                             </td>
-                            <td></td>
                         </tr>
-                    </tfoot>
-                </table>
-            </div>
+                    </template>
+                </tbody>
+            </table>
+        </div>
 
-            <p class="text-muted mb-4" style="font-size:0.78rem">
-                <i class="bi bi-info-circle me-1"></i>
-                Kolom <strong>Std</strong> dan <strong>Over</strong> otomatis terisi setelah memilih jenis loss time dan memasukkan waktu aktual.
-            </p>
+        <div class="small text-muted mt-2">
+            Total Menit di atas adalah pratinjau. Std/Over per rincian dan angka yang tersimpan dihitung ulang di server.
+        </div>
 
-            <div class="d-flex gap-2">
-                <button type="submit" class="btn btn-primary btn-sm">
-                    <i class="bi bi-save me-1"></i>Simpan Data Dandori
+        {{-- ══ SUBMIT ══ --}}
+        <form method="POST" action="{{ route('input.dandori.batch') }}" id="formBatch" class="mt-3"
+              @submit="pindahkanKeBackup()">
+            @csrf
+            {{-- 50 baris (batas server) × field flat bisa melewati max_input_vars
+                 bawaan PHP (1000), yang memotong $_POST diam-diam. Dikirim
+                 sebagai satu field JSON supaya jumlah baris tidak lagi terikat
+                 batas variabel input sama sekali. --}}
+            <input type="hidden" name="rows_json" :value="JSON.stringify(payloadRows())">
+
+            <div class="d-flex gap-2 justify-content-end">
+                <button type="submit" class="btn btn-success" :disabled="rows.length === 0">
+                    <i class="bi bi-upload me-1"></i>SUBMIT DRAFT
                 </button>
-                <a href="{{ route('input.dandori.index') }}" class="btn btn-outline-secondary btn-sm">Batal</a>
+                <button type="button" class="btn btn-danger" @click="batal()">CANCEL</button>
             </div>
-
         </form>
     </div>
 </div>
 @endsection
 
-@php
-$_taKaryawan   = $karyawan->map(fn($k) => ['v' => $k->id, 't' => $k->nama_karyawan])->values();
-$_taMesin      = $mesin->map(fn($m) => ['v' => $m->id, 't' => "{$m->id_mesin} - {$m->nama_mesin} (Line {$m->line})"])->values();
-$_taParts      = $parts->map(fn($p) => ['v' => $p->id, 't' => "{$p->part_no} — {$p->part_name}"])->values();
-$_partsData    = $parts->map(fn($p) => [
-    'id'     => $p->id,
-    'proses' => $p->proses->map(fn($pr) => [
-        'id'         => $pr->id,
-        'id_proses'  => $pr->id_proses,
-        'nama_proses'=> $pr->nama_proses,
-    ])->values(),
-])->values();
-$_losstimeData = $losstimes->map(fn($lt) => [
-    'id'                  => $lt->id,
-    'kode'                => $lt->kode,
-    'jenis_losstime'      => $lt->jenis_losstime,
-    'std_menit_default'   => (float) ($lt->std_menit_default   ?? 0),
-    'std_menit_progressive'=> (float) ($lt->std_menit_progressive ?? 0),
-])->values();
-@endphp
-
 @push('scripts')
 <script>
-/* ── Static data from PHP ────────────────────────────────── */
-const taKaryawan   = @json($_taKaryawan);
-const taMesin      = @json($_taMesin);
-const taParts      = @json($_taParts);
-const partsData    = @json($_partsData);
-const losstimeData = @json($_losstimeData);
+const taOperator = @json($_taOperator);
+const taMesin    = @json($_taMesin);
+const taParts    = @json($_taParts);
+const partsData  = @json($_partsData);
+const ltLabel    = @json($_ltLabel);
 
-/* taField() kini satu definisi di layouts/app.blade.php. */
+function konfigDandori() {
+    const picker = () => Alpine.$data(document.getElementById('dandoriPartNoTampil').closest('[x-data]'));
 
-/* ── Client-side validation ─────────────────────────────── */
-(function () {
-    const form = document.getElementById('formDandori');
-    if (!form) return;
-
-    function clearErrs() {
-        form.querySelectorAll('.cve').forEach(e => e.remove());
-        form.querySelectorAll('.cvi').forEach(el => el.classList.remove('cvi', 'is-invalid'));
-    }
-
-    function mkErr(el, msg) {
-        el.classList.add('is-invalid', 'cvi');
-        const d = document.createElement('div');
-        d.className = 'invalid-feedback d-block cve';
-        d.textContent = msg;
-        el.insertAdjacentElement('afterend', d);
-        ['input', 'change'].forEach(ev =>
-            el.addEventListener(ev, () => {
-                el.classList.remove('is-invalid', 'cvi');
-                if (d.parentNode) d.remove();
-            }, { once: true })
-        );
-    }
-
-    function mkTa(hiddenInput, msg) {
-        const wrap = hiddenInput.closest('.ta-wrap');
-        const vis  = wrap.querySelector('.ta-input');
-        vis.classList.add('is-invalid', 'cvi');
-        const d = document.createElement('div');
-        d.className = 'invalid-feedback d-block cve';
-        d.textContent = msg;
-        wrap.insertAdjacentElement('afterend', d);
-        vis.addEventListener('input', () => {
-            vis.classList.remove('is-invalid', 'cvi');
-            if (d.parentNode) d.remove();
-        }, { once: true });
-    }
-
-    form.addEventListener('submit', function (e) {
-        clearErrs();
-        const bad = [];
-        const f   = n => form.querySelector(`[name="${n}"]`);
-
-        const tanggal = f('tanggal');
-        if (!tanggal.value) { mkErr(tanggal, 'Tanggal wajib diisi.'); bad.push(tanggal); }
-
-        const shift = f('id_shift');
-        if (!shift.value) { mkErr(shift, 'Shift wajib dipilih.'); bad.push(shift); }
-
-        const kar = f('id_karyawan');
-        if (!kar.value) { mkTa(kar, 'Operator wajib dipilih.'); bad.push(kar.closest('.ta-wrap').querySelector('.ta-input')); }
-
-        const mes = f('id_mesin');
-        if (!mes.value) { mkTa(mes, 'Mesin wajib dipilih.'); bad.push(mes.closest('.ta-wrap').querySelector('.ta-input')); }
-
-        /* Part + Proses */
-        const pro = f('id_part_proses');
-        if (!pro.value) {
-            if (pro.disabled) {
-                /* Part not selected yet — highlight part ta-input */
-                const partWrap = document.getElementById('partTaWrapDandori');
-                if (partWrap) {
-                    const vis = partWrap.querySelector('.ta-input');
-                    vis.classList.add('is-invalid', 'cvi');
-                    const d = document.createElement('div');
-                    d.className = 'invalid-feedback d-block cve';
-                    d.textContent = 'Part wajib dipilih terlebih dahulu.';
-                    partWrap.insertAdjacentElement('afterend', d);
-                    vis.addEventListener('input', () => {
-                        vis.classList.remove('is-invalid', 'cvi');
-                        if (d.parentNode) d.remove();
-                    }, { once: true });
-                    bad.push(vis);
-                }
-            } else {
-                mkErr(pro, 'Proses wajib dipilih.');
-                bad.push(pro);
-            }
-        }
-
-        /* Rincian rows — losstime is now a typeahead (hidden input carries the value) */
-        let firstRowErr = null;
-        form.querySelectorAll('input[type="hidden"][name*="[id_losstime]"]').forEach(hidden => {
-            if (!hidden.value) {
-                const wrap = hidden.closest('.ta-wrap');
-                const vis  = wrap.querySelector('.ta-input');
-                vis.classList.add('is-invalid', 'cvi');
-                const d = document.createElement('div');
-                d.className = 'invalid-feedback d-block cve';
-                d.textContent = 'Pilih jenis loss time.';
-                wrap.insertAdjacentElement('afterend', d);
-                vis.addEventListener('input', () => {
-                    vis.classList.remove('is-invalid', 'cvi');
-                    if (d.parentNode) d.remove();
-                }, { once: true });
-                if (!firstRowErr) firstRowErr = vis;
-            }
-        });
-        form.querySelectorAll('input[name*="[actual_menit]"]').forEach(inp => {
-            if (!inp.value || parseFloat(inp.value) <= 0) { mkErr(inp, 'Aktual menit wajib diisi (min 0.1).'); if (!firstRowErr) firstRowErr = inp; }
-        });
-        if (firstRowErr) bad.push(firstRowErr);
-
-        if (bad.length) {
-            e.preventDefault();
-            bad[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-    });
-})();
-
-/* ── Main Dandori form component ────────────────────────── */
-function dandoriMain() {
     return {
-        /* Part typeahead state (managed here so isProgressive is shared) */
-        partQuery: '',
-        partVal: null,
-        partOpen: false,
-        partIdx: -1,
+        kunci:       'optima_draft_dandori_u{{ auth()->id() }}',
+        kunciBackup: 'optima_draft_dandori_terkirim_u{{ auth()->id() }}',
+        formId: 'formBaris',
+        indexUrl: '{{ route('input.dandori.index') }}',
+        galatServer: @json($errors->keys()),
 
-        get partFiltered() {
-            if (!this.partQuery.trim()) return taParts.slice(0, 60);
-            const q = this.partQuery.toLowerCase();
-            return taParts.filter(i => i.t.toLowerCase().includes(q)).slice(0, 60);
+        wajib: {
+            tanggal: 'Tanggal',
+            id_shift: 'Shift',
+            id_karyawan: 'Operator',
+            id_mesin: 'Mesin',
+            id_part_proses: 'Proses',
         },
 
-        partCloseDd() {
-            setTimeout(() => {
-                this.partOpen = false;
-                if (this.partVal && !taParts.find(i => i.v == this.partVal && i.t === this.partQuery)) {
-                    this.partVal = null; this.partQuery = '';
-                    this.prosesList = [];
-                    this.isProgressive = false;
-                }
-            }, 180);
+        kumpulkan(diri) {
+            const p = picker();
+
+            return {
+                tanggal: diri.nilai('tanggal'),
+                id_shift: diri.nilai('id_shift'),
+                shift_teks: diri.teksTerpilih('id_shift'),
+                id_karyawan: diri.nilai('id_karyawan'),
+                karyawan_teks: (taOperator.find(k => k.v == diri.nilai('id_karyawan')) || {}).t || '',
+                id_mesin: diri.nilai('id_mesin'),
+                mesin_teks: (taMesin.find(m => m.v == diri.nilai('id_mesin')) || {}).t || '',
+                id_part_proses: diri.nilai('id_part_proses'),
+                proses_teks: diri.teksTerpilih('id_part_proses'),
+                part_no: p.partNo,
+                part_name: p.partName,
+                rincian: (diri.blok('.dandori-rows') || { rows: [] }).rows
+                    .map(d => ({ id_losstime: d.id_losstime, actual_menit: d.actual_menit })),
+            };
         },
 
-        partPick(item) {
-            this.partQuery = item.t;
-            this.partVal   = item.v;
-            this.partOpen  = false;
-            this.partIdx   = -1;
-            const part = partsData.find(p => p.id == item.v);
-            this.prosesList    = part ? part.proses : [];
-            this.isProgressive = false;
-            this.rows.forEach(r => this.recompute(r));
-        },
-
-        partKey(e) {
-            if (e.key === 'ArrowDown') {
-                e.preventDefault(); this.partOpen = true;
-                this.partIdx = Math.min(this.partIdx + 1, this.partFiltered.length - 1);
-            } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                this.partIdx = Math.max(this.partIdx - 1, 0);
-            } else if (e.key === 'Enter') {
-                e.preventDefault();
-                if (this.partIdx >= 0 && this.partFiltered[this.partIdx]) this.partPick(this.partFiltered[this.partIdx]);
-            } else if (e.key === 'Escape') {
-                this.partOpen = false;
+        periksa(calon, rows, diri) {
+            if (calon.rincian.length === 0) {
+                return 'Minimal harus ada 1 aktivitas loss time.';
             }
-        },
-
-        /* Proses */
-        prosesList: [],
-        isProgressive: false,
-
-        onProsesChange(prosesId) {
-            const p = this.prosesList.find(p => p.id == prosesId);
-            this.isProgressive = p
-                ? p.nama_proses.trim().toUpperCase() === 'PROGRESSIVE'
-                : false;
-            this.rows.forEach(r => this.recompute(r));
-        },
-
-        /* Losstime typeahead (shared items list, per-row state stored in row objects) */
-        ltItems: losstimeData.map(lt => ({ v: lt.id, t: `${lt.kode} — ${lt.jenis_losstime}` })),
-
-        ltFiltered(row) {
-            if (!row.ltQuery.trim()) return this.ltItems.slice(0, 60);
-            const q = row.ltQuery.toLowerCase();
-            return this.ltItems.filter(i => i.t.toLowerCase().includes(q)).slice(0, 60);
-        },
-
-        ltPick(row, item) {
-            row.ltQuery      = item.t;
-            row.id_losstime  = item.v;
-            row.ltOpen       = false;
-            row.ltIdx        = -1;
-            this.recompute(row);
-        },
-
-        ltClose(row) {
-            setTimeout(() => {
-                row.ltOpen = false;
-                /* If typed text no longer matches selection, clear */
-                if (row.id_losstime && !this.ltItems.find(i => i.v == row.id_losstime && i.t === row.ltQuery)) {
-                    row.id_losstime = '';
-                    row.ltQuery     = '';
-                    this.recompute(row);
+            for (const r of calon.rincian) {
+                if (r.actual_menit === '' || r.actual_menit === null || Number(r.actual_menit) <= 0) {
+                    return 'Setiap rincian wajib punya waktu aktual lebih dari 0 menit.';
                 }
-            }, 180);
-        },
-
-        ltKey(row, e) {
-            const f = this.ltFiltered(row);
-            if (e.key === 'ArrowDown') {
-                e.preventDefault(); row.ltOpen = true;
-                row.ltIdx = Math.min(row.ltIdx + 1, f.length - 1);
-            } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                row.ltIdx = Math.max(row.ltIdx - 1, 0);
-            } else if (e.key === 'Enter') {
-                e.preventDefault();
-                if (row.ltIdx >= 0 && f[row.ltIdx]) this.ltPick(row, f[row.ltIdx]);
-            } else if (e.key === 'Escape') {
-                row.ltOpen = false;
             }
+
+            /* Nol pemeriksaan tabrakan jam: Dandori tidak punya jam
+               start/finish sama sekali, beda dari produksi yang satu mesin
+               tidak bisa menjalankan dua baris sekaligus. */
+            return null;
         },
 
-        /* Rows */
-        rows: [{ id_losstime: '', ltQuery: '', ltOpen: false, ltIdx: -1, actual_menit: '', std_menit: 0, over_menit: 0 }],
-
-        addRow() {
-            this.rows.push({ id_losstime: '', ltQuery: '', ltOpen: false, ltIdx: -1, actual_menit: '', std_menit: 0, over_menit: 0 });
+        /* Pratinjau; server yang menghitung angka yang tersimpan. Std/Over
+           per rincian sudah dipratinjau di dalam blok dandori-rows itu
+           sendiri (kolom Std/Over di tabelnya, dengan penanda jelas kalau
+           itu cuma pratinjau) — di sini cukup total menit untuk kolom
+           "Total Menit" tabel draft. */
+        pratinjau(calon, diri) {
+            calon.total_menit = calon.rincian.reduce((s, r) => s + Number(r.actual_menit || 0), 0);
         },
 
-        removeRow(index) {
-            if (this.rows.length > 1) this.rows.splice(index, 1);
+        /* Tanggal, Shift, Operator, dan Mesin sengaja TIDAK di sini: keempatnya
+           konstan sepanjang satu sesi kerja. Part, Proses, dan rincian BUKAN
+           field bernama statis (Proses & rincian di-reset lewat resetLain di
+           bawah), jadi cfg.resetField sengaja kosong — tidak ada satu pun
+           <input name> polos yang perlu dikosongkan lewat mekanisme ini. */
+        resetField: [],
+
+        resetLain(diri) {
+            const p = picker();
+            p.query = ''; p.val = null; p.partNo = '';
+            p.partName = ''; p.prosesList = [];
+
+            const proses = diri.form().querySelector('[name="id_part_proses"]');
+            if (proses) proses.value = '';
+
+            const dandori = diri.blok('.dandori-rows');
+            if (dandori) dandori.rows = [];
         },
 
-        onLosstimeChange(row) { this.recompute(row); },
-        onActualChange(row)   { this.recompute(row); },
-
-        recompute(row) {
-            const lt = losstimeData.find(l => l.id == row.id_losstime);
-            if (!lt) { row.std_menit = 0; row.over_menit = 0; return; }
-
-            row.std_menit = this.isProgressive
-                ? (lt.std_menit_progressive || lt.std_menit_default || 0)
-                : (lt.std_menit_default || 0);
-
-            const actual = parseFloat(row.actual_menit) || 0;
-            row.over_menit = Math.max(0, actual - row.std_menit);
+        payload(r) {
+            return {
+                tanggal: r.tanggal,
+                id_shift: r.id_shift,
+                id_karyawan: r.id_karyawan,
+                id_mesin: r.id_mesin,
+                id_part_proses: r.id_part_proses,
+                rincian: r.rincian.map(d => ({ id_losstime: d.id_losstime, actual_menit: d.actual_menit })),
+            };
         },
 
-        get totalActual() {
-            return this.rows.reduce((s, r) => s + (parseFloat(r.actual_menit) || 0), 0);
-        },
-        get totalOver() {
-            return this.rows.reduce((s, r) => s + (r.over_menit || 0), 0);
+        metode: {
+            ringkasRincian(r) {
+                if (!r.rincian.length) return '—';
+                return r.rincian
+                    .map(d => `${ltLabel[d.id_losstime] ?? d.id_losstime} ×${d.actual_menit} mnt`)
+                    .join(', ');
+            },
         },
     };
 }
