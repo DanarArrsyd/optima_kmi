@@ -7,9 +7,8 @@ use Illuminate\Foundation\Http\FormRequest;
 /**
  * Payload batch: tiap elemen rows[] adalah satu SESI dandori, dan tiap sesi
  * punya array rincian[] (satu sesi bisa mencatat beberapa loss time). Bentuk
- * field satu sesi sama persis dengan payload single-row lama, route
- * `input.dandori.store` — pensiun bareng laci penulisnya, lewat
- * `StoreDandoriRequest` yang juga sudah dihapus.
+ * field satu sesi sama persis dengan payload single-row lama, yang sudah
+ * dipensiunkan bersama laci penulisnya.
  */
 class StoreDandoriBatchRequest extends FormRequest
 {

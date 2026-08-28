@@ -60,6 +60,27 @@ class HalamanBatchDandoriTest extends TestCase
         $this->assertStringContainsString('x-data="batchDraft(', $html);
     }
 
+    public function test_halaman_daftar_tidak_lagi_punya_form_penulis(): void
+    {
+        // Laci penulis dicabut: form penulis turun dari tiga jadi dua (halaman
+        // batch + form Edit). Selama sisa-sisanya masih terender di sini, field
+        // baru bisa diam-diam terpasang di satu form saja lalu menyimpang.
+        $html = $this->get(route('input.dandori.index'))->assertOk()->getContent();
+
+        $this->assertStringNotContainsString('id="formDandori"', $html);
+        $this->assertStringNotContainsString('name="id_part_proses"', $html);
+        $this->assertStringNotContainsString('taField(taKaryawan', $html);
+    }
+
+    public function test_tombol_input_baru_menautkan_ke_halaman_batch(): void
+    {
+        // Kalau tautannya hilang, halaman batch masih hidup tapi tidak punya
+        // pintu masuk — operator kembali menganggap modul ini tidak bisa diisi.
+        $html = $this->get(route('input.dandori.index'))->assertOk()->getContent();
+
+        $this->assertStringContainsString(route('input.dandori.create'), $html);
+    }
+
     public function test_guest_tidak_bisa_membuka_halaman_batch(): void
     {
         $this->actingAs(User::factory()->create(['role' => 'guest']));

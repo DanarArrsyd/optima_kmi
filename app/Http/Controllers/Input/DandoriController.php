@@ -136,7 +136,10 @@ class DandoriController extends Controller
             ->paginate(50)
             ->withQueryString();
 
-        $shifts = MasterShift::orderBy('jam_start')->get();
+        /* $shifts sengaja TIDAK diambil di sini: satu-satunya pemakainya
+           adalah laci penulis yang sudah dicabut. Empat query master di bawah
+           TETAP dibutuhkan — dock filter membangun $_operatorTA, $_mesinTA,
+           $_losstimeTA, dan $_partsTA dari keempatnya. */
         $karyawan = MasterKaryawan::where('departemen', 'Produksi')->aktif()->orderBy('nama_karyawan')->get();
         $mesin = MasterMesin::orderBy('line')->orderBy('id_mesin')->get();
         $parts = MasterPart::with('proses')->orderBy('part_name')->get();
@@ -154,7 +157,7 @@ class DandoriController extends Controller
 
         return view('input.dandori.index', compact(
             'rincian', 'dateFrom', 'dateTo', 'search',
-            'shifts', 'karyawan', 'mesin', 'parts', 'losstimes', 'customers',
+            'karyawan', 'mesin', 'parts', 'losstimes', 'customers',
             'filterKarId', 'filterMesinId', 'filterLosstimeId',
             'filterCustomer', 'filterPartId', 'filterProsesId', 'pakaiTanggal',
             'myLastRecord', 'myLastOnPage'
