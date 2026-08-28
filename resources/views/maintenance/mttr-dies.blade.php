@@ -92,7 +92,15 @@
 </div>
 
 <div class="erp-panel">
-    <div class="erp-panel-body" style="padding:12px"><canvas id="mttrChart" height="100"></canvas></div>
+    {{-- Tinggi dikunci di pembungkus, BUKAN lewat atribut height canvas.
+         Dengan maintainAspectRatio bawaan (true), Chart.js memakai rasio dari
+         atribut canvas (lebar bawaan 300) saat lebar induk belum terukur, dan
+         grafik terkunci kecil selamanya. --}}
+    <div class="erp-panel-body" style="padding:12px">
+        <div style="position:relative;height:320px">
+            <canvas id="mttrChart"></canvas>
+        </div>
+    </div>
 </div>
 
 <div class="erp-panel">
@@ -154,8 +162,11 @@ async function loadData() {
     if (mttrChart) mttrChart.destroy();
     mttrChart = new Chart(document.getElementById('mttrChart'), {
         type: 'bar',
+        /* Batangnya gelap pekat — teks gelap tenggelam, jadi nama
+           mesin digambar putih di dalamnya. */
+        plugins: [pluginNamaDalamBatang({ warnaDalam: '#ffffff' })],
         data: { labels: rows.map(r => r.kode_mesin), datasets: [{ label: 'MTTR (jam)', data: rows.map(r => r.mttr_jam), backgroundColor: '#1f2937' }] },
-        options: { responsive: true, plugins: { legend: { display: false }, datalabels: { display: true, anchor: 'end', align: 'top', font: { size: 10, weight: 'bold' }, color: '#111827', formatter: v => v } }, scales: { y: { beginAtZero: true } } }
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, datalabels: { display: true, anchor: 'end', align: 'top', font: { size: 10, weight: 'bold' }, color: '#111827', formatter: v => v } }, scales: { y: { beginAtZero: true }, x: { ticks: { display: false }, grid: { display: false } } } }
     });
 
     const tbody = document.getElementById('mttrTableBody');

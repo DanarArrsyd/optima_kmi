@@ -29,12 +29,34 @@ class VcbGrafikUkuranTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** Dua halaman VCB yang memakai pola dua-grafik + nama orang di sumbu-X. */
+    /** Halaman yang punya dua grafik: Mode 1 (semua orang) + Mode 2 (per orang). */
     public static function halamanVcb(): array
     {
         return [
             'produksi' => ['vcb.produksi'],
             'quality' => ['vcb.quality'],
+        ];
+    }
+
+    /**
+     * SEMUA halaman bergrafik. Cacat atribut `height` menular lewat salin-tempel
+     * markup — sekali satu halaman kena, kembarannya hampir pasti kena juga.
+     * Empat grafik VCB dan tujuh grafik MTC lolos berbulan-bulan karena tidak
+     * ada yang memeriksa selain mata.
+     */
+    public static function halamanBergrafik(): array
+    {
+        return [
+            'vcb produksi' => ['vcb.produksi'],
+            'vcb quality' => ['vcb.quality'],
+            'vcb dandori' => ['vcb.dandori'],
+            'vcb mesin' => ['vcb.mesin'],
+            'mtc mttr' => ['maintenance.mttr'],
+            'mtc mtbf' => ['maintenance.mtbf'],
+            'mtc availability' => ['maintenance.availability'],
+            'mtc mttr dies' => ['maintenance.mttr-dies'],
+            'mtc mtbf dies' => ['maintenance.mtbf-dies'],
+            'mtc availability dies' => ['maintenance.availability-dies'],
         ];
     }
 
@@ -45,7 +67,7 @@ class VcbGrafikUkuranTest extends TestCase
         return $this->actingAs($admin)->get(route($route))->assertOk()->getContent();
     }
 
-    #[DataProvider('halamanVcb')]
+    #[DataProvider('halamanBergrafik')]
     public function test_canvas_tidak_memakai_atribut_height(string $route): void
     {
         // Dijangkarkan ke tag canvas-nya sendiri: kata "height" muncul di
@@ -77,23 +99,42 @@ class VcbGrafikUkuranTest extends TestCase
         );
     }
 
-    #[DataProvider('halamanVcb')]
+    #[DataProvider('halamanBergrafik')]
     public function test_setiap_canvas_punya_pembungkus_bertinggi_tetap(string $route): void
     {
         $html = preg_replace('/\s+/', ' ', $this->halaman($route));
 
+        preg_match_all('/<canvas id="(\w+)">/', $html, $semua);
+        $this->assertNotEmpty($semua[1], "nol <canvas> di {$route}");
+
         // Pembungkus wajib position:relative — tanpa itu Chart.js mengukur
         // induk yang salah dan tinggi tetapnya tidak berpengaruh.
         preg_match_all(
-            '/<div style="position:relative;height:\d+px"> <canvas id="(\w+)">/',
+            '/<div [^>]*style="position:relative;height:\d+px"> <canvas id="(\w+)">/',
             $html,
-            $cocok
+            $terbungkus
         );
 
         $this->assertEqualsCanonicalizing(
-            ['allChart', 'oneChart'],
-            $cocok[1],
-            "allChart dan oneChart di {$route} harus berada di dalam pembungkus position:relative bertinggi tetap"
+            $semua[1],
+            $terbungkus[1],
+            "setiap canvas di {$route} harus berada di dalam pembungkus position:relative bertinggi tetap"
+        );
+    }
+
+    #[DataProvider('halamanBergrafik')]
+    public function test_setiap_halaman_bergrafik_mematikan_maintain_aspect_ratio(string $route): void
+    {
+        $html = preg_replace('/\s+/', ' ', $this->halaman($route));
+
+        // Sengaja "minimal satu", bukan hitungan persis: sebagian halaman
+        // membangun beberapa grafik dari SATU pabrik (VCB Dandori punya tiga
+        // grafik dari satu buildBar()), jadi jumlah kemunculannya tidak sama
+        // dengan jumlah grafiknya. Yang dijaga di sini kelalaian total.
+        $this->assertStringContainsString(
+            'maintainAspectRatio: false',
+            $html,
+            "grafik di {$route} harus menyetel maintainAspectRatio: false"
         );
     }
 
