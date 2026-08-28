@@ -84,17 +84,31 @@ batchDraft({
                 // 'optima_draft_lhp_produksi_u{{ auth()->id() }}'
   kunciBackup,  // string kunci cadangan LENGKAP, sama polanya, mis.
                 // 'optima_draft_lhp_produksi_terkirim_u{{ auth()->id() }}'
+  formId,       // id <form> baris, dibaca form()/nilai()/teksTerpilih()/blok()
   indexUrl,     // tujuan tombol CANCEL
-  kumpulkan,    // () => calon: baca form, hasilkan objek baris
+  galatServer,  // @json($errors->keys()) — dipakai menandai baris yang ditolak
+                // server. WAJIB; lihat catatan di bawah.
+  kumpulkan,    // (diri) => calon: baca form, hasilkan objek baris
   wajib,        // { namaField: 'Label' } untuk pesan "X wajib diisi"
-  periksa,      // (calon, rows) => string|null: pemeriksaan antar-baris
-  pratinjau,    // (calon) => void: isi kolom hitungan (opsional)
+  periksa,      // (calon, rows, diri) => string|null: pemeriksaan antar-baris
+  pratinjau,    // (calon, diri) => void: isi kolom hitungan (opsional)
   payload,      // (r) => objek yang dikirim ke server
   resetField,   // [nama field] yang dikosongkan setelah baris masuk draft
   resetLain,    // (diri) => void: pembersihan yang tidak bisa diungkapkan
                 // lewat resetField (bukan array selector — sebuah callback)
+  metode,       // { nama: fn } metode tambahan untuk tabel draft, mis.
+                // ringkasNg(r). Disebar PALING AWAL: kerangka selalu menang,
+                // jadi nama yang bentrok dengan mulai/hapus/rows DIBUANG diam-diam
 })
 ```
+
+Tujuh kunci pertama (`kunci`, `kunciBackup`, `formId`, `indexUrl`,
+`galatServer`, `kumpulkan`, `wajib`, `payload`) dijaga lemparan galat di awal
+`batchDraft`. `galatServer` ikut dijaga walau punya default `|| []`: modul yang
+lupa mengopernya mendapat `barisGagal` kosong SELAMANYA, jadi setelah server
+menolak batch operator melihat daftar galatnya tapi nol baris ditandai merah —
+dia harus mencari baris yang salah di antara 50 baris dengan membaca teks.
+Diam, dan cuma terasa persis saat operator paling butuh bantuan.
 
 **Kenapa `kunci`/`kunciBackup` string lengkap, bukan nama dasar + `userId`:**
 merakit kunci di JS runtime (mis. `` `optima_draft_${kunci}_u${userId}` ``)
@@ -109,6 +123,20 @@ kunci literal string `"undefined"`. Halaman daftar modul itu lalu menghapus
 kunci yang tidak pernah ditulis siapa pun, backup tidak pernah bersih,
 `mulai()` memulihkannya di kunjungan berikutnya, dan operator mengirim ulang
 batch yang sudah tersimpan — baris dobel, tanpa error di mana pun.
+
+**Kekurangan yang diketahui: `cfg` nol seam untuk mereset sub-widget.** Dua
+halaman konsumen sama-sama menjangkau DOM dan internal Alpine yang seharusnya
+dibungkus kerangka. Keduanya menemukan scope `partPicker` dengan menyusuri id
+sebuah field tampilan *readonly* — `document.getElementById('qcPartNoTampil').closest('[x-data]')`
+di QC, `partNoTampil` di produksi — lalu `resetLain` memaksa checkbox
+`ada_ng` jadi `false`, mengirim event `change` buatan, DAN menyetel properti
+Alpine-nya langsung. Mode gagalnya senyap: mengganti nama atau membungkus ulang
+field tampilan itu mengembalikan scope Alpine yang salah, `prosesList` jadi
+`undefined`, `id_part_proses` kosong, dan halaman menolak menyimpan apa pun
+tanpa satu pun error. Seam `cfg.komponen`/`cfg.reset` SENGAJA belum dibuat —
+abstraksi tanpa konsumen dan tanpa penguji lebih buruk daripada duplikasi yang
+terlihat. Keputusannya milik PR 3, saat Dandori menunjukkan apakah polanya
+memang menggeneralisasi.
 
 `partPicker()` juga naik ke layout. Hari ini ada dua salinan yang mengerjakan
 hal sama: `partPicker()` di `input/produksi/create.blade.php` dan

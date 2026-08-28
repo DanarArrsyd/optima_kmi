@@ -6,7 +6,7 @@ use App\Exports\LhpQcExport;
 use App\Exports\QcImportTemplate;
 use App\Http\Controllers\Concerns\ResolvesStaffNote;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\StoreQcRequest;
+use App\Http\Requests\StoreQcBatchRequest;
 use App\Http\Requests\UpdateQcRequest;
 use App\Imports\QcImport;
 use App\Models\MasterJenisNg;
@@ -17,6 +17,7 @@ use App\Models\TransaksiQc;
 use App\Services\NgDetailService;
 use App\Services\NotificationService;
 use App\Services\QcService;
+use App\Services\QcWriteService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
@@ -29,6 +30,7 @@ class QcController extends Controller
         private QcService $qcService,
         private NotificationService $notifSvc,
         private NgDetailService $ngDetailService,
+        private QcWriteService $qcWriteService,
     ) {}
 
     public function index(Request $request)
@@ -108,7 +110,6 @@ class QcController extends Controller
             ->paginate(30)
             ->withQueryString();
 
-        $shifts = MasterShift::orderBy('jam_start')->get();
         $karyawan = MasterKaryawan::where('departemen', 'QC')->aktif()->orderBy('nama_karyawan')->get();
         $parts = MasterPart::with(['proses' => fn ($q) => $q->orderByDesc('id_proses')])
             ->has('proses')
@@ -133,7 +134,7 @@ class QcController extends Controller
 
         return view('input.qc.index', compact(
             'transaksi', 'dateFrom', 'dateTo', 'search',
-            'shifts', 'karyawan', 'parts', 'jenisNg', 'customers',
+            'karyawan', 'parts', 'jenisNg', 'customers',
             'pakaiTanggal', 'filterKarId', 'filterJenisNgId',
             'filterCustomer', 'filterPartId', 'filterProsesId',
             'myLastRecord', 'myLastOnPage'
@@ -162,33 +163,33 @@ class QcController extends Controller
         return view('input.qc.create', compact('shifts', 'karyawan', 'parts', 'jenisNg'));
     }
 
-    public function store(StoreQcRequest $request)
+    /**
+     * Menyimpan banyak baris LHP Quality sekali jalan dari halaman batch.
+     *
+     * Satu transaksi untuk seluruh baris: draft di browser tetap utuh saat
+     * gagal, jadi menyimpan separuh akan membuat inspector mengirim ulang
+     * baris yang sudah masuk.
+     */
+    public function batch(StoreQcBatchRequest $request)
     {
-        $validated = $request->validated();
-        $ngRows = $validated['ng'] ?? [];
-        unset($validated['ng'], $validated['ng_count']);
+        $rows = $request->validated()['rows'];
 
-        $qtyNg = array_sum(array_column($ngRows, 'qty'));
-
-        $cycleTime = $this->qcService->calculateActualCycleTime(
-            $validated['jam_start'].':00',
-            $validated['jam_finish'].':00',
-            (int) $validated['qty_ok'],
-            (int) $qtyNg
-        );
-
-        DB::transaction(function () use ($validated, $cycleTime, $ngRows) {
-            $qc = TransaksiQc::create([
-                ...$validated,
-                'qty_ng' => 0,
-                'actual_cycle_time' => $cycleTime,
-                'created_by' => auth()->id(),
-            ]);
-
-            $this->ngDetailService->syncQc($qc, $ngRows);
+        DB::transaction(function () use ($rows) {
+            foreach ($rows as $row) {
+                $this->qcWriteService->simpan($row);
+            }
         });
 
-        return redirect()->route('input.qc.index')->with('success', 'LHP Quality berhasil disimpan.');
+        $jumlah = count($rows);
+
+        /* batch_tersimpan adalah bukti sukses yang dibaca index.blade.php untuk
+         * membuang draft di localStorage. Draft hanya boleh dibuang setelah
+         * server MEMBUKTIKAN barisnya tersimpan — bukan cuma karena halaman
+         * batch tidak melihat galat validasi, yang juga terjadi saat request
+         * tidak pernah sampai sini (419 sesi habis, 500, jaringan putus). */
+        return redirect()->route('input.qc.index')
+            ->with('success', "{$jumlah} baris LHP Quality berhasil disimpan.")
+            ->with('batch_tersimpan', $jumlah);
     }
 
     public function edit(TransaksiQc $qc)

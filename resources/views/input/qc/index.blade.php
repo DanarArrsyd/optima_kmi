@@ -5,12 +5,6 @@
 @section('main_mod', 'erp-flush')
 
 @php
-$oldKaryawanId  = old('id_karyawan_qc');
-$oldKaryawan    = $karyawan->firstWhere('id', $oldKaryawanId);
-$oldKaryawanTxt = $oldKaryawan?->nama_karyawan ?? '';
-@endphp
-
-@php
 /* ── Data dock filter ──
    Bentuknya sama dengan halaman lain supaya komponen ketik-cari bersama di
    layout bisa dipakai apa adanya. */
@@ -41,209 +35,8 @@ $filterActive = ($search ?? '') !== '' || $filterKarId || $filterJenisNgId
 
 @section('content')
 
-{{-- ══ SATU ALPINE SCOPE — mengontrol drawer sekaligus konten halaman ══ --}}
-<div x-data="{ drawerOpen: {{ $errors->any() ? 'true' : 'false' }}, filterOpen: false }">
-
-@if(! auth()->user()->isGuest())
-{{-- ── DRAWER BACKDROP ──────────────────────────────────────────── --}}
-<div x-show="drawerOpen"
-     x-cloak
-     @click="drawerOpen = false"
-     x-transition:enter="transition ease-out duration-200"
-     x-transition:enter-start="opacity-0"
-     x-transition:enter-end="opacity-100"
-     x-transition:leave="transition ease-in duration-150"
-     x-transition:leave-start="opacity-100"
-     x-transition:leave-end="opacity-0"
-     style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1190">
-</div>
-
-{{-- ── DRAWER PANEL ─────────────────────────────────────────────── --}}
-<div x-show="drawerOpen"
-     x-cloak
-     x-transition:enter="transition ease-out duration-250"
-     x-transition:enter-start="transform translate-x-full"
-     x-transition:enter-end="transform translate-x-0"
-     x-transition:leave="transition ease-in duration-200"
-     x-transition:leave-start="transform translate-x-0"
-     x-transition:leave-end="transform translate-x-full"
-     style="position:fixed;top:0;right:0;height:100dvh;width:640px;max-width:100vw;z-index:1200">
-    <div class="erp-drawer" style="display:flex;flex-direction:column;height:100%;background:#fff;box-shadow:-4px 0 24px rgba(0,0,0,.18)">
-
-    {{-- Header --}}
-    <div class="erp-drawer-hd">
-        <div>
-            <i class="bi bi-check2-square me-2"></i>Input LHP Quality
-        </div>
-        <button type="button" @click="drawerOpen = false"
-                >
-            <i class="bi bi-x-lg"></i>
-        </button>
-    </div>
-
-    {{-- Body (scrollable) --}}
-    <div style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:24px;overscroll-behavior:contain">
-
-        @if($errors->any())
-        <div class="alert alert-danger mb-3" >
-            <ul class="mb-0 ps-3">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
-        </div>
-        @endif
-
-        @if($karyawan->isEmpty() || $parts->isEmpty())
-        <div class="alert alert-warning mb-3" >
-            <strong>Master data belum lengkap:</strong>
-            @if($karyawan->isEmpty()) <a href="{{ route('master.karyawan.index') }}">Tambah QC Inspector (departemen: QC)</a>. @endif
-            @if($parts->isEmpty()) <a href="{{ route('master.part.index') }}">Tambah Part / Dies</a>. @endif
-        </div>
-        @endif
-
-        <form method="POST" action="{{ route('input.qc.store') }}" id="formQc" novalidate>
-            @csrf
-            <div class="row g-3">
-
-                {{-- Tanggal Pengecekan + Tanggal Produksi Part --}}
-                <div class="col-6">
-                    <label class="form-label" >Tanggal Pengecekan <span class="text-danger">*</span></label>
-                    <input type="date" name="tgl_pengecekan"
-                           class="form-control @error('tgl_pengecekan') is-invalid @enderror"
-                           value="{{ old('tgl_pengecekan', date('Y-m-d')) }}">
-                    @error('tgl_pengecekan')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                </div>
-                <div class="col-6">
-                    <label class="form-label" >Tanggal Produksi Part <span class="text-danger">*</span></label>
-                    <input type="date" name="tgl_produksi_part"
-                           class="form-control @error('tgl_produksi_part') is-invalid @enderror"
-                           value="{{ old('tgl_produksi_part', date('Y-m-d')) }}">
-                    @error('tgl_produksi_part')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                </div>
-
-                {{-- Shift --}}
-                <div class="col-6">
-                    <label class="form-label" >Shift <span class="text-danger">*</span></label>
-                    <select name="id_shift" class="form-select @error('id_shift') is-invalid @enderror">
-                        <option value="">-- Pilih Shift --</option>
-                        @foreach($shifts as $shift)
-                            <option value="{{ $shift->id }}" {{ old('id_shift') == $shift->id ? 'selected' : '' }}>
-                                {{ $shift->nama_shift }} ({{ $shift->jam_start }} – {{ $shift->jam_finish }})
-                            </option>
-                        @endforeach
-                    </select>
-                    @error('id_shift')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                </div>
-
-                {{-- QC Inspector — typeahead, full width --}}
-                <div class="col-12"
-                     x-data="taField(taKaryawan, '{{ $oldKaryawanTxt }}', {{ $oldKaryawanId ?: 'null' }})">
-                    <label class="form-label" >QC Inspector <span class="text-danger">*</span></label>
-                    <div class="ta-wrap">
-                        <input type="text"
-                               class="form-control ta-input @error('id_karyawan_qc') is-invalid @enderror"
-                               x-model="query"
-                               @focus="openDd()"
-                               @blur="closeDd()"
-                               @keydown="onKey($event)"
-                               @input="onInput()"
-                               placeholder="Ketik nama inspector...">
-                        <input type="hidden" name="id_karyawan_qc" :value="val">
-                        <div class="ta-dropdown" x-show="open" x-cloak>
-                            <template x-if="filtered.length === 0">
-                                <div class="ta-empty">Tidak ditemukan</div>
-                            </template>
-                            <template x-for="(item, i) in filtered" :key="item.v">
-                                <div class="ta-item" :class="{ 'ta-active': i === idx }"
-                                     @mousedown.prevent="pick(item)" x-text="item.t"></div>
-                            </template>
-                        </div>
-                    </div>
-                    @error('id_karyawan_qc')<div class="invalid-feedback d-block" >{{ $message }}</div>@enderror
-                </div>
-
-                {{-- Part — typeahead, auto-select finish-good proses --}}
-                <div class="col-12" x-data="qcPartSelector()">
-                    <label class="form-label" >Part (Finish Good) <span class="text-danger">*</span></label>
-                    <div class="ta-wrap" style="margin-bottom:8px">
-                        <input type="text"
-                               class="form-control ta-input"
-                               x-model="query"
-                               @focus="openDd()"
-                               @blur="closeDd()"
-                               @keydown="onKey($event)"
-                               @input="onInput()"
-                               placeholder="Ketik part no atau nama part...">
-                        <div class="ta-dropdown" x-show="open" x-cloak>
-                            <template x-if="filtered.length === 0">
-                                <div class="ta-empty">Tidak ditemukan</div>
-                            </template>
-                            <template x-for="(item, i) in filtered" :key="item.v">
-                                <div class="ta-item" :class="{ 'ta-active': i === idx }"
-                                     @mousedown.prevent="pick(item)" x-text="item.t"></div>
-                            </template>
-                        </div>
-                    </div>
-
-                    {{-- Proses info (auto-selected finish good) --}}
-                    <div x-show="proses !== null" x-cloak class="mb-2 p-2"
-                         style="background:#f0f4f8;border:1px solid #d4dbe3;border-radius:2px">
-                        <i class="bi bi-check2-circle text-success me-1"></i>
-                        <strong>Proses Finish Good:</strong>
-                        <span x-text="proses ? `${proses.id_proses} – ${proses.nama_proses}` : ''"></span>
-                        <span style="color:#5d7283"
-                              x-text="proses ? ` (SPH Std QC: ${proses.sph_standar_qc})` : ''"></span>
-                    </div>
-                    <input type="hidden" name="id_part_proses" :value="proses ? proses.id : ''">
-                    @error('id_part_proses')<div class="text-danger mt-1" >{{ $message }}</div>@enderror
-                </div>
-
-                {{-- Jam Start + Jam Finish --}}
-                <div class="col-6">
-                    <label class="form-label" >Jam Start <span class="text-danger">*</span></label>
-                    <input type="time" name="jam_start"
-                           class="form-control @error('jam_start') is-invalid @enderror"
-                           value="{{ old('jam_start') }}">
-                    @error('jam_start')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                </div>
-                <div class="col-6">
-                    <label class="form-label" >Jam Finish <span class="text-danger">*</span></label>
-                    <input type="time" name="jam_finish"
-                           class="form-control @error('jam_finish') is-invalid @enderror"
-                           value="{{ old('jam_finish') }}">
-                    @error('jam_finish')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                </div>
-
-                {{-- Qty OK --}}
-                <div class="col-6">
-                    <label class="form-label" >Qty OK <span class="text-danger">*</span></label>
-                    <input type="number" name="qty_ok"
-                           class="form-control @error('qty_ok') is-invalid @enderror"
-                           value="{{ old('qty_ok', 0) }}" min="0">
-                    @error('qty_ok')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                </div>
-
-                {{-- Jenis NG --}}
-                <div class="col-12">
-                    <label class="form-label fw-semibold" >Jenis NG</label>
-                    @include('input.partials.ng-rows', [
-                        'jenisNg' => $jenisNg,
-                        'initial' => old('ng', []),
-                    ])
-                </div>
-
-            </div>{{-- /row --}}
-
-            <div style="margin-top:20px;padding-top:16px;border-top:1px solid #e5e7eb;display:flex;gap:8px">
-                <button type="submit" class="btn btn-primary" style="flex:1">
-                    <i class="bi bi-save me-1"></i>Simpan LHP
-                </button>
-                <button type="button" @click="drawerOpen = false" class="btn btn-outline-secondary" >
-                    Batal
-                </button>
-            </div>
-        </form>
-    </div>{{-- /drawer body --}}
-    </div>{{-- /inner flex container --}}
-</div>{{-- /drawer panel --}}
-@endif
+{{-- ══ SATU ALPINE SCOPE — mengontrol konten halaman ══ --}}
+<div x-data="{ filterOpen: false }">
 
 {{-- ══ KONTEN HALAMAN ══════════════════════════════════════════ --}}
 @php
@@ -263,9 +56,9 @@ $filterActive = ($search ?? '') !== '' || $filterKarId || $filterJenisNgId
 {{-- ── Strip toolbar ─────────────────────────────────────────── --}}
 <div class="erp-tb">
     @if(! auth()->user()->isGuest())
-    <button type="button" class="erp-tb-btn is-new" @click="drawerOpen = true">
+    <a href="{{ route('input.qc.create') }}" class="erp-tb-btn is-new">
         <i class="bi bi-plus-lg"></i>Input Baru
-    </button>
+    </a>
     @endif
 
     <button type="button" class="erp-tb-btn" :class="filterOpen ? 'is-on' : ''"
@@ -430,6 +223,28 @@ $filterActive = ($search ?? '') !== '' || $filterKarId || $filterJenisNgId
 </aside>
 
 <div class="erp-ws-main">
+
+{{-- Bag error validasi bawaan Laravel (mis. upload import gagal: file kosong,
+     tipe bukan xlsx/xls/csv, atau lebih dari 10MB). Drawer lama yang dulu
+     merender $errors sudah dicabut bareng laci penulis — tanpa blok ini,
+     kegagalan validasi cuma redirect balik ke halaman ini tanpa pesan apa
+     pun, seolah tidak terjadi apa-apa. --}}
+@if ($errors->any())
+    <div class="alert alert-danger alert-dismissible fade show mb-3" role="alert">
+        <div class="d-flex align-items-start gap-2">
+            <i class="bi bi-exclamation-triangle-fill fs-5 mt-1 flex-shrink-0"></i>
+            <div>
+                <strong>Import gagal:</strong>
+                <ul class="mb-0">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+@endif
 
 @if(! auth()->user()->isGuest())
 {{-- Export Panel --}}
@@ -818,25 +633,27 @@ function openNoteDrawer(type, id, existingNote, isAdmin, updatedAt, noteAt, reso
         row.querySelectorAll('td').forEach(td => { td.style.transition = 'background 1.5s ease'; td.style.background = ''; });
     }, 2000);
 })();
+
+@if (session('batch_tersimpan'))
+(function() {
+    /* Draft di localStorage cuma hidup di browser, jadi cuma boleh dibuang
+       kalau server sudah MEMBUKTIKAN barisnya tersimpan — flash
+       batch_tersimpan dari QcController::batch() adalah bukti itu.
+       Kunci dibaca dengan pola yang SAMA PERSIS dengan create.blade.php
+       (`kunci` dan `kunciBackup` di konfigQc()) supaya keduanya selalu
+       menunjuk baris yang sama untuk pengguna yang sama. */
+    try {
+        localStorage.removeItem('optima_draft_lhp_qc_u{{ auth()->id() }}');
+        localStorage.removeItem('optima_draft_lhp_qc_terkirim_u{{ auth()->id() }}');
+    } catch (e) {
+        // localStorage tak tersedia; tidak ada yang perlu dibuang.
+    }
+})();
+@endif
 </script>
 
 </div>{{-- /alpine outer scope --}}
 @endsection
-
-@php
-$_taKaryawan = $karyawan->map(fn($k) => ['v' => $k->id, 't' => $k->nama_karyawan])->values();
-$_taParts    = $parts->map(fn($p) => ['v' => $p->id, 't' => "{$p->part_no} — {$p->part_name}"])->values();
-$_taJenisNg  = $jenisNg->map(fn($j) => ['v' => $j->id, 't' => "{$j->kode} — {$j->nama_ng}"])->values();
-$_partsData  = $parts->map(fn($p) => [
-    'id'     => $p->id,
-    'proses' => $p->proses->map(fn($pr) => [
-        'id'             => $pr->id,
-        'id_proses'      => $pr->id_proses,
-        'nama_proses'    => $pr->nama_proses,
-        'sph_standar_qc' => $pr->sph_standar_qc,
-    ])->last(), // finish-good = last proses
-])->values();
-@endphp
 
 @push('scripts')
 <script>
@@ -847,96 +664,5 @@ const _partsFullData = @json($_partsForFilter);
 const _prosesTA      = @json($_prosesTA);
 const _inspectorTA   = @json($_inspectorTA);
 const _jenisNgTA     = @json($_jenisNgTA);
-
-/* ── Data from PHP ─────────────────────────────────────── */
-const taKaryawan = @json($_taKaryawan);
-const taParts    = @json($_taParts);
-const partsData  = @json($_partsData);
-const taJenisNg  = @json($_taJenisNg);
-
-/* taField() kini satu definisi di layouts/app.blade.php. */
-
-/* ── QC Part + auto finish-good proses ─────────────────── */
-function qcPartSelector() {
-    return {
-        ...taField(taParts),
-        proses: null,
-        get filtered() {
-            if (!this.query.trim()) return this.items.slice(0, 60);
-            const q = this.query.toLowerCase();
-            return this.items.filter(i => i.t.toLowerCase().includes(q)).slice(0, 60);
-        },
-        pick(item) {
-            this.query = item.t; this.val = item.v; this.open = false; this.idx = -1;
-            const part = partsData.find(p => p.id == item.v);
-            this.proses = part ? part.proses : null;
-        },
-    };
-}
-
-/* ── Client-side validation ─────────────────────────────── */
-(function () {
-    const form = document.getElementById('formQc');
-    if (!form) return;
-
-    function clearErrs() {
-        form.querySelectorAll('.cve').forEach(e => e.remove());
-        form.querySelectorAll('.cvi').forEach(el => el.classList.remove('cvi', 'is-invalid'));
-    }
-    function mkErr(el, msg) {
-        el.classList.add('is-invalid', 'cvi');
-        const d = document.createElement('div');
-        d.className = 'invalid-feedback d-block cve'; d.textContent = msg;
-        el.insertAdjacentElement('afterend', d);
-        ['input', 'change'].forEach(ev => el.addEventListener(ev, () => { el.classList.remove('is-invalid','cvi'); if(d.parentNode) d.remove(); }, {once:true}));
-    }
-    function mkTa(hiddenInput, msg) {
-        const wrap = hiddenInput.closest('.ta-wrap');
-        const vis  = wrap.querySelector('.ta-input');
-        vis.classList.add('is-invalid', 'cvi');
-        const d = document.createElement('div');
-        d.className = 'invalid-feedback d-block cve'; d.textContent = msg;
-        wrap.insertAdjacentElement('afterend', d);
-        vis.addEventListener('input', () => { vis.classList.remove('is-invalid','cvi'); if(d.parentNode) d.remove(); }, {once:true});
-    }
-
-    form.addEventListener('submit', function (e) {
-        clearErrs(); const bad = []; const f = n => form.querySelector(`[name="${n}"]`);
-
-        const tgl1 = f('tgl_pengecekan');
-        if (!tgl1.value) { mkErr(tgl1, 'Tanggal pengecekan wajib diisi.'); bad.push(tgl1); }
-
-        const tgl2 = f('tgl_produksi_part');
-        if (!tgl2.value) { mkErr(tgl2, 'Tanggal produksi part wajib diisi.'); bad.push(tgl2); }
-
-        const shift = f('id_shift');
-        if (!shift.value) { mkErr(shift, 'Shift wajib dipilih.'); bad.push(shift); }
-
-        const kar = f('id_karyawan_qc');
-        if (!kar.value) { mkTa(kar, 'QC Inspector wajib dipilih.'); bad.push(kar.closest('.ta-wrap').querySelector('.ta-input')); }
-
-        const partProses = f('id_part_proses');
-        if (!partProses.value) {
-            const col  = partProses.closest('.col-12');
-            const wrap = col.querySelector('.ta-wrap');
-            const vis  = wrap.querySelector('.ta-input');
-            vis.classList.add('is-invalid', 'cvi');
-            const d = document.createElement('div');
-            d.className = 'invalid-feedback d-block cve';
-            d.textContent = 'Part (Finish Good) wajib dipilih.';
-            wrap.insertAdjacentElement('afterend', d);
-            vis.addEventListener('input', () => { vis.classList.remove('is-invalid','cvi'); if(d.parentNode) d.remove(); }, {once:true});
-            bad.push(vis);
-        }
-
-        const jamStart = f('jam_start');
-        if (!jamStart.value) { mkErr(jamStart, 'Jam start wajib diisi.'); bad.push(jamStart); }
-
-        const jamFinish = f('jam_finish');
-        if (!jamFinish.value) { mkErr(jamFinish, 'Jam finish wajib diisi.'); bad.push(jamFinish); }
-
-        if (bad.length) { e.preventDefault(); bad[0].scrollIntoView({ behavior: 'smooth', block: 'center' }); }
-    });
-})();
 </script>
 @endpush

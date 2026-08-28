@@ -11,8 +11,8 @@
     {{--
         Wajib evaluasi binding Alpine. Kalau Alpine gagal boot, :value tidak
         pernah dievaluasi dan input ini mengirim string kosong — yang ditolak
-        aturan `required|integer` di StoreQcRequest/UpdateQcRequest (dan
-        Store/UpdateProduksiRequest). Tanpa ini, ng[] yang tak pernah dirender
+        aturan `required|integer` di StoreQcBatchRequest/UpdateQcRequest (dan
+        StoreProduksiBatchRequest/UpdateProduksiRequest). Tanpa ini, ng[] yang tak pernah dirender
         (hidup di dalam x-for) akan lolos validasi dan syncQc/syncProduksi
         menghapus semua detail NG + menulis qty_ng = 0 tanpa error.
     --}}
