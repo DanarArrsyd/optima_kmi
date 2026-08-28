@@ -114,6 +114,18 @@ class StoreBreakdownMesinBatchRequest extends FormRequest
                     continue;
                 }
 
+                // isset() di atas cuma membuktikan field ADA, bukan VALID.
+                // Rule 'date' berjalan lebih dulu tapi callback after() ini
+                // tetap dipanggil apapun hasilnya — Carbon::parse() pada
+                // tanggal yang sudah gagal rule 'date' (mis. "bukan-tanggal")
+                // melempar exception dan menjatuhkan seluruh request jadi
+                // HTTP 500, bukan galat validasi yang bisa dibaca operator.
+                // Guard ini BUKAN redundan dengan isset() di atas — jangan
+                // dihapus sebagai "pemeriksaan ganda".
+                if ($validator->errors()->has("rows.{$i}.tanggal_breakdown")) {
+                    continue;
+                }
+
                 $noLkm = $svc->generateNoLkm((int) $row['nomor_urut'], (string) $row['tanggal_breakdown']);
 
                 if (isset($dilihat[$noLkm])) {

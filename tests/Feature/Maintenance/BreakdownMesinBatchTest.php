@@ -10,6 +10,16 @@ use App\Services\BreakdownMesinWriteService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
+/**
+ * Exception khusus dipakai double di test_gagal_di_tengah_transaksi_tidak_menyisakan_baris
+ * di bawah. Kalau double melempar \RuntimeException polos, catch() di test
+ * itu juga menelan $this->fail() tepat di atasnya — di PHPUnit 12,
+ * AssertionFailedError adalah turunan \RuntimeException. Memakai kelas ini
+ * mempersempit catch ke exception yang BENAR-BENAR dilempar double, supaya
+ * fail() sungguh berarti gagal kalau exception tidak pernah terlempar.
+ */
+class BreakdownMesinRollbackTestException extends \RuntimeException {}
+
 class BreakdownMesinBatchTest extends TestCase
 {
     use RefreshDatabase;
@@ -71,6 +81,19 @@ class BreakdownMesinBatchTest extends TestCase
         $this->assertSame(2, TransaksiBreakdownMesin::count());
     }
 
+    public function test_flash_batch_tersimpan_menghitung_baris(): void
+    {
+        // batch_tersimpan adalah bukti sukses yang dibaca index.blade.php
+        // untuk membuang draft di localStorage (lihat komentar di
+        // BreakdownMesinController::batch()). Tanpa assertion ini, kunci
+        // atau nilainya bisa hilang/salah tanpa ada test yang merah — sudah
+        // kejadian di modul QC.
+        $this->kirim([
+            $this->baris(['nomor_urut' => 1]),
+            $this->baris(['nomor_urut' => 2]),
+        ])->assertSessionHas('batch_tersimpan', 2);
+    }
+
     public function test_no_lkm_dirakit_dari_nomor_urut_dan_tanggal(): void
     {
         $this->kirim([
@@ -108,6 +131,40 @@ class BreakdownMesinBatchTest extends TestCase
 
         $response->assertSessionHasErrors('rows.0.nomor_urut');
         $this->assertSame(1, TransaksiBreakdownMesin::count());
+    }
+
+    public function test_nomor_sama_dengan_data_lama_di_bulan_berbeda_diterima(): void
+    {
+        // Sisi DATABASE dari jaminan yang sama seperti
+        // test_nomor_sama_di_bulan_berbeda_diterima: mencegah "perbaikan"
+        // naif pada probe ke DB yang membandingkan nomor_urut telanjang
+        // (mis. LIKE "5/%") alih-alih No LKM utuh yang sudah menyertakan
+        // bulan romawi.
+        TransaksiBreakdownMesin::create([
+            'no_lkm' => '5/LKM/MTC/KMI/VII/26',
+            'id_mesin' => $this->mesinId,
+            'tanggal_breakdown' => '2026-07-01',
+            'jam_breakdown' => '08:00',
+            'tanggal_mulai_perbaikan' => '2026-07-01',
+            'jam_mulai_perbaikan' => '09:00',
+            'tanggal_selesai_perbaikan' => '2026-07-01',
+            'jam_selesai_perbaikan' => '10:00',
+            'problem_mesin' => 'x', 'penyebab_breakdown' => 'x', 'tindakan_perbaikan' => 'x',
+            'pic_maintenance' => 'x', 'status_breakdown' => 'Ringan',
+            'repair_time' => 1, 'total_downtime' => 2,
+        ]);
+
+        $response = $this->kirim([
+            $this->baris([
+                'nomor_urut' => 5,
+                'tanggal_breakdown' => '2026-08-05',
+                'tanggal_mulai_perbaikan' => '2026-08-05',
+                'tanggal_selesai_perbaikan' => '2026-08-05',
+            ]),
+        ]);
+
+        $response->assertSessionDoesntHaveErrors();
+        $this->assertSame(2, TransaksiBreakdownMesin::count());
     }
 
     public function test_no_lkm_bentrok_dengan_baris_terhapus_juga_ditolak(): void
@@ -227,7 +284,7 @@ class BreakdownMesinBatchTest extends TestCase
                 $this->panggilan++;
 
                 if ($this->panggilan >= 2) {
-                    throw new \RuntimeException('baris kedua sengaja gagal untuk menguji rollback');
+                    throw new BreakdownMesinRollbackTestException('baris kedua sengaja gagal untuk menguji rollback');
                 }
 
                 return parent::simpan($baris);
@@ -241,8 +298,8 @@ class BreakdownMesinBatchTest extends TestCase
                 $this->baris(['nomor_urut' => 1]),
                 $this->baris(['nomor_urut' => 2]),
             ]);
-            $this->fail('Seharusnya melempar RuntimeException dari baris kedua.');
-        } catch (\RuntimeException $e) {
+            $this->fail('Seharusnya melempar BreakdownMesinRollbackTestException dari baris kedua.');
+        } catch (BreakdownMesinRollbackTestException $e) {
             $this->assertSame('baris kedua sengaja gagal untuk menguji rollback', $e->getMessage());
         }
 
@@ -314,5 +371,21 @@ class BreakdownMesinBatchTest extends TestCase
         $this->assertNotSame('', $pesan);
         $this->assertStringContainsString('Baris 1', $pesan);
         $this->assertStringContainsString('tidak masuk akal', $pesan);
+    }
+
+    public function test_tanggal_rusak_ditolak_bukan_meledak_500(): void
+    {
+        // Rule 'date' menolak "bukan-tanggal", tapi withValidator()->after()
+        // tetap dipanggil sesudahnya walau field itu sudah gagal. Tanpa
+        // guard di StoreBreakdownMesinBatchRequest, Carbon::parse() pada
+        // string ini melempar exception dan seluruh request jatuh jadi HTTP
+        // 500 — operator kehilangan pesan galat yang bisa ditindaklanjuti.
+        $response = $this->kirim([
+            $this->baris(['tanggal_breakdown' => 'bukan-tanggal']),
+        ]);
+
+        $response->assertStatus(302);
+        $response->assertSessionHasErrors('rows.0.tanggal_breakdown');
+        $this->assertSame(0, TransaksiBreakdownMesin::count());
     }
 }
