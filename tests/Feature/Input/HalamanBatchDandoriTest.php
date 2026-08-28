@@ -155,10 +155,20 @@ class HalamanBatchDandoriTest extends TestCase
         $index = $this->withSession(['batch_tersimpan' => 3])
             ->get(route('input.dandori.index'))->assertOk()->getContent();
 
-        $this->assertStringContainsString($kunci, $index,
-            "Kunci draft '{$kunci}' dari halaman create tidak dihapus di halaman daftar.");
-        $this->assertStringContainsString($kunciBackup, $index,
-            "Kunci backup '{$kunciBackup}' dari halaman create tidak dihapus di halaman daftar.");
+        // Mencocokkan literal di dalam localStorage.removeItem('...') itu
+        // sendiri, bukan di mana pun di halaman — kunci yang cuma disebut di
+        // komentar akan tetap lolos dengan assertStringContainsString biasa
+        // tanpa membuktikan apa pun soal penghapusannya.
+        $this->assertMatchesRegularExpression(
+            '/localStorage\.removeItem\(\''.preg_quote($kunci, '/').'\'\)/',
+            $index,
+            "localStorage.removeItem('{$kunci}') tidak ditemukan di halaman daftar."
+        );
+        $this->assertMatchesRegularExpression(
+            '/localStorage\.removeItem\(\''.preg_quote($kunciBackup, '/').'\'\)/',
+            $index,
+            "localStorage.removeItem('{$kunciBackup}') tidak ditemukan di halaman daftar."
+        );
     }
 
     public function test_pemilih_proses_berada_dalam_scope_part_picker(): void
@@ -290,5 +300,46 @@ class HalamanBatchDandoriTest extends TestCase
             'payload() mengirim std_menit dari browser — nilai itu wajib dihitung server.');
         $this->assertStringNotContainsString('over_menit', $blokPayload,
             'payload() mengirim over_menit dari browser — nilai itu wajib dihitung server.');
+    }
+
+    public function test_setiap_x_data_tafield_dan_partpicker_punya_deklarasi_const(): void
+    {
+        // Server-rendered HTML bisa 200 OK sempurna sementara browser
+        // ReferenceError di JS — kelas kegagalan yang sudah berkali-kali
+        // lolos dari suite ini (lihat CLAUDE.md). taField(taKaryawan, ...)
+        // di dandori-rows.blade.php (partial bersama, blok "Operator
+        // Dandori" opsional) butuh global taKaryawan didefinisikan di
+        // halaman yang MENYERTAKAN partial itu — kalau lupa, Alpine tidak
+        // menemukan taKaryawan di scope manapun, jatuh ke window.taKaryawan
+        // (undefined), lempar ReferenceError, dan x-data itu runtuh jadi {}
+        // ({query}/{val} tidak pernah ada). Kotaknya tetap tampil di
+        // browser — cuma dropdownnya mati dan apa pun yang diketik dibuang
+        // diam-diam. Tidak satu pun dari test render-server lain di berkas
+        // ini menyentuh itu.
+        //
+        // Test ini menjangkar ke SETIAP pemanggilan x-data="taField(IDENT"
+        // atau x-data="partPicker(IDENT" di HTML yang benar-benar dirender,
+        // lalu membuktikan "const IDENT =" ada di halaman yang sama —
+        // bukan cuma taKaryawan yang di-hardcode, supaya kalau nama global
+        // lain (taOperator, taMesin, taParts) suatu saat lupa dideklarasikan
+        // juga tertangkap tanpa mengubah test ini.
+        $html = $this->halaman();
+
+        preg_match_all('/x-data="(?:taField|partPicker)\((\w+)/', $html, $m);
+        $ident = array_unique($m[1]);
+
+        $this->assertNotEmpty(
+            $ident,
+            'Tidak ada x-data="taField(...)" atau x-data="partPicker(...)" ditemukan — regex perlu disesuaikan.'
+        );
+
+        foreach ($ident as $nama) {
+            $this->assertMatchesRegularExpression(
+                '/\bconst\s+'.preg_quote($nama, '/').'\s*=/',
+                $html,
+                "x-data memakai global '{$nama}' tapi tidak ada 'const {$nama} =' di halaman — ".
+                'ReferenceError di browser, x-data runtuh jadi {} secara senyap.'
+            );
+        }
     }
 }
