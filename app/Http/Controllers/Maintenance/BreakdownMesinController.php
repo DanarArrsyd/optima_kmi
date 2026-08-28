@@ -188,10 +188,6 @@ class BreakdownMesinController extends Controller
         return view('maintenance.breakdown.edit', [
             'b' => $breakdown,
             'mesinList' => MasterMesin::orderBy('id_mesin')->get(),
-            'picList' => MasterKaryawan::where('departemen', 'Maintenance')->aktif()->orderBy('nama_karyawan')->get(),
-            'pakaiTanggal' => $pakaiTanggal,
-            'filterPic' => $filterPic,
-            'filterStatus' => $filterStatus,
         ]);
     }
 

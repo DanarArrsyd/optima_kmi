@@ -174,8 +174,8 @@
                             <td x-text="r.mesin_teks"></td>
                             <td x-text="`${r.tanggal_breakdown} ${r.jam_breakdown}`"></td>
                             <td x-text="`${r.tanggal_selesai_perbaikan} ${r.jam_selesai_perbaikan}`"></td>
-                            <td x-text="r.repair_jam.toFixed(2)"></td>
-                            <td x-text="r.downtime_jam.toFixed(2)"></td>
+                            <td x-text="Number(r.repair_jam || 0).toFixed(2)"></td>
+                            <td x-text="Number(r.downtime_jam || 0).toFixed(2)"></td>
                             <td x-text="r.pic_maintenance"></td>
                             <td class="text-center">
                                 <button type="button" class="btn btn-sm btn-outline-danger"

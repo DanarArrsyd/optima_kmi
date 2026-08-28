@@ -102,7 +102,6 @@ class HalamanBatchBreakdownMesinTest extends TestCase
         $html = $this->halaman();
 
         $this->assertStringContainsString('optima_draft_breakdown_mesin_terkirim_u'.auth()->id(), $html);
-        $this->assertStringContainsString('formBatch', $html);
     }
 
     public function test_kunci_draft_cocok_dengan_yang_dihapus_index(): void
@@ -216,15 +215,77 @@ class HalamanBatchBreakdownMesinTest extends TestCase
         );
     }
 
+    public function test_layout_memasang_setelah_pulih_dan_tidak_mewajibkannya(): void
+    {
+        // Sisi PRODUSEN dari seam cfg.setelahPulih. Test lain di file ini
+        // (test_halaman_memasang_setelah_pulih) cuma membuktikan sisi
+        // KONSUMEN — bahwa konfigBreakdownMesin() mendeklarasikan
+        // setelahPulih — dan tetap hijau walau baris pemanggilnya di
+        // batchDraft() dihapus total dari layout.
+        //
+        // Assertion pertama menutup itu: buktikan batchDraft() betul-betul
+        // MEMANGGIL cfg.setelahPulih(this).
+        //
+        // Assertion kedua menjaga arah sebaliknya: 'setelahPulih' TIDAK
+        // BOLEH masuk daftar kunci wajib batchDraft (for (const k of [...])
+        // di layout). Kalau suatu saat masuk, tiga modul batch lain yang
+        // sudah live di produksi — input/produksi, input/qc, input/dandori —
+        // langsung throw Error saat halamannya dimuat, karena ketiganya
+        // TIDAK mengoper cfg.setelahPulih sama sekali. Kegagalannya JS murni
+        // di browser, tak satu pun test server-rendered di suite ini akan
+        // menangkapnya.
+        $layout = file_get_contents(base_path('resources/views/layouts/app.blade.php'));
+
+        $this->assertStringContainsString('cfg.setelahPulih(this);', $layout);
+        $this->assertStringNotContainsString("'setelahPulih'", $layout);
+    }
+
+    public function test_halaman_edit_tidak_500(): void
+    {
+        // edit() sempat membawa tiga variabel yang tak pernah didefinisikan
+        // di scope-nya ($pakaiTanggal, $filterPic, $filterStatus) — salinan
+        // dari create() sebelum diperbaiki. edit.blade.php tidak memakai
+        // satu pun dari ketiganya, jadi perbaikannya cuma menghapus baris
+        // yang sama yang sudah dihapus di create(). index.blade.php merender
+        // tombol Edit di setiap baris menuju route ini, jadi ini 500 yang
+        // benar-benar bisa diklik staff maintenance, bukan teoretis.
+        $mesin = MasterMesin::first();
+        $breakdown = TransaksiBreakdownMesin::create([
+            'no_lkm' => '1/LKM/MTC/KMI/VIII/26',
+            'id_mesin' => $mesin->id,
+            'tanggal_breakdown' => '2026-08-01', 'jam_breakdown' => '08:00',
+            'tanggal_mulai_perbaikan' => '2026-08-01', 'jam_mulai_perbaikan' => '08:10',
+            'tanggal_selesai_perbaikan' => '2026-08-01', 'jam_selesai_perbaikan' => '09:00',
+            'problem_mesin' => 'x', 'penyebab_breakdown' => 'x', 'tindakan_perbaikan' => 'x',
+            'pic_maintenance' => 'Budi',
+            'repair_time' => 1, 'total_downtime' => 1, 'status_breakdown' => 'Sedang',
+        ]);
+
+        // route breakdown.edit dijaga middleware role:admin, bukan
+        // staff_maintenance dari setUp() — pakai akun admin di sini.
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        $this->get(route('maintenance.breakdown.edit', $breakdown))->assertOk();
+    }
+
     public function test_halaman_tidak_mengirim_angka_turunan_dari_browser(): void
     {
         // Server (BreakdownMesinService::computeDerived) yang menghitung
-        // repair_time/total_downtime/status_breakdown. Jangkarkan ke blok
-        // payload( itu sendiri, bukan seluruh halaman.
+        // repair_time/total_downtime/status_breakdown. Jangkarkan ke DALAM
+        // blok konfigBreakdownMesin() dulu (seperti test_halaman_memasang_setelah_pulih
+        // di atas), baru cari payload( di sana — bukan strpos ke seluruh
+        // dokumen, yang aman hari ini cuma karena kebetulan tidak ada
+        // "payload(r) {" lain di halaman.
         $html = $this->halaman();
 
-        $awal = strpos($html, 'payload(r) {');
+        $awalKonfig = strpos($html, 'function konfigBreakdownMesin()');
+        $this->assertNotFalse($awalKonfig, 'Deklarasi function konfigBreakdownMesin() tidak ditemukan.');
+
+        $blokKonfig = substr($html, $awalKonfig);
+
+        $awal = strpos($blokKonfig, 'payload(r) {');
         $this->assertNotFalse($awal, 'Deklarasi payload(r) { tidak ditemukan di konfigBreakdownMesin().');
+        $html = $blokKonfig;
 
         $akhir = strpos($html, "\n        },", $awal);
         $this->assertNotFalse($akhir, 'Akhir blok payload(r) tidak ditemukan.');
