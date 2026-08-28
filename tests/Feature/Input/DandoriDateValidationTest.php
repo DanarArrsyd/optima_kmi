@@ -54,7 +54,7 @@ class DandoriDateValidationTest extends TestCase
         $this->ctx = compact('admin', 'shift', 'karyawan', 'mesin', 'proses', 'loss');
     }
 
-    private function storePayload(string $tanggal): array
+    private function baris(string $tanggal): array
     {
         return [
             'tanggal' => $tanggal,
@@ -68,6 +68,12 @@ class DandoriDateValidationTest extends TestCase
         ];
     }
 
+    /** Jalur satu-satunya sekarang: halaman batch, satu baris di rows[]. */
+    private function batchPayload(string $tanggal): array
+    {
+        return ['rows' => [$this->baris($tanggal)]];
+    }
+
     private function existingRecord(): TransaksiDandoriRincian
     {
         return TransaksiDandoriRincian::create([
@@ -79,11 +85,11 @@ class DandoriDateValidationTest extends TestCase
         ]);
     }
 
-    public function test_store_rejects_year_typo_that_produced_the_corrupt_rows(): void
+    public function test_batch_rejects_year_typo_that_produced_the_corrupt_rows(): void
     {
         $this->actingAs($this->ctx['admin'])
-            ->post(route('input.dandori.store'), $this->storePayload('0026-06-21'))
-            ->assertSessionHasErrors('tanggal');
+            ->post(route('input.dandori.batch'), $this->batchPayload('0026-06-21'))
+            ->assertSessionHasErrors('rows.0.tanggal');
 
         $this->assertDatabaseCount('transaksi_dandori_rincian', 0);
     }
@@ -107,28 +113,28 @@ class DandoriDateValidationTest extends TestCase
         $this->assertSame('2026-07-05', $record->fresh()->tanggal->format('Y-m-d'));
     }
 
-    public function test_store_rejects_absurd_future_year(): void
+    public function test_batch_rejects_absurd_future_year(): void
     {
         $this->actingAs($this->ctx['admin'])
-            ->post(route('input.dandori.store'), $this->storePayload('9999-01-01'))
-            ->assertSessionHasErrors('tanggal');
+            ->post(route('input.dandori.batch'), $this->batchPayload('9999-01-01'))
+            ->assertSessionHasErrors('rows.0.tanggal');
     }
 
     /** Batas tidak boleh terlalu ketat — input normal harus tetap lolos. */
-    public function test_store_still_accepts_a_normal_recent_date(): void
+    public function test_batch_still_accepts_a_normal_recent_date(): void
     {
         $this->actingAs($this->ctx['admin'])
-            ->post(route('input.dandori.store'), $this->storePayload(now()->subDay()->format('Y-m-d')))
+            ->post(route('input.dandori.batch'), $this->batchPayload(now()->subDay()->format('Y-m-d')))
             ->assertSessionHasNoErrors();
 
         $this->assertDatabaseCount('transaksi_dandori_rincian', 1);
     }
 
     /** WIB (UTC+7) bisa satu hari di depan UTC — tanggal besok harus tetap diterima. */
-    public function test_store_accepts_tomorrow_to_absorb_wib_utc_skew(): void
+    public function test_batch_accepts_tomorrow_to_absorb_wib_utc_skew(): void
     {
         $this->actingAs($this->ctx['admin'])
-            ->post(route('input.dandori.store'), $this->storePayload(now()->addDay()->format('Y-m-d')))
+            ->post(route('input.dandori.batch'), $this->batchPayload(now()->addDay()->format('Y-m-d')))
             ->assertSessionHasNoErrors();
     }
 }

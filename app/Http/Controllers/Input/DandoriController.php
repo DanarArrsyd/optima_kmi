@@ -7,7 +7,6 @@ use App\Exports\LhpDandoriExport;
 use App\Http\Controllers\Concerns\ResolvesStaffNote;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreDandoriBatchRequest;
-use App\Http\Requests\StoreDandoriRequest;
 use App\Imports\DandoriImport;
 use App\Models\MasterKaryawan;
 use App\Models\MasterLosstime;
@@ -171,22 +170,6 @@ class DandoriController extends Controller
         $losstimes = MasterLosstime::orderBy('kode')->get();
 
         return view('input.dandori.create', compact('shifts', 'karyawan', 'mesin', 'parts', 'losstimes'));
-    }
-
-    public function store(StoreDandoriRequest $request)
-    {
-        $v = $request->validated();
-
-        $count = $this->dandoriRincianService->simpan([
-            'tanggal' => $v['tanggal'],
-            'id_shift' => $v['id_shift'],
-            'id_karyawan' => $v['id_karyawan'],
-            'id_mesin' => $v['id_mesin'],
-            'id_part_proses' => $v['id_part_proses'],
-        ], $v['rincian']);
-
-        return redirect()->route('input.dandori.index')
-            ->with('success', "{$count} baris data Dandori berhasil disimpan.");
     }
 
     public function batch(StoreDandoriBatchRequest $request)

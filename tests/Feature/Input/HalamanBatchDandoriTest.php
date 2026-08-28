@@ -10,6 +10,8 @@ use App\Models\MasterPartProses;
 use App\Models\MasterShift;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class HalamanBatchDandoriTest extends TestCase
@@ -341,5 +343,42 @@ class HalamanBatchDandoriTest extends TestCase
                 'ReferenceError di browser, x-data runtuh jadi {} secara senyap.'
             );
         }
+    }
+
+    public function test_import_gagal_menampilkan_pesan_error_di_halaman_daftar(): void
+    {
+        // Laci penulis lama satu-satunya yang merender bag $errors bawaan
+        // Laravel; setelah dicabut, kegagalan validasi upload (mis. file
+        // bukan xlsx/xls/csv) redirect balik ke input.dandori.index TANPA
+        // pesan apa pun kalau blok penggantinya hilang. assertSessionHasErrors
+        // saja tidak cukup — itu membuktikan session-nya benar, bukan bahwa
+        // halamannya menampilkan sesuatu ke user. Maka di sini dijangkarkan
+        // ke TEKS pesan yang benar-benar DIRENDER pada request berikutnya
+        // (sengaja TANPA assertSessionHasErrors di antaranya — memanggil
+        // session()->start() manual di antara dua request nyata mengganggu
+        // marshalling ulang $errors dari JSON gara-gara 'serialization' =>
+        // 'json' di config/session.php, membuat pengujian ini gagal dengan
+        // alasan yang salah walau perbaikannya sendiri benar).
+        Storage::fake('local');
+
+        $filePdf = UploadedFile::fake()->create('data.pdf', 10, 'application/pdf');
+
+        $response = $this->from(route('input.dandori.index'))
+            ->post(route('input.dandori.import'), ['file' => $filePdf]);
+
+        $response->assertRedirect(route('input.dandori.index'));
+
+        $halaman = $this->get(route('input.dandori.index'))->assertOk()->getContent();
+
+        $this->assertStringContainsString(
+            'Import gagal',
+            $halaman,
+            'Halaman input.dandori.index tidak menampilkan pesan error validasi import — user melihat halaman seolah tidak terjadi apa-apa.'
+        );
+        $this->assertStringContainsString(
+            'harus berformat',
+            $halaman,
+            'Pesan validasi file spesifik (file.mimes) tidak sampai ke halaman.'
+        );
     }
 }

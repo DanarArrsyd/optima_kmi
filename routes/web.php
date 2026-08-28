@@ -105,7 +105,7 @@ Route::middleware('auth')->group(function () {
         Route::get('produksi/export', [ProduksiController::class, 'export'])->name('produksi.export');
         Route::post('produksi-note', [ProduksiController::class, 'note'])->name('produksi.note');
         Route::post('dandori/batch', [DandoriController::class, 'batch'])->name('dandori.batch');
-        Route::resource('dandori', DandoriController::class)->only(['create', 'store', 'destroy']);
+        Route::resource('dandori', DandoriController::class)->only(['create', 'destroy']);
         Route::post('dandori/import',          [DandoriController::class, 'import'])->name('dandori.import');
         Route::get('dandori/import-template',  [DandoriController::class, 'importTemplate'])->name('dandori.import-template');
         Route::get('dandori/export',           [DandoriController::class, 'export'])->name('dandori.export');
