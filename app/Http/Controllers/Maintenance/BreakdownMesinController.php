@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Maintenance;
 
 use App\Exports\BreakdownMesinExport;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreBreakdownMesinBatchRequest;
 use App\Http\Requests\StoreBreakdownMesinRequest;
 use App\Http\Requests\UpdateBreakdownMesinRequest;
 use App\Imports\BreakdownMesinImport;
@@ -11,14 +12,19 @@ use App\Models\MasterKaryawan;
 use App\Models\MasterMesin;
 use App\Models\TransaksiBreakdownMesin;
 use App\Services\BreakdownMesinService;
+use App\Services\BreakdownMesinWriteService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Facades\Excel;
 
 class BreakdownMesinController extends Controller
 {
-    public function __construct(private BreakdownMesinService $svc) {}
+    public function __construct(
+        private BreakdownMesinService $svc,
+        private BreakdownMesinWriteService $writeService,
+    ) {}
 
     public function export(Request $request)
     {
@@ -157,6 +163,28 @@ class BreakdownMesinController extends Controller
         ]);
 
         return redirect()->route('maintenance.breakdown.index')->with('success', "Breakdown {$noLkm} tersimpan.");
+    }
+
+    public function batch(StoreBreakdownMesinBatchRequest $request)
+    {
+        $rows = $request->validated()['rows'];
+
+        $jumlah = DB::transaction(function () use ($rows) {
+            foreach ($rows as $row) {
+                $this->writeService->simpan($row);
+            }
+
+            return count($rows);
+        });
+
+        /* batch_tersimpan adalah bukti sukses yang dibaca index.blade.php untuk
+         * membuang draft di localStorage. Draft hanya boleh dibuang setelah
+         * server MEMBUKTIKAN barisnya tersimpan — bukan cuma karena halaman
+         * batch tidak melihat galat validasi, yang juga terjadi saat request
+         * tidak pernah sampai sini (419 sesi habis, 500, jaringan putus). */
+        return redirect()->route('maintenance.breakdown.index')
+            ->with('success', "{$jumlah} baris data Breakdown Mesin berhasil disimpan.")
+            ->with('batch_tersimpan', $jumlah);
     }
 
     public function edit(TransaksiBreakdownMesin $breakdown)
