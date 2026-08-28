@@ -58,7 +58,15 @@
 <div class="erp-scroll erp-scroll-pad">
 
 <div class="erp-panel">
-    <div class="erp-panel-body" style="padding:12px"><canvas id="vcbChart" height="100"></canvas></div>
+    {{-- Tinggi dikunci di pembungkus; alasannya sama dengan grafik VCB lain.
+         Nama tidak dipindah ke dalam batang di sini — grafik ini multi-seri
+         (batang berkelompok per dataset), jadi satu nama per posisi-x tidak
+         punya batang tunggal untuk ditempeli. --}}
+    <div class="erp-panel-body" style="padding:12px">
+        <div style="position:relative;height:320px">
+            <canvas id="vcbChart"></canvas>
+        </div>
+    </div>
 </div>
 
 <div class="erp-panel">
@@ -115,7 +123,7 @@ async function loadData() {
     vcbChart = new Chart(document.getElementById('vcbChart'), {
         type: 'bar',
         data: { labels: data.labels, datasets: data.datasets },
-        options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: { y: { beginAtZero: true } } }
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } }, scales: { y: { beginAtZero: true } } }
     });
 
     const tbody = document.getElementById('vcbTableBody');

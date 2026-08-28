@@ -428,10 +428,15 @@ const barValueLabels = {
     },
 };
 
-function buildBar(ctx, labels, values) {
+/* namaDalamBatang HANYA untuk grafik yang label-nya nama jenis loss time.
+   Grafik per-minggu dan per-bulan label-nya tanggal — memutarnya ke dalam
+   batang membuatnya tidak terbaca sekaligus menghapus sumbu waktunya. */
+function buildBar(ctx, labels, values, namaDalamBatang = false) {
     return new Chart(ctx, {
         type: 'bar',
-        plugins: [barValueLabels],   /* per-chart — won't affect other pages */
+        plugins: namaDalamBatang
+            ? [barValueLabels, pluginNamaDalamBatang({ warnaDalam: '#ffffff' })]
+            : [barValueLabels],
         data: {
             labels,
             datasets: [{
@@ -459,7 +464,11 @@ function buildBar(ctx, labels, values) {
             scales: {
                 x: {
                     beginAtZero: true,
-                    ticks: {
+                    /* Saat nama digambar di dalam batang, tick sumbu WAJIB mati
+                       — kalau tidak namanya tergambar dua kali. Tick miring yang
+                       dulu dipakai memakan tinggi plot, memaksa nama panjang
+                       dipotong jadi '…', dan tetap sulit dibaca. */
+                    ticks: namaDalamBatang ? { display: false } : {
                         font: { size: 10 },
                         maxRotation: 30,
                         minRotation: 0,
@@ -566,18 +575,19 @@ function vcbDandori() {
         },
 
         drawCharts(data) {
-            const make = (ref, elId, labels, values) => {
+            const make = (ref, elId, labels, values, namaDalamBatang = false) => {
                 if (ref) ref.destroy();
                 const el = document.getElementById(elId);
                 if (!el || !labels.length) return null;
-                return buildBar(el, labels, values);
+                return buildBar(el, labels, values, namaDalamBatang);
             };
 
             /* Main: vertical bars, label = jenis loss time name */
             chartMain = make(
                 chartMain, 'chartMain',
                 data.by_jenis.map(j => j.jenis),
-                data.by_jenis.map(j => j.over)
+                data.by_jenis.map(j => j.over),
+                true
             );
             /* Per-week: vertical bars */
             chartWeek = make(

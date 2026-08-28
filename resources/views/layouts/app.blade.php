@@ -1788,7 +1788,21 @@ function partPicker(items, partsData) {
    Pemakainya WAJIB mematikan tick sumbu-X (`x.ticks.display = false`),
    kalau tidak namanya tergambar dua kali.
    ══════════════════════════════════════════════════════════════════ */
-function pluginNamaDalamBatang() {
+function warnaSeri(ds, i) {
+    const ambil = (v) => Array.isArray(v) ? v[i] : v;
+
+    return ambil(ds.borderColor) ?? ambil(ds.backgroundColor) ?? '#374151';
+}
+
+function pluginNamaDalamBatang(opsi = {}) {
+    /* Warna teks di dalam batang TIDAK bisa ditebak dari datanya: grafik VCB
+       memakai isian pucat (warna + '22') sehingga teks gelap terbaca, sementara
+       grafik Dandori dan MTC memakai isian gelap pekat yang menelan teks gelap.
+       Pemanggil yang tahu isiannya menentukan — menebak di sini berarti satu
+       halaman selalu salah. */
+    const warnaDalam = opsi.warnaDalam ?? null;
+    const warnaLuar = opsi.warnaLuar ?? '#6b7280';
+
     return {
         id: 'namaDalamBatang',
         afterDatasetsDraw(chart) {
@@ -1819,7 +1833,11 @@ function pluginNamaDalamBatang() {
                 ctx.save();
                 if (muat) {
                     ctx.translate(bar.x, chartArea.bottom - 6);
-                    ctx.fillStyle = ds.borderColor[i];
+                    /* borderColor bisa berupa array per-batang ATAU satu string
+                       untuk seluruh dataset; sebagian dataset malah cuma punya
+                       backgroundColor. Ketiganya harus dilayani, kalau tidak
+                       fillStyle jadi undefined dan teksnya hitam bawaan. */
+                    ctx.fillStyle = warnaDalam ?? warnaSeri(ds, i);
                 } else {
                     /* Batang pendek tidak muat menampung namanya. Nama
                        digambar DI ATAS batang, tetap tegak — memaksanya masuk
@@ -1828,7 +1846,7 @@ function pluginNamaDalamBatang() {
                        menempati ruang tepat di atas puncak, jadi nama mulai
                        di atasnya. */
                     ctx.translate(bar.x, bar.y - 20);
-                    ctx.fillStyle = '#6b7280';
+                    ctx.fillStyle = warnaLuar;
                 }
                 ctx.rotate(-Math.PI / 2);
                 ctx.textAlign = 'left';
