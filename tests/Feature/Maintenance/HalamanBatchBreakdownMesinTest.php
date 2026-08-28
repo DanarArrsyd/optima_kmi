@@ -6,6 +6,8 @@ use App\Models\MasterMesin;
 use App\Models\TransaksiBreakdownMesin;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class HalamanBatchBreakdownMesinTest extends TestCase
@@ -298,5 +300,38 @@ class HalamanBatchBreakdownMesinTest extends TestCase
             'payload() mengirim total_downtime dari browser — nilai itu wajib dihitung server.');
         $this->assertStringNotContainsString('status_breakdown', $blokPayload,
             'payload() mengirim status_breakdown dari browser — nilai itu wajib dihitung server.');
+    }
+
+    public function test_import_gagal_menampilkan_pesan_error_di_halaman_daftar(): void
+    {
+        // Laci penulis lama satu-satunya yang merender bag $errors bawaan
+        // Laravel; setelah dicabut, kegagalan validasi upload (mis. file
+        // bukan xlsx/xls/csv) redirect balik ke maintenance.breakdown.index
+        // TANPA pesan apa pun kalau blok penggantinya hilang.
+        // assertSessionHasErrors saja tidak cukup — itu membuktikan
+        // session-nya benar, bukan bahwa halamannya menampilkan sesuatu ke
+        // user. Maka di sini dijangkarkan ke TEKS pesan yang benar-benar
+        // DIRENDER pada request berikutnya (sengaja TANPA
+        // assertSessionHasErrors di antaranya — memanggil session()->start()
+        // manual di antara dua request nyata mengganggu marshalling ulang
+        // $errors dari JSON gara-gara 'serialization' => 'json' di
+        // config/session.php, membuat pengujian ini gagal dengan alasan
+        // yang salah walau perbaikannya sendiri benar).
+        Storage::fake('local');
+
+        $filePdf = UploadedFile::fake()->create('data.pdf', 10, 'application/pdf');
+
+        $response = $this->from(route('maintenance.breakdown.index'))
+            ->post(route('maintenance.breakdown.import'), ['file' => $filePdf]);
+
+        $response->assertRedirect(route('maintenance.breakdown.index'));
+
+        $halaman = $this->get(route('maintenance.breakdown.index'))->assertOk()->getContent();
+
+        $this->assertStringContainsString(
+            'Import gagal',
+            $halaman,
+            'Halaman maintenance.breakdown.index tidak menampilkan pesan error validasi import — user melihat halaman seolah tidak terjadi apa-apa.'
+        );
     }
 }

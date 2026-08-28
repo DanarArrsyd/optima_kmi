@@ -301,8 +301,6 @@ $filterActive = $mesinId || $filterPic !== '' || $filterStatus !== '';
 const _mesinTA = @json($_mesinTA);
 const _picTA   = @json($_picTA);
 
-const taMesin = @json($mesinList->map(fn($m) => ['v' => $m->id, 't' => $m->id_mesin.' – '.$m->nama_mesin])->values());
-
 /* taField() kini satu definisi di layouts/app.blade.php. */
 
 @if (session('batch_tersimpan'))
