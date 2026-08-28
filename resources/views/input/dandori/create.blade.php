@@ -316,6 +316,15 @@ const taParts    = @json($_taParts);
 const partsData  = @json($_partsData);
 const ltLabel    = @json($_ltLabel);
 
+/* dandori-rows.blade.php (blok Rincian Loss Time, field opsional "Operator
+   Dandori") memakai global taKaryawan — nama tetap dari halaman-halaman lain
+   yang menyertakan partial itu (produksi/create, produksi/edit, qc/edit,
+   dandori/index). Di halaman INI, taOperator sudah memetakan $karyawan
+   dengan cara yang sama persis, jadi taKaryawan cukup alias ke taOperator
+   alih-alih dipetakan ulang dari server — jangan biarkan keduanya jadi
+   definisi terpisah yang bisa mencar kalau salah satu diubah nanti. */
+const taKaryawan = taOperator;
+
 function konfigDandori() {
     const picker = () => Alpine.$data(document.getElementById('dandoriPartNoTampil').closest('[x-data]'));
 
@@ -359,6 +368,9 @@ function konfigDandori() {
                 return 'Minimal harus ada 1 aktivitas loss time.';
             }
             for (const r of calon.rincian) {
+                if (r.id_losstime === '' || r.id_losstime === null) {
+                    return 'Setiap rincian wajib memilih Jenis Loss Time dari daftar.';
+                }
                 if (r.actual_menit === '' || r.actual_menit === null || Number(r.actual_menit) <= 0) {
                     return 'Setiap rincian wajib punya waktu aktual lebih dari 0 menit.';
                 }
