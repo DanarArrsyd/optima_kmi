@@ -6,6 +6,7 @@ use App\Exports\DandoriImportTemplate;
 use App\Exports\LhpDandoriExport;
 use App\Http\Controllers\Concerns\ResolvesStaffNote;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreDandoriBatchRequest;
 use App\Http\Requests\StoreDandoriRequest;
 use App\Imports\DandoriImport;
 use App\Models\MasterKaryawan;
@@ -18,6 +19,7 @@ use App\Models\TransaksiDandoriRincian;
 use App\Services\DandoriRincianService;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 
 class DandoriController extends Controller
@@ -185,6 +187,39 @@ class DandoriController extends Controller
 
         return redirect()->route('input.dandori.index')
             ->with('success', "{$count} baris data Dandori berhasil disimpan.");
+    }
+
+    public function batch(StoreDandoriBatchRequest $request)
+    {
+        $rows = $request->validated()['rows'];
+
+        /* simpan() mengembalikan jumlah BARIS TABEL, bukan jumlah sesi: satu
+         * sesi berisi N rincian menulis N baris. Yang dilaporkan ke operator
+         * dan dipakai halaman daftar adalah angka baris tabel itu, supaya
+         * cocok dengan apa yang nanti dia lihat di tabel. */
+        $jumlah = DB::transaction(function () use ($rows) {
+            $total = 0;
+            foreach ($rows as $row) {
+                $total += $this->dandoriRincianService->simpan([
+                    'tanggal' => $row['tanggal'],
+                    'id_shift' => $row['id_shift'],
+                    'id_karyawan' => $row['id_karyawan'],
+                    'id_mesin' => $row['id_mesin'],
+                    'id_part_proses' => $row['id_part_proses'],
+                ], $row['rincian']);
+            }
+
+            return $total;
+        });
+
+        /* batch_tersimpan adalah bukti sukses yang dibaca index.blade.php untuk
+         * membuang draft di localStorage. Draft hanya boleh dibuang setelah
+         * server MEMBUKTIKAN barisnya tersimpan — bukan cuma karena halaman
+         * batch tidak melihat galat validasi, yang juga terjadi saat request
+         * tidak pernah sampai sini (419 sesi habis, 500, jaringan putus). */
+        return redirect()->route('input.dandori.index')
+            ->with('success', "{$jumlah} baris data Dandori berhasil disimpan.")
+            ->with('batch_tersimpan', $jumlah);
     }
 
     public function edit(TransaksiDandoriRincian $dandori)
