@@ -159,4 +159,25 @@ class VcbGrafikUkuranTest extends TestCase
         // dan yang di sumbu kembali miring-miring.
         $this->assertStringContainsString('ticks: { display: false },', $html);
     }
+
+    public function test_kolom_tengah_dandori_menggulung_sendiri(): void
+    {
+        // VCB Dandori satu-satunya halaman yang memakai susunan tiga kolom
+        // sendiri, bukan .erp-scroll. Sidebar kiri dan panel kanan sudah punya
+        // overflow-y; kolom tengah sempat tidak, sehingga grafik paling bawah
+        // meluber keluar .erp-ws-body dan lewat DI BELAKANG .erp-status —
+        // terbaca seperti footer yang menimpa grafik.
+        //
+        // min-height:0 ikut dijaga: tanpa itu anak flex memakai min-height:auto
+        // dan menolak menyusut di bawah tinggi kontennya, jadi overflow-y tidak
+        // pernah aktif dan perbaikannya tidak berpengaruh sama sekali.
+        $html = $this->halaman('vcb.dandori');
+
+        $awal = strpos($html, '.vcbd-main {');
+        $this->assertNotFalse($awal, 'aturan .vcbd-main tidak ditemukan');
+        $blok = substr($html, $awal, strpos($html, '}', $awal) - $awal);
+
+        $this->assertStringContainsString('overflow-y: auto;', $blok);
+        $this->assertStringContainsString('min-height: 0;', $blok);
+    }
 }
