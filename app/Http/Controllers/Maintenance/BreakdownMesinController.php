@@ -123,10 +123,6 @@ class BreakdownMesinController extends Controller
     {
         return view('maintenance.breakdown.create', [
             'mesinList' => MasterMesin::orderBy('id_mesin')->get(),
-            'picList' => MasterKaryawan::where('departemen', 'Maintenance')->aktif()->orderBy('nama_karyawan')->get(),
-            'pakaiTanggal' => $pakaiTanggal,
-            'filterPic' => $filterPic,
-            'filterStatus' => $filterStatus,
             'nextNomor' => $this->svc->nextNomorUrut(),
         ]);
     }

@@ -425,5 +425,26 @@ const _picTA   = @json($_picTA);
 const taMesin = @json($mesinList->map(fn($m) => ['v' => $m->id, 't' => $m->id_mesin.' – '.$m->nama_mesin])->values());
 
 /* taField() kini satu definisi di layouts/app.blade.php. */
+
+@if (session('batch_tersimpan'))
+(function() {
+    /* Draft di localStorage cuma hidup di browser, jadi cuma boleh dibuang
+       kalau server sudah MEMBUKTIKAN barisnya tersimpan — flash
+       batch_tersimpan dari BreakdownMesinController::batch() adalah bukti
+       itu. Kunci dibaca dengan pola yang SAMA PERSIS dengan create.blade.php
+       (`kunci` dan `kunciBackup` di konfigBreakdownMesin()) supaya keduanya
+       selalu menunjuk baris yang sama untuk pengguna yang sama. Tanpa blok
+       ini, draft yang sudah tersimpan tetap ada di localStorage, mulai()
+       memulihkannya lagi di kunjungan berikutnya, dan satu klik SUBMIT lagi
+       menulisnya DOBEL ke transaksi_breakdown_mesin — nol unique constraint
+       yang mencegahnya, nol error yang muncul. */
+    try {
+        localStorage.removeItem('optima_draft_breakdown_mesin_u{{ auth()->id() }}');
+        localStorage.removeItem('optima_draft_breakdown_mesin_terkirim_u{{ auth()->id() }}');
+    } catch (e) {
+        // localStorage tak tersedia; tidak ada yang perlu dibuang.
+    }
+})();
+@endif
 </script>
 @endpush

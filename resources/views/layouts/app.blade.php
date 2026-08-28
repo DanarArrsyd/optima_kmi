@@ -1965,6 +1965,18 @@ function batchDraft(cfg) {
                 .map(k => (k.match(/^rows\.(\d+)\./) || [])[1])
                 .filter(v => v !== undefined)
                 .map(Number);
+
+            /* Modul yang bentuk formnya bergantung pada isi draft menyesuaikan
+               di sini. Breakdown memakainya untuk melanjutkan nomor urut:
+               server merender nomor berikutnya berdasarkan DATABASE, sementara
+               draft yang baru dipulihkan mungkin sudah memakai beberapa nomor
+               sesudahnya. Tanpa kail ini baris berikutnya memakai nomor yang
+               sudah terpakai di draft, dan seluruh batch ditolak sementara
+               form di layar terlihat benar.
+
+               Modul tidak bisa menambal sendiri: cfg.metode disebar paling
+               awal, jadi mulai() tidak bisa dibungkus dari luar. */
+            if (cfg.setelahPulih) cfg.setelahPulih(this);
         },
 
         form() { return document.getElementById(cfg.formId); },
