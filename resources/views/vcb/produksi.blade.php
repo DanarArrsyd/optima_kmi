@@ -401,61 +401,7 @@ function buildAllChart(labels, achievements, trafficLights, karyawanIds) {
                     });
                 });
             }
-        }, {
-            /* Nama operator tegak DI DALAM batangnya sendiri, dibaca dari bawah
-               ke atas. Menempelkan nama pada batangnya menghapus keharusan mata
-               melompat ke sumbu bawah untuk mencocokkan urutan.
-
-               Batang pendek tidak muat menampung namanya. Untuk kasus itu nama
-               digambar DI ATAS batang, tetap tegak — memaksanya masuk berarti
-               nama terpotong, dan nama operator yang terpotong tidak berguna
-               bagi siapa pun. */
-            id: 'namaDalamBatang',
-            afterDatasetsDraw(chart) {
-                const { ctx, chartArea } = chart;
-                const meta = chart.getDatasetMeta(0);
-                const ds = chart.data.datasets[0];
-
-                /* Lebar batang menentukan muat-tidaknya huruf. Di bawah 9px
-                   teksnya tidak terbaca, jadi lebih baik tidak digambar sama
-                   sekali daripada menumpuk jadi noda. */
-                const lebarBatang = meta.data.length ? meta.data[0].width : 0;
-                if (lebarBatang < 9) return;
-
-                const ukuran = Math.min(11, Math.max(8, Math.round(lebarBatang * 0.6)));
-                ctx.save();
-                ctx.font = `600 ${ukuran}px Arial`;
-
-                meta.data.forEach((bar, i) => {
-                    const nama = String(chart.data.labels[i] ?? '');
-                    if (! nama) return;
-
-                    const tinggiBatang = chartArea.bottom - bar.y;
-                    const lebarTeks = ctx.measureText(nama).width;
-                    /* 10px sisa: 6px napas di pangkal + 4px supaya huruf
-                       terakhir tidak menyentuh angka persen di puncak batang. */
-                    const muat = lebarTeks + 10 <= tinggiBatang;
-
-                    ctx.save();
-                    if (muat) {
-                        ctx.translate(bar.x, chartArea.bottom - 6);
-                        ctx.fillStyle = ds.borderColor[i];
-                    } else {
-                        /* Di luar batang: angka persen sudah menempati ruang
-                           tepat di atas puncak, jadi nama mulai di atasnya. */
-                        ctx.translate(bar.x, bar.y - 20);
-                        ctx.fillStyle = '#6b7280';
-                    }
-                    ctx.rotate(-Math.PI / 2);
-                    ctx.textAlign = 'left';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText(nama, 0, 0);
-                    ctx.restore();
-                });
-
-                ctx.restore();
-            }
-        }, {
+        }, pluginNamaDalamBatang(), {
             id: 'refLine',
             afterDraw(chart) {
                 const { ctx, chartArea, scales } = chart;

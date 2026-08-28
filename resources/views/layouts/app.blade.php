@@ -1775,6 +1775,73 @@ function partPicker(items, partsData) {
    halaman daftar modul itu (lihat komentar di batal() dan pindahkanKeBackup()
    di bawah) — kunci yang tidak cocok berarti draft/backup jadi yatim,
    tersimpan di browser tapi tidak pernah lagi dibaca atau dibersihkan. */
+/* ══════════════════════════════════════════════════════════════════
+   pluginNamaDalamBatang — plugin Chart.js yang menggambar label kategori
+   TEGAK DI DALAM batangnya sendiri, dibaca dari bawah ke atas.
+
+   Dipakai grafik VCB yang sumbu-X-nya berisi nama orang. Dengan 30 nama,
+   tick horizontal saling tabrakan lalu Chart.js memiringkannya: label
+   miring memakan tinggi plot sekaligus menyisakan satu nama menggantung
+   sendirian di kiri bawah. Menempelkan nama pada batangnya juga menghapus
+   keharusan mata melompat ke sumbu untuk mencocokkan urutan.
+
+   Pemakainya WAJIB mematikan tick sumbu-X (`x.ticks.display = false`),
+   kalau tidak namanya tergambar dua kali.
+   ══════════════════════════════════════════════════════════════════ */
+function pluginNamaDalamBatang() {
+    return {
+        id: 'namaDalamBatang',
+        afterDatasetsDraw(chart) {
+            const { ctx, chartArea } = chart;
+            const meta = chart.getDatasetMeta(0);
+            const ds = chart.data.datasets[0];
+
+            /* Lebar batang menentukan muat-tidaknya huruf. Di bawah 9px
+               teksnya tidak terbaca, jadi lebih baik tidak digambar sama
+               sekali daripada menumpuk jadi noda. */
+            const lebarBatang = meta.data.length ? meta.data[0].width : 0;
+            if (lebarBatang < 9) return;
+
+            const ukuran = Math.min(11, Math.max(8, Math.round(lebarBatang * 0.6)));
+            ctx.save();
+            ctx.font = `600 ${ukuran}px Arial`;
+
+            meta.data.forEach((bar, i) => {
+                const nama = String(chart.data.labels[i] ?? '');
+                if (! nama) return;
+
+                const tinggiBatang = chartArea.bottom - bar.y;
+                const lebarTeks = ctx.measureText(nama).width;
+                /* 10px sisa: 6px napas di pangkal + 4px supaya huruf terakhir
+                   tidak menyentuh angka persen di puncak batang. */
+                const muat = lebarTeks + 10 <= tinggiBatang;
+
+                ctx.save();
+                if (muat) {
+                    ctx.translate(bar.x, chartArea.bottom - 6);
+                    ctx.fillStyle = ds.borderColor[i];
+                } else {
+                    /* Batang pendek tidak muat menampung namanya. Nama
+                       digambar DI ATAS batang, tetap tegak — memaksanya masuk
+                       berarti nama terpotong, dan nama orang yang terpotong
+                       tidak berguna bagi siapa pun. Angka persen sudah
+                       menempati ruang tepat di atas puncak, jadi nama mulai
+                       di atasnya. */
+                    ctx.translate(bar.x, bar.y - 20);
+                    ctx.fillStyle = '#6b7280';
+                }
+                ctx.rotate(-Math.PI / 2);
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(nama, 0, 0);
+                ctx.restore();
+            });
+
+            ctx.restore();
+        }
+    };
+}
+
 function batchDraft(cfg) {
     /* Kunci cfg yang hilang gagal SENYAP kalau tidak dijaga di sini — mis.
        kunciBackup yang lupa dioper membuat KUNCI_BACKUP bernilai undefined,

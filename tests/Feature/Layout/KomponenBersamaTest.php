@@ -26,6 +26,7 @@ class KomponenBersamaTest extends TestCase
         'function saringOrangNonaktif(',
         'function partPicker(',
         'function batchDraft(',
+        'function pluginNamaDalamBatang(',
     ];
 
     public static function komponen(): array
