@@ -9,6 +9,7 @@ use App\Models\MasterPartProses;
 use App\Models\MasterShift;
 use App\Models\User;
 use App\Services\QcWriteService;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -74,14 +75,29 @@ class QcWriteServiceTest extends TestCase
 
     public function test_kunci_bantu_tidak_ikut_tertulis_ke_kolom(): void
     {
-        // `ng` dan `ng_count` adalah kunci form, bukan kolom tabel. Kalau ikut
-        // masuk ke create(), Eloquent melemparnya sebagai kolom tak dikenal —
-        // atau lebih buruk, diam saja kalau suatu saat kolomnya ada.
-        $trx = app(QcWriteService::class)->simpan([
-            ...$this->base,
-            'ng' => [['id_jenis_ng' => $this->dented->id, 'qty' => 3]],
-            'ng_count' => 1,
-        ]);
+        // `ng` dan `ng_count` adalah kunci form, bukan kolom tabel, dan
+        // simpan() membuangnya lewat unset() sebelum create().
+        //
+        // Mode ketat DINYALAKAN khusus di test ini supaya asersinya benar-benar
+        // bisa gagal. Tanpa itu test ini mustahil merah: `ng`/`ng_count` tidak
+        // ada di $fillable dan app ini tidak memanggil
+        // preventSilentlyDiscardingAttributes(), jadi mass assignment membuang
+        // keduanya sendiri — unset() di simpan() bisa dicabut dan asersi apa pun
+        // atas $trx->getAttributes() tetap hijau.
+        //
+        // Dengan mode ketat, kunci yang tidak fillable membuat create() MELEMPAR,
+        // jadi hilangnya unset() langsung ketahuan.
+        Model::preventSilentlyDiscardingAttributes();
+
+        try {
+            $trx = app(QcWriteService::class)->simpan([
+                ...$this->base,
+                'ng' => [['id_jenis_ng' => $this->dented->id, 'qty' => 3]],
+                'ng_count' => 1,
+            ]);
+        } finally {
+            Model::preventSilentlyDiscardingAttributes(false);
+        }
 
         $this->assertArrayNotHasKey('ng', $trx->getAttributes());
         $this->assertArrayNotHasKey('ng_count', $trx->getAttributes());

@@ -1782,7 +1782,13 @@ function batchDraft(cfg) {
        menulis ke kunci literal "undefined". Lempar galat jelas SEKARANG,
        saat modul pertama kali dipasang, daripada membiarkan operator
        menemukan draft yang tidak pernah tersimpan/terhapus dengan benar. */
-    for (const k of ['kunci', 'kunciBackup', 'formId', 'indexUrl', 'kumpulkan', 'wajib', 'payload']) {
+    /* galatServer ikut wajib walau punya default `|| []` di bawah: modul yang
+       lupa mengopernya mendapat barisGagal kosong SELAMANYA, jadi setelah
+       server menolak batch operator melihat daftar galatnya tapi tidak ada
+       satu baris pun yang ditandai merah — dia harus mencari baris yang salah
+       di antara 50 baris dengan membaca teks. Diam, dan cuma terasa persis
+       saat operator paling butuh bantuan. */
+    for (const k of ['kunci', 'kunciBackup', 'formId', 'indexUrl', 'kumpulkan', 'wajib', 'payload', 'galatServer']) {
         if (cfg[k] === undefined) throw new Error(`batchDraft: cfg.${k} wajib diisi.`);
     }
 
