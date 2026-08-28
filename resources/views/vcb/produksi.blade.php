@@ -130,8 +130,16 @@
             <i class="bi bi-graph-up me-1"></i>Achievement % per Operator
             <span style="margin-left:auto;font-size:10px;font-weight:400;color:#9ca3af">— — —  = 100% target</span>
         </div>
+        {{-- Tinggi dikunci di pembungkus, BUKAN lewat atribut height canvas.
+             Dengan maintainAspectRatio bawaan (true), Chart.js menghitung rasio
+             dari atribut canvas (lebar default 300 × height 70) dan memakainya
+             saat lebar induk belum terukur — hasilnya grafik terkunci selebar
+             300px di dalam panel yang lebarnya penuh. Pola pembungkus ini yang
+             dipakai VCB Dandori dan tidak bergantung pada waktu pengukuran. --}}
         <div class="erp-panel-body" style="padding:14px">
-            <canvas id="allChart" height="70"></canvas>
+            <div style="position:relative;height:340px">
+                <canvas id="allChart"></canvas>
+            </div>
         </div>
     </div>
 
@@ -189,8 +197,13 @@
             ACHIEVEMENT — <span id="oneChartLabel" style="color:#111827">—</span>
             <span style="margin-left:auto;font-size:10px;font-weight:400;color:#9ca3af">— — —  = 100% target</span>
         </div>
+        {{-- Tinggi dikunci di pembungkus, alasan sama dengan grafik Mode 1
+             di atas: atribut height canvas + maintainAspectRatio bawaan
+             membuat grafik terkunci 300px saat lebar induk belum terukur. --}}
         <div class="erp-panel-body" style="padding:14px">
-            <canvas id="oneChart" height="75"></canvas>
+            <div style="position:relative;height:300px">
+                <canvas id="oneChart"></canvas>
+            </div>
         </div>
     </div>
 
@@ -331,6 +344,7 @@ function buildAllChart(labels, achievements, trafficLights, karyawanIds) {
         },
         options: {
             responsive: true,
+            maintainAspectRatio: false,
             onClick(event, elements) {
                 if (elements.length > 0) {
                     const idx = elements[0].index;
@@ -359,7 +373,13 @@ function buildAllChart(labels, achievements, trafficLights, karyawanIds) {
                     border: { color:'#d1d5db' },
                 },
                 x: {
-                    ticks: { font: { family:'Arial', size:11, weight:'600' }, color:'#374151' },
+                    /* Nama operator digambar TEGAK DI DALAM batang (plugin
+                       namaDalamBatang di bawah), bukan sebagai tick di bawah
+                       sumbu. Dengan 30 operator, tick horizontal saling
+                       tabrakan lalu Chart.js memiringkannya — dan label miring
+                       memakan tinggi plot sekaligus menyisakan satu nama
+                       menggantung di kiri bawah. */
+                    ticks: { display: false },
                     grid: { display: false },
                     border: { color:'#d1d5db' },
                 }
@@ -381,7 +401,7 @@ function buildAllChart(labels, achievements, trafficLights, karyawanIds) {
                     });
                 });
             }
-        }, {
+        }, pluginNamaDalamBatang(), {
             id: 'refLine',
             afterDraw(chart) {
                 const { ctx, chartArea, scales } = chart;
@@ -557,6 +577,7 @@ function buildOneChart(labels, achievements, colors) {
         },
         options: {
             responsive: true,
+            maintainAspectRatio: false,
             plugins: {
                 legend: { display: false },
                 tooltip: {

@@ -126,8 +126,15 @@
             <i class="bi bi-graph-up me-1"></i>Achievement % per Inspector
             <span style="margin-left:auto;font-size:10px;font-weight:400;color:#9ca3af">— — —  = 100% target</span>
         </div>
+        {{-- Tinggi dikunci di pembungkus, BUKAN lewat atribut height canvas.
+             Dengan maintainAspectRatio bawaan (true), Chart.js menghitung rasio
+             dari atribut canvas (lebar bawaan 300 × height 70) dan memakainya
+             saat lebar induk belum terukur — hasilnya grafik terkunci selebar
+             300px di dalam panel yang lebarnya penuh. --}}
         <div class="erp-panel-body" style="padding:14px">
-            <canvas id="allChart" height="70"></canvas>
+            <div style="position:relative;height:340px">
+                <canvas id="allChart"></canvas>
+            </div>
         </div>
     </div>
 
@@ -186,7 +193,10 @@
             <span style="margin-left:auto;font-size:10px;font-weight:400;color:#9ca3af">— — —  = 100% target</span>
         </div>
         <div class="erp-panel-body" style="padding:14px">
-            <canvas id="oneChart" height="75"></canvas>
+            {{-- Alasan pembungkus sama dengan grafik Mode 1 di atas. --}}
+            <div style="position:relative;height:300px">
+                <canvas id="oneChart"></canvas>
+            </div>
         </div>
     </div>
 
@@ -328,6 +338,7 @@ function buildAllChart(labels, achievements, trafficLights) {
         },
         options: {
             responsive: true,
+            maintainAspectRatio: false,
             plugins: {
                 legend: { display: false },
                 tooltip: {
@@ -343,7 +354,10 @@ function buildAllChart(labels, achievements, trafficLights) {
                     grid: { color:'#f0f0f0' }, border: { color:'#d1d5db' },
                 },
                 x: {
-                    ticks: { font:{ family:'Arial', size:11, weight:'600' }, color:'#374151' },
+                    /* Nama inspector digambar TEGAK DI DALAM batang oleh
+                       pluginNamaDalamBatang() di layout; tick sumbu WAJIB mati,
+                       kalau tidak namanya tergambar dua kali. */
+                    ticks: { display: false },
                     grid: { display:false }, border: { color:'#d1d5db' },
                 }
             }
@@ -363,7 +377,7 @@ function buildAllChart(labels, achievements, trafficLights) {
                     });
                 });
             }
-        }, {
+        }, pluginNamaDalamBatang(), {
             id: 'refLine',
             afterDraw(chart) {
                 const { ctx, chartArea, scales } = chart;
@@ -533,6 +547,7 @@ function buildOneChart(labels, achievements, colors) {
         },
         options: {
             responsive: true,
+            maintainAspectRatio: false,
             plugins: {
                 legend: { display: false },
                 tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y}%` }, bodyFont:{family:'Arial',size:12,weight:'700'}, titleFont:{family:'Arial',size:11} }
