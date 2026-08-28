@@ -83,6 +83,17 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
+    /* Kolom tengah HARUS menggulung sendiri. Sidebar kiri dan panel kanan
+       sudah punya overflow-y sendiri; tanpa ini kolom tengah meluber keluar
+       .erp-ws-body dan grafik paling bawah lewat DI BELAKANG .erp-status —
+       terlihat seperti footer yang menimpa grafik, padahal grafiknya yang
+       tidak pernah bisa digulung.
+
+       min-height:0 wajib menemaninya: anak flex bawaannya min-height:auto,
+       yang menolak menyusut di bawah tinggi kontennya, sehingga overflow-y
+       tidak pernah aktif. */
+    overflow-y: auto;
+    min-height: 0;
 }
 
 /* ── Right KPI panel ──────────────────────────────────────────── */
