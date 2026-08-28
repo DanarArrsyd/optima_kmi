@@ -8,9 +8,9 @@ use Illuminate\Foundation\Http\FormRequest;
 
 /**
  * Payload batch: tiap elemen rows[] punya bentuk field yang sama persis
- * dengan payload satu baris Breakdown Mesin (StoreBreakdownMesinRequest,
- * masih hidup untuk route `maintenance.breakdown.store` sampai dipensiunkan
- * di task terpisah).
+ * dengan payload satu baris Breakdown Mesin, route `maintenance.breakdown.store`
+ * — pensiun bareng laci penulisnya, lewat StoreBreakdownMesinRequest yang
+ * juga sudah dihapus.
  */
 class StoreBreakdownMesinBatchRequest extends FormRequest
 {

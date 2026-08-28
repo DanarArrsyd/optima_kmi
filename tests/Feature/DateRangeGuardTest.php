@@ -3,7 +3,7 @@
 namespace Tests\Feature;
 
 use App\Http\Requests\StoreBreakdownDiesRequest;
-use App\Http\Requests\StoreBreakdownMesinRequest;
+use App\Http\Requests\StoreBreakdownMesinBatchRequest;
 use App\Http\Requests\StoreDandoriBatchRequest;
 use App\Http\Requests\StoreMasterMesinRequest;
 use App\Http\Requests\StoreMasterPartRequest;
@@ -48,9 +48,9 @@ class DateRangeGuardTest extends TestCase
             'qc update cek' => [UpdateQcRequest::class,             'tgl_pengecekan',            '2024-05-10', []],
             'qc update part' => [UpdateQcRequest::class,             'tgl_produksi_part',         '2024-05-10', []],
             'dandori batch' => [StoreDandoriBatchRequest::class,    'rows.*.tanggal',            '2024-05-10', []],
-            'bd mesin store' => [StoreBreakdownMesinRequest::class,  'tanggal_breakdown',         '2024-05-10', []],
-            'bd mesin store mulai' => [StoreBreakdownMesinRequest::class,  'tanggal_mulai_perbaikan',   '2024-05-10', ['tanggal_breakdown' => '2024-05-09']],
-            'bd mesin store selesai' => [StoreBreakdownMesinRequest::class,  'tanggal_selesai_perbaikan', '2024-05-10', ['tanggal_mulai_perbaikan' => '2024-05-09']],
+            'bd mesin batch' => [StoreBreakdownMesinBatchRequest::class,  'rows.*.tanggal_breakdown',         '2024-05-10', []],
+            'bd mesin batch mulai' => [StoreBreakdownMesinBatchRequest::class,  'rows.*.tanggal_mulai_perbaikan',   '2024-05-10', ['tanggal_breakdown' => '2024-05-09']],
+            'bd mesin batch selesai' => [StoreBreakdownMesinBatchRequest::class,  'rows.*.tanggal_selesai_perbaikan', '2024-05-10', ['tanggal_mulai_perbaikan' => '2024-05-09']],
             'bd mesin update' => [UpdateBreakdownMesinRequest::class, 'tanggal_breakdown',         '2024-05-10', []],
             'bd dies store' => [StoreBreakdownDiesRequest::class,   'tanggal_breakdown',         '2024-05-10', []],
             'bd dies update' => [UpdateBreakdownDiesRequest::class,  'tanggal_breakdown',         '2024-05-10', []],

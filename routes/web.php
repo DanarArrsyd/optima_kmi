@@ -194,7 +194,7 @@ Route::middleware('auth')->group(function () {
         Route::post('breakdown/import', [BreakdownMesinController::class, 'import'])->name('breakdown.import');
         Route::get('breakdown/import-template', [BreakdownMesinController::class, 'importTemplate'])->name('breakdown.import-template');
         Route::post('breakdown/batch', [BreakdownMesinController::class, 'batch'])->name('breakdown.batch');
-        Route::resource('breakdown', BreakdownMesinController::class)->only(['index', 'create', 'store']);
+        Route::resource('breakdown', BreakdownMesinController::class)->only(['index', 'create']);
 
         Route::get('breakdown-dies/last-no-lkd', [BreakdownDiesController::class, 'lastNoLkd'])->name('breakdown-dies.last-no-lkd');
         Route::get('breakdown-dies/export', [BreakdownDiesController::class, 'export'])->name('breakdown-dies.export');
