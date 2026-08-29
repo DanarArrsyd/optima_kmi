@@ -157,7 +157,7 @@
                 <canvas id="ngRateChart"></canvas>
             </div>
             <div x-show="hasData" x-cloak class="ngv-hint">
-                1 PPM = 1 pcs NG per sejuta diperiksa. Klik satu batang bulan untuk melihat rincian jenis NG bulan itu.
+                1 PPM = 1 pcs NG per sejuta diperiksa — RATE per bulan, bukan jumlah pcs, jadi jangan dijumlah lintas bulan buat dibandingkan ke Total NG di atas. Klik satu batang bulan untuk melihat rincian jenis NG bulan itu (hover buat lihat jumlah pcs asli).
             </div>
         </div>
     </div>
@@ -373,7 +373,10 @@ function vcbNg() {
                             offset: 2,
                             color: '#374151',
                             font: { size: 11, weight: 700 },
-                            formatter: v => Number(v).toLocaleString('id-ID'),
+                            /* Angka ini RATE (PPM), bukan jumlah pcs NG bulan itu — tanpa
+                             * unit di label, gampang dikira pcs dan dijumlah salah lawan
+                             * kartu TOTAL NG di atas (yang memang jumlah pcs). */
+                            formatter: v => Number(v).toLocaleString('id-ID') + ' ppm',
                         },
                         tooltip: {
                             displayColors: false,
