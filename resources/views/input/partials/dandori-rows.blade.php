@@ -1,10 +1,19 @@
 {{--
-    Baris Dandori berulang — dipakai form create dan laci index LHP Produksi.
+    Baris Dandori berulang — dipakai halaman batch Dandori dan blok "Ada
+    Dandori?" di LHP Produksi.
 
-    Bentuk input, typeahead, dan pratinjau Std/Over sengaja dibuat SAMA PERSIS
-    dengan halaman Dandori (`input/dandori/index.blade.php`). Operator yang
-    sama mengisi keduanya; dua cara mengetik untuk data yang sama adalah beban
-    yang tidak perlu.
+    Jenis Loss Time SENGAJA memakai <select> biasa, BUKAN typeahead seperti
+    Operator Dandori. Dulu dua-duanya typeahead ("seragam dengan halaman
+    Dandori"), tapi tabel baris ini berada di dalam .table-responsive —
+    overflow-x:auto pada elemen itu memaksa overflow-y ikut menjadi auto
+    (aturan CSS: satu sumbu non-visible membuat sumbu lain ikut non-visible),
+    sehingga .ta-dropdown yang position:absolute IKUT TERPOTONG oleh scroll
+    container-nya sendiri alih-alih melayang di atas halaman. Operator melihat
+    daftar loss time terjepit dalam kotak kecil, bukan dropdown penuh — mirip
+    "Pilih Jenis NG" yang MEMANG select biasa dan karena itu kebal soal ini
+    (dropdown native dirender browser di atas segalanya, bukan lewat CSS
+    position). Jangan dikembalikan ke typeahead tanpa membereskan pemotongan
+    overflow-nya dulu.
 
     Parameter:
       $losstimes : Collection MasterLosstime
@@ -20,13 +29,8 @@
         'std_menit_progressive' => (float) ($l->std_menit_progressive ?? 0),
     ])->values();
 
-    $_ltLabel = $losstimes->mapWithKeys(fn ($l) => [$l->id => "{$l->kode} — {$l->jenis_losstime}"]);
-
-    /* Baris lama dari old() dibawa lengkap dengan teksnya, supaya setelah
-       validasi gagal kotak typeahead tidak tampil kosong padahal id-nya ada. */
     $_initial = collect($initial ?? [])->map(fn ($r) => [
         'id_losstime' => $r['id_losstime'] ?? '',
-        'ltQuery' => $_ltLabel[$r['id_losstime'] ?? null] ?? '',
         'actual_menit' => $r['actual_menit'] ?? '',
     ])->values();
 
@@ -93,30 +97,15 @@
                 <template x-for="(row, i) in rows" :key="row.uid">
                     <tr>
                         <td>
-                            <div class="ta-wrap">
-                                <input type="text"
-                                       class="form-control form-control-sm ta-input"
-                                       x-model="row.ltQuery"
-                                       @focus="row.ltOpen = true; row.ltIdx = -1"
-                                       @blur="ltClose(row)"
-                                       @keydown="ltKey(row, $event)"
-                                       @input="row.id_losstime = ''; row.ltOpen = true; row.ltIdx = -1; recompute(row)"
-                                       placeholder="Ketik kode atau jenis...">
-                                <input type="hidden"
-                                       :name="`dandori[${i}][id_losstime]`"
-                                       :value="row.id_losstime">
-                                <div class="ta-dropdown" x-show="row.ltOpen" x-cloak>
-                                    <template x-if="ltFiltered(row).length === 0">
-                                        <div class="ta-empty">Tidak ditemukan</div>
-                                    </template>
-                                    <template x-for="(item, j) in ltFiltered(row)" :key="item.v">
-                                        <div class="ta-item"
-                                             :class="{ 'ta-active': j === row.ltIdx }"
-                                             @mousedown.prevent="ltPick(row, item)"
-                                             x-text="item.t"></div>
-                                    </template>
-                                </div>
-                            </div>
+                            <select class="form-select form-select-sm"
+                                    :name="`dandori[${i}][id_losstime]`"
+                                    x-model="row.id_losstime"
+                                    @change="recompute(row)" required>
+                                <option value="">— pilih jenis loss time —</option>
+                                @foreach($losstimes as $lt)
+                                    <option value="{{ $lt->id }}">{{ $lt->kode }} — {{ $lt->jenis_losstime }}</option>
+                                @endforeach
+                            </select>
                         </td>
                         <td>
                             <input type="number"
@@ -184,9 +173,6 @@ function dandoriRows(initial, ltData) {
     const baris = (r = {}) => ({
         uid: seq++,
         id_losstime: r.id_losstime ?? '',
-        ltQuery: r.ltQuery ?? '',
-        ltOpen: false,
-        ltIdx: -1,
         actual_menit: r.actual_menit ?? '',
         std_menit: 0,
         over_menit: 0,
@@ -194,7 +180,6 @@ function dandoriRows(initial, ltData) {
 
     return {
         ltData,
-        ltItems: ltData.map(lt => ({ v: lt.id, t: `${lt.kode} — ${lt.jenis_losstime}` })),
         rows: (initial || []).map(baris),
         progressive: false,
 
@@ -219,47 +204,6 @@ function dandoriRows(initial, ltData) {
             const opt = this.prosesEl ? this.prosesEl.selectedOptions[0] : null;
             this.progressive = !!(opt && opt.dataset.progressive === '1');
             this.rows.forEach(r => this.recompute(r));
-        },
-
-        ltFiltered(row) {
-            if (!row.ltQuery.trim()) return this.ltItems.slice(0, 60);
-            const q = row.ltQuery.toLowerCase();
-            return this.ltItems.filter(i => i.t.toLowerCase().includes(q)).slice(0, 60);
-        },
-
-        ltPick(row, item) {
-            row.ltQuery = item.t;
-            row.id_losstime = item.v;
-            row.ltOpen = false;
-            row.ltIdx = -1;
-            this.recompute(row);
-        },
-
-        ltClose(row) {
-            setTimeout(() => {
-                row.ltOpen = false;
-                if (row.id_losstime && !this.ltItems.find(i => i.v == row.id_losstime && i.t === row.ltQuery)) {
-                    row.id_losstime = '';
-                    row.ltQuery = '';
-                    this.recompute(row);
-                }
-            }, 180);
-        },
-
-        ltKey(row, e) {
-            const f = this.ltFiltered(row);
-            if (e.key === 'ArrowDown') {
-                e.preventDefault(); row.ltOpen = true;
-                row.ltIdx = Math.min(row.ltIdx + 1, f.length - 1);
-            } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                row.ltIdx = Math.max(row.ltIdx - 1, 0);
-            } else if (e.key === 'Enter') {
-                e.preventDefault();
-                if (row.ltIdx >= 0 && f[row.ltIdx]) this.ltPick(row, f[row.ltIdx]);
-            } else if (e.key === 'Escape') {
-                row.ltOpen = false;
-            }
         },
 
         add() { this.rows.push(baris()); },
