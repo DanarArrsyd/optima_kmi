@@ -94,6 +94,16 @@ class StoreBreakdownDiesBatchRequest extends FormRequest
     public function withValidator($validator): void
     {
         $validator->after(function ($validator) {
+            // Rule 'rows' (required|array|min:1|max:50) sudah gagal duluan —
+            // mis. rows_json berisi ratusan baris. Laravel tetap memanggil
+            // after() apapun hasil rule dasar, jadi tanpa guard ini loop di
+            // bawah tetap jalan penuh dan menembakkan satu query exists()
+            // PER BARIS sebelum request ditolak — payload rows_json besar
+            // jadi biaya DB nyata padahal responsnya toh ditolak.
+            if ($validator->errors()->has('rows')) {
+                return;
+            }
+
             $rows = $this->input('rows');
             if (! is_array($rows)) {
                 return;

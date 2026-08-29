@@ -202,6 +202,36 @@ class HalamanBatchBreakdownDiesTest extends TestCase
         );
     }
 
+    public function test_pic_maintenance_pakai_typeahead_bukan_input_bebas(): void
+    {
+        // pic_maintenance jadi dasar filter PIC di index (->where('pic_maintenance', ...))
+        // dan sumber datanya sama-sama MasterKaryawan departemen Maintenance.
+        // Input bebas (tanpa typeahead) membiarkan operator mengetik apa
+        // saja — satu salah ketik dan baris itu jadi tidak kelihatan lagi
+        // oleh filter PIC serta laporan per-PIC, tanpa error di mana pun.
+        $html = $this->halaman();
+
+        $this->assertStringContainsString(
+            'x-data="taField(taPic)"',
+            $html,
+            'PIC Maintenance tidak memakai typeahead taField(taPic) — kembali jadi input bebas.'
+        );
+
+        $this->assertMatchesRegularExpression(
+            '/name="pic_maintenance"[^>]*type="hidden"|type="hidden"[^>]*name="pic_maintenance"/',
+            $html,
+            'Field pic_maintenance yang benar-benar dikirim ke server bukan hidden input hasil pilihan typeahead.'
+        );
+
+        // Negatif: pastikan bentuk lama (input teks bebas beridentitas
+        // f_pic yang LANGSUNG bernama pic_maintenance) sudah tidak ada.
+        $this->assertDoesNotMatchRegularExpression(
+            '/<input type="text" id="f_pic" name="pic_maintenance"/',
+            $html,
+            'PIC Maintenance masih berupa input teks bebas — typeahead belum benar-benar menggantikannya.'
+        );
+    }
+
     public function test_halaman_memasang_setelah_pulih(): void
     {
         $html = $this->halaman();
@@ -240,6 +270,46 @@ class HalamanBatchBreakdownDiesTest extends TestCase
             'majukanNomorUrut(diri)',
             $badanSetelahPulih,
             'setelahPulih(diri) { } kosong — tidak memanggil majukanNomorUrut(diri), jadi nomor_urut tidak akan menaik setelah draft dipulihkan walau seam-nya terpasang.'
+        );
+    }
+
+    public function test_resetlain_memanggil_majukan_nomor_urut(): void
+    {
+        // resetLain(diri) dipanggil di UJUNG resetSebagian() — yaitu SETIAP
+        // kali SAVE TO DRAFT sukses, jalur yang jauh lebih sering dipakai
+        // daripada setelahPulih (yang hanya sekali per pemulihan draft dari
+        // localStorage). Test di atas (test_halaman_memasang_setelah_pulih)
+        // sudah membuktikan setelahPulih memanggil majukanNomorUrut(diri);
+        // test ini membuktikan hal yang sama untuk resetLain — tanpanya,
+        // menghapus majukanNomorUrut(diri) dari resetLain tetap membuat
+        // suite hijau walau di praktiknya baris kedua dan seterusnya dalam
+        // satu sesi akan mengusulkan nomor_urut yang sama dengan baris
+        // pertama, dan seluruh batch ditolak server saat SUBMIT DRAFT.
+        $html = $this->halaman();
+
+        $awal = strpos($html, 'function konfigBreakdownDies()');
+        $this->assertNotFalse($awal, 'Deklarasi function konfigBreakdownDies() tidak ditemukan.');
+
+        $blokKonfig = substr($html, $awal);
+
+        $awalResetLain = preg_match(
+            '/\bresetLain\s*\(\s*diri\s*\)\s*\{/',
+            $blokKonfig,
+            $mResetLain,
+            PREG_OFFSET_CAPTURE
+        );
+        $this->assertSame(1, $awalResetLain, 'Blok resetLain(diri) { tidak ditemukan untuk diperiksa isinya.');
+
+        $mulaiBadan = $mResetLain[0][1] + strlen($mResetLain[0][0]);
+        $akhirBadan = strpos($blokKonfig, "\n        },", $mulaiBadan);
+        $this->assertNotFalse($akhirBadan, 'Akhir blok resetLain(diri) tidak ditemukan.');
+
+        $badanResetLain = substr($blokKonfig, $mulaiBadan, $akhirBadan - $mulaiBadan);
+
+        $this->assertStringContainsString(
+            'majukanNomorUrut(diri)',
+            $badanResetLain,
+            'resetLain(diri) tidak memanggil majukanNomorUrut(diri) — nomor_urut tidak akan menaik setelah SAVE TO DRAFT, baris kedua dst dalam satu sesi akan bentrok saat SUBMIT DRAFT.'
         );
     }
 

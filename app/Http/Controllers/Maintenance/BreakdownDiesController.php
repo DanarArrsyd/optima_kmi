@@ -133,6 +133,7 @@ class BreakdownDiesController extends Controller
     {
         return view('maintenance.breakdown-dies.create', [
             'partList' => MasterPart::with('proses')->orderBy('part_no')->get(),
+            'picList' => MasterKaryawan::where('departemen', 'Maintenance')->aktif()->orderBy('nama_karyawan')->get(),
             'nextNomor' => $this->svc->nextNomorUrut(),
         ]);
     }

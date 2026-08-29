@@ -250,9 +250,10 @@ memanggil `majukanNomorUrut()`) dan test
 menjangkar ke dalam blok `konfigBreakdownMesin()`, bukan ke definisi
 `batchDraft` di layout itu sendiri.
 
-Halaman yatim `maintenance/breakdown/create.blade.php` **dihapus**, dan route
-`maintenance.breakdown.create` menunjuk halaman batch yang baru. Modul itu
-turun dari tiga penulis jadi dua (batch + edit), sama seperti produksi.
+Halaman yatim `maintenance/breakdown/create.blade.php` **ditulis ulang di
+tempat** jadi halaman batch yang baru — bukan dihapus, filenya tetap ada dan
+route `maintenance.breakdown.create` tetap menunjuk ke situ. Modul itu turun
+dari tiga penulis jadi dua (batch + edit), sama seperti produksi.
 
 ## 3. Sisi Server
 

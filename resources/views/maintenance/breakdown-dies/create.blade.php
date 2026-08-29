@@ -14,6 +14,7 @@
             'nama_proses' => $pr->nama_proses,
         ])->values(),
     ])->values();
+    $_taPic = $picList->map(fn ($k) => ['v' => $k->nama_karyawan, 't' => $k->nama_karyawan])->values();
 @endphp
 
 @push('styles')
@@ -172,10 +173,24 @@
                 </div>
             @endforeach
 
-            <div class="lhp-baris">
+            <div class="lhp-baris" x-data="taField(taPic)">
                 <label for="f_pic">PIC Maintenance <span class="text-danger">*</span></label>
                 <div class="lhp-isi">
-                    <input type="text" id="f_pic" name="pic_maintenance" class="form-control">
+                    <div class="ta-wrap">
+                        <input type="text" id="f_pic" class="form-control ta-input" x-model="query"
+                               @focus="openDd()" @blur="closeDd()" @keydown="onKey($event)" @input="onInput()"
+                               placeholder="Ketik nama PIC Maintenance...">
+                        <input type="hidden" name="pic_maintenance" :value="val">
+                        <div class="ta-dropdown" x-show="open" x-cloak>
+                            <template x-if="filtered.length === 0">
+                                <div class="ta-empty">Tidak ditemukan</div>
+                            </template>
+                            <template x-for="(item, i) in filtered" :key="item.v">
+                                <div class="ta-item" :class="{ 'ta-active': i === idx }"
+                                     @mousedown.prevent="pick(item)" x-text="item.t"></div>
+                            </template>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -263,6 +278,7 @@
 <script>
 const taParts   = @json($_taParts);
 const partsData = @json($_partsData);
+const taPic     = @json($_taPic);
 
 /* ROMAN_BULAN, jamAntara() dan majukanNomorUrut() sekarang didefinisikan
    satu kali di layouts/app.blade.php (dipakai bareng dengan halaman batch
