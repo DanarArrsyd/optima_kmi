@@ -1327,6 +1327,11 @@
                     <i class="bi bi-person me-2"></i>Profil
                 </a>
                 @endif
+                @if($u->hasRole('admin'))
+                <a href="{{ route('profile.two-factor') }}" class="dropdown-item">
+                    <i class="bi bi-shield-lock me-2"></i>Autentikasi 2FA
+                </a>
+                @endif
                 <form method="POST" action="{{ route('logout') }}" style="margin:0">
                     @csrf
                     <button type="submit" class="dropdown-item" style="width:100%;text-align:left;border:0;background:none">

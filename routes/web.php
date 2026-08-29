@@ -28,6 +28,7 @@ use App\Http\Controllers\Maintenance\MtbfDiesController;
 use App\Http\Controllers\Maintenance\AvailabilityDiesController;
 use App\Http\Controllers\Maintenance\ControlStrokeMesinController;
 use App\Http\Controllers\Maintenance\ControlStrokeDiesController;
+use App\Http\Controllers\TwoFactorAuthController;
 
 Route::get('/', [HomeController::class, 'root']);
 
@@ -81,6 +82,14 @@ Route::middleware('auth')->group(function () {
         Route::get('backup/{berkas}/unduh', [\App\Http\Controllers\Sistem\BackupController::class, 'unduh'])->name('backup.unduh');
         Route::delete('backup/{berkas}', [\App\Http\Controllers\Sistem\BackupController::class, 'hapus'])->name('backup.hapus');
         Route::get('log-aktivitas', [\App\Http\Controllers\Sistem\LogAktivitasController::class, 'index'])->name('log-aktivitas.index');
+    });
+
+    // --- 2FA (admin only) — setup/nonaktifkan TOTP. Nol route 'profile.*' lain
+    // terpasang di app ini (ProfileController Breeze dead scaffolding). ---
+    Route::middleware('role:admin')->prefix('profile')->name('profile.')->group(function () {
+        Route::get('two-factor', [TwoFactorAuthController::class, 'show'])->name('two-factor');
+        Route::post('two-factor', [TwoFactorAuthController::class, 'confirm'])->name('two-factor.confirm');
+        Route::delete('two-factor', [TwoFactorAuthController::class, 'destroy'])->name('two-factor.destroy');
     });
 
     // --- INPUT PRODUKSI: daftar (read-only, guest boleh) ---

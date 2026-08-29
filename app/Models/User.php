@@ -53,6 +53,8 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'two_factor_secret',
+        'two_factor_recovery_codes',
     ];
 
     /**
@@ -67,7 +69,16 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_aktif' => 'boolean',
             'roles' => 'array',
+            'two_factor_secret' => 'encrypted',
+            'two_factor_recovery_codes' => 'encrypted:array',
+            'two_factor_confirmed_at' => 'datetime',
         ];
+    }
+
+    /** two_factor_* SENGAJA tidak di $fillable — cuma ditulis lewat TwoFactorAuthService::confirm()/disable(). */
+    public function hasTwoFactorEnabled(): bool
+    {
+        return $this->two_factor_secret !== null && $this->two_factor_confirmed_at !== null;
     }
 
     public function karyawan(): BelongsTo

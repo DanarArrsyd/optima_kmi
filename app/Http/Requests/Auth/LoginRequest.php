@@ -37,13 +37,21 @@ class LoginRequest extends FormRequest
     /**
      * Attempt to authenticate the request's credentials.
      *
+     * TIDAK selalu login penuh: kalau akun sudah aktifkan 2FA, sesi login
+     * DITAHAN (nol Auth::login()) dan menunggu kode TOTP di
+     * TwoFactorChallengeController. Caller (AuthenticatedSessionController)
+     * membedakan lewat needsTwoFactorChallenge().
+     *
      * @throws ValidationException
      */
     public function authenticate(): void
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        $provider = Auth::guard('web')->getProvider();
+        $user = $provider->retrieveByCredentials($this->only('email', 'password'));
+
+        if (! $user || ! $provider->validateCredentials($user, $this->only('email', 'password'))) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
@@ -56,8 +64,7 @@ class LoginRequest extends FormRequest
          * dinonaktifkan. Schema::hasColumn menjaga jendela deploy antara
          * rsync dan migrate: kalau kolomnya belum ada, anggap aktif
          * (fail-open) daripada mengunci SEMUA login sampai migrate jalan. */
-        if (Schema::hasColumn('users', 'is_aktif') && ! Auth::user()->is_aktif) {
-            Auth::logout();
+        if (Schema::hasColumn('users', 'is_aktif') && ! $user->is_aktif) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
@@ -66,6 +73,21 @@ class LoginRequest extends FormRequest
         }
 
         RateLimiter::clear($this->throttleKey());
+
+        if (Schema::hasColumn('users', 'two_factor_confirmed_at') && $user->hasTwoFactorEnabled()) {
+            $this->session()->put('2fa.user.id', $user->id);
+            $this->session()->put('2fa.remember', $this->boolean('remember'));
+
+            return;
+        }
+
+        Auth::login($user, $this->boolean('remember'));
+    }
+
+    /** Dipanggil SETELAH authenticate() — true kalau login masih menunggu kode TOTP. */
+    public function needsTwoFactorChallenge(): bool
+    {
+        return ! Auth::check() && $this->session()->has('2fa.user.id');
     }
 
     /**
