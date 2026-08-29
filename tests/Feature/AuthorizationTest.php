@@ -153,7 +153,7 @@ class AuthorizationTest extends TestCase
             ['input.produksi.import-template'], ['input.qc.import-template'], ['input.dandori.import-template'],
             ['maintenance.breakdown.index'], ['maintenance.breakdown-dies.index'],
             ['maintenance.breakdown.export'], ['maintenance.breakdown-dies.export'],
-            ['maintenance.breakdown.create'],
+            ['maintenance.breakdown.create'], ['maintenance.breakdown-dies.create'],
             ['chatbot.index'], ['admin.anomali'],
         ];
     }
