@@ -264,41 +264,20 @@
 const taParts   = @json($_taParts);
 const partsData = @json($_partsData);
 
-/* Sama persis dengan BreakdownDiesService::generateNoLkd() di server —
-   dipakai HANYA untuk pratinjau tabel draft dan pemeriksaan tabrakan No LKD
-   antar baris di dalam draft (periksa()). Angka yang tersimpan tetap
-   dirakit ulang oleh server; kalau dua sisi ini pernah menyimpang, server
-   yang menang. */
-const ROMAN_BULAN = { 1: 'I', 2: 'II', 3: 'III', 4: 'IV', 5: 'V', 6: 'VI', 7: 'VII', 8: 'VIII', 9: 'IX', 10: 'X', 11: 'XI', 12: 'XII' };
-
+/* ROMAN_BULAN, jamAntara() dan majukanNomorUrut() sekarang didefinisikan
+   satu kali di layouts/app.blade.php (dipakai bareng dengan halaman batch
+   Breakdown Mesin) — dijaga KomponenBersamaTest supaya tidak menyimpang lagi
+   di sini. Sama persis dengan BreakdownDiesService::generateNoLkd() di
+   server — noLkdPreview() dipakai HANYA untuk pratinjau tabel draft dan
+   pemeriksaan tabrakan No LKD antar baris di dalam draft (periksa()). Angka
+   yang tersimpan tetap dirakit ulang oleh server; kalau dua sisi ini pernah
+   menyimpang, server yang menang. */
 function noLkdPreview(nomorUrut, tanggalBreakdown) {
     const d = new Date(`${tanggalBreakdown}T00:00:00`);
     const roman = ROMAN_BULAN[d.getMonth() + 1] || 'I';
     const yy = String(d.getFullYear()).slice(-2);
 
     return `${nomorUrut}/LKD/MTC/KMI/${roman}/${yy}`;
-}
-
-/* Selisih jam antara dua titik waktu (tanggal+jam), dibulatkan ke bawah 0
-   kalau negatif — pratinjau saja, server yang menghitung angka tersimpan. */
-function jamAntara(tglA, jamA, tglB, jamB) {
-    const a = new Date(`${tglA}T${jamA}`).getTime();
-    const b = new Date(`${tglB}T${jamB}`).getTime();
-
-    return Math.max(0, (b - a) / 3600000);
-}
-
-/* Dipakai resetLain() (setelah SAVE TO DRAFT) DAN setelahPulih() (setelah
-   draft dipulihkan dari localStorage) — dua momen yang sama-sama butuh
-   nomor_urut di form menaik dari nomor TERTINGGI yang sudah ada di draft,
-   bukan cuma dari nilai yang dirender server saat halaman dimuat. Lihat
-   komentar setelahPulih di konfigBreakdownDies() untuk skenario lengkapnya. */
-function majukanNomorUrut(diri) {
-    if (!diri.rows.length) return;
-
-    const maks = diri.rows.reduce((m, r) => Math.max(m, Number(r.nomor_urut) || 0), 0);
-    const el = diri.form().querySelector('[name="nomor_urut"]');
-    if (el) el.value = maks + 1;
 }
 
 function konfigBreakdownDies() {

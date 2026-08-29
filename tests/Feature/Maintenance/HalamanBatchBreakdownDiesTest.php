@@ -216,6 +216,31 @@ class HalamanBatchBreakdownDiesTest extends TestCase
             $blokKonfig,
             'konfigBreakdownDies() tidak memasang cfg.setelahPulih(diri) — nomor_urut tidak akan menaik setelah draft dipulihkan.'
         );
+
+        // Regex di atas lolos untuk setelahPulih(diri) {} KOSONG — persis
+        // kegagalan senyap yang seam ini dibuat untuk mencegah. Jangkarkan
+        // KHUSUS ke isi blok setelahPulih (bukan seluruh blokKonfig, yang
+        // juga memanggil majukanNomorUrut() dari resetLain() di dekatnya)
+        // dan buktikan badannya benar-benar memanggil majukanNomorUrut(diri).
+        $awalSetelahPulih = preg_match(
+            '/\bsetelahPulih\s*\(\s*diri\s*\)\s*\{/',
+            $blokKonfig,
+            $mSetelahPulih,
+            PREG_OFFSET_CAPTURE
+        );
+        $this->assertSame(1, $awalSetelahPulih, 'Blok setelahPulih(diri) { tidak ditemukan untuk diperiksa isinya.');
+
+        $mulaiBadan = $mSetelahPulih[0][1] + strlen($mSetelahPulih[0][0]);
+        $akhirBadan = strpos($blokKonfig, "\n        },", $mulaiBadan);
+        $this->assertNotFalse($akhirBadan, 'Akhir blok setelahPulih(diri) tidak ditemukan.');
+
+        $badanSetelahPulih = substr($blokKonfig, $mulaiBadan, $akhirBadan - $mulaiBadan);
+
+        $this->assertStringContainsString(
+            'majukanNomorUrut(diri)',
+            $badanSetelahPulih,
+            'setelahPulih(diri) { } kosong — tidak memanggil majukanNomorUrut(diri), jadi nomor_urut tidak akan menaik setelah draft dipulihkan walau seam-nya terpasang.'
+        );
     }
 
     public function test_halaman_edit_tidak_500(): void

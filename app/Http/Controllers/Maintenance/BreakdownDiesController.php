@@ -121,7 +121,6 @@ class BreakdownDiesController extends Controller
             'filterStatus' => $filterStatus,
             'filterCustomer' => $filterCustomer,
             'filterProsesId' => $filterProsesId,
-            'nextNomor' => $this->svc->nextNomorUrut(),
         ]);
     }
 

@@ -2081,6 +2081,37 @@ function batchDraft(cfg) {
     };
 }
 
+/* Dipakai halaman batch Breakdown Mesin & Breakdown Dies untuk pratinjau No
+   LKM/No LKD (BreakdownMesinService::generateNoLkm() dan
+   BreakdownDiesService::generateNoLkd() di server merakit angka yang
+   sebenarnya tersimpan — ini cuma pratinjau tabel draft & pemeriksaan
+   tabrakan di dalam draft). Sama persis di dua halaman itu sebelum
+   dipindah ke sini — KomponenBersamaTest menjaganya tetap satu definisi. */
+const ROMAN_BULAN = { 1: 'I', 2: 'II', 3: 'III', 4: 'IV', 5: 'V', 6: 'VI', 7: 'VII', 8: 'VIII', 9: 'IX', 10: 'X', 11: 'XI', 12: 'XII' };
+
+/* Selisih jam antara dua titik waktu (tanggal+jam), dibulatkan ke bawah 0
+   kalau negatif — pratinjau saja, server yang menghitung angka tersimpan. */
+function jamAntara(tglA, jamA, tglB, jamB) {
+    const a = new Date(`${tglA}T${jamA}`).getTime();
+    const b = new Date(`${tglB}T${jamB}`).getTime();
+
+    return Math.max(0, (b - a) / 3600000);
+}
+
+/* Dipakai resetLain() (setelah SAVE TO DRAFT) DAN setelahPulih() (setelah
+   draft dipulihkan dari localStorage) — dua momen yang sama-sama butuh
+   nomor_urut di form menaik dari nomor TERTINGGI yang sudah ada di draft,
+   bukan cuma dari nilai yang dirender server saat halaman dimuat. Lihat
+   komentar setelahPulih di konfigBreakdownMesin()/konfigBreakdownDies()
+   untuk skenario lengkapnya. */
+function majukanNomorUrut(diri) {
+    if (!diri.rows.length) return;
+
+    const maks = diri.rows.reduce((m, r) => Math.max(m, Number(r.nomor_urut) || 0), 0);
+    const el = diri.form().querySelector('[name="nomor_urut"]');
+    if (el) el.value = maks + 1;
+}
+
 function sbToggle() {
     if (isMobile()) {
         $body.classList.toggle('sb-mobile-open');
