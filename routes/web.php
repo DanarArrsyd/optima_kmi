@@ -80,6 +80,7 @@ Route::middleware('auth')->group(function () {
         Route::post('backup/jalankan', [\App\Http\Controllers\Sistem\BackupController::class, 'jalankan'])->name('backup.jalankan');
         Route::get('backup/{berkas}/unduh', [\App\Http\Controllers\Sistem\BackupController::class, 'unduh'])->name('backup.unduh');
         Route::delete('backup/{berkas}', [\App\Http\Controllers\Sistem\BackupController::class, 'hapus'])->name('backup.hapus');
+        Route::get('log-aktivitas', [\App\Http\Controllers\Sistem\LogAktivitasController::class, 'index'])->name('log-aktivitas.index');
     });
 
     // --- INPUT PRODUKSI: daftar (read-only, guest boleh) ---

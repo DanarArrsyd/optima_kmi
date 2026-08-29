@@ -8,11 +8,23 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, LogsActivity, Notifiable;
+
+    /** Password sengaja TIDAK ikut ter-log — hash saja, nol nilai audit, potensi bocor kalau ke-dump. */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['name', 'email', 'roles', 'id_karyawan', 'is_aktif'])
+            ->logOnlyDirty()
+            ->dontLogEmptyChanges()
+            ->useLogName('users');
+    }
 
     /**
      * Satu-satunya daftar role yang sah, dan satu-satunya tempat labelnya

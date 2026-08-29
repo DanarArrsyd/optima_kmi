@@ -5,10 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 class MasterShift extends Model
 {
-    use SoftDeletes;
+    use LogsActivity, SoftDeletes;
 
     protected $table = 'master_shift';
 
@@ -23,6 +25,12 @@ class MasterShift extends Model
     protected $casts = [
         'dihitung_availability' => 'boolean',
     ];
+
+    /** dihitung_availability geser Availability historis retroaktif — audit trail wajib nangkep ini. */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()->logFillable()->logOnlyDirty()->dontLogEmptyChanges()->useLogName('master_shift');
+    }
 
     /** Semua istirahat untuk shift ini. */
     public function istirahat(): HasMany

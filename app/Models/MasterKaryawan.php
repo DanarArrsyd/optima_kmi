@@ -6,16 +6,23 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 class MasterKaryawan extends Model
 {
-    use SoftDeletes;
+    use LogsActivity, SoftDeletes;
 
     protected $table = 'master_karyawan';
 
     protected $fillable = ['nik', 'nama_karyawan', 'departemen', 'is_aktif', 'tanggal_nonaktif'];
 
     protected $casts = ['is_aktif' => 'boolean', 'tanggal_nonaktif' => 'date'];
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()->logFillable()->logOnlyDirty()->dontLogEmptyChanges()->useLogName('master_karyawan');
+    }
 
     public function scopeAktif($query)
     {

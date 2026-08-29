@@ -3,11 +3,16 @@
 namespace App\Providers;
 
 use App\Contracts\PembuatDump;
+use App\Listeners\LogAuthActivity;
 use App\Services\Backup\MysqldumpPembuatDump;
 use App\Services\Chatbot\Capabilities;
 use App\Services\Chatbot\CapabilityRegistry;
 use App\Support\SafeExcelValueBinder;
+use Illuminate\Auth\Events\Failed;
+use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\Logout;
 use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use PhpOffice\PhpSpreadsheet\Cell\Cell;
 
@@ -61,5 +66,9 @@ class AppServiceProvider extends ServiceProvider
         // Semua export Excel: string yang diawali "=" dsb ditulis sebagai teks,
         // bukan formula. Lihat SafeExcelValueBinder.
         Cell::setValueBinder(new SafeExcelValueBinder);
+
+        Event::listen(Login::class, [LogAuthActivity::class, 'handleLogin']);
+        Event::listen(Logout::class, [LogAuthActivity::class, 'handleLogout']);
+        Event::listen(Failed::class, [LogAuthActivity::class, 'handleFailed']);
     }
 }
