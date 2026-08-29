@@ -37,7 +37,7 @@
     }
 
     /* Batang bisa diklik — kursor dan keterangan harus mengatakannya. */
-    #ngRateChart { cursor: pointer; }
+    #ngPcsChart { cursor: pointer; }
 
     .ngv-hint {
         font-size: 11px;
@@ -166,7 +166,7 @@
                     <canvas id="ngRateChart"></canvas>
                 </div>
                 <div x-show="hasData" x-cloak class="ngv-hint">
-                    1 PPM = 1 pcs NG per sejuta diperiksa — RATE per bulan, bukan jumlah pcs, jadi jangan dijumlah lintas bulan buat dibandingkan ke Total NG di atas. Klik satu batang bulan untuk melihat rincian jenis NG bulan itu (hover buat lihat jumlah pcs asli).
+                    1 PPM = 1 pcs NG per sejuta diperiksa — RATE per bulan, bukan jumlah pcs, jadi jangan dijumlah lintas bulan buat dibandingkan ke Total NG di atas.
                 </div>
             </div>
         </div>
@@ -176,6 +176,9 @@
             <div class="erp-panel-body">
                 <div x-show="hasData" x-cloak style="height:320px">
                     <canvas id="ngPcsChart"></canvas>
+                </div>
+                <div x-show="hasData" x-cloak class="ngv-hint">
+                    Klik satu batang bulan untuk melihat rincian Part &amp; jenis NG bulan itu.
                 </div>
             </div>
         </div>
@@ -349,13 +352,10 @@ function vcbNg() {
                     datasets: [{
                         label: 'NG Rate (PPM)',
                         data: this.byMonth.map(m => self.ppmOf(m)),
-                        /* Baja untuk bulan biasa, merah untuk bulan yang sedang
-                         * dibuka — seleksi harus terlihat di grafik, bukan cuma
-                         * di judul panel di bawahnya. */
-                        backgroundColor: c => self.byMonth[c.dataIndex]?.bulan_raw === self.bulanTerpilih
-                            ? '#b91c1c'
-                            : '#6b7280',
-                        hoverBackgroundColor: '#374151',
+                        /* Grafik ini SENGAJA nol bisa diklik — pilih bulan cuma
+                         * lewat grafik Pcs di sebelah, jadi warnanya rata baja
+                         * terus, nol perlu highlight seleksi di sini. */
+                        backgroundColor: '#6b7280',
                         borderSkipped: false,
                         maxBarThickness: 84,
                     }],
@@ -364,10 +364,6 @@ function vcbNg() {
                     responsive: true,
                     maintainAspectRatio: false,
                     layout: { padding: { top: 24 } },   /* ruang untuk label di atas batang */
-                    onClick(evt, els) {
-                        if (!els.length) return;
-                        self.pilihBulan(self.byMonth[els[0].index]);
-                    },
                     scales: {
                         x: {
                             grid: { display: false },
@@ -432,7 +428,13 @@ function vcbNg() {
                         datasets: [{
                             label: 'NG (pcs)',
                             data: this.byMonth.map(m => m.total_ng),
-                            backgroundColor: '#9ca3af',
+                            /* Baja untuk bulan biasa, merah untuk bulan yang sedang
+                             * dibuka — seleksi harus terlihat di grafik, bukan cuma
+                             * di judul panel di bawahnya. Klik pilih bulan cuma di
+                             * grafik INI (pcs), bukan di grafik PPM sebelahnya. */
+                            backgroundColor: c => self.byMonth[c.dataIndex]?.bulan_raw === self.bulanTerpilih
+                                ? '#b91c1c'
+                                : '#9ca3af',
                             hoverBackgroundColor: '#374151',
                             borderSkipped: false,
                             maxBarThickness: 84,
@@ -442,6 +444,10 @@ function vcbNg() {
                         responsive: true,
                         maintainAspectRatio: false,
                         layout: { padding: { top: 24 } },
+                        onClick(evt, els) {
+                            if (!els.length) return;
+                            self.pilihBulan(self.byMonth[els[0].index]);
+                        },
                         scales: {
                             x: {
                                 grid: { display: false },
@@ -495,9 +501,9 @@ function vcbNg() {
              * sini tidak boleh menggagalkan pengambilan rincian di bawah —
              * itulah kegagalan yang membuat panel tampak kosong.
              */
-            if (chart) {
+            if (chartPcs) {
                 requestAnimationFrame(() => {
-                    try { chart.update('none'); } catch (e) { /* warna saja, bukan data */ }
+                    try { chartPcs.update('none'); } catch (e) { /* warna saja, bukan data */ }
                 });
             }
 
