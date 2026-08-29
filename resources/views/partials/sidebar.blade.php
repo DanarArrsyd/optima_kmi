@@ -5,9 +5,9 @@
 @php
     use App\Support\SidebarMenu;
 
-    $role        = auth()->user()->role;
-    $entries     = SidebarMenu::forRole($role);
-    $activeGroup = SidebarMenu::activeGroup($role);
+    $roles       = auth()->user()->roles;
+    $entries     = SidebarMenu::forRoles($roles);
+    $activeGroup = SidebarMenu::activeGroup($roles);
 @endphp
 
 <nav id="sidebar">

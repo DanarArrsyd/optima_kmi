@@ -25,7 +25,7 @@ class ControlStrokeDiesController extends Controller
 
     public function createPreventive(MasterPartProses $partProses)
     {
-        abort_if(! in_array(auth()->user()->role, ['admin', 'staff_maintenance']), 403);
+        abort_if(! auth()->user()->hasRole(['admin', 'staff_maintenance']), 403);
 
         return view('maintenance.control-stroke-dies-preventive', [
             'partProses' => $partProses->load('part'),
@@ -66,7 +66,7 @@ class ControlStrokeDiesController extends Controller
 
     public function storePreventive(MasterPartProses $partProses, Request $request)
     {
-        abort_if(! in_array(auth()->user()->role, ['admin', 'staff_maintenance']), 403);
+        abort_if(! auth()->user()->hasRole(['admin', 'staff_maintenance']), 403);
 
         $validated = $request->validate([
             'tanggal_preventive' => 'required|date|before_or_equal:today',
@@ -104,7 +104,7 @@ class ControlStrokeDiesController extends Controller
 
     public function showChecksheet(DiesPreventiveLog $diesPreventiveLog)
     {
-        abort_if(! in_array(auth()->user()->role, ['admin', 'staff_maintenance']), 403);
+        abort_if(! auth()->user()->hasRole(['admin', 'staff_maintenance']), 403);
 
         if (! $diesPreventiveLog->checksheet_path || ! Storage::disk('local')->exists($diesPreventiveLog->checksheet_path)) {
             abort(404, 'Checksheet tidak ditemukan.');

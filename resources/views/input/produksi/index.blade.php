@@ -111,7 +111,7 @@ $lastUrl = $myLastRecord
                 .' — achievement di atas '.$_anomPctMaks.'%, waktu kerja di bawah '.round($_anomWkjMin * 60).' menit,'
                 .' atau SPH standar belum diisi. Angka ini bukan total seluruh data.';
         @endphp
-        @if(auth()->user()->role === 'admin')
+        @if(auth()->user()->hasRole('admin'))
         <a href="{{ route('admin.anomali') }}" class="erp-tb-btn is-anom" title="{{ $_anomTitle }}">
             <i class="bi bi-exclamation-triangle-fill"></i>{{ $anomalyCount }} anomali <span style="font-weight:400;opacity:.75">di halaman ini</span>
         </a>
@@ -473,7 +473,7 @@ $lastUrl = $myLastRecord
                     </td>
                     <td>
                         @php $note = $t->staff_note ?? null; @endphp
-                        @if(auth()->user()->role === 'admin')
+                        @if(auth()->user()->hasRole('admin'))
                         <div class="action-btns">
                             <a href="{{ route('input.produksi.edit', $t) }}" class="btn btn-warning btn-sm">Edit</a>
                             <form method="POST" action="{{ route('input.produksi.destroy', $t) }}"

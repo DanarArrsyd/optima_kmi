@@ -34,12 +34,19 @@ Route::get('/', fn() => redirect('/dashboard'));
 Route::middleware('auth')->group(function () {
 
     Route::get('/dashboard', function () {
-        $role = Auth::user()->role;
+        /* User bisa punya banyak role sekarang. Urutan prioritas di bawah
+         * SAMA PERSIS dengan versi role-tunggal lama — cuma diperiksa
+         * pakai hasRole() (array_intersect) alih-alih perbandingan string
+         * tunggal — supaya user yang cuma punya satu role mendarat di
+         * halaman yang sama seperti sebelumnya, nol kejutan. Yang baru
+         * cuma: staff_maintenance menang duluan kalau dia SALAH SATU dari
+         * beberapa role user, bukan satu-satunya role. */
+        $user = Auth::user();
         return redirect(match(true) {
-            $role === 'staff_maintenance' => '/maintenance/mttr',
-            in_array($role, ['admin', 'staff_produksi', 'manager']) => '/vcb/produksi',
-            $role === 'staff_qc' => '/vcb/quality',
-            $role === 'guest' => '/vcb/produksi',
+            $user->hasRole('staff_maintenance') => '/maintenance/mttr',
+            $user->hasRole(['admin', 'staff_produksi', 'manager']) => '/vcb/produksi',
+            $user->hasRole('staff_qc') => '/vcb/quality',
+            $user->hasRole('guest') => '/vcb/produksi',
             default => '/vcb/produksi',
         });
     })->name('dashboard');

@@ -45,7 +45,7 @@ class SidebarNavTest extends TestCase
     {
         $routes = [];
 
-        foreach (SidebarMenu::forRole($role) as $entri) {
+        foreach (SidebarMenu::forRoles([$role]) as $entri) {
             $daftar = ($entri['type'] ?? 'link') === 'group' ? $entri['items'] : [$entri];
 
             foreach ($daftar as $item) {
@@ -181,7 +181,7 @@ class SidebarNavTest extends TestCase
             $this->actingAs($admin)->get(route('vcb.produksi'))->assertOk()->getContent()
         );
 
-        foreach (SidebarMenu::forRole('admin') as $entri) {
+        foreach (SidebarMenu::forRoles(['admin']) as $entri) {
             $daftar = ($entri['type'] ?? 'link') === 'group' ? $entri['items'] : [$entri];
 
             foreach ($daftar as $item) {

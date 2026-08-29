@@ -385,7 +385,7 @@ $filterActive = ($search ?? '') !== '' || $filterKarId || $filterJenisNgId
                     </td>
                     <td>
                         @php $note = $t->staff_note ?? null; @endphp
-                        @if(auth()->user()->role === 'admin')
+                        @if(auth()->user()->hasRole('admin'))
                         <div class="action-btns">
                             <a href="{{ route('input.qc.edit', $t) }}"
                                class="btn btn-warning btn-sm">Edit</a>

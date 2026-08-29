@@ -265,7 +265,7 @@ $_prosesLabel = $_prosesObjF ? $_prosesObjF->id_proses.' – '.$_prosesObjF->nam
 </div>
 
 {{-- ── SEARCH BAR ──────────────────────────────────────────────── --}}
-@if(auth()->user()->role === 'admin' && $recommendations->isNotEmpty())
+@if(auth()->user()->hasRole('admin') && $recommendations->isNotEmpty())
 <div class="erp-panel mb-3" style="border-color:#d4a017">
     <div class="erp-panel-header"
          style="background:#fff8e1;border-color:#d4a017;color:#7a5c00;display:flex;justify-content:space-between;align-items:center;cursor:pointer"
@@ -372,7 +372,7 @@ $_prosesLabel = $_prosesObjF ? $_prosesObjF->id_proses.' – '.$_prosesObjF->nam
 @endif
 
 {{-- ── REKOMENDASI UPGRADE SPH QUALITY (admin only) ───────────── --}}
-@if(auth()->user()->role === 'admin' && $recommendationsQc->isNotEmpty())
+@if(auth()->user()->hasRole('admin') && $recommendationsQc->isNotEmpty())
 <div class="erp-panel mb-3" style="border-color:#1a6b7c">
     <div class="erp-panel-header"
          style="background:#e8f4f7;border-color:#1a6b7c;color:#0d3d4a;display:flex;justify-content:space-between;align-items:center;cursor:pointer"

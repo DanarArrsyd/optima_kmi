@@ -42,7 +42,7 @@ class SidebarMenuTest extends TestCase
 
     private function keys(string $role): array
     {
-        return array_column(SidebarMenu::forRole($role), 'key');
+        return array_column(SidebarMenu::forRoles([$role]), 'key');
     }
 
     public function test_urutan_dan_kunci_tingkat_atas_admin(): void
@@ -59,7 +59,7 @@ class SidebarMenuTest extends TestCase
         foreach (['admin', 'manager', 'staff_produksi', 'staff_qc', 'staff_maintenance', 'guest'] as $role) {
             $this->assertLessThanOrEqual(
                 self::PLAFON_BARIS,
-                count(SidebarMenu::forRole($role)),
+                count(SidebarMenu::forRoles([$role])),
                 "Sidebar role {$role} melewati plafon baris."
             );
         }
@@ -68,7 +68,7 @@ class SidebarMenuTest extends TestCase
     public function test_tiap_role_tidak_melewati_plafon_saat_satu_grup_terbuka(): void
     {
         foreach (['admin', 'manager', 'staff_produksi', 'staff_qc', 'staff_maintenance', 'guest'] as $role) {
-            $entries = SidebarMenu::forRole($role);
+            $entries = SidebarMenu::forRoles([$role]);
 
             $ukuranGrup = array_map(
                 fn (array $e) => ($e['type'] ?? 'link') === 'group' ? count($e['items']) : 0,
@@ -100,7 +100,7 @@ class SidebarMenuTest extends TestCase
         // keduanya tidak membuktikan grup ini bisa menyusut. manager satu-
         // satunya role yang benar-benar kehilangan anak: dia memantau VCB
         // tapi tidak menginput LHP Quality.
-        $grup = collect(SidebarMenu::forRole('manager'))->firstWhere('key', 'quality');
+        $grup = collect(SidebarMenu::forRoles(['manager']))->firstWhere('key', 'quality');
 
         $this->assertSame(
             ['VCB Quality', 'VCB NG Total', 'Daftar NG Total'],
@@ -114,22 +114,22 @@ class SidebarMenuTest extends TestCase
         // manager tidak menginput LHP, tapi memantau breakdown. Sesudah penataan
         // ulang keduanya ada di grup domain yang sama, jadi penyaringan per-anak
         // inilah yang menjaga manager tidak kebagian halaman input.
-        $grup = collect(SidebarMenu::forRole('manager'))->firstWhere('key', 'mtcmesin');
+        $grup = collect(SidebarMenu::forRoles(['manager']))->firstWhere('key', 'mtcmesin');
 
         $this->assertSame(
             ['Breakdown Mesin', 'MTTR', 'MTBF', 'Availability', 'Control Stroke'],
             array_column($grup['items'], 'label')
         );
 
-        $produksi = collect(SidebarMenu::forRole('manager'))->firstWhere('key', 'produksi');
+        $produksi = collect(SidebarMenu::forRoles(['manager']))->firstWhere('key', 'produksi');
 
         $this->assertNotContains('LHP Produksi', array_column($produksi['items'], 'label'));
     }
 
     public function test_guest_melihat_lhp_tapi_bukan_breakdown(): void
     {
-        $produksi = collect(SidebarMenu::forRole('guest'))->firstWhere('key', 'produksi');
-        $mtc = collect(SidebarMenu::forRole('guest'))->firstWhere('key', 'mtcmesin');
+        $produksi = collect(SidebarMenu::forRoles(['guest']))->firstWhere('key', 'produksi');
+        $mtc = collect(SidebarMenu::forRoles(['guest']))->firstWhere('key', 'mtcmesin');
 
         $this->assertContains('LHP Produksi', array_column($produksi['items'], 'label'));
         $this->assertNotContains('Breakdown Mesin', array_column($mtc['items'], 'label'));
@@ -179,14 +179,14 @@ class SidebarMenuTest extends TestCase
     {
         $this->get(route('vcb.ng-total.daftar'));
 
-        $this->assertSame('quality', SidebarMenu::activeGroup('admin'));
+        $this->assertSame('quality', SidebarMenu::activeGroup(['admin']));
     }
 
     public function test_grup_aktif_null_kalau_halaman_di_luar_menu(): void
     {
         $this->get('/profile');
 
-        $this->assertNull(SidebarMenu::activeGroup('admin'));
+        $this->assertNull(SidebarMenu::activeGroup(['admin']));
     }
 
     public function test_tidak_ada_route_yang_muncul_dua_kali(): void

@@ -89,17 +89,7 @@
 
                 {{-- Role --}}
                 <div class="col-12">
-                    <label class="form-label" style="font-size:0.8rem">Role <span class="text-danger">*</span></label>
-                    <select name="role" class="form-select form-select-sm @error('role') is-invalid @enderror">
-                        <option value="">-- Pilih Role --</option>
-                        <option value="admin"          {{ old('role') === 'admin'          ? 'selected' : '' }}>Admin</option>
-                        <option value="staff_produksi"    {{ old('role') === 'staff_produksi'    ? 'selected' : '' }}>Staff Produksi</option>
-                        <option value="staff_qc"          {{ old('role') === 'staff_qc'          ? 'selected' : '' }}>Staff QC</option>
-                        <option value="staff_maintenance" {{ old('role') === 'staff_maintenance' ? 'selected' : '' }}>Staff Maintenance</option>
-                        <option value="manager"           {{ old('role') === 'manager'           ? 'selected' : '' }}>Manager</option>
-                        <option value="guest"             {{ old('role') === 'guest'             ? 'selected' : '' }}>Guest (Read-Only)</option>
-                    </select>
-                    @error('role')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    @include('master.users.partials.roles-fields', ['selectedRoles' => old('roles', [])])
                 </div>
 
                 {{-- Tautkan ke Karyawan (optional) --}}
@@ -161,8 +151,8 @@
                    placeholder="Nama atau Email">
             <select name="filter_role" class="erp-in @if($filterRole !== '') is-set @endif">
                 <option value="">Semua Role</option>
-                @foreach($roleList as $o)
-                <option value="{{ $o }}" @selected($filterRole === $o)>{{ $o }}</option>
+                @foreach($roleList as $kode => $label)
+                <option value="{{ $kode }}" @selected($filterRole === $kode)>{{ $label }}</option>
                 @endforeach
             </select>
         </div>
@@ -196,7 +186,7 @@
             <tr style="{{ !$u->is_aktif ? 'opacity:0.55;background:#f9fafb' : '' }}">
                 <td>{{ $u->name }}</td>
                 <td>{{ $u->email }}</td>
-                <td>{{ strtoupper(str_replace('_', ' ', $u->role)) }}</td>
+                <td>{{ collect($u->roles ?? [])->map(fn ($r) => strtoupper(str_replace('_', ' ', $r)))->implode(', ') }}</td>
                 <td>{{ $u->karyawan?->nama_karyawan ?? '—' }}</td>
                 <td>
                     @if($u->is_aktif)

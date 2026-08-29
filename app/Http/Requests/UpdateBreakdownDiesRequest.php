@@ -8,7 +8,7 @@ class UpdateBreakdownDiesRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->role === 'admin';
+        return $this->user()?->hasRole('admin') ?? false;
     }
 
     public function rules(): array

@@ -333,7 +333,7 @@ class ProduksiController extends Controller
 
     public function destroy(TransaksiProduksi $produksi)
     {
-        if (auth()->user()->role !== 'admin' && $produksi->created_by !== auth()->id()) {
+        if (! auth()->user()->hasRole('admin') && $produksi->created_by !== auth()->id()) {
             abort(403);
         }
         $produksi->delete();

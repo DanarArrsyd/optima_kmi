@@ -45,7 +45,7 @@
         <i class="bi bi-funnel"></i>Filter
         @if($filterAktif)<span aria-hidden="true">&bull;</span>@endif
     </button>
-    @if(auth()->user()->role !== 'guest')
+    @if(! auth()->user()->isGuest())
     {{-- Guest sengaja tidak punya tombol export: route-nya juga menolak. --}}
     <a href="{{ $routeExport }}?{{ http_build_query(array_filter($filter, fn ($v) => $v !== null && $v !== '')) }}"
        class="erp-tb-btn"><i class="bi bi-file-earmark-excel"></i>Export Excel</a>

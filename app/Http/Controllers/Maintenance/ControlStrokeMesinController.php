@@ -40,7 +40,7 @@ class ControlStrokeMesinController extends Controller
 
     public function createPreventive(MasterMesin $mesin)
     {
-        abort_if(! in_array(auth()->user()->role, ['admin', 'staff_maintenance']), 403);
+        abort_if(! auth()->user()->hasRole(['admin', 'staff_maintenance']), 403);
 
         return view('maintenance.control-stroke-mesin-preventive', [
             'mesin' => $mesin,
@@ -52,7 +52,7 @@ class ControlStrokeMesinController extends Controller
 
     public function storePreventive(MasterMesin $mesin, Request $request)
     {
-        abort_if(! in_array(auth()->user()->role, ['admin', 'staff_maintenance']), 403);
+        abort_if(! auth()->user()->hasRole(['admin', 'staff_maintenance']), 403);
 
         $validated = $request->validate([
             'tanggal_preventive' => 'required|date|before_or_equal:today',
