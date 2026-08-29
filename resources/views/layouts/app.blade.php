@@ -1319,14 +1319,6 @@
 
             <div x-show="buka" x-cloak @click.outside="buka = false"
                  style="position:absolute;right:0;top:calc(100% + 6px);min-width:190px;background:#fff;border:1px solid var(--border);border-radius:4px;box-shadow:0 6px 20px rgba(0,0,0,.14);z-index:1200">
-                {{-- Route profil belum terdaftar di aplikasi ini (ProfileController
-                     tak punya route terpasang) — guard Route::has supaya dropdown
-                     tak menabrak RouteNotFoundException di setiap halaman. --}}
-                @if(\Illuminate\Support\Facades\Route::has('profile.edit'))
-                <a href="{{ route('profile.edit') }}" class="dropdown-item">
-                    <i class="bi bi-person me-2"></i>Profil
-                </a>
-                @endif
                 @if($u->hasRole('admin'))
                 <a href="{{ route('profile.two-factor') }}" class="dropdown-item">
                     <i class="bi bi-shield-lock me-2"></i>Autentikasi 2FA
