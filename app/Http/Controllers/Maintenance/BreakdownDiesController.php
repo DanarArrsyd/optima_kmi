@@ -4,21 +4,26 @@ namespace App\Http\Controllers\Maintenance;
 
 use App\Exports\BreakdownDiesExport;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\StoreBreakdownDiesRequest;
+use App\Http\Requests\StoreBreakdownDiesBatchRequest;
 use App\Http\Requests\UpdateBreakdownDiesRequest;
 use App\Imports\BreakdownDiesImport;
 use App\Models\MasterKaryawan;
 use App\Models\MasterPart;
 use App\Models\TransaksiBreakdownDies;
 use App\Services\BreakdownDiesService;
+use App\Services\BreakdownDiesWriteService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Facades\Excel;
 
 class BreakdownDiesController extends Controller
 {
-    public function __construct(private BreakdownDiesService $svc) {}
+    public function __construct(
+        private BreakdownDiesService $svc,
+        private BreakdownDiesWriteService $writeService,
+    ) {}
 
     public function export(Request $request)
     {
@@ -125,33 +130,34 @@ class BreakdownDiesController extends Controller
         return response()->json(['next_nomor' => $this->svc->nextNomorUrut()]);
     }
 
-    public function store(StoreBreakdownDiesRequest $request)
+    public function create()
     {
-        $data = $request->validated();
-        $noLkd = $this->svc->generateNoLkd((int) $data['nomor_urut'], $data['tanggal_breakdown']);
-
-        if (TransaksiBreakdownDies::withTrashed()->where('no_lkd', $noLkd)->exists()) {
-            return back()->withInput()->withErrors(['nomor_urut' => "No LKD {$noLkd} sudah ada, gunakan nomor lain."]);
-        }
-
-        $derived = $this->svc->computeDerived($data);
-        TransaksiBreakdownDies::create([
-            'no_lkd' => $noLkd,
-            'id_part_proses' => $data['id_part_proses'],
-            'tanggal_breakdown' => $data['tanggal_breakdown'],
-            'jam_breakdown' => $data['jam_breakdown'],
-            'tanggal_mulai_perbaikan' => $data['tanggal_mulai_perbaikan'],
-            'jam_mulai_perbaikan' => $data['jam_mulai_perbaikan'],
-            'tanggal_selesai_perbaikan' => $data['tanggal_selesai_perbaikan'],
-            'jam_selesai_perbaikan' => $data['jam_selesai_perbaikan'],
-            'problem_dies' => $data['problem_dies'],
-            'penyebab_breakdown' => $data['penyebab_breakdown'],
-            'tindakan_perbaikan' => $data['tindakan_perbaikan'],
-            'pic_maintenance' => $data['pic_maintenance'],
-            ...$derived,
+        return view('maintenance.breakdown-dies.create', [
+            'partList' => MasterPart::with('proses')->orderBy('part_no')->get(),
+            'nextNomor' => $this->svc->nextNomorUrut(),
         ]);
+    }
 
-        return redirect()->route('maintenance.breakdown-dies.index')->with('success', "Breakdown {$noLkd} tersimpan.");
+    public function batch(StoreBreakdownDiesBatchRequest $request)
+    {
+        $rows = $request->validated()['rows'];
+
+        $jumlah = DB::transaction(function () use ($rows) {
+            foreach ($rows as $row) {
+                $this->writeService->simpan($row);
+            }
+
+            return count($rows);
+        });
+
+        /* batch_tersimpan adalah bukti sukses yang dibaca index.blade.php untuk
+         * membuang draft di localStorage. Draft hanya boleh dibuang setelah
+         * server MEMBUKTIKAN barisnya tersimpan — bukan cuma karena halaman
+         * batch tidak melihat galat validasi, yang juga terjadi saat request
+         * tidak pernah sampai sini (419 sesi habis, 500, jaringan putus). */
+        return redirect()->route('maintenance.breakdown-dies.index')
+            ->with('success', "{$jumlah} baris data Breakdown Dies berhasil disimpan.")
+            ->with('batch_tersimpan', $jumlah);
     }
 
     public function edit(TransaksiBreakdownDies $breakdownDy)
