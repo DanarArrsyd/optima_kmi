@@ -128,8 +128,8 @@ class DandoriImport implements ToCollection, WithHeadingRow, WithStartRow
 
                 /* ── Hitung Std & Over ─────────────────── */
                 $stdMenit = $isProgressive
-                    ? ($losstime->std_menit_progressive ?: ($losstime->std_menit_default ?: 0))
-                    : ($losstime->std_menit_default ?: 0);
+                    ? ($losstime->std_menit_progressive ?? $losstime->std_menit_default ?? 0)
+                    : ($losstime->std_menit_default ?? 0);
 
                 $overMenit = max(0, $actualMenit - $stdMenit);
 
