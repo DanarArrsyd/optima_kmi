@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Global (bukan cuma grup auth di routes/web.php) supaya route di
         // routes/auth.php — mis. password.update — ikut tercakup.
         $middleware->web(append: [
+            \App\Http\Middleware\DenyNonaktifSession::class,
             \App\Http\Middleware\DenyGuestWrite::class,
             \App\Http\Middleware\SecurityHeaders::class,
         ]);

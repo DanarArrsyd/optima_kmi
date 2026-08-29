@@ -7,6 +7,7 @@ use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -47,6 +48,20 @@ class LoginRequest extends FormRequest
 
             throw ValidationException::withMessages([
                 'email' => trans('auth.failed'),
+            ]);
+        }
+
+        /* Password diperiksa DULU (di atas), baru status aktif — supaya
+         * orang yang salah password tidak ikut diberi tahu akunnya
+         * dinonaktifkan. Schema::hasColumn menjaga jendela deploy antara
+         * rsync dan migrate: kalau kolomnya belum ada, anggap aktif
+         * (fail-open) daripada mengunci SEMUA login sampai migrate jalan. */
+        if (Schema::hasColumn('users', 'is_aktif') && ! Auth::user()->is_aktif) {
+            Auth::logout();
+            RateLimiter::hit($this->throttleKey());
+
+            throw ValidationException::withMessages([
+                'email' => 'Akun ini sudah dinonaktifkan. Hubungi admin.',
             ]);
         }
 

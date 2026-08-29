@@ -71,6 +71,7 @@ Route::middleware('auth')->group(function () {
         Route::resource('part', PartController::class)->except(['show']);
         Route::resource('losstime', LosstimeController::class);
         Route::resource('shift', ShiftController::class);
+        Route::patch('users/{user}/toggle-aktif', [UserController::class, 'toggleAktif'])->name('users.toggle-aktif');
         Route::resource('users', UserController::class);
         Route::post('jenis-ng/import',         [JenisNgController::class, 'import'])->name('jenis-ng.import');
         Route::get('jenis-ng/import-template', [JenisNgController::class, 'importTemplate'])->name('jenis-ng.import-template');
