@@ -61,10 +61,9 @@
     <div class="erp-panel-header">Achievement Mesin &mdash; Actual vs Target QTY</div>
     <div class="erp-panel-body">
         {{-- Tinggi dikunci di pembungkus, sama seperti grafik VCB lain
-             (lihat feedback proxy Chart.js/Alpine). Nama tidak dipindah ke
-             dalam batang — batang di sini berbagi ruang-x dengan garis
-             target, satu nama per posisi tidak punya batang tunggal untuk
-             ditempeli. --}}
+             (lihat feedback proxy Chart.js/Alpine). Nama mesin ditempel
+             di dalam batang Actual (dataset 0) — garis Target (dataset 1)
+             nol pengaruh ke plugin ini, cuma baca dataset pertama. --}}
         <div style="position:relative;height:340px">
             <canvas id="vcbChart"></canvas>
         </div>
@@ -128,14 +127,21 @@ async function loadData() {
     vcbChart = new Chart(document.getElementById('vcbChart'), {
         type: 'bar',
         data: { labels: data.labels, datasets: data.datasets },
+        /* Nama mesin ditempel TEGAK di dalam batang Actual (dataset 0) —
+         * pola sama VCB Produksi, bukan tick miring di bawah sumbu-X.
+         * Batang di sini dicat solid gelap (biru/hijau/merah) jadi teks
+         * dalamnya HARUS putih, sama seperti Availability Mesin. */
+        plugins: [pluginNamaDalamBatang({ warnaDalam: '#ffffff' })],
         options: {
             responsive: true,
             maintainAspectRatio: false,
             layout: { padding: { top: 24 } },
             scales: {
                 x: {
+                    /* Nama sudah tergambar di dalam batang — tick di bawah
+                     * bikin namanya dobel. */
+                    ticks: { display: false },
                     grid: { display: false },
-                    ticks: { color: '#4b5563', font: { size: 11 } },
                 },
                 y: {
                     beginAtZero: true,
