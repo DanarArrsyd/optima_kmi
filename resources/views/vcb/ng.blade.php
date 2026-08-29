@@ -162,6 +162,17 @@
         </div>
     </div>
 
+    {{-- ── Grafik NG per bulan (pcs) — sengaja dipisah dari grafik RATE di atas,
+         biar orang yang cuma lirik sekilas nol ketuker rate vs jumlah pcs. ── --}}
+    <div class="erp-panel mb-3">
+        <div class="erp-panel-header">NG per Bulan &mdash; Pcs</div>
+        <div class="erp-panel-body">
+            <div x-show="hasData" x-cloak style="height:260px">
+                <canvas id="ngPcsChart"></canvas>
+            </div>
+        </div>
+    </div>
+
     {{-- ── Rincian bulan terpilih ───────────────── --}}
     <div class="erp-panel" x-show="bulanTerpilih" x-cloak id="ngv-rincian">
         <div class="erp-panel-header">
@@ -241,6 +252,7 @@ function vcbNg() {
      * "tidak punya NG tercatat" padahal datanya ada.
      */
     let chart = null;
+    let chartPcs = null;
 
     return {
         dateFrom: '{{ $defaultFrom }}',
@@ -298,9 +310,9 @@ function vcbNg() {
 
                 if (this.hasData) {
                     this.$nextTick(() => this.render());
-                } else if (chart) {
-                    chart.destroy();
-                    chart = null;
+                } else {
+                    if (chart) { chart.destroy(); chart = null; }
+                    if (chartPcs) { chartPcs.destroy(); chartPcs = null; }
                 }
             } catch (e) {
                 this.hasData = false;
@@ -393,6 +405,69 @@ function vcbNg() {
                     },
                 },
             });
+
+            /* Grafik kedua, jumlah pcs NG polos per bulan — nol rate, nol
+             * pembagian, biar orang yang lirik sekilas nol ketuker sama
+             * grafik PPM di atasnya. Chart instance ikut disimpan di closure
+             * luar (chartPcs), BUKAN state Alpine — lihat catatan di atas. */
+            const ctxPcs = document.getElementById('ngPcsChart');
+            if (chartPcs) chartPcs.destroy();
+            if (ctxPcs) {
+                chartPcs = new Chart(ctxPcs, {
+                    type: 'bar',
+                    data: {
+                        labels: this.byMonth.map(m => m.bulan),
+                        datasets: [{
+                            label: 'NG (pcs)',
+                            data: this.byMonth.map(m => m.total_ng),
+                            backgroundColor: '#9ca3af',
+                            hoverBackgroundColor: '#374151',
+                            borderSkipped: false,
+                            maxBarThickness: 84,
+                        }],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        layout: { padding: { top: 24 } },
+                        scales: {
+                            x: {
+                                grid: { display: false },
+                                ticks: { color: '#4b5563', font: { size: 12 } },
+                            },
+                            y: {
+                                beginAtZero: true,
+                                border: { display: false },
+                                grid: { color: '#e5e7eb' },
+                                ticks: {
+                                    color: '#6b7280',
+                                    font: { size: 11 },
+                                    precision: 0,
+                                    callback: v => Number(v).toLocaleString('id-ID') + ' pcs',
+                                },
+                            },
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            datalabels: {
+                                display: true,
+                                anchor: 'end',
+                                align: 'end',
+                                offset: 2,
+                                color: '#374151',
+                                font: { size: 11, weight: 700 },
+                                formatter: v => Number(v).toLocaleString('id-ID'),
+                            },
+                            tooltip: {
+                                displayColors: false,
+                                callbacks: {
+                                    label: c => `${self.fmtInt(c.raw)} pcs NG`,
+                                },
+                            },
+                        },
+                    },
+                });
+            }
         },
 
         async pilihBulan(m) {
