@@ -30,6 +30,13 @@ class LogAktivitasController extends Controller
         'master_shift' => 'Master Shift',
         'master_losstime' => 'Master Loss Time',
         'master_jenis_ng' => 'Master Jenis NG',
+        'lhp_produksi' => 'LHP Produksi',
+        'lhp_qc' => 'LHP Quality',
+        'dandori' => 'Dandori',
+        'breakdown_mesin' => 'Breakdown Mesin',
+        'breakdown_dies' => 'Breakdown Dies',
+        'preventive_mesin' => 'Preventive Mesin',
+        'preventive_dies' => 'Preventive Dies',
         'auth' => 'Autentikasi',
     ];
 
