@@ -56,6 +56,12 @@
     }
     .ngv-bar-fill { height: 100%; background: #b91c1c; }
 
+    /* Dua grafik kanan-kiri di layar sempit numpuk jadi kolom sempit banget —
+       balik ke tumpuk atas-bawah di bawah 900px. */
+    @media (max-width: 900px) {
+        .ngv-grafik-grid { grid-template-columns: 1fr !important; }
+    }
+
     .ngv-total-row td {
         border-top: 2px solid var(--border);
         font-weight: 700;
@@ -143,32 +149,34 @@
         </div>
     </div>
 
-    {{-- ── Grafik NG Rate per bulan ─────────────── --}}
-    <div class="erp-panel mb-3">
-        <div class="erp-panel-header">NG Rate per Bulan &mdash; PPM</div>
-        <div class="erp-panel-body">
-            <div x-show="!hasData && !loading && !loadError" x-cloak class="text-muted text-center py-4">
-                {{ $catatanKosong }}
-            </div>
-            <div x-show="hasData && summary.total_ng === 0" x-cloak class="text-muted mb-2">
-                {{ $catatanKosong }}
-            </div>
-            <div x-show="hasData" x-cloak style="height:320px">
-                <canvas id="ngRateChart"></canvas>
-            </div>
-            <div x-show="hasData" x-cloak class="ngv-hint">
-                1 PPM = 1 pcs NG per sejuta diperiksa — RATE per bulan, bukan jumlah pcs, jadi jangan dijumlah lintas bulan buat dibandingkan ke Total NG di atas. Klik satu batang bulan untuk melihat rincian jenis NG bulan itu (hover buat lihat jumlah pcs asli).
+    {{-- ── Grafik NG Rate (PPM) & NG per bulan (pcs) — kanan-kiri, sengaja
+         dua panel terpisah biar orang yang lirik sekilas nol ketuker rate
+         vs jumlah pcs. ── --}}
+    <div class="mb-3 ngv-grafik-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="erp-panel" style="margin:0">
+            <div class="erp-panel-header">NG Rate per Bulan &mdash; PPM</div>
+            <div class="erp-panel-body">
+                <div x-show="!hasData && !loading && !loadError" x-cloak class="text-muted text-center py-4">
+                    {{ $catatanKosong }}
+                </div>
+                <div x-show="hasData && summary.total_ng === 0" x-cloak class="text-muted mb-2">
+                    {{ $catatanKosong }}
+                </div>
+                <div x-show="hasData" x-cloak style="height:320px">
+                    <canvas id="ngRateChart"></canvas>
+                </div>
+                <div x-show="hasData" x-cloak class="ngv-hint">
+                    1 PPM = 1 pcs NG per sejuta diperiksa — RATE per bulan, bukan jumlah pcs, jadi jangan dijumlah lintas bulan buat dibandingkan ke Total NG di atas. Klik satu batang bulan untuk melihat rincian jenis NG bulan itu (hover buat lihat jumlah pcs asli).
+                </div>
             </div>
         </div>
-    </div>
 
-    {{-- ── Grafik NG per bulan (pcs) — sengaja dipisah dari grafik RATE di atas,
-         biar orang yang cuma lirik sekilas nol ketuker rate vs jumlah pcs. ── --}}
-    <div class="erp-panel mb-3">
-        <div class="erp-panel-header">NG per Bulan &mdash; Pcs</div>
-        <div class="erp-panel-body">
-            <div x-show="hasData" x-cloak style="height:260px">
-                <canvas id="ngPcsChart"></canvas>
+        <div class="erp-panel" style="margin:0">
+            <div class="erp-panel-header">NG per Bulan &mdash; Pcs</div>
+            <div class="erp-panel-body">
+                <div x-show="hasData" x-cloak style="height:320px">
+                    <canvas id="ngPcsChart"></canvas>
+                </div>
             </div>
         </div>
     </div>
