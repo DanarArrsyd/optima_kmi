@@ -1312,7 +1312,7 @@
                 <i class="bi bi-person-circle"></i>
                 <div class="user-info">
                     <span class="name">{{ $u->name }}</span>
-                    <span class="role">{{ str_replace('_', ' ', $u->role) }}</span>
+                    <span class="role">{{ implode(', ', array_map(fn ($r) => str_replace('_', ' ', $r), $u->roles ?? [])) }}</span>
                 </div>
                 <i class="bi bi-chevron-down" style="font-size:11px"></i>
             </div>

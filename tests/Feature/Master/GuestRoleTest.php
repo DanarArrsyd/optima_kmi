@@ -31,13 +31,10 @@ class GuestRoleTest extends TestCase
             'name' => 'Tamu Eksternal',
             'email' => 'tamu@example.com',
             'password' => 'rahasia-tamu-123',
-            'role' => 'guest',
+            'roles' => ['guest'],
         ])->assertRedirect(route('master.users.index'));
 
-        $this->assertDatabaseHas('users', [
-            'email' => 'tamu@example.com',
-            'role' => 'guest',
-        ]);
+        $this->assertTrue(User::where('email', 'tamu@example.com')->first()?->isGuest());
     }
 
     public function test_unknown_role_is_rejected(): void
@@ -48,8 +45,8 @@ class GuestRoleTest extends TestCase
             'name' => 'Peran Ngawur',
             'email' => 'ngawur@example.com',
             'password' => 'rahasia-tamu-123',
-            'role' => 'superuser',
-        ])->assertSessionHasErrors('role');
+            'roles' => ['superuser'],
+        ])->assertSessionHasErrors('roles.0');
     }
 
     public function test_role_dropdown_offers_guest_option(): void

@@ -153,7 +153,7 @@
 @push('scripts')
 @include('maintenance.partials.typeahead')
 <script>
-const canInputPreventive = {{ in_array(auth()->user()->role, ['admin', 'staff_maintenance']) ? 'true' : 'false' }};
+const canInputPreventive = {{ auth()->user()->hasRole(['admin', 'staff_maintenance']) ? 'true' : 'false' }};
 const baseUrl = `{{ url('maintenance/availability/control-stroke-dies') }}`;
 const dataUrl = `{{ route('maintenance.control-stroke-dies.data') }}`;
 const COLSPAN = 10;

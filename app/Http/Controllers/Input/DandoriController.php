@@ -320,7 +320,7 @@ class DandoriController extends Controller
 
     public function destroy(TransaksiDandoriRincian $dandori)
     {
-        if (auth()->user()->role !== 'admin' && $dandori->created_by !== auth()->id()) {
+        if (! auth()->user()->hasRole('admin') && $dandori->created_by !== auth()->id()) {
             abort(403);
         }
         $dandori->delete();

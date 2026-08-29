@@ -15,7 +15,7 @@ class NotificationService
         }
 
         $actor = Auth::user();
-        $admins = User::where('role', 'admin')->pluck('id');
+        $admins = User::whereJsonContains('roles', 'admin')->pluck('id');
         $data = [
             'tanggal' => $tanggal,
             'nama_actor' => $actor->name,

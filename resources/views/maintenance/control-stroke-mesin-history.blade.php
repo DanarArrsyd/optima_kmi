@@ -55,7 +55,7 @@
                         <div class="text-muted">Belum pernah dipreventive</div>
                     @endif
                 </div>
-                @if(in_array(auth()->user()->role, ['admin', 'staff_maintenance']))
+                @if(auth()->user()->hasRole(['admin', 'staff_maintenance']))
                     <a href="{{ route('maintenance.control-stroke-mesin.preventive.create', $mesin) }}"
                        class="btn btn-primary btn-sm mt-3">
                         <i class="bi bi-tools me-1"></i>Input Preventive Baru

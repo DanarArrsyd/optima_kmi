@@ -19,7 +19,7 @@ $filterActive = $mesinId || $filterPic !== '' || $filterStatus !== '';
 
 @php
     $filterActive = $mesinId > 0 || $dateFrom !== date('Y-m-01') || $dateTo !== date('Y-m-d');
-    $isAdmin      = auth()->user()->role === 'admin';
+    $isAdmin      = auth()->user()->hasRole('admin');
 @endphp
 
 <style>

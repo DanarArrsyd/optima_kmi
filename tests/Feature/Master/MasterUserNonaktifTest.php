@@ -116,7 +116,7 @@ class MasterUserNonaktifTest extends TestCase
         $this->actingAs($admin)->put(route('master.users.update', $target), [
             'name' => 'Nama Baru',
             'email' => $target->email,
-            'role' => 'staff_produksi',
+            'roles' => ['staff_produksi'],
         ])->assertRedirect(route('master.users.index'));
 
         $this->assertFalse($target->fresh()->is_aktif);

@@ -343,7 +343,7 @@ class QcController extends Controller
 
     public function destroy(TransaksiQc $qc)
     {
-        if (auth()->user()->role !== 'admin' && $qc->created_by !== auth()->id()) {
+        if (! auth()->user()->hasRole('admin') && $qc->created_by !== auth()->id()) {
             abort(403);
         }
         $qc->delete();

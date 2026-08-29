@@ -13,20 +13,24 @@ namespace App\Support;
 class SidebarMenu
 {
     /**
-     * Entri sidebar yang boleh dilihat sebuah role.
+     * Entri sidebar yang boleh dilihat sebuah user — user bisa punya
+     * BANYAK role, jadi cocok kalau SALAH SATU role-nya ada di daftar
+     * 'roles' entri (array_intersect), bukan menuntut satu kecocokan
+     * tunggal seperti dulu.
      *
-     * Grup yang tidak menyisakan satu anak pun untuk role tersebut
+     * Grup yang tidak menyisakan satu anak pun untuk role-role tersebut
      * dibuang seluruhnya — bukan dirender kosong.
      *
+     * @param  array<int, string>  $roles
      * @return array<int, array<string, mixed>>
      */
-    public static function forRole(string $role): array
+    public static function forRoles(array $roles): array
     {
         $hasil = [];
 
         foreach (config('sidebar', []) as $entri) {
             if (($entri['type'] ?? 'link') === 'link') {
-                if (in_array($role, $entri['roles'], true)) {
+                if (array_intersect($roles, $entri['roles']) !== []) {
                     $hasil[] = $entri;
                 }
 
@@ -35,7 +39,7 @@ class SidebarMenu
 
             $items = array_values(array_filter(
                 $entri['items'],
-                fn (array $item) => in_array($role, $item['roles'], true)
+                fn (array $item) => array_intersect($roles, $item['roles']) !== []
             ));
 
             if ($items !== []) {
@@ -59,9 +63,10 @@ class SidebarMenu
      * Diturunkan dari anaknya, bukan dari peta terpisah — peta terpisah
      * bisa melenceng dari daftar item tanpa ketahuan.
      */
-    public static function activeGroup(string $role): ?string
+    /** @param  array<int, string>  $roles */
+    public static function activeGroup(array $roles): ?string
     {
-        foreach (self::forRole($role) as $entri) {
+        foreach (self::forRoles($roles) as $entri) {
             if (($entri['type'] ?? 'link') !== 'group') {
                 continue;
             }

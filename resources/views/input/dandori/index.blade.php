@@ -76,7 +76,7 @@ $filterActive = ($search ?? '') !== '' || $filterKarId || $filterMesinId || $fil
         @if($filterActive)<span aria-hidden="true">&bull;</span>@endif
     </button>
 
-    @if(auth()->user()->role === 'admin')
+    @if(auth()->user()->hasRole('admin'))
     <button type="button" class="erp-tb-btn"
             onclick="document.getElementById('importPanel').classList.toggle('d-none')">
         <i class="bi bi-file-earmark-arrow-up"></i>Import Excel
@@ -301,7 +301,7 @@ $filterActive = ($search ?? '') !== '' || $filterKarId || $filterMesinId || $fil
 />
 @endif
 
-@if(auth()->user()->role === 'admin')
+@if(auth()->user()->hasRole('admin'))
 <div id="importPanel" class="{{ session('import_success') || session('import_errors') ? '' : 'd-none' }} erp-panel mb-3" style="max-width:680px">
     <div class="erp-panel-header d-flex justify-content-between align-items-center">
         <span><i class="bi bi-file-earmark-arrow-up me-1"></i>Import Data Dandori dari Excel</span>
@@ -399,7 +399,7 @@ $filterActive = ($search ?? '') !== '' || $filterKarId || $filterMesinId || $fil
                     </td>
                     @php $note = $r->staff_note ?? null; @endphp
                     <td>
-                        @if(auth()->user()->role === 'admin')
+                        @if(auth()->user()->hasRole('admin'))
                         <div class="action-btns">
                             <a href="{{ route('input.dandori.edit', $r) }}" class="btn btn-warning btn-sm">Edit</a>
                             <form method="POST" action="{{ route('input.dandori.destroy', $r) }}"

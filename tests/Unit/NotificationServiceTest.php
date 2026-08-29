@@ -19,7 +19,7 @@ class NotificationServiceTest extends TestCase
             'name' => $name,
             'email' => uniqid().'@test.com',
             'password' => bcrypt('password'),
-            'role' => $role,
+            'roles' => [$role],
         ]);
     }
 

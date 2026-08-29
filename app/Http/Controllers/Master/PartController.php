@@ -61,7 +61,7 @@ class PartController extends Controller
 
         $rows = $q->paginate(30)->withQueryString();
 
-        $isAdmin = auth()->user()?->role === 'admin';
+        $isAdmin = auth()->user()?->hasRole('admin') ?? false;
 
         $dismissedProd = session('sph_dismissed_produksi', []);
         $dismissedQc = session('sph_dismissed_qc', []);
@@ -146,7 +146,7 @@ class PartController extends Controller
             });
         }
 
-        $isAdmin = auth()->user()?->role === 'admin';
+        $isAdmin = auth()->user()?->hasRole('admin') ?? false;
 
         try {
             $recommendations = $isAdmin ? $this->sphSvc->forPart($part->id)->keyBy('id_part_proses') : collect();
@@ -194,7 +194,7 @@ class PartController extends Controller
      */
     public function upgradeSph(MasterPart $part, MasterPartProses $proses, Request $request)
     {
-        abort_if(auth()->user()?->role !== 'admin', 403);
+        abort_if(! (auth()->user()?->hasRole('admin') ?? false), 403);
 
         $newSph = (int) $request->input('recommended_sph');
         $oldSph = (int) $proses->sph_standar_produksi;
@@ -236,7 +236,7 @@ class PartController extends Controller
      */
     public function upgradeQcSph(MasterPart $part, MasterPartProses $proses, Request $request)
     {
-        abort_if(auth()->user()?->role !== 'admin', 403);
+        abort_if(! (auth()->user()?->hasRole('admin') ?? false), 403);
 
         $newSph = (int) $request->input('recommended_sph');
         $oldSph = (int) $proses->sph_standar_qc;

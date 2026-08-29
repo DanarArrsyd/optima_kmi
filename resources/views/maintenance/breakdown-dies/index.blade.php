@@ -31,7 +31,7 @@ $filterActive = $partId || $filterProsesId || $filterPic !== '' || $filterStatus
 
 @php
     $filterActive = $partId > 0 || $dateFrom !== date('Y-m-01') || $dateTo !== date('Y-m-d');
-    $isAdmin      = auth()->user()->role === 'admin';
+    $isAdmin      = auth()->user()->hasRole('admin');
 @endphp
 
 <style>

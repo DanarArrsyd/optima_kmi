@@ -159,7 +159,7 @@
 @push('scripts')
 @include('maintenance.partials.typeahead')
 <script>
-const canInputPreventive = {{ in_array(auth()->user()->role, ['admin', 'staff_maintenance']) ? 'true' : 'false' }};
+const canInputPreventive = {{ auth()->user()->hasRole(['admin', 'staff_maintenance']) ? 'true' : 'false' }};
 const baseUrl = `{{ url('maintenance/availability/control-stroke-mesin') }}`;
 const dataUrl = `{{ route('maintenance.control-stroke-mesin.data') }}`;
 const COLSPAN = 10;

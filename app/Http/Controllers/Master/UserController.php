@@ -20,12 +20,20 @@ class UserController extends Controller
             ->when($search !== '', fn ($q) => $q->where(fn ($s) => $s
                 ->where('name', 'like', '%'.$search.'%')
                 ->orWhere('email', 'like', '%'.$search.'%')))
-            ->when($filterRole !== '', fn ($q) => $q->where('role', $filterRole))
+            /* whereJsonContains, bukan where('roles', ...) — roles sekarang
+             * array, dan filter mencari SALAH SATU pemilik role itu. */
+            ->when($filterRole !== '', fn ($q) => $q->whereJsonContains('roles', $filterRole))
             ->orderBy('name')
             ->paginate(20)->withQueryString();
 
         $karyawan = MasterKaryawan::orderBy('nama_karyawan')->get();
-        $roleList = User::distinct()->orderBy('role')->pluck('role')->filter()->values();
+
+        /* Daftar role TETAP dari User::ROLES, bukan diturunkan dari data
+         * (distinct()->pluck('roles') tidak berarti apa-apa untuk kolom
+         * JSON) — enam role-nya sudah tetap sejak dulu, hardcode di sini
+         * sama benarnya dan jauh lebih murah daripada memecah array JSON
+         * lewat SQL. */
+        $roleList = collect(User::ROLES);
 
         return view('master.users.index', compact('users', 'karyawan', 'search', 'filterRole', 'roleList'));
     }
@@ -43,7 +51,7 @@ class UserController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => $request->password,  // model 'hashed' cast handles hashing
-            'role' => $request->role,
+            'roles' => $request->input('roles', []),
             'id_karyawan' => $request->id_karyawan,
         ]);
 
@@ -62,7 +70,7 @@ class UserController extends Controller
         $data = [
             'name' => $request->name,
             'email' => $request->email,
-            'role' => $request->role,
+            'roles' => $request->input('roles', []),
             'id_karyawan' => $request->id_karyawan,
         ];
         if ($request->filled('password')) {
