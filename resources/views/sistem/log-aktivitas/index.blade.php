@@ -120,7 +120,7 @@
             $diffKeys = array_unique(array_merge(array_keys($old), array_keys($baru)));
         @endphp
         <tr>
-            <td style="white-space:nowrap;color:#6b7280">{{ $log->created_at->format('d/m/Y H:i') }}</td>
+            <td style="white-space:nowrap;color:#6b7280">{{ $log->created_at->clone()->timezone('Asia/Jakarta')->format('d/m/Y H:i') }}</td>
             <td style="white-space:nowrap;font-weight:600">{{ $log->causer?->name ?? '—' }}</td>
             <td style="white-space:nowrap">{{ $modulLabels[$log->log_name] ?? ($log->log_name ?? '—') }}</td>
             <td style="white-space:nowrap">

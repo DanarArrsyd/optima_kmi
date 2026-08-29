@@ -66,6 +66,21 @@ class LogAktivitasTest extends TestCase
         ]);
     }
 
+    public function test_login_dobel_klik_cuma_satu_baris(): void
+    {
+        $user = User::factory()->create(['role' => 'admin', 'password' => bcrypt('rahasia123')]);
+
+        $creds = ['email' => $user->email, 'password' => 'rahasia123'];
+        $this->post(route('login'), $creds);
+        $this->post(route('logout'));
+        $this->post(route('login'), $creds);
+
+        $this->assertSame(
+            1,
+            Activity::where('log_name', 'auth')->where('event', 'login')->where('causer_id', $user->id)->count()
+        );
+    }
+
     public function test_filter_modul_menyaring(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);

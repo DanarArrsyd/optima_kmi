@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Sistem;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Spatie\Activitylog\Models\Activity;
 
 class LogAktivitasController extends Controller
@@ -41,10 +42,15 @@ class LogAktivitasController extends Controller
         $userId = $request->input('user_id', '');
         $search = trim((string) $request->input('search', ''));
 
+        /* created_at tersimpan UTC, filter tanggal dari user itu WIB (UTC+7) —
+         * whereDate polos di kolom UTC menggeser batas hari sampai 7 jam.
+         * Konversi rentang WIB ke UTC dulu di sini. */
+        $rentangUtcFrom = Carbon::parse($dateFrom, 'Asia/Jakarta')->startOfDay()->utc();
+        $rentangUtcTo = Carbon::parse($dateTo, 'Asia/Jakarta')->endOfDay()->utc();
+
         $query = Activity::query()
             ->with('causer')
-            ->whereDate('created_at', '>=', $dateFrom)
-            ->whereDate('created_at', '<=', $dateTo)
+            ->whereBetween('created_at', [$rentangUtcFrom, $rentangUtcTo])
             ->when($modul !== '', fn ($q) => $q->where('log_name', $modul))
             ->when($event !== '', fn ($q) => $q->where('event', $event))
             ->when($userId !== '', fn ($q) => $q->where('causer_id', $userId)->where('causer_type', User::class))
