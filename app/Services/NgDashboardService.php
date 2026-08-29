@@ -112,10 +112,12 @@ class NgDashboardService
     }
 
     /**
-     * Rincian jenis NG untuk satu bulan, urut qty terbanyak.
+     * Rincian NG untuk satu bulan, per kombinasi Part + Jenis NG, urut qty
+     * terbanyak. Dulu cuma dikelompokkan per jenis NG (semua part digabung) —
+     * operator/QC perlu tahu PART mana yang kena, bukan cuma jenis NG-nya.
      *
      * @param  string  $bulan  format 'YYYY-MM'
-     * @return list<array{id_jenis_ng: int, kode: string, nama_ng: string, qty: int, porsi: float}>
+     * @return list<array{id_jenis_ng: int, kode: string, nama_ng: string, part_no: string, part_name: string, qty: int, porsi: float}>
      */
     public function getVcbNgDetail(string $sumber, string $bulan): array
     {
@@ -133,36 +135,51 @@ class NgDashboardService
 
         /*
          * whereHas menerapkan global scope model induk, jadi sesi ter-soft-delete
-         * otomatis tidak ikut.
+         * otomatis tidak ikut. Part/proses BISA soft-delete sementara transaksi
+         * lamanya tetap ada — partProses/part di-load lewat relasi biasa (bukan
+         * withTrashed) jadi baris begitu jatuh ke fallback "Part terhapus",
+         * bukan exception.
          */
         $rows = $cfg['detail']::query()
-            ->with('jenisNg')
+            ->with(['jenisNg', 'transaksi.partProses.part'])
             ->whereHas('transaksi', fn ($q) => $q
                 ->whereYear($cfg['tanggal'], $tahun)
                 ->whereMonth($cfg['tanggal'], $bln))
             ->get();
 
-        $byJenis = [];
+        $byGroup = [];
         $total = 0;
 
         foreach ($rows as $row) {
-            $id = (int) $row->id_jenis_ng;
+            $idJenis = (int) $row->id_jenis_ng;
+            $idProses = (int) $row->transaksi?->id_part_proses;
             $qty = (int) $row->qty;
+            $key = $idProses.'-'.$idJenis;
 
-            if (! isset($byJenis[$id])) {
-                $byJenis[$id] = [
-                    'id_jenis_ng' => $id,
+            $part = $row->transaksi?->partProses?->part;
+
+            if (! isset($byGroup[$key])) {
+                $byGroup[$key] = [
+                    /* Part + jenis NG yang sama tidak lagi menjamin id_jenis_ng
+                     * unik per baris (satu jenis NG bisa muncul di banyak part
+                     * bulan yang sama) — 'key' inilah yang dipakai Alpine
+                     * x-for, BUKAN id_jenis_ng, supaya baris tidak kolaps
+                     * diam-diam kalau dua part kena jenis NG yang sama. */
+                    'key' => $key,
+                    'id_jenis_ng' => $idJenis,
                     'kode' => $row->jenisNg?->kode ?? '?',
                     'nama_ng' => $row->jenisNg?->nama_ng ?? 'Jenis NG terhapus',
+                    'part_no' => $part?->part_no ?? '—',
+                    'part_name' => $part?->part_name ?? 'Part terhapus',
                     'qty' => 0,
                 ];
             }
 
-            $byJenis[$id]['qty'] += $qty;
+            $byGroup[$key]['qty'] += $qty;
             $total += $qty;
         }
 
-        $hasil = array_values($byJenis);
+        $hasil = array_values($byGroup);
         usort($hasil, fn ($a, $b) => $b['qty'] <=> $a['qty']);
 
         foreach ($hasil as $i => $row) {

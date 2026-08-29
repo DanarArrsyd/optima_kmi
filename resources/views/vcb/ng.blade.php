@@ -184,7 +184,7 @@
     {{-- ── Rincian bulan terpilih ───────────────── --}}
     <div class="erp-panel" x-show="bulanTerpilih" x-cloak id="ngv-rincian">
         <div class="erp-panel-header">
-            <span x-text="'Rincian Jenis NG — ' + labelBulanTerpilih"></span>
+            <span x-text="'Rincian NG per Part — ' + labelBulanTerpilih"></span>
         </div>
         <div class="erp-panel-body">
             <div x-show="detailError" x-cloak class="text-danger text-center py-3">
@@ -197,7 +197,9 @@
                 <table class="erp-table mb-0">
                     <thead>
                         <tr>
-                            <th style="width:90px">Kode</th>
+                            <th style="width:90px">Part No</th>
+                            <th>Part Name</th>
+                            <th style="width:90px">Kode NG</th>
                             <th>Jenis NG</th>
                             <th class="text-end" style="width:90px">Qty</th>
                             <th class="text-end" style="width:80px">Porsi</th>
@@ -205,8 +207,10 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <template x-for="row in detail" :key="row.id_jenis_ng">
+                        <template x-for="row in detail" :key="row.key">
                             <tr>
+                                <td style="font-weight:700" x-text="row.part_no"></td>
+                                <td x-text="row.part_name"></td>
                                 <td style="font-weight:700" x-text="row.kode"></td>
                                 <td x-text="row.nama_ng"></td>
                                 <td class="text-end" style="font-variant-numeric:tabular-nums" x-text="fmtInt(row.qty)"></td>
@@ -219,7 +223,7 @@
                             </tr>
                         </template>
                         <tr class="ngv-total-row">
-                            <td colspan="2">Total bulan ini</td>
+                            <td colspan="4">Total bulan ini</td>
                             <td class="text-end" style="font-variant-numeric:tabular-nums" x-text="fmtInt(totalDetail)"></td>
                             <td class="text-end">100%</td>
                             <td></td>

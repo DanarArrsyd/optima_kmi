@@ -295,6 +295,43 @@ class NgDashboardServiceTest extends TestCase
         $this->assertSame(100.0, $hasil[0]['porsi']);
     }
 
+    public function test_detail_memisahkan_part_yang_berbeda_meski_jenis_ng_sama(): void
+    {
+        $dented = MasterJenisNg::create(['kode' => 'DNT', 'nama_ng' => 'Dented']);
+
+        $trxA = $this->produksi('2026-03-05', 90, 10);
+        TransaksiProduksiNg::create(['id_transaksi_produksi' => $trxA->id, 'id_jenis_ng' => $dented->id, 'qty' => 10]);
+
+        $partB = MasterPart::create(['part_no' => 'BB-P1', 'part_name' => 'BB Part', 'customer' => 'Daihatsu']);
+        $prosesB = MasterPartProses::create([
+            'id_part' => $partB->id, 'id_proses' => 1, 'nama_proses' => 'PROGRESSIVE',
+            'sph_standar_produksi' => 500, 'sph_standar_qc' => 250,
+        ]);
+        $trxB = TransaksiProduksi::create([
+            'tanggal_produksi' => '2026-03-06',
+            'id_shift' => $this->shift->id,
+            'id_karyawan' => $this->karyawan->id,
+            'id_mesin' => $this->mesin->id,
+            'id_part_proses' => $prosesB->id,
+            'jam_start' => '08:00:00',
+            'jam_finish' => '12:00:00',
+            'qty_aktual' => 80,
+            'qty_ng' => 20,
+            'created_by' => $this->user->id,
+        ]);
+        TransaksiProduksiNg::create(['id_transaksi_produksi' => $trxB->id, 'id_jenis_ng' => $dented->id, 'qty' => 20]);
+
+        $hasil = $this->svc->getVcbNgDetail('produksi', '2026-03');
+
+        $this->assertCount(2, $hasil, 'part beda + jenis NG sama harus tetap 2 baris, bukan digabung');
+        $this->assertNotSame($hasil[0]['key'], $hasil[1]['key']);
+        $partNames = array_column($hasil, 'part_name');
+        $this->assertContains('ND Part', $partNames);
+        $this->assertContains('BB Part', $partNames);
+        $this->assertSame(20, $hasil[0]['qty']);
+        $this->assertSame('BB Part', $hasil[0]['part_name']);
+    }
+
     public function test_detail_tidak_bocor_lintas_bulan(): void
     {
         $maret = $this->produksi('2026-03-10', 95, 5);
