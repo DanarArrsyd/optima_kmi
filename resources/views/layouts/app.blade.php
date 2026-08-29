@@ -1406,7 +1406,7 @@ function notifBell() {
         csrfToken: document.querySelector('meta[name="csrf-token"]')?.content ?? '',
         init() {
             this.poll();
-            setInterval(() => this.poll(), 30000);
+            setInterval(() => this.poll(), 60000);
         },
         async poll() {
             try {
