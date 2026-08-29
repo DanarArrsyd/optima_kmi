@@ -511,18 +511,21 @@ $_prosesLabel = $_prosesObjF ? $_prosesObjF->id_proses.' – '.$_prosesObjF->nam
 </div>
 
 {{-- Kepala panel dibuang: judul di topbar, jumlah baris dan penanda filter
-     aktif sudah ada di status bar. --}}
+     aktif sudah ada di status bar. Tabel dibungkus overflow-x sendiri —
+     panel Export/Rekomendasi SPH di atas jangan ikut tergeser pas tabel
+     digulung mendatar. --}}
+    <div style="overflow-x:auto">
     <table class="erp-table" style="min-width:900px">
-        <thead style="position:sticky;top:0;z-index:10">
+        <thead>
             <tr>
-                <th>Customer</th>
-                <th style="white-space:nowrap">Part No</th>
-                <th style="white-space:nowrap">Part Name</th>
-                <th>ID Proses</th>
-                <th style="white-space:nowrap">Nama Proses</th>
-                <th>SPH Produksi<br><span style="font-weight:400;font-size:0.72rem">+ tgl upgrade</span></th>
-                <th>SPH Quality<br><span style="font-weight:400;font-size:0.72rem">+ tgl upgrade</span></th>
-                <th style="width:160px">Aksi</th>
+                <th style="position:sticky;top:0;z-index:10;background:#e5e7eb">Customer</th>
+                <th style="position:sticky;top:0;z-index:10;background:#e5e7eb;white-space:nowrap">Part No</th>
+                <th style="position:sticky;top:0;z-index:10;background:#e5e7eb;white-space:nowrap">Part Name</th>
+                <th style="position:sticky;top:0;z-index:10;background:#e5e7eb">ID Proses</th>
+                <th style="position:sticky;top:0;z-index:10;background:#e5e7eb;white-space:nowrap">Nama Proses</th>
+                <th style="position:sticky;top:0;z-index:10;background:#e5e7eb">SPH Produksi<br><span style="font-weight:400;font-size:0.72rem">+ tgl upgrade</span></th>
+                <th style="position:sticky;top:0;z-index:10;background:#e5e7eb">SPH Quality<br><span style="font-weight:400;font-size:0.72rem">+ tgl upgrade</span></th>
+                <th style="position:sticky;top:0;z-index:10;background:#e5e7eb;width:160px">Aksi</th>
             </tr>
         </thead>
         <tbody>
@@ -582,6 +585,7 @@ $_prosesLabel = $_prosesObjF ? $_prosesObjF->id_proses.' – '.$_prosesObjF->nam
         @endforelse
         </tbody>
     </table>
+    </div>{{-- /overflow-x --}}
 </div>{{-- /erp-scroll --}}
 
 <div class="erp-pg">{{ $rows->links() }}</div>

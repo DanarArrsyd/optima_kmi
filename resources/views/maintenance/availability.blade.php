@@ -182,7 +182,7 @@ async function loadData() {
            mesin digambar putih di dalamnya. */
         plugins: [pluginNamaDalamBatang({ warnaDalam: '#ffffff' })],
         data: { labels: rows.map(r => r.kode_mesin), datasets: [{ label: 'Availability %', data: rows.map(r => r.availability_pct), backgroundColor: rows.map(r => availColor(r.availability_pct)) }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, datalabels: { display: true, anchor: 'end', align: 'top', font: { size: 10, weight: 'bold' }, color: '#111827', formatter: v => v + '%' } }, scales: { y: { beginAtZero: true, max: 100 }, x: { ticks: { display: false }, grid: { display: false } } } }
+        options: { responsive: true, maintainAspectRatio: false, layout: { padding: { top: 20 } }, plugins: { legend: { display: false }, datalabels: { display: true, anchor: 'end', align: 'top', font: { size: 10, weight: 'bold' }, color: '#111827', formatter: v => v + '%' } }, scales: { y: { beginAtZero: true, max: 100 }, x: { ticks: { display: false }, grid: { display: false } } } }
     });
 
     const tbody = document.getElementById('availTableBody');

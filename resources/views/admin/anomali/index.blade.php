@@ -93,8 +93,11 @@
 </div>
 @else
 {{-- Kepala panel dibuang: judul sudah di topbar, jumlah record sudah di
-     status bar. Wadah gulung bertumpuk juga dilepas — dua wadah gulung
-     membuat kepala tabel yang menempel berhenti bekerja. --}}
+     status bar. Tabel dibungkus overflow-x SENDIRI (bukan ikut .erp-scroll
+     luar) supaya kartu KPI di atas tidak ikut tergeser pas tabel digulung
+     mendatar — wrapper ini cuma overflow-x, overflow-y tetap default
+     (visible), jadi sticky vertikal thead masih pegang .erp-scroll luar. --}}
+        <div style="overflow-x:auto">
         <table class="erp-table tbl-freeze" style="min-width:1400px">
             <thead style="position:sticky;top:0;z-index:10">
                 <tr>
@@ -178,6 +181,7 @@
             @endforeach
             </tbody>
         </table>
+        </div>{{-- /overflow-x --}}
 @endif
 
 {{-- Ambang dibaca dari config/anomali_lhp.php, bukan ditulis ulang di sini:
