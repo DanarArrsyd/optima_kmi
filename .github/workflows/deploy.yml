@@ -107,7 +107,7 @@ jobs:
             --exclude='.git/' \
             --exclude='.git*' \
             --exclude='node_modules/' \
-            --exclude='vendor/' \
+            --exclude='/vendor/' \
             --exclude='tests/' \
             --exclude='docs/' \
             --exclude='.github/' \
