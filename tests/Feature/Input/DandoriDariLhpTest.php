@@ -422,17 +422,27 @@ class DandoriDariLhpTest extends TestCase
     }
 
     #[DataProvider('formPembuatan')]
-    public function test_jenis_loss_time_memakai_typeahead_bukan_dropdown(string $rute): void
+    public function test_jenis_loss_time_memakai_dropdown_bukan_typeahead(string $rute): void
     {
+        // Tabel baris ini berada di dalam .table-responsive, dan
+        // overflow-x:auto pada elemen itu memaksa overflow-y ikut menjadi
+        // auto — dropdown typeahead yang position:absolute jadi TERPOTONG
+        // oleh scroll container-nya sendiri alih-alih melayang di atas
+        // halaman. Operator melihat daftar loss time terjepit dalam kotak
+        // kecil. <select> biasa kebal soal ini karena browser merender
+        // dropdown-nya sendiri, bukan lewat CSS position — sama seperti
+        // "Pilih Jenis NG". Operator Dandori TETAP typeahead; yang diseragamkan
+        // ke select cuma Jenis Loss Time.
         $blok = $this->blokDandori($this->get(route($rute))->assertOk()->getContent());
 
-        // Dropdown apa pun di dalam blok berarti masih ada field yang belum
-        // diseragamkan dengan halaman Dandori — termasuk Operator Dandori.
-        $this->assertStringNotContainsString('<select', $blok);
-
-        $this->assertStringContainsString('ta-input', $blok);
-        $this->assertStringContainsString('Ketik kode atau jenis', $blok);
+        $this->assertStringContainsString('<select', $blok);
         $this->assertStringContainsString('dandori[${i}][id_losstime]', $blok);
+        $this->assertStringContainsString('— pilih jenis loss time —', $blok);
+        $this->assertStringNotContainsString('Ketik kode atau jenis', $blok);
+
+        // Operator Dandori tidak ikut berubah.
+        $this->assertStringContainsString('ta-input', $blok);
+        $this->assertStringContainsString('Kosongkan = sama dengan operator LHP', $blok);
     }
 
     #[DataProvider('formPembuatan')]
