@@ -187,20 +187,35 @@
                 <th>Email</th>
                 <th>Role</th>
                 <th>Karyawan</th>
-                <th style="width:130px">Aksi</th>
+                <th style="width:90px">Status</th>
+                <th style="width:220px">Aksi</th>
             </tr>
         </thead>
         <tbody>
         @forelse($users as $u)
-            <tr>
+            <tr style="{{ !$u->is_aktif ? 'opacity:0.55;background:#f9fafb' : '' }}">
                 <td>{{ $u->name }}</td>
                 <td>{{ $u->email }}</td>
                 <td>{{ strtoupper(str_replace('_', ' ', $u->role)) }}</td>
                 <td>{{ $u->karyawan?->nama_karyawan ?? '—' }}</td>
                 <td>
+                    @if($u->is_aktif)
+                        <span class="badge bg-success">Aktif</span>
+                    @else
+                        <span class="badge bg-secondary">Nonaktif</span>
+                    @endif
+                </td>
+                <td>
                     <div class="action-btns">
                         <a href="{{ route('master.users.edit', $u) }}" class="btn btn-warning btn-sm">Edit</a>
                         @if($u->id !== auth()->id())
+                        <form method="POST" action="{{ route('master.users.toggle-aktif', $u) }}"
+                              onsubmit="return confirm('{{ $u->is_aktif ? 'Nonaktifkan' : 'Aktifkan kembali' }} user ini?')">
+                            @csrf @method('PATCH')
+                            <button class="btn btn-sm {{ $u->is_aktif ? 'btn-outline-secondary' : 'btn-outline-success' }}">
+                                {{ $u->is_aktif ? 'Nonaktifkan' : 'Aktifkan' }}
+                            </button>
+                        </form>
                         <form method="POST" action="{{ route('master.users.destroy', $u) }}"
                               onsubmit="return confirm('Hapus user ini?')">
                             @csrf @method('DELETE')
@@ -211,7 +226,7 @@
                 </td>
             </tr>
         @empty
-            <tr><td colspan="5" style="text-align:center;color:#888;padding:20px">Belum ada user.</td></tr>
+            <tr><td colspan="6" style="text-align:center;color:#888;padding:20px">Belum ada user.</td></tr>
         @endforelse
         </tbody>
     </table>
