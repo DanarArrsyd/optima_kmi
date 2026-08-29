@@ -57,14 +57,19 @@
 <div class="erp-ws-main">
 <div class="erp-scroll erp-scroll-pad">
 
-<div class="erp-panel">
-    {{-- Tinggi dikunci di pembungkus; alasannya sama dengan grafik VCB lain.
-         Nama tidak dipindah ke dalam batang di sini — grafik ini multi-seri
-         (batang berkelompok per dataset), jadi satu nama per posisi-x tidak
-         punya batang tunggal untuk ditempeli. --}}
-    <div class="erp-panel-body" style="padding:12px">
-        <div style="position:relative;height:320px">
+<div class="erp-panel mb-3">
+    <div class="erp-panel-header">Achievement Mesin &mdash; Actual vs Target QTY</div>
+    <div class="erp-panel-body">
+        {{-- Tinggi dikunci di pembungkus, sama seperti grafik VCB lain
+             (lihat feedback proxy Chart.js/Alpine). Nama tidak dipindah ke
+             dalam batang — batang di sini berbagi ruang-x dengan garis
+             target, satu nama per posisi tidak punya batang tunggal untuk
+             ditempeli. --}}
+        <div style="position:relative;height:340px">
             <canvas id="vcbChart"></canvas>
+        </div>
+        <div style="font-size:11px;color:var(--text-3);border-top:1px solid var(--border);margin-top:10px;padding-top:8px">
+            Batang = Actual QTY (biru = lebihi target, hijau = capai target, merah = di bawah target). Garis abu-abu = Target QTY.
         </div>
     </div>
 </div>
@@ -123,7 +128,59 @@ async function loadData() {
     vcbChart = new Chart(document.getElementById('vcbChart'), {
         type: 'bar',
         data: { labels: data.labels, datasets: data.datasets },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } }, scales: { y: { beginAtZero: true } } }
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            layout: { padding: { top: 24 } },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: { color: '#4b5563', font: { size: 11 } },
+                },
+                y: {
+                    beginAtZero: true,
+                    border: { display: false },
+                    grid: { color: '#e5e7eb' },
+                    ticks: { color: '#6b7280', font: { size: 11 } },
+                },
+            },
+            plugins: {
+                /* Legend dibuat manual — dataset batang mewarnai tiap batang
+                 * beda-beda (achievement per mesin), bukan satu warna per
+                 * dataset, jadi swatch bawaan Chart.js bakal salah/aneh. */
+                legend: {
+                    position: 'top',
+                    labels: {
+                        generateLabels: () => [
+                            { text: 'Actual QTY', fillStyle: '#6b7280', strokeStyle: '#6b7280' },
+                            { text: 'Target QTY', fillStyle: '#374151', strokeStyle: '#374151' },
+                        ],
+                    },
+                },
+                datalabels: {
+                    display: c => c.datasetIndex === 0,
+                    anchor: 'end',
+                    align: 'end',
+                    offset: 2,
+                    color: '#374151',
+                    font: { size: 10, weight: 700 },
+                    formatter: (v, c) => (data.achievements[c.dataIndex] ?? 0) + '%',
+                },
+                tooltip: {
+                    displayColors: false,
+                    callbacks: {
+                        label: c => {
+                            const i = c.dataIndex;
+                            if (c.datasetIndex === 0) {
+                                return `Actual: ${Number(c.raw).toLocaleString('id-ID')} (${data.achievements[i]}%)`;
+                            }
+
+                            return `Target: ${Number(c.raw).toLocaleString('id-ID')}`;
+                        },
+                    },
+                },
+            },
+        },
     });
 
     const tbody = document.getElementById('vcbTableBody');

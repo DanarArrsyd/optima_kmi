@@ -30,17 +30,49 @@ class VcbMesinController extends Controller
         $labels = array_column($rows, 'mesin');
         $targets = array_column($rows, 'total_target_qty');
         $actuals = array_column($rows, 'total_qty_aktual');
-        $colors = array_map(fn ($r) => match ($r['traffic_light']) {
-            'success' => 'rgba(34,197,94,0.8)',
-            'warning' => 'rgba(234,179,8,0.8)',
-            default => 'rgba(239,68,68,0.8)',
+
+        /*
+         * Warna dari achievement_pct langsung, SAMA PERSIS dengan badge tabel
+         * di bawah grafik ini (>100 biru, >=100 hijau, sisanya merah) — BUKAN
+         * dari traffic_light. Field itu cuma berguna dua nilai nyata (success/
+         * info) karena 'warning' nol pernah dikembalikan getTrafficLight(),
+         * dan map lama menjatuhkan 'info' (mesin di ATAS target) ke cabang
+         * default merah — mesin yang justru melebihi target tampil semerah
+         * yang di bawah target. Achievement_pct sendiri sudah cukup, satu
+         * sumber kebenaran, sama seperti badge tabel.
+         */
+        $colors = array_map(fn ($r) => match (true) {
+            $r['achievement_pct'] > 100 => '#1d4ed8',
+            $r['achievement_pct'] >= 100 => '#15803d',
+            default => '#b91c1c',
         }, $rows);
 
         return response()->json([
             'labels' => $labels,
             'datasets' => [
-                ['label' => 'Target QTY', 'data' => $targets, 'backgroundColor' => 'rgba(99,102,241,0.6)'],
-                ['label' => 'Actual QTY', 'data' => $actuals, 'backgroundColor' => $colors],
+                [
+                    'type' => 'bar',
+                    'label' => 'Actual QTY',
+                    'data' => $actuals,
+                    'backgroundColor' => $colors,
+                    'order' => 2,
+                ],
+                [
+                    'type' => 'line',
+                    'label' => 'Target QTY',
+                    'data' => $targets,
+                    'borderColor' => '#374151',
+                    'backgroundColor' => '#374151',
+                    'pointRadius' => 3,
+                    'pointHoverRadius' => 5,
+                    'borderWidth' => 2,
+                    'fill' => false,
+                    'tension' => 0,
+                    /* order LEBIH KECIL dari bar → Chart.js gambar dataset ini
+                     * TERAKHIR (di atas) — garis target harus keliatan nembus
+                     * batang, bukan ketutupan. */
+                    'order' => 1,
+                ],
             ],
             'table' => $rows,
             'achievements' => array_column($rows, 'achievement_pct'),
