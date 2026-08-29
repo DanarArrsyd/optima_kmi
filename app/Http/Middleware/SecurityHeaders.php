@@ -11,10 +11,9 @@ use Symfony\Component\HttpFoundation\Response;
  *
  * Catatan CSP: aplikasi ini memakai style inline di hampir setiap Blade dan
  * Alpine.js (yang butuh 'unsafe-eval'), jadi script-src belum bisa dikunci
- * penuh tanpa refactor besar. Yang dipasang di sini membatasi ASAL script ke
- * diri sendiri + CDN yang memang dipakai (Bootstrap/Chart.js/Alpine lewat
- * jsDelivr, sudah ber-SRI), sehingga payload yang tersuntik lewat data tidak
- * bisa memuat script dari domain penyerang.
+ * penuh tanpa refactor besar. Bootstrap/Chart.js/Alpine di-self-host lewat
+ * public/vendor/ (nol lagi jsDelivr) — script-src/style-src/font-src cukup
+ * 'self', nol perlu izinin domain CDN eksternal apa pun lagi.
  */
 class SecurityHeaders
 {
@@ -24,9 +23,9 @@ class SecurityHeaders
 
         $csp = implode('; ', [
             "default-src 'self'",
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net",
-            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
-            "font-src 'self' https://cdn.jsdelivr.net data:",
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+            "style-src 'self' 'unsafe-inline'",
+            "font-src 'self' data:",
             "img-src 'self' data: blob:",
             "connect-src 'self'",
             "frame-ancestors 'none'",
