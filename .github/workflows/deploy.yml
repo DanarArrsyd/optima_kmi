@@ -176,13 +176,16 @@ jobs:
               "cd '${{ env.REMOTE_PATH }}' && grep -v '^$1=' .env > .env.new 2>/dev/null; mv .env.new .env; printf '%s=%s\n' '$1' '$2' >> .env"
             echo "$1 di-set di server."
           }
-          changed=0
-          if [ -n "$CEREBRAS_API_KEY" ]; then upsert CEREBRAS_API_KEY "$CEREBRAS_API_KEY"; changed=1; fi
-          if [ -n "$DEEPSEEK_API_KEY" ]; then upsert DEEPSEEK_API_KEY "$DEEPSEEK_API_KEY"; changed=1; fi
-          if [ "$changed" = "1" ]; then
-            ssh -p "$SSH_PORT" -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new "$SSH_USERNAME@$SSH_HOST" \
-              "cd '${{ env.REMOTE_PATH }}' && ${{ env.REMOTE_PHP }} artisan config:clear; ${{ env.REMOTE_PHP }} artisan route:clear"
-            echo "config/route cache dibersihkan."
-          else
-            echo "Tidak ada runtime secret yang diisi — dilewati."
-          fi
+          if [ -n "$CEREBRAS_API_KEY" ]; then upsert CEREBRAS_API_KEY "$CEREBRAS_API_KEY"; fi
+          if [ -n "$DEEPSEEK_API_KEY" ]; then upsert DEEPSEEK_API_KEY "$DEEPSEEK_API_KEY"; fi
+
+      # Cache config/route/view supaya tiap request tidak parse ulang config,
+      # register ulang 193 route, dan cek-kompilasi ulang tiap Blade view.
+      # WAJIB config:clear dulu — cache lama (kalau ada) harus dibuang sebelum
+      # di-generate ulang dari .env yang baru saja disentuh step di atas,
+      # kalau tidak config:cache membaca cache basi bukan .env terbaru.
+      - name: Cache config/route/view di server
+        run: |
+          ssh -p "${{ secrets.SSH_PORT }}" -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+            "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" \
+            "cd ${{ env.REMOTE_PATH }} && ${{ env.REMOTE_PHP }} artisan config:clear && ${{ env.REMOTE_PHP }} artisan route:clear && ${{ env.REMOTE_PHP }} artisan view:clear && ${{ env.REMOTE_PHP }} artisan config:cache && ${{ env.REMOTE_PHP }} artisan route:cache && ${{ env.REMOTE_PHP }} artisan view:cache"

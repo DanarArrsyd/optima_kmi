@@ -1,6 +1,6 @@
 <?php
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\HomeController;
 use App\Http\Controllers\Master\KaryawanController;
 use App\Http\Controllers\Master\MesinController;
 use App\Http\Controllers\Master\PartController;
@@ -29,27 +29,11 @@ use App\Http\Controllers\Maintenance\AvailabilityDiesController;
 use App\Http\Controllers\Maintenance\ControlStrokeMesinController;
 use App\Http\Controllers\Maintenance\ControlStrokeDiesController;
 
-Route::get('/', fn() => redirect('/dashboard'));
+Route::get('/', [HomeController::class, 'root']);
 
 Route::middleware('auth')->group(function () {
 
-    Route::get('/dashboard', function () {
-        /* User bisa punya banyak role sekarang. Urutan prioritas di bawah
-         * SAMA PERSIS dengan versi role-tunggal lama — cuma diperiksa
-         * pakai hasRole() (array_intersect) alih-alih perbandingan string
-         * tunggal — supaya user yang cuma punya satu role mendarat di
-         * halaman yang sama seperti sebelumnya, nol kejutan. Yang baru
-         * cuma: staff_maintenance menang duluan kalau dia SALAH SATU dari
-         * beberapa role user, bukan satu-satunya role. */
-        $user = Auth::user();
-        return redirect(match(true) {
-            $user->hasRole('staff_maintenance') => '/maintenance/mttr',
-            $user->hasRole(['admin', 'staff_produksi', 'manager']) => '/vcb/produksi',
-            $user->hasRole('staff_qc') => '/vcb/quality',
-            $user->hasRole('guest') => '/vcb/produksi',
-            default => '/vcb/produksi',
-        });
-    })->name('dashboard');
+    Route::get('/dashboard', [HomeController::class, 'dashboard'])->name('dashboard');
 
     // --- MASTER DATA (admin only) ---
     Route::middleware('role:admin')->prefix('master')->name('master.')->group(function () {
