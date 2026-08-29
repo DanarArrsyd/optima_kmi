@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreMasterUserRequest;
 use App\Models\MasterKaryawan;
 use App\Models\User;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 
 class UserController extends Controller
@@ -77,7 +78,29 @@ class UserController extends Controller
         if ($user->id === auth()->id()) {
             return redirect()->route('master.users.index')->with('error', 'Tidak bisa menghapus akun sendiri.');
         }
-        $user->delete();
+
+        /* User TANPA SoftDeletes (beda dari model lain di app ini) dan
+         * created_by/updated_by di transaksi_produksi/qc/dandori/breakdown
+         * serta app_notifications semuanya foreignId('users') tanpa
+         * onDelete cascade — RESTRICT bawaan MySQL. Menghapus akun yang
+         * pernah menulis satu baris pun melempar QueryException 23000 yang
+         * sebelumnya tidak ditangkap sama sekali, jadi operator melihat
+         * halaman 500 polos tanpa penjelasan. Constraint-nya SENGAJA
+         * dibiarkan RESTRICT — akun yang sudah menulis data produksi tidak
+         * boleh dihapus diam-diam (baris transaksi jadi yatim / created_by
+         * hilang), jadi yang diperbaiki di sini cuma pesannya. */
+        try {
+            $user->delete();
+        } catch (QueryException $e) {
+            if ($e->getCode() !== '23000') {
+                throw $e;
+            }
+
+            return redirect()->route('master.users.index')->with(
+                'error',
+                "User \"{$user->name}\" tidak bisa dihapus karena masih tercatat sebagai pembuat data (LHP, QC, Dandori, atau Breakdown) — menghapusnya akan menyisakan data yatim. Ganti passwordnya kalau akses akun ingin dicabut."
+            );
+        }
 
         return redirect()->route('master.users.index')->with('success', 'User berhasil dihapus.');
     }
