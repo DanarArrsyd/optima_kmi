@@ -193,13 +193,15 @@ Route::middleware('auth')->group(function () {
         Route::get('breakdown/export', [BreakdownMesinController::class, 'export'])->name('breakdown.export');
         Route::post('breakdown/import', [BreakdownMesinController::class, 'import'])->name('breakdown.import');
         Route::get('breakdown/import-template', [BreakdownMesinController::class, 'importTemplate'])->name('breakdown.import-template');
-        Route::resource('breakdown', BreakdownMesinController::class)->only(['index', 'create', 'store']);
+        Route::post('breakdown/batch', [BreakdownMesinController::class, 'batch'])->name('breakdown.batch');
+        Route::resource('breakdown', BreakdownMesinController::class)->only(['index', 'create']);
 
         Route::get('breakdown-dies/last-no-lkd', [BreakdownDiesController::class, 'lastNoLkd'])->name('breakdown-dies.last-no-lkd');
         Route::get('breakdown-dies/export', [BreakdownDiesController::class, 'export'])->name('breakdown-dies.export');
         Route::post('breakdown-dies/import', [BreakdownDiesController::class, 'import'])->name('breakdown-dies.import');
         Route::get('breakdown-dies/import-template', [BreakdownDiesController::class, 'importTemplate'])->name('breakdown-dies.import-template');
-        Route::resource('breakdown-dies', BreakdownDiesController::class)->only(['index', 'store'])->parameters(['breakdown-dies' => 'breakdownDy']);
+        Route::post('breakdown-dies/batch', [BreakdownDiesController::class, 'batch'])->name('breakdown-dies.batch');
+        Route::resource('breakdown-dies', BreakdownDiesController::class)->only(['index', 'create']);
 
         Route::get('availability/control-stroke-mesin/{mesin}/preventive', [ControlStrokeMesinController::class, 'createPreventive'])->name('control-stroke-mesin.preventive.create');
         Route::post('availability/control-stroke-mesin/{mesin}/preventive', [ControlStrokeMesinController::class, 'storePreventive'])->name('control-stroke-mesin.preventive');

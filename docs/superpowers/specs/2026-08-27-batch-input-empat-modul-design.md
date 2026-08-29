@@ -99,6 +99,11 @@ batchDraft({
   metode,       // { nama: fn } metode tambahan untuk tabel draft, mis.
                 // ringkasNg(r). Disebar PALING AWAL: kerangka selalu menang,
                 // jadi nama yang bentrok dengan mulai/hapus/rows DIBUANG diam-diam
+  setelahPulih, // (diri) => void: OPSIONAL, dipanggil di UJUNG mulai() setelah
+                // this.rows dan barisGagal terisi dari pemulihan draft. Modul
+                // yang bentuk formnya bergantung pada isi draft (mis. nomor
+                // urut berikutnya) menyesuaikan di sini — TIDAK masuk daftar
+                // kunci wajib, tiga modul yang sudah live tidak mengirimnya.
 })
 ```
 
@@ -235,17 +240,20 @@ justru supaya kerangka selalu menang atas nama method yang sama dari modul
 (lihat catatan di §1) — sebuah `metode.mulai` custom akan KALAH dari
 `mulai()` bawaan kerangka, bukan membungkusnya.
 
-**Bukan diperbaiki di PR ini.** Menambah hook sekarang berarti kode yang
-tidak terpakai dan tidak teruji di PR 1 (belum ada modul yang butuh). PR 4
-(Breakdown Mesin + Dies) yang menambahkan `cfg.setelahPulih(diri)` — callback
-opsional yang dipanggil `batchDraft` di UJUNG `mulai()`, setelah `this.rows`
-terisi — beserta konsumen nyata pertamanya (menghitung ulang `nomor_urut`
-dari `rows` yang dipulihkan) dan test yang membuktikan baris ke-N setelah
-pemulihan tidak lagi bentrok dengan baris yang sudah ada di draft.
+**Ditutup di PR 4 (Task 2).** `cfg.setelahPulih(diri)` — callback opsional
+yang dipanggil `batchDraft` di UJUNG `mulai()`, setelah `this.rows` dan
+`barisGagal` terisi — sudah terpasang di layout, beserta konsumen nyata
+pertamanya (`konfigBreakdownMesin()` menghitung ulang `nomor_urut` dari
+`rows` yang dipulihkan lewat `resetLain`/`setelahPulih` yang sama-sama
+memanggil `majukanNomorUrut()`) dan test
+`HalamanBatchBreakdownMesinTest::test_halaman_memasang_setelah_pulih` yang
+menjangkar ke dalam blok `konfigBreakdownMesin()`, bukan ke definisi
+`batchDraft` di layout itu sendiri.
 
-Halaman yatim `maintenance/breakdown/create.blade.php` **dihapus**, dan route
-`maintenance.breakdown.create` menunjuk halaman batch yang baru. Modul itu
-turun dari tiga penulis jadi dua (batch + edit), sama seperti produksi.
+Halaman yatim `maintenance/breakdown/create.blade.php` **ditulis ulang di
+tempat** jadi halaman batch yang baru — bukan dihapus, filenya tetap ada dan
+route `maintenance.breakdown.create` tetap menunjuk ke situ. Modul itu turun
+dari tiga penulis jadi dua (batch + edit), sama seperti produksi.
 
 ## 3. Sisi Server
 

@@ -26,151 +26,8 @@ $filterActive = $mesinId || $filterPic !== '' || $filterStatus !== '';
 .fbar-lbl{font-size:.67rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8;margin-bottom:4px}
 </style>
 
-{{-- ══ SATU ALPINE SCOPE — drawer + filter ══ --}}
-<div x-data="{ drawerOpen: {{ $errors->any() ? 'true' : 'false' }}, filterOpen: false }">
-
-{{-- ── DRAWER BACKDROP ── --}}
-<div x-show="drawerOpen" x-cloak @click="drawerOpen = false"
-     x-transition:enter="transition ease-out duration-200"
-     x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
-     x-transition:leave="transition ease-in duration-150"
-     x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
-     style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1190"></div>
-
-{{-- ── DRAWER PANEL ── --}}
-<div x-show="drawerOpen" x-cloak
-     x-transition:enter="transition ease-out duration-250"
-     x-transition:enter-start="transform translate-x-full" x-transition:enter-end="transform translate-x-0"
-     x-transition:leave="transition ease-in duration-200"
-     x-transition:leave-start="transform translate-x-0" x-transition:leave-end="transform translate-x-full"
-     style="position:fixed;top:0;right:0;height:100dvh;width:640px;max-width:100vw;z-index:1200">
-    <div class="erp-drawer" style="display:flex;flex-direction:column;height:100%;background:#fff;box-shadow:-4px 0 24px rgba(0,0,0,.18)">
-
-    {{-- Header --}}
-    <div class="erp-drawer-hd">
-        <div>
-            <i class="bi bi-tools me-2"></i>Input Breakdown Mesin
-        </div>
-        <button type="button" @click="drawerOpen = false"
-                style="background:none;border:none;color:#fff;font-size:1.25rem;cursor:pointer;padding:0;line-height:1">
-            <i class="bi bi-x-lg"></i>
-        </button>
-    </div>
-
-    {{-- Body (scrollable) --}}
-    <div style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:24px;overscroll-behavior:contain">
-
-        @if($errors->any())
-        <div class="alert alert-danger mb-3" >
-            <ul class="mb-0 ps-3">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
-        </div>
-        @endif
-
-        @if($mesinList->isEmpty())
-        <div class="alert alert-warning mb-3" >
-            <strong>Master mesin belum ada:</strong> <a href="{{ route('master.mesin.index') }}">Tambah Mesin</a> dulu.
-        </div>
-        @endif
-
-        <form method="POST" action="{{ route('maintenance.breakdown.store') }}" novalidate
-              x-data="{ nomor: '{{ old('nomor_urut', $nextNomor) }}', tgl: '{{ old('tanggal_breakdown', date('Y-m-d')) }}',
-                        get noLkm() {
-                            if (!this.nomor || !this.tgl) return '—';
-                            const r = ['','I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII'];
-                            const d = new Date(this.tgl);
-                            return `${this.nomor}/LKM/MTC/KMI/${r[d.getMonth()+1]}/${String(d.getFullYear()).slice(-2)}`;
-                        } }">
-            @csrf
-            <div class="row g-3">
-
-                {{-- Nomor Urut + preview No.LKM --}}
-                <div class="col-5">
-                    <label class="form-label" >Nomor Urut LKM <span class="text-danger">*</span></label>
-                    <input type="number" name="nomor_urut" min="1" x-model="nomor"
-                           class="form-control @error('nomor_urut') is-invalid @enderror">
-                    @error('nomor_urut')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                </div>
-                <div class="col-7">
-                    <label class="form-label" >No. LKM (otomatis)</label>
-                    <div class="form-control" style="background:#f3f4f6;font-family:monospace;color:#111827" x-text="noLkm"></div>
-                </div>
-
-                {{-- Mesin (typeahead, identik input produksi) --}}
-                @php
-                    $oldMesinId  = old('id_mesin');
-                    $oldMesinObj = $oldMesinId ? $mesinList->firstWhere('id', (int) $oldMesinId) : null;
-                    $oldMesinTxt = $oldMesinObj ? "{$oldMesinObj->id_mesin} – {$oldMesinObj->nama_mesin}" : '';
-                @endphp
-                <div class="col-12" x-data="taField(taMesin, '{{ addslashes($oldMesinTxt) }}', {{ $oldMesinId ?: 'null' }})">
-                    <label class="form-label" >Mesin <span class="text-danger">*</span></label>
-                    <div class="ta-wrap">
-                        <input type="text" class="form-control ta-input @error('id_mesin') is-invalid @enderror"
-                               x-model="query" @focus="openDd()" @blur="closeDd()" @keydown="onKey($event)" @input="onInput()"
-                               placeholder="Ketik kode atau nama mesin...">
-                        <input type="hidden" name="id_mesin" :value="val">
-                        <div class="ta-dropdown" x-show="open" x-cloak>
-                            <template x-if="filtered.length===0"><div class="ta-empty">Tidak ditemukan</div></template>
-                            <template x-for="(item,i) in filtered" :key="item.v">
-                                <div class="ta-item" :class="{'ta-active':i===idx}"
-                                     @mousedown.prevent="pick(item)" x-text="item.t"></div>
-                            </template>
-                        </div>
-                    </div>
-                    @error('id_mesin')<div class="invalid-feedback d-block" >{{ $message }}</div>@enderror
-                </div>
-
-                {{-- Date + time pairs --}}
-                @php $pairs = [
-                    ['tanggal_breakdown','jam_breakdown','Breakdown'],
-                    ['tanggal_mulai_perbaikan','jam_mulai_perbaikan','Mulai Perbaikan'],
-                    ['tanggal_selesai_perbaikan','jam_selesai_perbaikan','Selesai Perbaikan'],
-                ]; @endphp
-                @foreach($pairs as [$dCol,$tCol,$label])
-                <div class="col-6">
-                    <label class="form-label" >Tanggal {{ $label }} <span class="text-danger">*</span></label>
-                    <input type="date" name="{{ $dCol }}"
-                           value="{{ old($dCol, $dCol==='tanggal_breakdown' ? date('Y-m-d') : '') }}"
-                           @if($dCol==='tanggal_breakdown') x-model="tgl" @endif
-                           class="form-control @error($dCol) is-invalid @enderror">
-                    @error($dCol)<div class="invalid-feedback">{{ $message }}</div>@enderror
-                </div>
-                <div class="col-6">
-                    <label class="form-label" >Jam {{ $label }} <span class="text-danger">*</span></label>
-                    <input type="time" name="{{ $tCol }}" value="{{ old($tCol) }}"
-                           class="form-control @error($tCol) is-invalid @enderror">
-                    @error($tCol)<div class="invalid-feedback">{{ $message }}</div>@enderror
-                </div>
-                @endforeach
-
-                {{-- Textareas --}}
-                @foreach(['problem_mesin'=>'Problem Mesin','penyebab_breakdown'=>'Penyebab Breakdown','tindakan_perbaikan'=>'Tindakan Perbaikan'] as $col=>$label)
-                <div class="col-12">
-                    <label class="form-label" >{{ $label }} <span class="text-danger">*</span></label>
-                    <textarea name="{{ $col }}" rows="2" class="form-control @error($col) is-invalid @enderror">{{ old($col) }}</textarea>
-                    @error($col)<div class="invalid-feedback">{{ $message }}</div>@enderror
-                </div>
-                @endforeach
-
-                {{-- PIC --}}
-                <div class="col-12">
-                    <label class="form-label" >PIC Maintenance <span class="text-danger">*</span></label>
-                    <input type="text" name="pic_maintenance" value="{{ old('pic_maintenance') }}"
-                           class="form-control @error('pic_maintenance') is-invalid @enderror">
-                    @error('pic_maintenance')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                </div>
-
-            </div>{{-- /row --}}
-
-            <div style="margin-top:20px;padding-top:16px;border-top:1px solid #e5e7eb;display:flex;gap:8px">
-                <button type="submit" class="btn btn-primary" style="flex:1">
-                    <i class="bi bi-save me-1"></i>Simpan Breakdown
-                </button>
-                <button type="button" @click="drawerOpen = false" class="btn btn-outline-secondary" >Batal</button>
-            </div>
-        </form>
-    </div>{{-- /drawer body --}}
-    </div>
-</div>{{-- /drawer panel --}}
+{{-- ══ SATU ALPINE SCOPE — mengontrol konten halaman ══ --}}
+<div x-data="{ filterOpen: false }">
 
 {{-- ══ KONTEN HALAMAN ══ --}}
 {{-- ══ KONTEN HALAMAN ══════════════════════════════════════════ --}}
@@ -178,9 +35,9 @@ $filterActive = $mesinId || $filterPic !== '' || $filterStatus !== '';
 
 {{-- ── Strip toolbar ─────────────────────────────────────────── --}}
 <div class="erp-tb">
-    <button type="button" class="erp-tb-btn is-new" @click="drawerOpen = true">
+    <a href="{{ route('maintenance.breakdown.create') }}" class="erp-tb-btn is-new">
         <i class="bi bi-plus-lg"></i>Input Baru
-    </button>
+    </a>
 
     <button type="button" class="erp-tb-btn" :class="filterOpen ? 'is-on' : ''"
             @click="filterOpen = !filterOpen">
@@ -283,6 +140,28 @@ $filterActive = $mesinId || $filterPic !== '' || $filterStatus !== '';
 </aside>
 
 <div class="erp-ws-main">
+
+{{-- Bag error validasi bawaan Laravel (mis. upload import gagal: file kosong,
+     tipe bukan xlsx/xls/csv, atau lebih dari 5MB). Drawer lama yang dulu
+     merender $errors sudah dicabut bareng laci penulis — tanpa blok ini,
+     kegagalan validasi cuma redirect balik ke halaman ini tanpa pesan apa
+     pun, seolah tidak terjadi apa-apa. --}}
+@if ($errors->any())
+    <div class="alert alert-danger alert-dismissible fade show mb-3" role="alert">
+        <div class="d-flex align-items-start gap-2">
+            <i class="bi bi-exclamation-triangle-fill fs-5 mt-1 flex-shrink-0"></i>
+            <div>
+                <strong>Import gagal:</strong>
+                <ul class="mb-0">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+@endif
 
 {{-- Export Panel --}}
 <x-export-modal
@@ -422,8 +301,27 @@ $filterActive = $mesinId || $filterPic !== '' || $filterStatus !== '';
 const _mesinTA = @json($_mesinTA);
 const _picTA   = @json($_picTA);
 
-const taMesin = @json($mesinList->map(fn($m) => ['v' => $m->id, 't' => $m->id_mesin.' – '.$m->nama_mesin])->values());
-
 /* taField() kini satu definisi di layouts/app.blade.php. */
+
+@if (session('batch_tersimpan'))
+(function() {
+    /* Draft di localStorage cuma hidup di browser, jadi cuma boleh dibuang
+       kalau server sudah MEMBUKTIKAN barisnya tersimpan — flash
+       batch_tersimpan dari BreakdownMesinController::batch() adalah bukti
+       itu. Kunci dibaca dengan pola yang SAMA PERSIS dengan create.blade.php
+       (`kunci` dan `kunciBackup` di konfigBreakdownMesin()) supaya keduanya
+       selalu menunjuk baris yang sama untuk pengguna yang sama. Tanpa blok
+       ini, draft yang sudah tersimpan tetap ada di localStorage, mulai()
+       memulihkannya lagi di kunjungan berikutnya, dan satu klik SUBMIT lagi
+       menulisnya DOBEL ke transaksi_breakdown_mesin — nol unique constraint
+       yang mencegahnya, nol error yang muncul. */
+    try {
+        localStorage.removeItem('optima_draft_breakdown_mesin_u{{ auth()->id() }}');
+        localStorage.removeItem('optima_draft_breakdown_mesin_terkirim_u{{ auth()->id() }}');
+    } catch (e) {
+        // localStorage tak tersedia; tidak ada yang perlu dibuang.
+    }
+})();
+@endif
 </script>
 @endpush

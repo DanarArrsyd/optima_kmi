@@ -27,6 +27,9 @@ class KomponenBersamaTest extends TestCase
         'function partPicker(',
         'function batchDraft(',
         'function pluginNamaDalamBatang(',
+        'function jamAntara(',
+        'function majukanNomorUrut(',
+        'const ROMAN_BULAN =',
     ];
 
     public static function komponen(): array
