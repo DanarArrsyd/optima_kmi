@@ -534,7 +534,19 @@ function konfigLhp() {
                         uid: `e${Date.now()}_${i}`, id_losstime: d.id_losstime, actual_menit: d.actual_menit,
                         std_menit: 0, over_menit: 0,
                     }));
-                    dandori.rows.forEach(r => dandori.recompute(r));
+                    /* Dispatch change supaya dandori-rows.syncProgressive() (didengarkan di
+                       form) menyinkron ulang flag progressive dari id_part_proses yang baru
+                       saja diisi sebar(), lalu recompute Std/Over semua baris sendiri — proses.value
+                       yang diisi lewat DOM mentah di atas TIDAK memancarkan change secara alami. */
+                    const proses = f.querySelector('[name="id_part_proses"]');
+                    if (proses) proses.dispatchEvent(new Event('change', { bubbles: true }));
+
+                    const dandoriKaryawanInput = f.querySelector('[name="dandori_karyawan_id"]');
+                    if (dandoriKaryawanInput) {
+                        const dOp = Alpine.$data(dandoriKaryawanInput.closest('[x-data]'));
+                        const label = (taKaryawan.find(k => k.v == row.dandori_karyawan_id) || {}).t || '';
+                        dOp.pick({ v: row.dandori_karyawan_id || null, t: label });
+                    }
                 }
             });
         },
