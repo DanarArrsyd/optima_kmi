@@ -160,7 +160,9 @@ jobs:
               --path=database/migrations/2026_08_29_021921_add_is_aktif_to_users_table.php \
               --path=database/migrations/2026_08_29_032922_convert_users_role_to_roles_array.php \
               --path=database/migrations/2026_08_29_165626_add_two_factor_columns_to_users_table.php \
-              --path=database/migrations/2026_08_29_181501_add_created_at_index_to_activity_log_table.php"
+              --path=database/migrations/2026_08_29_181501_add_created_at_index_to_activity_log_table.php \
+              --path=database/migrations/2026_08_31_000001_create_preventive_schedules_table.php \
+              --path=database/migrations/2026_08_31_000002_create_preventive_schedule_items_table.php"
 
       # Inject secret runtime (mis. CEREBRAS_API_KEY) ke .env server dari GitHub
       # Secrets — .env tidak pernah di-commit. No-op kalau secret belum diisi.
