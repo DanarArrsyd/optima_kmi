@@ -43,7 +43,7 @@
         <i class="bi bi-file-earmark-pdf"></i>Schedule PDF
     </a>
     @if(auth()->user()->hasRole(['admin', 'staff_maintenance']))
-    <form method="POST" action="{{ route('maintenance.control-stroke-mesin.schedule-generate') }}" style="display:inline"
+    <form method="POST" action="{{ route('maintenance.control-stroke-mesin.schedule-generate') }}" style="display:contents"
           onsubmit="return confirm('Generate ulang jadwal preventive bulan ini? Jadwal lama akan ditimpa.');">
         @csrf
         <button type="submit" class="erp-tb-btn"><i class="bi bi-arrow-repeat"></i>Generate Ulang</button>
