@@ -25,9 +25,23 @@ class PreventiveSchedulePdfTest extends TestCase
         $this->actingAs($admin)
             ->get(route('maintenance.control-stroke-mesin.schedule-pdf'))
             ->assertOk()
-            ->assertSee('Belum ada jadwal', false);
+            ->assertHeader('content-type', 'application/pdf');
 
         Carbon::setTestNow();
+    }
+
+    public function test_view_belum_ada_jadwal_menampilkan_pesan(): void
+    {
+        $bulan = Carbon::parse('2026-08-01');
+
+        $html = view('maintenance.preventive-schedule-pdf', [
+            'jenis' => 'mesin',
+            'schedule' => null,
+            'bulan' => $bulan,
+            'svc' => app(\App\Services\MaintenanceDashboardService::class),
+        ])->render();
+
+        $this->assertStringContainsString('Belum ada jadwal', $html);
     }
 
     public function test_generate_manual_admin_boleh_lalu_pdf_tampil(): void

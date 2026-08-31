@@ -133,12 +133,7 @@ class ControlStrokeDiesController extends Controller
 
         $namaFile = str_replace('/', '-', $schedule->nomor_dokumen ?? 'schedule-dies').'.pdf';
 
-        // compress=false: dompdf default-nya nge-gzip isi stream PDF, yang bikin
-        // konten tidak bisa dicari via assertSee di test — bukan demi ukuran file.
-        return response($pdf->output(['compress' => false]), 200, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="'.$namaFile.'"',
-        ]);
+        return $pdf->stream($namaFile);
     }
 
     public function scheduleGenerate(PreventiveScheduleService $preventiveSvc)
