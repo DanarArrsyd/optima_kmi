@@ -54,4 +54,9 @@ class MasterMesin extends Model
         return $this->hasMany(MesinPreventiveLog::class, 'id_mesin')
             ->orderByDesc('tanggal_preventive');
     }
+
+    public function preventiveScheduleItems(): HasMany
+    {
+        return $this->hasMany(PreventiveScheduleItem::class, 'id_mesin');
+    }
 }

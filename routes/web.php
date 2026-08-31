@@ -211,6 +211,9 @@ Route::middleware('auth')->group(function () {
         Route::get('availability/control-stroke-dies/{partProses}/preventive', [ControlStrokeDiesController::class, 'createPreventive'])->name('control-stroke-dies.preventive.create');
         Route::post('availability/control-stroke-dies/{partProses}/preventive', [ControlStrokeDiesController::class, 'storePreventive'])->name('control-stroke-dies.preventive');
         Route::get('availability/control-stroke-dies/preventive/{diesPreventiveLog}/checksheet', [ControlStrokeDiesController::class, 'showChecksheet'])->name('control-stroke-dies.preventive.checksheet');
+
+        Route::post('availability/control-stroke-mesin/schedule-generate', [ControlStrokeMesinController::class, 'scheduleGenerate'])->name('control-stroke-mesin.schedule-generate');
+        Route::post('availability/control-stroke-dies/schedule-generate', [ControlStrokeDiesController::class, 'scheduleGenerate'])->name('control-stroke-dies.schedule-generate');
     });
 
     // --- MAINTENANCE: analitik read-only (guest boleh) ---
@@ -232,10 +235,12 @@ Route::middleware('auth')->group(function () {
         Route::get('availability/control-stroke-mesin',       [ControlStrokeMesinController::class, 'index'])->name('control-stroke-mesin');
         Route::get('availability/control-stroke-mesin/data',   [ControlStrokeMesinController::class, 'data'])->name('control-stroke-mesin.data');
         Route::get('availability/control-stroke-mesin/{mesin}/history', [ControlStrokeMesinController::class, 'history'])->name('control-stroke-mesin.history');
+        Route::get('availability/control-stroke-mesin/schedule-pdf', [ControlStrokeMesinController::class, 'schedulePdf'])->name('control-stroke-mesin.schedule-pdf');
 
         Route::get('availability/control-stroke-dies',        [ControlStrokeDiesController::class, 'index'])->name('control-stroke-dies');
         Route::get('availability/control-stroke-dies/data',    [ControlStrokeDiesController::class, 'data'])->name('control-stroke-dies.data');
         Route::get('availability/control-stroke-dies/{partProses}/history', [ControlStrokeDiesController::class, 'history'])->name('control-stroke-dies.history');
+        Route::get('availability/control-stroke-dies/schedule-pdf', [ControlStrokeDiesController::class, 'schedulePdf'])->name('control-stroke-dies.schedule-pdf');
     });
 
     // --- NOTIFICATIONS (all authenticated users) ---

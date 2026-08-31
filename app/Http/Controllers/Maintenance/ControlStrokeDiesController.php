@@ -6,7 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\DiesPreventiveLog;
 use App\Models\MasterKaryawan;
 use App\Models\MasterPartProses;
+use App\Models\PreventiveSchedule;
 use App\Services\MaintenanceDiesDashboardService;
+use App\Services\PreventiveScheduleService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -111,5 +114,36 @@ class ControlStrokeDiesController extends Controller
         }
 
         return response()->file(Storage::disk('local')->path($diesPreventiveLog->checksheet_path));
+    }
+
+    public function schedulePdf()
+    {
+        $bulan = now()->timezone('Asia/Jakarta')->startOfMonth();
+        $schedule = PreventiveSchedule::where('bulan', $bulan->toDateString())
+            ->where('jenis', 'dies')
+            ->with('items.partProses.part', 'items.partProses.preventiveLogs')
+            ->first();
+
+        $pdf = Pdf::loadView('maintenance.preventive-schedule-pdf', [
+            'jenis' => 'dies',
+            'schedule' => $schedule,
+            'bulan' => $bulan,
+            'svc' => $this->svc,
+        ])->setPaper('a4', 'landscape');
+
+        $namaFile = str_replace('/', '-', $schedule->nomor_dokumen ?? 'schedule-dies').'.pdf';
+
+        return $pdf->stream($namaFile);
+    }
+
+    public function scheduleGenerate(PreventiveScheduleService $preventiveSvc)
+    {
+        abort_if(! auth()->user()->hasRole(['admin', 'staff_maintenance']), 403);
+
+        $preventiveSvc->generate('dies', now()->timezone('Asia/Jakarta')->startOfMonth());
+
+        return redirect()->route('maintenance.control-stroke-dies')->with(
+            'success', 'Jadwal preventive dies bulan ini berhasil digenerate ulang.'
+        );
     }
 }

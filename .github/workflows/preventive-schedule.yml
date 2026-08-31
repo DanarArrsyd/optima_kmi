@@ -1,0 +1,46 @@
+name: Jadwal preventive bulanan
+
+# Memanggil artisan preventive:jadwalkan di server lewat SSH tiap tanggal 1, pola
+# sama backup.yml/deploy.yml.
+#
+# ⚠️ Jadwal GitHub Actions tidak dijamin tepat waktu (bisa telat puluhan menit) dan
+# DINONAKTIFKAN OTOMATIS setelah 60 hari repo nol aktivitas. Ketelatan jam-jaman tidak
+# masalah untuk jadwal bulanan; penonaktifan masalah — tombol "Generate Ulang" manual
+# di halaman Control Stroke adalah jaring pengamannya.
+on:
+  schedule:
+    - cron: '0 1 1 * *'   # 01:00 UTC tanggal 1 = 08:00 WIB, sebelum shift mulai
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  REMOTE_PATH: /home/u518638233/domains/optima.kencomanufactur.co.id/public_html
+  REMOTE_PHP: /opt/alt/php84/usr/bin/php
+
+jobs:
+  jadwalkan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          for i in 1 2 3; do
+            ssh-keyscan -p "${{ secrets.SSH_PORT }}" "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null && break
+            sleep 3
+          done
+          true
+
+      - name: Jalankan preventive:jadwalkan
+        run: |
+          set -e
+          ssh -p "${{ secrets.SSH_PORT }}" -i ~/.ssh/deploy_key \
+            -o StrictHostKeyChecking=accept-new \
+            -o ConnectTimeout=15 -o ServerAliveInterval=30 -o ServerAliveCountMax=6 \
+            "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" \
+            "cd ${{ env.REMOTE_PATH }} && ${{ env.REMOTE_PHP }} artisan preventive:jadwalkan"

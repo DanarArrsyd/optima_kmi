@@ -80,4 +80,9 @@ class MasterPartProses extends Model
         return $this->hasMany(DiesPreventiveLog::class, 'id_part_proses')
             ->orderByDesc('tanggal_preventive');
     }
+
+    public function preventiveScheduleItems(): HasMany
+    {
+        return $this->hasMany(PreventiveScheduleItem::class, 'id_part_proses');
+    }
 }

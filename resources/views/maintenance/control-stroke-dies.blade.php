@@ -38,6 +38,16 @@
         <i class="bi bi-funnel"></i>Filter
     </button>
     <a href="{{ route('maintenance.control-stroke-dies') }}" class="erp-tb-btn"><i class="bi bi-arrow-clockwise"></i>Refresh</a>
+    <a href="{{ route('maintenance.control-stroke-dies.schedule-pdf') }}" target="_blank" class="erp-tb-btn">
+        <i class="bi bi-file-earmark-pdf"></i>Schedule PDF
+    </a>
+    @if(auth()->user()->hasRole(['admin', 'staff_maintenance']))
+    <form method="POST" action="{{ route('maintenance.control-stroke-dies.schedule-generate') }}" style="display:inline"
+          onsubmit="return confirm('Generate ulang jadwal preventive bulan ini? Jadwal lama akan ditimpa.');">
+        @csrf
+        <button type="submit" class="erp-tb-btn"><i class="bi bi-arrow-repeat"></i>Generate Ulang</button>
+    </form>
+    @endif
     <span class="erp-tb-sp"></span>
 </div>
 
