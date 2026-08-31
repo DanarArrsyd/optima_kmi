@@ -25,7 +25,7 @@
     table.sched .col-std { width: 6%; }
     table.sched .col-act { width: 6%; }
     table.sched .col-sched { width: 5%; }
-    table.sched .col-proses { width: 10%; text-align: left; }
+    table.sched .col-proses { width: 10%; }
 
     .ketentuan { margin-top: 18px; font-size: 9px; line-height: 1.5; }
     .ketentuan ol { margin: 8px 0 0 16px; padding: 0; }
