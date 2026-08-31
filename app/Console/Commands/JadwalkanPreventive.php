@@ -4,8 +4,8 @@ namespace App\Console\Commands;
 
 use App\Services\PreventiveScheduleService;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class JadwalkanPreventive extends Command

@@ -9,6 +9,7 @@ use App\Models\MasterPartProses;
 use App\Models\MasterShift;
 use App\Models\TransaksiProduksi;
 use App\Models\User;
+use App\Services\MaintenanceDashboardService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\TestCase;
@@ -38,7 +39,7 @@ class PreventiveSchedulePdfTest extends TestCase
             'jenis' => 'mesin',
             'schedule' => null,
             'bulan' => $bulan,
-            'svc' => app(\App\Services\MaintenanceDashboardService::class),
+            'svc' => app(MaintenanceDashboardService::class),
         ])->render();
 
         $this->assertStringContainsString('Belum ada jadwal', $html);

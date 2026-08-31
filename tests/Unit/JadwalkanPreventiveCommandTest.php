@@ -2,7 +2,6 @@
 
 namespace Tests\Unit;
 
-use App\Models\PreventiveSchedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\TestCase;

@@ -20,6 +20,7 @@ class PreventiveScheduleServiceTest extends TestCase
     use RefreshDatabase;
 
     private MasterShift $shift;
+
     private MasterKaryawan $karyawan;
 
     protected function setUp(): void
