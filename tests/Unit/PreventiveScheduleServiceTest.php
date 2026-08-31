@@ -55,6 +55,55 @@ class PreventiveScheduleServiceTest extends TestCase
         return $mesin;
     }
 
+    /** Part+proses dies dengan stroke tinggi (mendekati/lewat threshold 30000) via 1 baris produksi besar. */
+    private function diesDenganStroke(string $kode, int $stroke): MasterPartProses
+    {
+        $mesin = MasterMesin::create([
+            'id_mesin' => "M-{$kode}", 'nama_mesin' => "Press M-{$kode}", 'line' => '1',
+            'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100,
+            'tanggal_instalasi' => '2020-01-01',
+        ]);
+        $part = MasterPart::create(['part_no' => "D-{$kode}", 'part_name' => "Dies {$kode}", 'customer' => 'Toyota']);
+        $proses = MasterPartProses::create([
+            'id_part' => $part->id, 'id_proses' => 1, 'nama_proses' => 'PROGRESSIVE',
+            'sph_standar_produksi' => 500, 'sph_standar_qc' => 250,
+        ]);
+        TransaksiProduksi::create([
+            'tanggal_produksi' => '2026-07-01', 'id_shift' => $this->shift->id,
+            'id_karyawan' => $this->karyawan->id, 'id_mesin' => $mesin->id, 'id_part_proses' => $proses->id,
+            'jam_start' => '08:00', 'jam_finish' => '16:00', 'qty_aktual' => $stroke,
+            'actual_cycle_time' => 10, 'created_by' => User::factory()->create(['role' => 'admin'])->id,
+        ]);
+
+        return $proses;
+    }
+
+    public function test_generate_dies_menghasilkan_item_dengan_id_part_proses_bukan_id_mesin(): void
+    {
+        // 6 dies overdue (>=100% dari threshold 30000) — kapasitas 5/minggu.
+        for ($i = 1; $i <= 6; $i++) {
+            $this->diesDenganStroke("D{$i}", 31000);
+        }
+
+        $svc = app(PreventiveScheduleService::class);
+        $schedule = $svc->generate('dies', Carbon::parse('2026-08-01'));
+
+        $this->assertGreaterThan(0, $schedule->items()->count());
+
+        foreach ($schedule->items as $item) {
+            $this->assertNotNull($item->id_part_proses, 'Item dies harus punya id_part_proses.');
+            $this->assertNull($item->id_mesin, 'Item dies tidak boleh punya id_mesin.');
+        }
+
+        $this->assertMatchesRegularExpression('#^PM-DIES/1/VIII/2026$#', $schedule->nomor_dokumen);
+
+        // Kapasitas 5 dies/minggu tidak boleh dilanggar.
+        $perMinggu = $schedule->items()->get()->groupBy('minggu_ke');
+        foreach ($perMinggu as $items) {
+            $this->assertLessThanOrEqual(5, $items->count(), 'Kapasitas 5 dies/minggu dilanggar.');
+        }
+    }
+
     public function test_kapasitas_mesin_satu_per_minggu_membatasi_jumlah_terjadwal(): void
     {
         // 5 mesin overdue (>=100% dari 300000) — kapasitas 1/minggu, Agustus 2026 punya 5 minggu kerja.

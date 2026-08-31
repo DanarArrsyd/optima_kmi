@@ -118,7 +118,7 @@ class ControlStrokeDiesController extends Controller
 
     public function schedulePdf()
     {
-        $bulan = now()->startOfMonth();
+        $bulan = now()->timezone('Asia/Jakarta')->startOfMonth();
         $schedule = PreventiveSchedule::where('bulan', $bulan->toDateString())
             ->where('jenis', 'dies')
             ->with('items.partProses.part', 'items.partProses.preventiveLogs')
@@ -140,7 +140,7 @@ class ControlStrokeDiesController extends Controller
     {
         abort_if(! auth()->user()->hasRole(['admin', 'staff_maintenance']), 403);
 
-        $preventiveSvc->generate('dies', now()->startOfMonth());
+        $preventiveSvc->generate('dies', now()->timezone('Asia/Jakarta')->startOfMonth());
 
         return redirect()->route('maintenance.control-stroke-dies')->with(
             'success', 'Jadwal preventive dies bulan ini berhasil digenerate ulang.'

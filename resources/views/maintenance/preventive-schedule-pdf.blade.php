@@ -35,7 +35,7 @@
 <body>
 
 @if (! $schedule)
-    <p>Belum ada jadwal untuk {{ $bulan->translatedFormat('F Y') }}. Klik "Generate Ulang" di halaman Control Stroke.</p>
+    <p>Belum ada jadwal untuk {{ $bulan->locale('id')->translatedFormat('F Y') }}. Klik "Generate Ulang" di halaman Control Stroke.</p>
 @else
 
 <div class="header">
@@ -47,7 +47,7 @@
 
 @php
     $jumlahHari = $bulan->daysInMonth;
-    $namaBulan = mb_strtoupper($bulan->translatedFormat('F Y'));
+    $namaBulan = mb_strtoupper($bulan->locale('id')->translatedFormat('F Y'));
     $labelKode = $jenis === 'mesin' ? 'ID MESIN' : 'ID DIES';
     $labelNama = $jenis === 'mesin' ? 'NAMA MESIN' : 'NAMA PART/DIES';
 @endphp
@@ -105,7 +105,7 @@
 <div class="ketentuan">
     <strong><em>KETENTUAN PREVENTIVE MAINTENANCE*</em></strong>
     <ol>
-        <li>Selama Preventive Maintenance (PM) berlangsung, status {{ $jenis === 'mesin' ? 'mesin' : 'dies' }} adalah <strong><em>NON-OPERASIONAL</em></strong>.</li>
+        <li>Selama Preventive Maintenance (PM) berlangsung, status {{ $jenis === 'mesin' ? 'mesin' : 'dies' }} adalah&nbsp;<strong><em>NON-OPERASIONAL</em></strong>.</li>
         <li>{{ ucfirst($jenis === 'mesin' ? 'Mesin' : 'Dies') }} tidak diperkenankan digunakan untuk aktivitas produksi dalam bentuk apa pun.</li>
         <li>Departemen Maintenance memiliki kewenangan penuh atas {{ $jenis === 'mesin' ? 'mesin' : 'dies' }} selama preventive berlangsung.</li>
         <li>Departemen Produksi, PPIC, Quality, dan departemen terkait lainnya wajib menghentikan seluruh aktivitas yang melibatkan {{ $jenis === 'mesin' ? 'mesin' : 'dies' }} tersebut.</li>
@@ -118,7 +118,7 @@
 </div>
 
 <div class="footer-sign">
-    <div class="tempat-tgl">BEKASI, {{ now()->translatedFormat('d F Y') }}</div>
+    <div class="tempat-tgl">BEKASI, {{ now()->timezone('Asia/Jakarta')->locale('id')->translatedFormat('d F Y') }}</div>
     <table class="sign">
         <thead>
             <tr>
@@ -148,7 +148,7 @@
 
 @endif
 
-<div class="printed-at">Printed on OPTIMA, at {{ now()->format('d.m.Y H:i:s') }}</div>
+<div class="printed-at">Printed on OPTIMA, at {{ now()->timezone('Asia/Jakarta')->format('d.m.Y H:i:s') }}</div>
 
 </body>
 </html>

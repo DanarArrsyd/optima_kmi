@@ -96,7 +96,7 @@ class ControlStrokeMesinController extends Controller
 
     public function schedulePdf()
     {
-        $bulan = now()->startOfMonth();
+        $bulan = now()->timezone('Asia/Jakarta')->startOfMonth();
         $schedule = PreventiveSchedule::where('bulan', $bulan->toDateString())
             ->where('jenis', 'mesin')
             ->with('items.mesin.preventiveLogs')
@@ -118,7 +118,7 @@ class ControlStrokeMesinController extends Controller
     {
         abort_if(! auth()->user()->hasRole(['admin', 'staff_maintenance']), 403);
 
-        $preventiveSvc->generate('mesin', now()->startOfMonth());
+        $preventiveSvc->generate('mesin', now()->timezone('Asia/Jakarta')->startOfMonth());
 
         return redirect()->route('maintenance.control-stroke-mesin')->with(
             'success', 'Jadwal preventive mesin bulan ini berhasil digenerate ulang.'

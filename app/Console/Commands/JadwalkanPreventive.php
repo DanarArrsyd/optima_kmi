@@ -16,7 +16,7 @@ class JadwalkanPreventive extends Command
 
     public function handle(PreventiveScheduleService $svc): int
     {
-        $bulan = Carbon::now()->startOfMonth();
+        $bulan = Carbon::now()->timezone('Asia/Jakarta')->startOfMonth();
 
         try {
             foreach (['mesin', 'dies'] as $jenis) {
