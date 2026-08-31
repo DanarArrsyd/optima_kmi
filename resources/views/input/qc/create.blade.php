@@ -320,7 +320,10 @@
             <input type="hidden" name="rows_json" :value="JSON.stringify(payloadRows())">
 
             <div class="d-flex gap-2 justify-content-end">
-                <button type="submit" class="btn btn-success" :disabled="rows.length === 0">
+                <span class="text-muted small align-self-center" x-show="editIndex !== null" x-cloak>
+                    Selesaikan UPDATE BARIS atau Batal Edit dulu sebelum submit.
+                </span>
+                <button type="submit" class="btn btn-success" :disabled="rows.length === 0 || editIndex !== null">
                     <i class="bi bi-upload me-1"></i>SUBMIT DRAFT
                 </button>
                 <button type="button" class="btn btn-danger" @click="batal()">CANCEL</button>
@@ -445,14 +448,14 @@ function konfigQc() {
             inspector.pick({ v: row.id_karyawan_qc, t: row.inspector_teks });
 
             const p = picker();
-            const dataPart = partsData.find(pp => pp.part_no === row.part_no && pp.part_name === row.part_name);
+            const dataPart = partsData.find(p => p.proses.some(pr => pr.id == row.id_part_proses));
             if (dataPart) p.pilih({ v: dataPart.id, t: `${dataPart.part_no} — ${dataPart.part_name}` });
 
             const ngCb = document.getElementById('ada_ng');
             Alpine.$data(ngCb.closest('[x-data]')).adaNg = row.ng.length > 0;
             Alpine.nextTick(() => {
                 const ng = diri.blok('.ng-rows');
-                if (ng) ng.rows = row.ng.map((n, i) => ({ uid: `e${Date.now()}_${i}`, id_jenis_ng: n.id_jenis_ng, qty: n.qty }));
+                if (ng) ng.setRows(row.ng);
             });
         },
 

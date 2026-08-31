@@ -228,7 +228,10 @@
             <input type="hidden" name="rows_json" :value="JSON.stringify(payloadRows())">
 
             <div class="d-flex gap-2 justify-content-end">
-                <button type="submit" class="btn btn-success" :disabled="rows.length === 0">
+                <span class="text-muted small align-self-center" x-show="editIndex !== null" x-cloak>
+                    Selesaikan UPDATE BARIS atau Batal Edit dulu sebelum submit.
+                </span>
+                <button type="submit" class="btn btn-success" :disabled="rows.length === 0 || editIndex !== null">
                     <i class="bi bi-upload me-1"></i>SUBMIT DRAFT
                 </button>
                 <button type="button" class="btn btn-danger" @click="batal()">CANCEL</button>

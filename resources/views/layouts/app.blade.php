@@ -1912,6 +1912,7 @@ function batchDraft(cfg) {
         galat: '',
         barisGagal: [],
         editIndex: null,
+        _sebelumEdit: null,
 
         mulai() {
             /* Halaman batch yang dipulihkan dari bfcache (tombol Back setelah
@@ -2046,6 +2047,14 @@ function batchDraft(cfg) {
         edit(i) {
             this.editIndex = i;
             this.galat = '';
+            this.pesan = '';
+            this.barisGagal = [];
+            /* Snapshot penuh form SEBELUM cfg.sebar menimpanya, lewat cfg.kumpulkan
+               yang sudah ada (kumpulkan()/sebar() adalah pasangan invers) — dipakai
+               batalEdit() untuk mengembalikan form ke kondisi sebelum EDIT diklik.
+               Ini snapshot seluruh form, bukan cuma field sticky, jadi lebih murah
+               dinalar daripada melacak field sticky secara terpisah. */
+            this._sebelumEdit = cfg.kumpulkan(this);
             cfg.sebar(this.rows[i], this);
             this.form().scrollIntoView({ behavior: 'smooth', block: 'start' });
         },
@@ -2053,7 +2062,12 @@ function batchDraft(cfg) {
         batalEdit() {
             this.editIndex = null;
             this.galat = '';
-            this.resetSebagian();
+            if (this._sebelumEdit) {
+                cfg.sebar(this._sebelumEdit, this);
+                this._sebelumEdit = null;
+            } else {
+                this.resetSebagian();
+            }
         },
 
         /* Field yang TIDAK disebut cfg.resetField sengaja dipertahankan:

@@ -368,7 +368,10 @@
             <input type="hidden" name="rows_json" :value="JSON.stringify(payloadRows())">
 
             <div class="d-flex gap-2 justify-content-end">
-                <button type="submit" class="btn btn-success" :disabled="rows.length === 0">
+                <span class="text-muted small align-self-center" x-show="editIndex !== null" x-cloak>
+                    Selesaikan UPDATE BARIS atau Batal Edit dulu sebelum submit.
+                </span>
+                <button type="submit" class="btn btn-success" :disabled="rows.length === 0 || editIndex !== null">
                     <i class="bi bi-upload me-1"></i>SUBMIT DRAFT
                 </button>
                 <button type="button" class="btn btn-danger" @click="batal()">CANCEL</button>
@@ -491,9 +494,11 @@ function konfigLhp() {
 
         /* Kebalikan cfg.kumpulkan: baca row draft, tulis ke form atas —
            dipanggil edit(i) di kerangka. Part dicari balik dari partsData
-           lewat part_no+part_name (row tidak menyimpan id part mentah,
-           cuma hasil tampilnya) supaya partPicker.pilih() bisa mengisi
-           ulang prosesList-nya sebelum <select id="f_proses"> diisi. */
+           lewat id_part_proses (bukan part_no+part_name — dua part beda bisa
+           berbagi pasangan tampilan yang sama, dan pencarian string bisa
+           meleset senyap kalau part berubah/hilang di antara draft dibuat dan
+           diedit) supaya partPicker.pilih() bisa mengisi ulang prosesList-nya
+           sebelum <select id="f_proses"> diisi. */
         sebar(row, diri) {
             const f = diri.form();
             f.querySelector('[name="tanggal_produksi"]').value = row.tanggal_produksi;
@@ -509,7 +514,7 @@ function konfigLhp() {
             mesin.pick({ v: row.id_mesin, t: row.mesin_teks });
 
             const p = picker();
-            const dataPart = partsData.find(pp => pp.part_no === row.part_no && pp.part_name === row.part_name);
+            const dataPart = partsData.find(p => p.proses.some(pr => pr.id == row.id_part_proses));
             if (dataPart) {
                 p.pilih({ v: dataPart.id, t: `${dataPart.part_no} — ${dataPart.part_name}` });
                 Alpine.nextTick(() => {
@@ -522,7 +527,7 @@ function konfigLhp() {
             Alpine.$data(ngCb.closest('[x-data]')).adaNg = row.ng.length > 0;
             Alpine.nextTick(() => {
                 const ng = diri.blok('.ng-rows');
-                if (ng) ng.rows = row.ng.map((n, i) => ({ uid: `e${Date.now()}_${i}`, id_jenis_ng: n.id_jenis_ng, qty: n.qty }));
+                if (ng) ng.setRows(row.ng);
             });
 
             const dandoriCb = document.getElementById('ada_dandori');
@@ -530,10 +535,7 @@ function konfigLhp() {
             Alpine.nextTick(() => {
                 const dandori = diri.blok('.dandori-rows');
                 if (dandori) {
-                    dandori.rows = row.dandori.map((d, i) => ({
-                        uid: `e${Date.now()}_${i}`, id_losstime: d.id_losstime, actual_menit: d.actual_menit,
-                        std_menit: 0, over_menit: 0,
-                    }));
+                    dandori.setRows(row.dandori);
                     /* Dispatch change supaya dandori-rows.syncProgressive() (didengarkan di
                        form) menyinkron ulang flag progressive dari id_part_proses yang baru
                        saja diisi sebar(), lalu recompute Std/Over semua baris sendiri — proses.value
