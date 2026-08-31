@@ -1283,7 +1283,7 @@
                         <div class="notif-empty">Tidak ada notifikasi.</div>
                     </template>
                     <template x-for="item in items" :key="item.id">
-                        <div class="notif-item" :class="{'is-unread': !item.read_at}" @click="clickItem(item.id, item.url)">
+                        <div class="notif-item" :class="{'is-unread': belumSelesai(item)}" @click="clickItem(item.id, item.url)">
                             <div class="notif-item-icon">
                                 <i :class="item.type === 'note_submitted' ? 'bi bi-chat-left-text-fill text-warning' : 'bi bi-check-circle-fill text-success'"></i>
                             </div>
@@ -1431,6 +1431,13 @@ function notifBell() {
                 this.count = 0;
                 this.items = this.items.map(i => ({ ...i, read_at: 'now' }));
             } catch (e) { /* ignore */ }
+        },
+        /* note_submitted kuning sampai staff_note_resolved_at di record aslinya keisi
+           (server ngasih lewat item.resolved), BUKAN sampai diklik — klik cuma nyalain
+           read_at, yang tetap ngontrol badge count kayak biasa. Tipe lain (note_resolved)
+           tetap read_at-driven, item.resolved-nya null buat tipe itu. */
+        belumSelesai(item) {
+            return item.type === 'note_submitted' ? !item.resolved : !item.read_at;
         },
     };
 }
