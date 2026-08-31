@@ -6,6 +6,7 @@ use App\Models\PreventiveSchedule;
 use App\Models\PreventiveScheduleItem;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class PreventiveScheduleService
 {
@@ -28,56 +29,62 @@ class PreventiveScheduleService
      */
     public function generate(string $jenis, Carbon $bulan): PreventiveSchedule
     {
+        if (! array_key_exists($jenis, self::KAPASITAS)) {
+            throw new \InvalidArgumentException("Jenis preventive schedule tidak dikenal: {$jenis}");
+        }
+
         $bulan = $bulan->copy()->startOfMonth();
 
-        $schedule = PreventiveSchedule::firstOrNew([
-            'bulan' => $bulan->toDateString(),
-            'jenis' => $jenis,
-        ]);
-        if (! $schedule->exists) {
-            $schedule->nomor_dokumen = $this->nomorDokumen($jenis, $bulan);
-        }
-        $schedule->generated_at = now();
-        $schedule->generated_by = auth()->id();
-        $schedule->save();
-
-        $schedule->items()->delete();
-
-        $eligible = $this->eligibleItems($jenis);
-        $hariKerja = $this->hariKerjaDalamBulan($bulan);
-        $mingguBuckets = $this->kelompokkanPerMinggu($hariKerja);
-        $kapasitas = self::KAPASITAS[$jenis];
-
-        $idx = 0;
-        foreach ($mingguBuckets as $mingguIndex => $hariList) {
-            $mingguKe = $mingguIndex + 1;
-            for ($slot = 0; $slot < $kapasitas; $slot++) {
-                if ($idx >= $eligible->count()) {
-                    break 2;
-                }
-                if (! isset($hariList[$slot])) {
-                    // Minggu ini kehabisan hari kerja buat slot ke-$slot (mis. minggu
-                    // pertama/terakhir bulan cuma 1-2 hari kerja) — kapasitas sisa
-                    // minggu ini HANGUS, bukan dipindah ke minggu lain.
-                    continue;
-                }
-
-                $item = $eligible[$idx];
-                PreventiveScheduleItem::create([
-                    'schedule_id' => $schedule->id,
-                    'id_mesin' => $jenis === 'mesin' ? $item['id_mesin'] : null,
-                    'id_part_proses' => $jenis === 'dies' ? $item['id_part_proses'] : null,
-                    'stroke_snapshot' => $item['current_stroke'],
-                    'pct_snapshot' => $item['pct'],
-                    'threshold_snapshot' => $item['threshold'],
-                    'tanggal_rencana' => $hariList[$slot]->toDateString(),
-                    'minggu_ke' => $mingguKe,
-                ]);
-                $idx++;
+        return DB::transaction(function () use ($jenis, $bulan) {
+            $schedule = PreventiveSchedule::firstOrNew([
+                'bulan' => $bulan->toDateString(),
+                'jenis' => $jenis,
+            ]);
+            if (! $schedule->exists) {
+                $schedule->nomor_dokumen = $this->nomorDokumen($jenis, $bulan);
             }
-        }
+            $schedule->generated_at = now();
+            $schedule->generated_by = auth()->id();
+            $schedule->save();
 
-        return $schedule->fresh('items');
+            $schedule->items()->delete();
+
+            $eligible = $this->eligibleItems($jenis);
+            $hariKerja = $this->hariKerjaDalamBulan($bulan);
+            $mingguBuckets = $this->kelompokkanPerMinggu($hariKerja);
+            $kapasitas = self::KAPASITAS[$jenis];
+
+            $idx = 0;
+            foreach ($mingguBuckets as $mingguIndex => $hariList) {
+                $mingguKe = $mingguIndex + 1;
+                for ($slot = 0; $slot < $kapasitas; $slot++) {
+                    if ($idx >= $eligible->count()) {
+                        break 2;
+                    }
+                    if (! isset($hariList[$slot])) {
+                        // Minggu ini kehabisan hari kerja buat slot ke-$slot (mis. minggu
+                        // pertama/terakhir bulan cuma 1-2 hari kerja) — kapasitas sisa
+                        // minggu ini HANGUS, bukan dipindah ke minggu lain.
+                        continue;
+                    }
+
+                    $item = $eligible[$idx];
+                    PreventiveScheduleItem::create([
+                        'schedule_id' => $schedule->id,
+                        'id_mesin' => $jenis === 'mesin' ? $item['id_mesin'] : null,
+                        'id_part_proses' => $jenis === 'dies' ? $item['id_part_proses'] : null,
+                        'stroke_snapshot' => $item['current_stroke'],
+                        'pct_snapshot' => $item['pct'],
+                        'threshold_snapshot' => $item['threshold'],
+                        'tanggal_rencana' => $hariList[$slot]->toDateString(),
+                        'minggu_ke' => $mingguKe,
+                    ]);
+                    $idx++;
+                }
+            }
+
+            return $schedule->fresh('items');
+        });
     }
 
     /** Baris warning/overdue dari computeCurrentCycle(), diurut pct paling mendesak duluan. */

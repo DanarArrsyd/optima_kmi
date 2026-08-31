@@ -134,4 +134,11 @@ class PreventiveScheduleServiceTest extends TestCase
         $september = $svc->generate('mesin', Carbon::parse('2026-09-01'));
         $this->assertMatchesRegularExpression('#^PM-MESIN/2/IX/2026$#', $september->nomor_dokumen);
     }
+
+    public function test_jenis_tidak_dikenal_dilempar_sebagai_exception_bukan_menulis_data(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        app(PreventiveScheduleService::class)->generate('DIES', Carbon::parse('2026-08-01'));
+    }
 }
