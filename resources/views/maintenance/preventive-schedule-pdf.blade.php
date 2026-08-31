@@ -32,11 +32,15 @@
 
     .footer-sign { margin-top: 24px; font-size: 9px; }
     .footer-sign .tempat-tgl { margin-bottom: 10px; }
-    table.sign { width: 100%; border-collapse: collapse; }
-    table.sign th, table.sign td { border: 0; padding: 3px 6px; }
-    table.sign thead th { text-align: center; font-weight: normal; }
-    table.sign .sign-space td { height: 46px; }
-    table.sign .sign-name td { text-align: left; vertical-align: top; }
+    table.sign { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    table.sign th, table.sign td { border: 0; padding: 3px 6px; text-align: center; overflow: hidden; }
+    table.sign thead th { font-weight: normal; padding-bottom: 8px; }
+    /* Garis tanda tangan: border-bottom di sel KOSONG ini, bukan teks "(...)" —
+       operator butuh GARIS buat pena, bukan tebak-tebak lebar spasi kosong pas
+       dicetak fisik. Tinggi 40px ngasih ruang cukup buat tanda tangan asli. */
+    table.sign .sign-line td { vertical-align: bottom; }
+    table.sign .sign-line td > div { border-bottom: 1px solid #333; height: 34px; }
+    table.sign .sign-name td { padding-top: 4px; }
 
     .printed-at { position: fixed; bottom: 0; left: 0; font-size: 7px; color: #666; }
 </style>
@@ -132,7 +136,6 @@
 
 @php
     $tandaTangan = ['MTC Mesin', 'Produksi', 'PPIC', 'Quality', 'MTC Dies', 'Engineering', 'Supervisor', 'Direktur'];
-    $blankTtd = str_repeat('&nbsp;', 16);
 @endphp
 <div class="footer-sign">
     <div class="tempat-tgl">Bekasi, {{ now()->timezone('Asia/Jakarta')->locale('id')->translatedFormat('d F Y') }}</div>
@@ -146,10 +149,14 @@
             </tr>
         </thead>
         <tbody>
-            <tr class="sign-space"><td colspan="8"></td></tr>
+            <tr class="sign-line">
+                @for ($k = 0; $k < 8; $k++)
+                    <td><div></div></td>
+                @endfor
+            </tr>
             <tr class="sign-name">
                 @foreach ($tandaTangan as $peran)
-                    <td>{{ $peran }}<br>({!! $blankTtd !!})</td>
+                    <td>{{ $peran }}</td>
                 @endforeach
             </tr>
         </tbody>
