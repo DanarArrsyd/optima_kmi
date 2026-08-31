@@ -117,6 +117,8 @@ class AuthorizationTest extends TestCase
             ['maintenance.availability-dies'], ['maintenance.availability-dies.data'],
             ['maintenance.control-stroke-mesin'], ['maintenance.control-stroke-mesin.data'],
             ['maintenance.control-stroke-dies'], ['maintenance.control-stroke-dies.data'],
+            ['maintenance.control-stroke-mesin.schedule-pdf'],
+            ['maintenance.control-stroke-dies.schedule-pdf'],
             ['input.produksi.index'], ['input.qc.index'], ['input.dandori.index'],
             // Overview: grafik global pabrik, read-only, tanpa export.
             ['overview'],

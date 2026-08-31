@@ -6,7 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\MasterKaryawan;
 use App\Models\MasterMesin;
 use App\Models\MesinPreventiveLog;
+use App\Models\PreventiveSchedule;
 use App\Services\MaintenanceDashboardService;
+use App\Services\PreventiveScheduleService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 
 class ControlStrokeMesinController extends Controller
@@ -89,5 +92,41 @@ class ControlStrokeMesinController extends Controller
             'currentStroke' => $this->svc->currentStrokeFor($mesin),
             'threshold' => MaintenanceDashboardService::STROKE_THRESHOLD,
         ]);
+    }
+
+    public function schedulePdf()
+    {
+        $bulan = now()->startOfMonth();
+        $schedule = PreventiveSchedule::where('bulan', $bulan->toDateString())
+            ->where('jenis', 'mesin')
+            ->with('items.mesin.preventiveLogs')
+            ->first();
+
+        $pdf = Pdf::loadView('maintenance.preventive-schedule-pdf', [
+            'jenis' => 'mesin',
+            'schedule' => $schedule,
+            'bulan' => $bulan,
+            'svc' => $this->svc,
+        ])->setPaper('a4', 'landscape');
+
+        $namaFile = str_replace('/', '-', $schedule->nomor_dokumen ?? 'schedule-mesin').'.pdf';
+
+        // compress=false: dompdf default-nya nge-gzip isi stream PDF, yang bikin
+        // konten tidak bisa dicari via assertSee di test — bukan demi ukuran file.
+        return response($pdf->output(['compress' => false]), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="'.$namaFile.'"',
+        ]);
+    }
+
+    public function scheduleGenerate(PreventiveScheduleService $preventiveSvc)
+    {
+        abort_if(! auth()->user()->hasRole(['admin', 'staff_maintenance']), 403);
+
+        $preventiveSvc->generate('mesin', now()->startOfMonth());
+
+        return redirect()->route('maintenance.control-stroke-mesin')->with(
+            'success', 'Jadwal preventive mesin bulan ini berhasil digenerate ulang.'
+        );
     }
 }
