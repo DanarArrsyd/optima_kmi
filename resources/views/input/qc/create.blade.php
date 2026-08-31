@@ -237,9 +237,14 @@
                 <div class="alert alert-danger py-2 mt-3 mb-0" x-text="galat"></div>
             </template>
 
-            <div class="d-flex justify-content-end mt-3">
+            <div class="d-flex justify-content-end gap-2 mt-3">
+                <button type="button" class="btn btn-outline-secondary" x-show="editIndex !== null" x-cloak
+                        @click="batalEdit()">
+                    Batal Edit
+                </button>
                 <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-download me-1"></i>SAVE TO DRAFT
+                    <i class="bi me-1" :class="editIndex !== null ? 'bi-pencil-fill' : 'bi-download'"></i>
+                    <span x-text="editIndex !== null ? 'UPDATE BARIS' : 'SAVE TO DRAFT'"></span>
                 </button>
             </div>
         </form>
@@ -267,7 +272,7 @@
                         </td></tr>
                     </template>
                     <template x-for="(r, i) in rows" :key="r.uid">
-                        <tr :class="barisGagal.includes(i) ? 'table-danger' : ''">
+                        <tr :class="i === editIndex ? 'table-warning' : (barisGagal.includes(i) ? 'table-danger' : '')">
                             <td x-text="r.tgl_pengecekan"></td>
                             <td x-text="r.tgl_produksi_part"></td>
                             <td x-text="r.shift_teks"></td>
@@ -284,9 +289,13 @@
                             <td x-text="r.jam_kerja.toFixed(2)"></td>
                             <td x-text="r.ct_act.toFixed(2)"></td>
                             <td x-text="`${r.persen.toFixed(0)}%`"></td>
-                            <td class="text-center">
+                            <td class="text-center text-nowrap">
+                                <button type="button" class="btn btn-sm btn-outline-secondary me-1"
+                                        :disabled="i === editIndex" @click="edit(i)" title="Edit baris">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
                                 <button type="button" class="btn btn-sm btn-outline-danger"
-                                        @click="hapus(i)" title="Hapus baris">
+                                        :disabled="i === editIndex" @click="hapus(i)" title="Hapus baris">
                                     <i class="bi bi-trash"></i>
                                 </button>
                             </td>
@@ -418,6 +427,33 @@ function konfigQc() {
             }
 
             const ng = diri.blok('.ng-rows'); if (ng) ng.rows = [];
+        },
+
+        /* Kebalikan cfg.kumpulkan. Beda dari produksi: QC nol <select> Proses
+           manual — id_part_proses hidden input reaktif ke prosesList[0], jadi
+           cukup p.pilih() dan proses ikut terisi sendiri tanpa Alpine.nextTick. */
+        sebar(row, diri) {
+            const f = diri.form();
+            f.querySelector('[name="tgl_pengecekan"]').value = row.tgl_pengecekan;
+            f.querySelector('[name="tgl_produksi_part"]').value = row.tgl_produksi_part;
+            f.querySelector('[name="id_shift"]').value = row.id_shift;
+            f.querySelector('[name="jam_start"]').value = row.jam_start;
+            f.querySelector('[name="jam_finish"]').value = row.jam_finish;
+            f.querySelector('[name="qty_ok"]').value = row.qty_ok;
+
+            const inspector = Alpine.$data(document.getElementById('f_inspector').closest('[x-data]'));
+            inspector.pick({ v: row.id_karyawan_qc, t: row.inspector_teks });
+
+            const p = picker();
+            const dataPart = partsData.find(pp => pp.part_no === row.part_no && pp.part_name === row.part_name);
+            if (dataPart) p.pilih({ v: dataPart.id, t: `${dataPart.part_no} — ${dataPart.part_name}` });
+
+            const ngCb = document.getElementById('ada_ng');
+            Alpine.$data(ngCb.closest('[x-data]')).adaNg = row.ng.length > 0;
+            Alpine.nextTick(() => {
+                const ng = diri.blok('.ng-rows');
+                if (ng) ng.rows = row.ng.map((n, i) => ({ uid: `e${Date.now()}_${i}`, id_jenis_ng: n.id_jenis_ng, qty: n.qty }));
+            });
         },
 
         payload(r) {
