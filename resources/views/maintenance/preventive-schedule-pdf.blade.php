@@ -147,7 +147,13 @@
 </div>
 
 @php
-    $tandaTangan = ['MTC Mesin', 'Produksi', 'PPIC', 'Quality', 'MTC Dies', 'Engineering', 'Supervisor', 'Direktur'];
+    // Dibuat = departemen yang MENGERJAKAN preventive ini (mesin→MTC Mesin,
+    // dies→MTC Dies). Mengetahui numpang departemen SEBELAHNYA yang bukan
+    // pengerja — mesin numpang MTC Dies, dies numpang MTC Mesin — supaya
+    // nol departemen dobel-muncul di dua kolom sekaligus.
+    $mtcDibuat = $jenis === 'mesin' ? 'MTC Mesin' : 'MTC Dies';
+    $mtcMengetahui = $jenis === 'mesin' ? 'MTC Dies' : 'MTC Mesin';
+    $tandaTangan = [$mtcDibuat, 'Produksi', 'PPIC', 'Quality', $mtcMengetahui, 'Engineering', 'Spv. Produksi', 'Spv. Engineering', 'Direktur'];
 @endphp
 <div class="footer-sign">
     <div class="tempat-tgl">Bekasi, {{ now()->timezone('Asia/Jakarta')->locale('id')->translatedFormat('d F Y') }}</div>
@@ -156,13 +162,13 @@
             <tr>
                 <th>Dibuat</th>
                 <th colspan="5">Mengetahui</th>
-                <th>Diperiksa</th>
+                <th colspan="2">Diperiksa</th>
                 <th>Disetujui</th>
             </tr>
         </thead>
         <tbody>
             <tr class="sign-line">
-                @for ($k = 0; $k < 8; $k++)
+                @for ($k = 0; $k < count($tandaTangan); $k++)
                     <td><div></div></td>
                 @endfor
             </tr>
