@@ -82,7 +82,7 @@ function ngRows(initial) {
            dengan constructor, supaya bentuk baris nol pernah menyimpang antara jalur
            inisialisasi awal dan jalur restore edit. */
         setRows(list) {
-            this.rows = (list || []).map(r => ({ uid: `e${Date.now()}_${seq++}`, id_jenis_ng: String(r.id_jenis_ng ?? ''), qty: r.qty ?? null }));
+            this.rows = (list || []).map(r => ({ ...baris(r), uid: `e${Date.now()}_${seq++}` }));
         },
         remove(i) {
             this.rows.splice(i, 1);

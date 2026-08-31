@@ -449,7 +449,11 @@ function konfigQc() {
 
             const p = picker();
             const dataPart = partsData.find(p => p.proses.some(pr => pr.id == row.id_part_proses));
-            if (dataPart) p.pilih({ v: dataPart.id, t: `${dataPart.part_no} — ${dataPart.part_name}` });
+            if (dataPart) {
+                p.pilih({ v: dataPart.id, t: `${dataPart.part_no} — ${dataPart.part_name}` });
+            } else {
+                p.query = ''; p.val = null; p.partNo = ''; p.partName = ''; p.prosesList = [];
+            }
 
             const ngCb = document.getElementById('ada_ng');
             Alpine.$data(ngCb.closest('[x-data]')).adaNg = row.ng.length > 0;

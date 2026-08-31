@@ -443,6 +443,10 @@ function konfigDandori() {
                     const proses = f.querySelector('[name="id_part_proses"]');
                     if (proses) proses.value = row.id_part_proses;
                 });
+            } else {
+                p.query = ''; p.val = null; p.partNo = ''; p.partName = ''; p.prosesList = [];
+                const proses = f.querySelector('[name="id_part_proses"]');
+                if (proses) proses.value = '';
             }
 
             Alpine.nextTick(() => {
