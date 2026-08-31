@@ -25,6 +25,7 @@
     table.sched .col-std { width: 6%; }
     table.sched .col-act { width: 6%; }
     table.sched .col-sched { width: 5%; }
+    table.sched .col-proses { width: 10%; text-align: left; }
 
     .ketentuan { margin-top: 18px; font-size: 9px; line-height: 1.5; }
     .ketentuan ol { margin: 8px 0 0 16px; padding: 0; }
@@ -63,10 +64,15 @@
     $namaBulan = mb_strtoupper($bulan->locale('id')->translatedFormat('F Y'));
     $labelKode = $jenis === 'mesin' ? 'ID MESIN' : 'ID DIES';
     $labelNama = $jenis === 'mesin' ? 'NAMA MESIN' : 'NAMA PART/DIES';
-    // Kolom label (NO+NAMA+ID+STD+ACT+SCHED) total 39% lebar tabel (lihat .col-* di
-    // style), sisanya dibagi RATA ke tiap kolom tanggal — supaya "9" dan "16" sama
-    // lebar, bukan angka 1-digit dikempesin.
-    $lebarHari = round((100 - 39) / $jumlahHari, 3);
+    // Satu part_no dies bisa punya BEBERAPA baris (proses beda) dengan Nama/ID Dies
+    // yang sama persis — tanpa kolom PROSES, PIC MTC Dies nebak sendiri proses mana
+    // yang dimaksud. Mesin nol masalah ini (1 mesin = 1 baris), jadi kolom ini
+    // KHUSUS dies.
+    $lebarLabel = $jenis === 'dies' ? 49 : 39;
+    // Kolom label total $lebarLabel% lebar tabel (lihat .col-* di style), sisanya
+    // dibagi RATA ke tiap kolom tanggal — supaya "9" dan "16" sama lebar, bukan
+    // angka 1-digit dikempesin.
+    $lebarHari = round((100 - $lebarLabel) / $jumlahHari, 3);
 @endphp
 
 <table class="sched">
@@ -75,6 +81,9 @@
             <th rowspan="2" class="col-no">NO</th>
             <th rowspan="2" class="col-nama">{{ $labelNama }}</th>
             <th rowspan="2" class="col-id">{{ $labelKode }}</th>
+            @if ($jenis === 'dies')
+                <th rowspan="2" class="col-proses">PROSES</th>
+            @endif
             <th rowspan="2" class="col-std">STANDARD<br>STROKE</th>
             <th rowspan="2" class="col-act">ACTUAL<br>STROKE</th>
             <th rowspan="2" class="col-sched">MASTER<br>SCHED</th>
@@ -100,6 +109,9 @@
                 <td rowspan="2" class="col-no">{{ $i + 1 }}</td>
                 <td rowspan="2" class="col-nama nama-col">{{ $nama }}</td>
                 <td rowspan="2" class="col-id">{{ $kode }}</td>
+                @if ($jenis === 'dies')
+                    <td rowspan="2" class="col-proses">{{ $target?->id_proses }} &ndash; {{ $target?->nama_proses }}</td>
+                @endif
                 <td rowspan="2" class="col-std">{{ number_format($item->threshold_snapshot, 0, ',', '.') }}<br>STROKE</td>
                 <td rowspan="2" class="col-act">{{ number_format($actualStroke, 0, ',', '.') }}</td>
                 <td class="col-sched">PLAN</td>
