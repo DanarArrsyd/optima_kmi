@@ -134,6 +134,69 @@ class PreventiveSchedulePdfTest extends TestCase
         $this->assertStringContainsString('plan-cell', $html);
     }
 
+    /**
+     * Satu part_no dies bisa punya beberapa baris (proses beda) dengan Nama/ID Dies
+     * yang SAMA PERSIS — tanpa kolom PROSES, PIC MTC Dies nebak sendiri proses mana
+     * yang dimaksud tiap baris.
+     */
+    public function test_dies_pdf_menampilkan_kolom_proses_untuk_bedakan_baris_part_sama(): void
+    {
+        $bulan = Carbon::parse('2026-08-01');
+        $admin = User::factory()->create(['role' => 'admin']);
+        $shift = MasterShift::create(['nama_shift' => 'Shift 1', 'jam_start' => '08:00', 'jam_finish' => '16:00']);
+        $karyawan = MasterKaryawan::create(['nik' => uniqid(), 'nama_karyawan' => 'Operator N', 'departemen' => 'Produksi', 'is_aktif' => true]);
+        $mesin = MasterMesin::create(['id_mesin' => 'M-D3', 'nama_mesin' => 'Press M-D3', 'line' => '1', 'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100, 'tanggal_instalasi' => '2020-01-01']);
+        $part = MasterPart::create(['part_no' => 'D-3', 'part_name' => 'Dies 3', 'customer' => 'Toyota']);
+        $proses = MasterPartProses::create(['id_part' => $part->id, 'id_proses' => 2, 'nama_proses' => 'FORMING', 'sph_standar_produksi' => 500, 'sph_standar_qc' => 250]);
+        TransaksiProduksi::create([
+            'tanggal_produksi' => '2026-07-01', 'id_shift' => $shift->id, 'id_karyawan' => $karyawan->id,
+            'id_mesin' => $mesin->id, 'id_part_proses' => $proses->id, 'jam_start' => '08:00', 'jam_finish' => '16:00',
+            'qty_aktual' => 31000, 'actual_cycle_time' => 10, 'created_by' => $admin->id,
+        ]);
+
+        $schedule = app(PreventiveScheduleService::class)->generate('dies', $bulan);
+
+        $html = view('maintenance.preventive-schedule-pdf', [
+            'jenis' => 'dies',
+            'schedule' => $schedule->load('items.partProses.part', 'items.partProses.preventiveLogs'),
+            'bulan' => $bulan,
+            'svc' => app(MaintenanceDiesDashboardService::class),
+        ])->render();
+
+        $this->assertStringContainsString('>PROSES<', $html);
+        $this->assertStringContainsString('2', $html);
+        $this->assertStringContainsString('FORMING', $html);
+    }
+
+    /** Mesin nol butuh kolom PROSES (1 mesin = 1 baris, nol ambigu) — nol boleh nongol. */
+    public function test_mesin_pdf_nol_kolom_proses(): void
+    {
+        $bulan = Carbon::parse('2026-08-01');
+        $admin = User::factory()->create(['role' => 'admin']);
+        $shift = MasterShift::create(['nama_shift' => 'Shift 1', 'jam_start' => '08:00', 'jam_finish' => '16:00']);
+        $karyawan = MasterKaryawan::create(['nik' => uniqid(), 'nama_karyawan' => 'Operator N', 'departemen' => 'Produksi', 'is_aktif' => true]);
+        $mesin = MasterMesin::create(['id_mesin' => 'M-P1', 'nama_mesin' => 'Press M-P1', 'line' => '1', 'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100, 'tanggal_instalasi' => '2020-01-01']);
+        $part = MasterPart::create(['part_no' => 'P-P1', 'part_name' => 'Part P1', 'customer' => 'Toyota']);
+        $proses = MasterPartProses::create(['id_part' => $part->id, 'id_proses' => 1, 'nama_proses' => 'PROGRESSIVE', 'sph_standar_produksi' => 500, 'sph_standar_qc' => 250]);
+        TransaksiProduksi::create([
+            'tanggal_produksi' => '2026-07-01', 'id_shift' => $shift->id, 'id_karyawan' => $karyawan->id,
+            'id_mesin' => $mesin->id, 'id_part_proses' => $proses->id, 'jam_start' => '08:00', 'jam_finish' => '16:00',
+            'qty_aktual' => 310000, 'actual_cycle_time' => 10, 'created_by' => $admin->id,
+        ]);
+
+        $schedule = app(PreventiveScheduleService::class)->generate('mesin', $bulan);
+
+        $html = view('maintenance.preventive-schedule-pdf', [
+            'jenis' => 'mesin',
+            'schedule' => $schedule->load('items.mesin.preventiveLogs'),
+            'bulan' => $bulan,
+            'svc' => app(MaintenanceDashboardService::class),
+        ])->render();
+
+        $this->assertStringContainsString('plan-cell', $html, 'Setup salah: baris mesin harusnya kerender.');
+        $this->assertStringNotContainsString('>PROSES<', $html);
+    }
+
     public function test_staff_qc_tidak_boleh_generate_manual(): void
     {
         $staffQc = User::factory()->create(['role' => 'staff_qc']);
