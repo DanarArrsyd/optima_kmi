@@ -198,9 +198,14 @@
                 <div class="alert alert-danger py-2 mt-3 mb-0" x-text="galat"></div>
             </template>
 
-            <div class="d-flex justify-content-end mt-3">
+            <div class="d-flex justify-content-end gap-2 mt-3">
+                <button type="button" class="btn btn-outline-secondary" x-show="editIndex !== null" x-cloak
+                        @click="batalEdit()">
+                    Batal Edit
+                </button>
                 <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-download me-1"></i>SAVE TO DRAFT
+                    <i class="bi me-1" :class="editIndex !== null ? 'bi-pencil-fill' : 'bi-download'"></i>
+                    <span x-text="editIndex !== null ? 'UPDATE BARIS' : 'SAVE TO DRAFT'"></span>
                 </button>
             </div>
         </form>
@@ -227,7 +232,7 @@
                         </td></tr>
                     </template>
                     <template x-for="(r, i) in rows" :key="r.uid">
-                        <tr :class="barisGagal.includes(i) ? 'table-danger' : ''">
+                        <tr :class="i === editIndex ? 'table-warning' : (barisGagal.includes(i) ? 'table-danger' : '')">
                             <td x-text="r.no_lkd_preview"></td>
                             <td x-text="r.part_no"></td>
                             <td x-text="r.part_name"></td>
@@ -237,9 +242,13 @@
                             <td x-text="Number(r.repair_jam || 0).toFixed(2)"></td>
                             <td x-text="Number(r.downtime_jam || 0).toFixed(2)"></td>
                             <td x-text="r.pic_maintenance"></td>
-                            <td class="text-center">
+                            <td class="text-center text-nowrap">
+                                <button type="button" class="btn btn-sm btn-outline-secondary me-1"
+                                        :disabled="i === editIndex" @click="edit(i)" title="Edit baris">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
                                 <button type="button" class="btn btn-sm btn-outline-danger"
-                                        @click="hapus(i)" title="Hapus baris">
+                                        :disabled="i === editIndex" @click="hapus(i)" title="Hapus baris">
                                     <i class="bi bi-trash"></i>
                                 </button>
                             </td>
@@ -264,7 +273,10 @@
             <input type="hidden" name="rows_json" :value="JSON.stringify(payloadRows())">
 
             <div class="d-flex gap-2 justify-content-end">
-                <button type="submit" class="btn btn-success" :disabled="rows.length === 0">
+                <span class="text-muted small align-self-center" x-show="editIndex !== null" x-cloak>
+                    Selesaikan UPDATE BARIS atau Batal Edit dulu sebelum submit.
+                </span>
+                <button type="submit" class="btn btn-success" :disabled="rows.length === 0 || editIndex !== null">
                     <i class="bi bi-upload me-1"></i>SUBMIT DRAFT
                 </button>
                 <button type="button" class="btn btn-danger" @click="batal()">CANCEL</button>
@@ -369,7 +381,7 @@ function konfigBreakdownDies() {
                DAN arah lawan data yang sudah ada di database; di sini cukup
                arah draft supaya operator tidak perlu submit dulu untuk tahu. */
             const noLkdBaru = noLkdPreview(calon.nomor_urut, calon.tanggal_breakdown);
-            const kembar = rows.find(r => noLkdPreview(r.nomor_urut, r.tanggal_breakdown) === noLkdBaru);
+            const kembar = rows.find((r, i) => i !== diri.editIndex && noLkdPreview(r.nomor_urut, r.tanggal_breakdown) === noLkdBaru);
             if (kembar) {
                 return `No LKD ${noLkdBaru} sudah dipakai baris lain di draft ini.`;
             }
@@ -410,6 +422,39 @@ function konfigBreakdownDies() {
             if (proses) proses.value = '';
 
             majukanNomorUrut(diri);
+        },
+
+        /* Kebalikan cfg.kumpulkan. Beda dari Breakdown Mesin: modul ini
+           punya part picker + <select> Proses manual, nol field mesin. */
+        sebar(row, diri) {
+            const f = diri.form();
+            f.querySelector('[name="nomor_urut"]').value = row.nomor_urut;
+            f.querySelector('[name="tanggal_breakdown"]').value = row.tanggal_breakdown;
+            f.querySelector('[name="jam_breakdown"]').value = row.jam_breakdown;
+            f.querySelector('[name="tanggal_mulai_perbaikan"]').value = row.tanggal_mulai_perbaikan;
+            f.querySelector('[name="jam_mulai_perbaikan"]').value = row.jam_mulai_perbaikan;
+            f.querySelector('[name="tanggal_selesai_perbaikan"]').value = row.tanggal_selesai_perbaikan;
+            f.querySelector('[name="jam_selesai_perbaikan"]').value = row.jam_selesai_perbaikan;
+            f.querySelector('[name="problem_dies"]').value = row.problem_dies;
+            f.querySelector('[name="penyebab_breakdown"]').value = row.penyebab_breakdown;
+            f.querySelector('[name="tindakan_perbaikan"]').value = row.tindakan_perbaikan;
+
+            const p = picker();
+            const dataPart = partsData.find(p => p.proses.some(pr => pr.id == row.id_part_proses));
+            if (dataPart) {
+                p.pilih({ v: dataPart.id, t: `${dataPart.part_no} — ${dataPart.part_name}` });
+                Alpine.nextTick(() => {
+                    const proses = f.querySelector('[name="id_part_proses"]');
+                    if (proses) proses.value = row.id_part_proses;
+                });
+            } else {
+                p.query = ''; p.val = null; p.partNo = ''; p.partName = ''; p.prosesList = [];
+                const proses = f.querySelector('[name="id_part_proses"]');
+                if (proses) proses.value = '';
+            }
+
+            const pic = Alpine.$data(document.getElementById('f_pic').closest('[x-data]'));
+            pic.pick({ v: row.pic_maintenance, t: row.pic_maintenance });
         },
 
         /* Seam cfg.setelahPulih (batchDraft, layouts/app.blade.php): dipanggil

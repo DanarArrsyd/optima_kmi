@@ -280,9 +280,14 @@
                 <div class="alert alert-danger py-2 mt-3 mb-0" x-text="galat"></div>
             </template>
 
-            <div class="d-flex justify-content-end mt-3">
+            <div class="d-flex justify-content-end gap-2 mt-3">
+                <button type="button" class="btn btn-outline-secondary" x-show="editIndex !== null" x-cloak
+                        @click="batalEdit()">
+                    Batal Edit
+                </button>
                 <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-download me-1"></i>SAVE TO DRAFT
+                    <i class="bi me-1" :class="editIndex !== null ? 'bi-pencil-fill' : 'bi-download'"></i>
+                    <span x-text="editIndex !== null ? 'UPDATE BARIS' : 'SAVE TO DRAFT'"></span>
                 </button>
             </div>
         </form>
@@ -310,7 +315,7 @@
                         </td></tr>
                     </template>
                     <template x-for="(r, i) in rows" :key="r.uid">
-                        <tr :class="barisGagal.includes(i) ? 'table-danger' : ''">
+                        <tr :class="i === editIndex ? 'table-warning' : (barisGagal.includes(i) ? 'table-danger' : '')">
                             <td x-text="r.tanggal_produksi"></td>
                             <td x-text="r.shift_teks"></td>
                             <td x-text="r.karyawan_teks"></td>
@@ -328,9 +333,13 @@
                             <td x-text="r.jam_kerja.toFixed(2)"></td>
                             <td x-text="r.ct_act.toFixed(2)"></td>
                             <td x-text="`${r.persen.toFixed(0)}%`"></td>
-                            <td class="text-center">
+                            <td class="text-center text-nowrap">
+                                <button type="button" class="btn btn-sm btn-outline-secondary me-1"
+                                        :disabled="i === editIndex" @click="edit(i)" title="Edit baris">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
                                 <button type="button" class="btn btn-sm btn-outline-danger"
-                                        @click="hapus(i)" title="Hapus baris">
+                                        :disabled="i === editIndex" @click="hapus(i)" title="Hapus baris">
                                     <i class="bi bi-trash"></i>
                                 </button>
                             </td>
@@ -359,7 +368,10 @@
             <input type="hidden" name="rows_json" :value="JSON.stringify(payloadRows())">
 
             <div class="d-flex gap-2 justify-content-end">
-                <button type="submit" class="btn btn-success" :disabled="rows.length === 0">
+                <span class="text-muted small align-self-center" x-show="editIndex !== null" x-cloak>
+                    Selesaikan UPDATE BARIS atau Batal Edit dulu sebelum submit.
+                </span>
+                <button type="submit" class="btn btn-success" :disabled="rows.length === 0 || editIndex !== null">
                     <i class="bi bi-upload me-1"></i>SUBMIT DRAFT
                 </button>
                 <button type="button" class="btn btn-danger" @click="batal()">CANCEL</button>
@@ -435,6 +447,7 @@ function konfigLhp() {
             }
 
             for (let i = 0; i < rows.length; i++) {
+                if (i === diri.editIndex) continue;
                 if (rows[i].id_mesin != calon.id_mesin) continue;
                 const a = rentang(diri, rows[i]), b = rentang(diri, calon);
                 if (a.mulai < b.selesai && b.mulai < a.selesai) {
@@ -477,6 +490,71 @@ function konfigLhp() {
 
             const ng = diri.blok('.ng-rows'); if (ng) ng.rows = [];
             const dandori = diri.blok('.dandori-rows'); if (dandori) dandori.rows = [];
+        },
+
+        /* Kebalikan cfg.kumpulkan: baca row draft, tulis ke form atas —
+           dipanggil edit(i) di kerangka. Part dicari balik dari partsData
+           lewat id_part_proses (bukan part_no+part_name — dua part beda bisa
+           berbagi pasangan tampilan yang sama, dan pencarian string bisa
+           meleset senyap kalau part berubah/hilang di antara draft dibuat dan
+           diedit) supaya partPicker.pilih() bisa mengisi ulang prosesList-nya
+           sebelum <select id="f_proses"> diisi. */
+        sebar(row, diri) {
+            const f = diri.form();
+            f.querySelector('[name="tanggal_produksi"]').value = row.tanggal_produksi;
+            f.querySelector('[name="id_shift"]').value = row.id_shift;
+            f.querySelector('[name="jam_start"]').value = row.jam_start;
+            f.querySelector('[name="jam_finish"]').value = row.jam_finish;
+            f.querySelector('[name="qty_aktual"]').value = row.qty_aktual;
+
+            const operator = Alpine.$data(document.getElementById('f_operator').closest('[x-data]'));
+            operator.pick({ v: row.id_karyawan, t: row.karyawan_teks });
+
+            const mesin = Alpine.$data(document.getElementById('f_mesin').closest('[x-data]'));
+            mesin.pick({ v: row.id_mesin, t: row.mesin_teks });
+
+            const p = picker();
+            const dataPart = partsData.find(p => p.proses.some(pr => pr.id == row.id_part_proses));
+            if (dataPart) {
+                p.pilih({ v: dataPart.id, t: `${dataPart.part_no} — ${dataPart.part_name}` });
+                Alpine.nextTick(() => {
+                    const proses = f.querySelector('[name="id_part_proses"]');
+                    if (proses) proses.value = row.id_part_proses;
+                });
+            } else {
+                p.query = ''; p.val = null; p.partNo = ''; p.partName = ''; p.prosesList = [];
+                const proses = f.querySelector('[name="id_part_proses"]');
+                if (proses) proses.value = '';
+            }
+
+            const ngCb = document.getElementById('ada_ng');
+            Alpine.$data(ngCb.closest('[x-data]')).adaNg = row.ng.length > 0;
+            Alpine.nextTick(() => {
+                const ng = diri.blok('.ng-rows');
+                if (ng) ng.setRows(row.ng);
+            });
+
+            const dandoriCb = document.getElementById('ada_dandori');
+            Alpine.$data(dandoriCb.closest('[x-data]')).adaDandori = row.dandori.length > 0;
+            Alpine.nextTick(() => {
+                const dandori = diri.blok('.dandori-rows');
+                if (dandori) {
+                    dandori.setRows(row.dandori);
+                    /* Dispatch change supaya dandori-rows.syncProgressive() (didengarkan di
+                       form) menyinkron ulang flag progressive dari id_part_proses yang baru
+                       saja diisi sebar(), lalu recompute Std/Over semua baris sendiri — proses.value
+                       yang diisi lewat DOM mentah di atas TIDAK memancarkan change secara alami. */
+                    const proses = f.querySelector('[name="id_part_proses"]');
+                    if (proses) proses.dispatchEvent(new Event('change', { bubbles: true }));
+
+                    const dandoriKaryawanInput = f.querySelector('[name="dandori_karyawan_id"]');
+                    if (dandoriKaryawanInput) {
+                        const dOp = Alpine.$data(dandoriKaryawanInput.closest('[x-data]'));
+                        const label = (taKaryawan.find(k => k.v == row.dandori_karyawan_id) || {}).t || '';
+                        dOp.pick({ v: row.dandori_karyawan_id || null, t: label });
+                    }
+                }
+            });
         },
 
         /* Bentuk field yang dikirim ke server (rows_json) — sama persis

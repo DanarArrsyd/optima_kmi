@@ -208,6 +208,14 @@ function dandoriRows(initial, ltData) {
 
         add() { this.rows.push(baris()); },
 
+        /* Dipakai sebar() (edit baris draft) — reuse baris() yang sama dengan
+           constructor, cuma timpa uid dengan konvensi `e${Date.now()}_${seq++}`
+           supaya baris hasil restore tetap punya namespace uid yang beda dari
+           baris yang baru ditambah. */
+        setRows(list) {
+            this.rows = (list || []).map(r => ({ ...baris(r), uid: `e${Date.now()}_${seq++}` }));
+        },
+
         /* Baris terakhir dipertahankan, sama seperti halaman Dandori. Blok ini
            hanya muncul saat centangnya menyala, dan melepas centang yang
            mengosongkan seluruh baris lewat dandoriSync(). */

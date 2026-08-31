@@ -68,14 +68,21 @@
 <script>
 function ngRows(initial) {
     let seq = 0;
+    const baris = (r = {}) => ({
+        uid: seq++,
+        id_jenis_ng: String(r.id_jenis_ng ?? ''),
+        qty: r.qty ?? null,
+    });
     return {
-        rows: (initial || []).map(r => ({
-            uid: seq++,
-            id_jenis_ng: String(r.id_jenis_ng ?? ''),
-            qty: r.qty ?? null,
-        })),
+        rows: (initial || []).map(baris),
         add() {
             this.rows.push({ uid: seq++, id_jenis_ng: '', qty: null });
+        },
+        /* Dipakai sebar() (edit baris draft) — reuse konstruksi baris() yang sama
+           dengan constructor, supaya bentuk baris nol pernah menyimpang antara jalur
+           inisialisasi awal dan jalur restore edit. */
+        setRows(list) {
+            this.rows = (list || []).map(r => ({ ...baris(r), uid: `e${Date.now()}_${seq++}` }));
         },
         remove(i) {
             this.rows.splice(i, 1);
