@@ -1870,7 +1870,7 @@ function batchDraft(cfg) {
        satu baris pun yang ditandai merah — dia harus mencari baris yang salah
        di antara 50 baris dengan membaca teks. Diam, dan cuma terasa persis
        saat operator paling butuh bantuan. */
-    for (const k of ['kunci', 'kunciBackup', 'formId', 'indexUrl', 'kumpulkan', 'wajib', 'payload', 'galatServer']) {
+    for (const k of ['kunci', 'kunciBackup', 'formId', 'indexUrl', 'kumpulkan', 'wajib', 'payload', 'galatServer', 'sebar']) {
         if (cfg[k] === undefined) throw new Error(`batchDraft: cfg.${k} wajib diisi.`);
     }
 
@@ -1911,6 +1911,7 @@ function batchDraft(cfg) {
         pesan: '',
         galat: '',
         barisGagal: [],
+        editIndex: null,
 
         mulai() {
             /* Halaman batch yang dipulihkan dari bfcache (tombol Back setelah
@@ -2007,20 +2008,51 @@ function batchDraft(cfg) {
         simpanKeDraft() {
             this.galat = '';
 
-            const calon = { uid: seq++, ...cfg.kumpulkan(this) };
+            /* Mode edit memakai uid baris lama supaya :key template x-for
+               tidak berubah — Alpine akan menganggap ini elemen DOM baru
+               kalau uid berganti, dan itu memutus fokus/scroll operator
+               tepat saat UPDATE BARIS baru saja diklik. */
+            const uid = this.editIndex !== null ? this.rows[this.editIndex].uid : seq++;
+            const calon = { uid, ...cfg.kumpulkan(this) };
 
             for (const [kunci, label] of Object.entries(cfg.wajib)) {
                 if (!calon[kunci]) { this.galat = `${label} wajib diisi.`; return; }
             }
 
+            /* cfg.periksa menerima this.rows UTUH (bukan difilter) supaya
+               nomor baris di pesan galatnya tetap akurat. Modul yang punya
+               pemeriksaan tabrakan antar-baris (produksi, breakdown mesin,
+               breakdown dies) mengecualikan this.editIndex sendiri lewat
+               diri.editIndex — lihat cfg.periksa masing-masing modul. */
             const galat = cfg.periksa ? cfg.periksa(calon, this.rows, this) : null;
             if (galat) { this.galat = galat; return; }
 
             if (cfg.pratinjau) cfg.pratinjau(calon, this);
 
-            this.rows.push(calon);
+            if (this.editIndex !== null) {
+                this.rows[this.editIndex] = calon;
+            } else {
+                this.rows.push(calon);
+            }
+            this.editIndex = null;
             this.pesan = '';
             this.barisGagal = [];
+            this.resetSebagian();
+        },
+
+        /* Dipanggil tombol EDIT di tabel draft. cfg.sebar menulis isi row
+           ke form atas (DOM + komponen Alpine seperti taField/partPicker/
+           ng-rows/dandori-rows) — kebalikan dari cfg.kumpulkan. */
+        edit(i) {
+            this.editIndex = i;
+            this.galat = '';
+            cfg.sebar(this.rows[i], this);
+            this.form().scrollIntoView({ behavior: 'smooth', block: 'start' });
+        },
+
+        batalEdit() {
+            this.editIndex = null;
+            this.galat = '';
             this.resetSebagian();
         },
 
@@ -2038,7 +2070,17 @@ function batchDraft(cfg) {
             if (cfg.resetLain) cfg.resetLain(this);
         },
 
-        hapus(i) { this.rows.splice(i, 1); this.barisGagal = []; },
+        /* Baris yang sedang diedit (i === editIndex) tidak boleh dihapus dari
+           sini — tombolnya dinonaktifkan di template, guard ini jaga-jaga
+           kalau ada jalur lain yang memanggil hapus() langsung. Menghapus
+           baris SEBELUM editIndex menggeser index baris yang diedit — tanpa
+           koreksi ini, UPDATE BARIS berikutnya menimpa baris yang salah. */
+        hapus(i) {
+            if (i === this.editIndex) return;
+            this.rows.splice(i, 1);
+            this.barisGagal = [];
+            if (this.editIndex !== null && i < this.editIndex) this.editIndex--;
+        },
 
         payloadRows() { return this.rows.map(r => cfg.payload(r)); },
 
