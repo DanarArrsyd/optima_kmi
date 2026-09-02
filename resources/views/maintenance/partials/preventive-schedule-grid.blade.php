@@ -39,22 +39,25 @@
                             @endfor
                         </tr>
                     </thead>
-                    <tbody>
                         @foreach ($schedule->items as $i => $item)
                             @php
                                 $target = $jenis === 'mesin' ? $item->mesin : $item->partProses;
                                 $kode = $jenis === 'mesin' ? $target?->id_mesin : $target?->part?->part_no;
                                 $nama = $jenis === 'mesin' ? $target?->nama_mesin : $target?->part?->part_name;
                             @endphp
-                            <tr x-data="scheduleItemEdit(
+                            {{-- tbody per item (HTML5 valid, banyak <tbody> per <table>) —
+                                 x-data di sini biar baris error di bawah IKUT dalam scope
+                                 Alpine yang sama dengan baris utama, bukan sibling di luar
+                                 scope (x-data di <tr> nol nyebar ke <tr> sebelah). --}}
+                            <tbody x-data="scheduleItemEdit(
                                     {{ $item->id }},
                                     {{ $item->tanggal_rencana ? \Illuminate\Support\Js::from($item->tanggal_rencana->toDateString()) : 'null' }},
                                     {{ $item->is_manual_override ? 'true' : 'false' }},
                                     {{ \Illuminate\Support\Js::from(route("maintenance.control-stroke-{$jenis}.schedule-item.update", $item)) }},
                                     {{ \Illuminate\Support\Js::from(route("maintenance.control-stroke-{$jenis}.schedule-item.reset", $item)) }},
                                     {{ \Illuminate\Support\Js::from($tanggalValid) }}
-                                )"
-                                class="{{ $item->is_manual_override ? 'psg-locked' : '' }}">
+                                )">
+                            <tr class="{{ $item->is_manual_override ? 'psg-locked' : '' }}">
                                 <td>{{ $i + 1 }}</td>
                                 <td>{{ $nama }}</td>
                                 <td>{{ $kode }}</td>
@@ -85,11 +88,11 @@
                             <tr x-show="error" x-cloak>
                                 <td colspan="99" class="text-danger small py-1" x-text="error"></td>
                             </tr>
+                            </tbody>
                         @endforeach
                         @if ($schedule->items->isEmpty())
-                            <tr><td colspan="99" class="text-center text-muted py-3">Nol item eligible bulan ini.</td></tr>
+                            <tbody><tr><td colspan="99" class="text-center text-muted py-3">Nol item eligible bulan ini.</td></tr></tbody>
                         @endif
-                    </tbody>
                 </table>
             </div>
         @endif
