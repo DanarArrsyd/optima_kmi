@@ -15,7 +15,7 @@ class PreventiveScheduleItemsMigrationTest extends TestCase
     {
         $this->assertTrue(Schema::hasColumn('preventive_schedule_items', 'backlog_since'));
 
-        $columns = DB::select("PRAGMA table_info(preventive_schedule_items)");
+        $columns = DB::select('PRAGMA table_info(preventive_schedule_items)');
         $byName = collect($columns)->keyBy('name');
 
         $this->assertSame(0, $byName['tanggal_rencana']->notnull, 'tanggal_rencana harus nullable');
