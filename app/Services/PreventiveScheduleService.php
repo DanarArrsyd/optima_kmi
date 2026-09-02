@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\PreventiveSchedule;
 use App\Models\PreventiveScheduleItem;
+use App\Models\TransaksiProduksi;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -49,7 +50,7 @@ class PreventiveScheduleService
 
             $schedule->items()->delete();
 
-            $eligible = $this->eligibleItems($jenis);
+            $eligible = $this->eligibleItems($jenis, $bulan);
             $hariKerja = $this->hariKerjaDalamBulan($bulan);
             $mingguBuckets = $this->kelompokkanPerMinggu($hariKerja);
             $kapasitas = self::KAPASITAS[$jenis];
@@ -87,14 +88,63 @@ class PreventiveScheduleService
         });
     }
 
-    /** Baris warning/overdue dari computeCurrentCycle(), diurut pct paling mendesak duluan. */
-    private function eligibleItems(string $jenis): Collection
+    /**
+     * Laju stroke per hari, SATU query batch per jenis (bukan N+1 per item — dies
+     * bisa ratusan baris). Window 30 hari kalender SELESAI sebelum hari ini
+     * (T-30 s.d. T-1) — hari T sendiri tidak dihitung karena datanya masih parsial.
+     *
+     * @return array<int, float> [id_mesin_atau_id_part_proses => stroke/hari]
+     */
+    private function lajuHarian(string $jenis): array
     {
-        $rows = $jenis === 'mesin' ? $this->mesinSvc->computeCurrentCycle() : $this->diesSvc->computeCurrentCycle();
+        $akhir = Carbon::now()->subDay()->toDateString();
+        $mulai = Carbon::now()->subDays(30)->toDateString();
+        $kolom = $jenis === 'mesin' ? 'id_mesin' : 'id_part_proses';
 
-        return collect($rows)
-            ->whereIn('status', ['overdue', 'warning'])
-            ->sortByDesc('pct')
+        return TransaksiProduksi::query()
+            ->whereBetween('tanggal_produksi', [$mulai, $akhir])
+            ->selectRaw("{$kolom} as target_id, COALESCE(SUM(qty_aktual + COALESCE(qty_ng,0)),0) as total")
+            ->groupBy($kolom)
+            ->pluck('total', 'target_id')
+            ->map(fn ($total) => (float) $total / 30)
+            ->all();
+    }
+
+    /**
+     * Union dua kriteria — pct≥80% (perilaku lama, safety net) ATAU proyeksi
+     * overdue sebelum generate bulan depan (proaktif, baru) — diurut proyeksi
+     * PALING DEKAT duluan. Item overdue sekarang (pct≥100) otomatis proyeksi=hari
+     * ini, jadi selalu paling depan.
+     */
+    private function eligibleItems(string $jenis, Carbon $bulan): Collection
+    {
+        $rows = collect($jenis === 'mesin' ? $this->mesinSvc->computeCurrentCycle() : $this->diesSvc->computeCurrentCycle());
+        $laju = $this->lajuHarian($jenis);
+        $kolomId = $jenis === 'mesin' ? 'id_mesin' : 'id_part_proses';
+        $today = Carbon::now();
+        $batasProyeksi = $bulan->copy()->addMonthNoOverflow()->startOfMonth();
+
+        return $rows
+            ->map(function ($row) use ($laju, $kolomId, $today) {
+                $rate = $laju[$row[$kolomId]] ?? 0.0;
+                $sisa = max(0, $row['threshold'] - $row['current_stroke']);
+
+                if ($row['pct'] >= 100) {
+                    $proyeksi = $today->copy();
+                } elseif ($rate > 0) {
+                    $proyeksi = $today->copy()->addDays((int) ceil($sisa / $rate));
+                } elseif ($row['pct'] >= 80) {
+                    $proyeksi = $today->copy();
+                } else {
+                    $proyeksi = null;
+                }
+
+                $row['proyeksi_overdue'] = $proyeksi;
+
+                return $row;
+            })
+            ->filter(fn ($row) => $row['pct'] >= 80 || ($row['proyeksi_overdue'] && $row['proyeksi_overdue']->lt($batasProyeksi)))
+            ->sortBy(fn ($row) => $row['proyeksi_overdue']?->timestamp ?? PHP_INT_MAX)
             ->values();
     }
 
