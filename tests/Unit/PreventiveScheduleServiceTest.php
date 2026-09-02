@@ -8,6 +8,7 @@ use App\Models\MasterPart;
 use App\Models\MasterPartProses;
 use App\Models\MasterShift;
 use App\Models\PreventiveSchedule;
+use App\Models\PreventiveScheduleItem;
 use App\Models\TransaksiProduksi;
 use App\Models\User;
 use App\Services\PreventiveScheduleService;
@@ -437,5 +438,48 @@ class PreventiveScheduleServiceTest extends TestCase
         $this->assertNotNull($itemBekasBacklog, 'mesin yang backlog Agustus harus tetap eligible & muncul di September');
         $this->assertNotNull($itemBekasBacklog->tanggal_rencana, 'harus kebagian slot September (eligible turun ke 4, kapasitas 5)');
         $this->assertNull($itemBekasBacklog->backlog_since, 'begitu kebagian slot, backlog_since HARUS null — bukan bertahan dari Agustus');
+    }
+
+    public function test_item_locked_manual_selamat_dari_regenerate(): void
+    {
+        $mesin = $this->mesinDenganStroke('LK1', 305000);
+        app(PreventiveScheduleService::class)->generate('mesin', Carbon::parse('2026-08-01'));
+
+        $item = PreventiveScheduleItem::where('id_mesin', $mesin->id)->first();
+        $item->update([
+            'tanggal_rencana' => '2026-08-04',
+            'minggu_ke' => 1,
+            'is_manual_override' => true,
+            'backlog_since' => null,
+        ]);
+
+        Carbon::setTestNow('2026-08-25');
+        $schedule2 = app(PreventiveScheduleService::class)->generate('mesin', Carbon::parse('2026-08-01'));
+
+        $itemSetelah = $schedule2->items->where('id_mesin', $mesin->id)->first();
+        $this->assertNotNull($itemSetelah, 'item locked harus tetap ada setelah regenerate');
+        $this->assertSame('2026-08-04', $itemSetelah->tanggal_rencana->toDateString(), 'tanggal locked nol boleh ketimpa algoritma');
+        $this->assertTrue($itemSetelah->is_manual_override);
+        $this->assertSame(1, $schedule2->items->where('id_mesin', $mesin->id)->count(), 'nol boleh dobel — 1 locked + 1 hasil algoritma buat target sama');
+    }
+
+    public function test_item_locked_nol_masuk_backlog_walau_masih_eligible(): void
+    {
+        $mesin = $this->mesinDenganStroke('LK2', 305000);
+        app(PreventiveScheduleService::class)->generate('mesin', Carbon::parse('2026-08-01'));
+
+        $item = PreventiveScheduleItem::where('id_mesin', $mesin->id)->first();
+        $item->update([
+            'tanggal_rencana' => '2026-08-04',
+            'minggu_ke' => 1,
+            'is_manual_override' => true,
+            'backlog_since' => null,
+        ]);
+
+        $schedule2 = app(PreventiveScheduleService::class)->generate('mesin', Carbon::parse('2026-08-01'));
+        $itemSetelah = $schedule2->items->where('id_mesin', $mesin->id)->first();
+
+        $this->assertNotNull($itemSetelah->tanggal_rencana, 'item locked nol boleh jadi backlog — dia udah punya tanggal manual');
+        $this->assertNull($itemSetelah->backlog_since);
     }
 }

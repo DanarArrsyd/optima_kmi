@@ -33,6 +33,12 @@ class PreventiveScheduleService
     /** Jendela hari buat hitung laju stroke/hari — lihat lajuHarian(). */
     private const HARI_WINDOW_LAJU = 30;
 
+    /** @return array<int> Hari (isoWeekday) yang diizinkan buat tanggal PLAN, per jenis. */
+    public function hariDiizinkan(string $jenis): array
+    {
+        return self::HARI_DIIZINKAN[$jenis] ?? [];
+    }
+
     public function __construct(
         private MaintenanceDashboardService $mesinSvc,
         private MaintenanceDiesDashboardService $diesSvc,
@@ -73,9 +79,17 @@ class PreventiveScheduleService
             $backlogDidukung = Schema::hasColumn('preventive_schedule_items', 'backlog_since');
             $backlogLama = $backlogDidukung ? $this->backlogSinceLama($jenis, $bulan, $sudahAda ? $schedule : null) : [];
 
-            $schedule->items()->delete();
+            $schedule->items()->where('is_manual_override', false)->delete();
 
             $eligible = $this->eligibleItems($jenis, $bulan);
+            $idTargetLocked = $schedule->items()
+                ->where('is_manual_override', true)
+                ->pluck($jenis === 'mesin' ? 'id_mesin' : 'id_part_proses')
+                ->all();
+            if ($idTargetLocked !== []) {
+                $kolomIdEligible = $jenis === 'mesin' ? 'id_mesin' : 'id_part_proses';
+                $eligible = $eligible->reject(fn ($row) => in_array($row[$kolomIdEligible], $idTargetLocked, true))->values();
+            }
             $hariKerja = $this->hariKerjaDalamBulan($bulan)
                 ->filter(fn (Carbon $d) => in_array($d->isoWeekday(), self::HARI_DIIZINKAN[$jenis], true))
                 ->values();
