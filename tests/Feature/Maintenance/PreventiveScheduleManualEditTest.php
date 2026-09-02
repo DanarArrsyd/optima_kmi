@@ -183,7 +183,8 @@ class PreventiveScheduleManualEditTest extends TestCase
         // sebagai hari_libur lewat config — harus ditolak oleh hariKerja().
         $this->actingAs($admin)
             ->patchJson(route('maintenance.control-stroke-mesin.schedule-item.update', $item), ['tanggal_rencana' => '2026-08-24'])
-            ->assertStatus(422);
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Tanggal itu hari libur / bukan hari kerja.');
     }
 
     public function test_patch_tanggal_jumat_ditolak_buat_mesin_422(): void
