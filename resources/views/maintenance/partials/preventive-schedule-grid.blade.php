@@ -67,7 +67,11 @@
                                 <td>
                                     PLAN
                                     <template x-if="isLocked">
-                                        <i class="bi bi-lock-fill text-warning ms-1" title="Dikunci manual" @click="reset()" style="cursor:pointer"></i>
+                                        @if ($bolehEdit)
+                                            <i class="bi bi-lock-fill text-warning ms-1" title="Dikunci manual" @click="reset()" style="cursor:pointer"></i>
+                                        @else
+                                            <i class="bi bi-lock-fill text-warning ms-1" title="Dikunci manual"></i>
+                                        @endif
                                     </template>
                                 </td>
                                 @for ($d = 1; $d <= $jumlahHari; $d++)
@@ -76,9 +80,9 @@
                                         $isLibur = ! \App\Services\KalenderKerjaService::hariKerja($tgl);
                                         $tglStr = $tgl->toDateString();
                                     @endphp
-                                    <td class="psg-cell {{ $isLibur ? 'psg-libur' : '' }}"
+                                    <td class="psg-cell {{ $isLibur ? 'psg-libur' : '' }} {{ $bolehEdit ? '' : 'psg-readonly' }}"
                                         :class="tanggal === '{{ $tglStr }}' ? 'psg-plan' : ''"
-                                        @if (! $isLibur) @click="open()" @endif>
+                                        @if (! $isLibur && $bolehEdit) @click="open()" @endif>
                                         <template x-if="editing && tanggal !== '{{ $tglStr }}' && validDates.includes('{{ $tglStr }}')">
                                             <button type="button" class="btn btn-sm btn-outline-dark py-0 px-1" style="font-size:9px" @click.stop="simpan('{{ $tglStr }}')" :disabled="saving">→</button>
                                         </template>

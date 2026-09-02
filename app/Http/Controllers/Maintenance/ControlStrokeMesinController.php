@@ -34,6 +34,7 @@ class ControlStrokeMesinController extends Controller
             'threshold' => MaintenanceDashboardService::STROKE_THRESHOLD,
             'jadwalSchedule' => $schedule,
             'jadwalBulan' => $bulan,
+            'bolehEditJadwal' => auth()->user()->hasRole(['admin', 'staff_maintenance']),
         ]);
     }
 

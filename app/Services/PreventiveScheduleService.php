@@ -102,13 +102,18 @@ class PreventiveScheduleService
             $backlogDidukung = Schema::hasColumn('preventive_schedule_items', 'backlog_since');
             $backlogLama = $backlogDidukung ? $this->backlogSinceLama($jenis, $bulan, $sudahAda ? $schedule : null) : [];
 
-            $schedule->items()->where('is_manual_override', false)->delete();
+            // Kolom is_manual_override bisa juga belum ada di DB di window
+            // deploy yang sama (lihat komentar backlog_since di atas) — degradasi
+            // ke perilaku sebelum fitur lock: hapus SEMUA item lama, nol target
+            // yang dikecualikan dari eligible.
+            $lockDidukung = Schema::hasColumn('preventive_schedule_items', 'is_manual_override');
+
+            $schedule->items()->when($lockDidukung, fn ($q) => $q->where('is_manual_override', false))->delete();
 
             $eligible = $this->eligibleItems($jenis, $bulan);
-            $idTargetLocked = $schedule->items()
-                ->where('is_manual_override', true)
-                ->pluck($jenis === 'mesin' ? 'id_mesin' : 'id_part_proses')
-                ->all();
+            $idTargetLocked = $lockDidukung
+                ? $schedule->items()->where('is_manual_override', true)->pluck($jenis === 'mesin' ? 'id_mesin' : 'id_part_proses')->all()
+                : [];
             if ($idTargetLocked !== []) {
                 $kolomIdEligible = $jenis === 'mesin' ? 'id_mesin' : 'id_part_proses';
                 $eligible = $eligible->reject(fn ($row) => in_array($row[$kolomIdEligible], $idTargetLocked, true))->values();

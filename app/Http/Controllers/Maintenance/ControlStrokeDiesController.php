@@ -35,6 +35,7 @@ class ControlStrokeDiesController extends Controller
             'threshold' => MaintenanceDiesDashboardService::STROKE_THRESHOLD,
             'jadwalSchedule' => $schedule,
             'jadwalBulan' => $bulan,
+            'bolehEditJadwal' => auth()->user()->hasRole(['admin', 'staff_maintenance']),
         ]);
     }
 

@@ -163,6 +163,29 @@ class PreventiveScheduleManualEditTest extends TestCase
             ->assertStatus(422);
     }
 
+    /**
+     * Beda dari test_patch_tanggal_hari_libur_ditolak_422 (Sabtu — sudah kena
+     * hariDiizinkan lebih dulu, hariKerja() nggak pernah kesentuh): di sini
+     * 2026-08-24 SENGAJA Senin (hari kerja & hari diizinkan mesin), tapi
+     * dikonfigurasi sebagai hari_libur — satu-satunya cara nyaris membuktikan
+     * gerbang KalenderKerjaService::hariKerja() itu sendiri yang menolak.
+     */
+    public function test_patch_tanggal_hari_libur_config_ditolak_422(): void
+    {
+        Carbon::setTestNow('2026-08-20');
+        config(['hari_libur' => ['2026-08-24']]);
+        $admin = User::factory()->create(['role' => 'admin']);
+        $mesin = $this->setupMesinEligible('ME2B', 305000);
+        $schedule = app(PreventiveScheduleService::class)->generate('mesin', Carbon::parse('2026-08-01'));
+        $item = $schedule->items->first();
+
+        // 2026-08-24 = Senin, hari diizinkan buat mesin, tapi didaftarkan
+        // sebagai hari_libur lewat config — harus ditolak oleh hariKerja().
+        $this->actingAs($admin)
+            ->patchJson(route('maintenance.control-stroke-mesin.schedule-item.update', $item), ['tanggal_rencana' => '2026-08-24'])
+            ->assertStatus(422);
+    }
+
     public function test_patch_tanggal_jumat_ditolak_buat_mesin_422(): void
     {
         Carbon::setTestNow('2026-08-20');

@@ -30,8 +30,8 @@
     .psg-table td:nth-child(2) { text-align: left; white-space: normal; min-width: 160px; }
     .psg-libur { background: #fca5a5; }
     .psg-plan { background: #facc15; cursor: pointer; }
-    .psg-cell:not(.psg-libur) { cursor: pointer; }
-    .psg-cell:hover:not(.psg-libur) { outline: 2px solid #111827; outline-offset: -2px; }
+    .psg-cell:not(.psg-libur):not(.psg-readonly) { cursor: pointer; }
+    .psg-cell:hover:not(.psg-libur):not(.psg-readonly) { outline: 2px solid #111827; outline-offset: -2px; }
     .psg-locked td { background: #fef9c3; }
 </style>
 
@@ -161,7 +161,7 @@
     </div>
 </div>
 
-@include('maintenance.partials.preventive-schedule-grid', ['jenis' => 'mesin', 'schedule' => $jadwalSchedule, 'bulan' => $jadwalBulan])
+@include('maintenance.partials.preventive-schedule-grid', ['jenis' => 'mesin', 'schedule' => $jadwalSchedule, 'bulan' => $jadwalBulan, 'bolehEdit' => $bolehEditJadwal])
 </div>{{-- /erp-scroll --}}
 </div>{{-- /erp-ws-main --}}
 </div>{{-- /erp-ws-body --}}
