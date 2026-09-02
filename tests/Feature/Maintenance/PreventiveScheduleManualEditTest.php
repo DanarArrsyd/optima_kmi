@@ -71,6 +71,7 @@ class PreventiveScheduleManualEditTest extends TestCase
         $this->assertTrue($item->is_manual_override);
         $this->assertSame($admin->id, $item->overridden_by);
         $this->assertNotNull($item->overridden_at);
+        $this->assertSame(1, $item->minggu_ke);
     }
 
     public function test_patch_tanggal_sabtu_ditolak_buat_dies_422(): void
@@ -145,6 +146,7 @@ class PreventiveScheduleManualEditTest extends TestCase
         $this->assertTrue($item->is_manual_override);
         $this->assertSame($admin->id, $item->overridden_by);
         $this->assertNotNull($item->overridden_at);
+        $this->assertSame(2, $item->minggu_ke);
     }
 
     public function test_patch_tanggal_hari_libur_ditolak_422(): void
@@ -294,5 +296,26 @@ class PreventiveScheduleManualEditTest extends TestCase
             'causer_id' => $admin->id,
             'log_name' => 'preventive_schedule_item',
         ]);
+    }
+
+    public function test_admin_bisa_patch_last_monday_august_minggu_ke_5(): void
+    {
+        Carbon::setTestNow('2026-08-20');
+        $admin = User::factory()->create(['role' => 'admin']);
+        $mesin = $this->setupMesinEligible('ME10', 305000);
+        $schedule = app(PreventiveScheduleService::class)->generate('mesin', Carbon::parse('2026-08-01'));
+        $item = $schedule->items->first();
+
+        // 2026-08-31 = Senin, hari terakhir August untuk mesin (Mon-Thu), harus minggu_ke=5, bukan 6
+        $this->actingAs($admin)
+            ->patchJson(route('maintenance.control-stroke-mesin.schedule-item.update', $item), ['tanggal_rencana' => '2026-08-31'])
+            ->assertOk();
+
+        $item->refresh();
+        $this->assertSame('2026-08-31', $item->tanggal_rencana->toDateString());
+        $this->assertTrue($item->is_manual_override);
+        $this->assertSame($admin->id, $item->overridden_by);
+        $this->assertNotNull($item->overridden_at);
+        $this->assertSame(5, $item->minggu_ke);
     }
 }
