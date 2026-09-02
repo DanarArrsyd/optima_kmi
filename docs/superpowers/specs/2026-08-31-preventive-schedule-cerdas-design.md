@@ -61,6 +61,18 @@ rotasi nol banyak ngaruh di situ — itu wajar, bukan bug.
 Kapasitas yang nggak kebagian hari (minggu itu kandidatnya lebih sedikit dari
 kapasitas) tetap HANGUS seperti sebelumnya — nol berubah.
 
+## Catatan trade-off — PLAN nol diselaraskan ke tanggal proyeksi
+
+Proyeksi (Bagian 1) cuma dipakai buat MENENTUKAN SIAPA masuk jadwal & urutan
+prioritasnya — bukan buat milih TANGGAL PLAN presisi. Slot assignment (Bagian 3)
+tetap "slot pertama tersedia sesuai urutan prioritas", murni posisi, nol usaha
+naruh PLAN sedekat mungkin ke proyeksi_overdue item itu sendiri. Konsekuensinya:
+item dengan proyeksi jauh (mis. akhir bulan) bisa kebagian slot AWAL bulan kalau
+dia prioritas tertinggi saat itu — membuang sisa umur siklus stroke lebih awal
+dari perlu. Trade-off sengaja buat fase 1 (sederhana, predictable) — alokasi
+presisi-tanggal (pilih slot sedekat mungkin SEBELUM proyeksi, baru jatuh ke slot
+lain kalau kepenuhan) adalah kandidat fase 2.
+
 ## Di luar cakupan
 
 - Nol perubahan tampilan PDF/UI — proyeksi & rotasi murni logika internal penentuan

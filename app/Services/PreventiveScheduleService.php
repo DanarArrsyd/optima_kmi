@@ -8,6 +8,7 @@ use App\Models\TransaksiProduksi;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class PreventiveScheduleService
 {
@@ -27,6 +28,9 @@ class PreventiveScheduleService
         'mesin' => [1, 2, 3, 4],
         'dies' => [1, 2, 3, 4, 5],
     ];
+
+    /** Jendela hari buat hitung laju stroke/hari — lihat lajuHarian(). */
+    private const HARI_WINDOW_LAJU = 30;
 
     public function __construct(
         private MaintenanceDashboardService $mesinSvc,
@@ -70,6 +74,15 @@ class PreventiveScheduleService
             $kapasitas = self::KAPASITAS[$jenis];
 
             $idx = 0;
+            // Slot diisi urut prioritas (proyeksi paling dekat duluan), TAPI tanggal
+            // PLAN yang didapat murni posisi slot pertama tersedia — nol usaha
+            // menyelaraskan PLAN persis sebelum proyeksi_overdue item itu sendiri.
+            // Item yang proyeksinya jauh (mis. akhir bulan) bisa kebagian slot di
+            // awal bulan kalau dia kandidat prioritas tertinggi bulan itu — trade-off
+            // sengaja, bukan bug: "earliest available slot wins" tetap lebih
+            // sederhana & predictable daripada alokasi presisi-tanggal untuk fase 1.
+            // Kalau ini jadi masalah nyata (banyak siklus stroke kebuang), itu
+            // kandidat kerjaan fase 2.
             foreach ($mingguBuckets as $mingguIndex => $hariList) {
                 $mingguKe = $mingguIndex + 1;
                 $n = $hariList->count();
@@ -108,6 +121,13 @@ class PreventiveScheduleService
                 }
             }
 
+            if ($idx < $eligible->count()) {
+                Log::info(sprintf(
+                    'PreventiveSchedule %s %s: %d item eligible tidak kebagian slot bulan ini (kapasitas habis).',
+                    $jenis, $bulan->toDateString(), $eligible->count() - $idx
+                ));
+            }
+
             return $schedule->fresh('items');
         });
     }
@@ -122,7 +142,7 @@ class PreventiveScheduleService
     private function lajuHarian(string $jenis): array
     {
         $akhir = Carbon::now()->subDay()->toDateString();
-        $mulai = Carbon::now()->subDays(30)->toDateString();
+        $mulai = Carbon::now()->subDays(self::HARI_WINDOW_LAJU)->toDateString();
         $kolom = $jenis === 'mesin' ? 'id_mesin' : 'id_part_proses';
 
         return TransaksiProduksi::query()
@@ -130,7 +150,7 @@ class PreventiveScheduleService
             ->selectRaw("{$kolom} as target_id, COALESCE(SUM(qty_aktual + COALESCE(qty_ng,0)),0) as total")
             ->groupBy($kolom)
             ->pluck('total', 'target_id')
-            ->map(fn ($total) => (float) $total / 30)
+            ->map(fn ($total) => (float) $total / self::HARI_WINDOW_LAJU)
             ->all();
     }
 
@@ -168,7 +188,14 @@ class PreventiveScheduleService
                 return $row;
             })
             ->filter(fn ($row) => $row['pct'] >= 80 || ($row['proyeksi_overdue'] && $row['proyeksi_overdue']->lt($batasProyeksi)))
-            ->sortBy(fn ($row) => $row['proyeksi_overdue']?->timestamp ?? PHP_INT_MAX)
+            // Two-key: proyeksi paling dekat duluan, dasi (proyeksi sama —
+            // umumnya semua item overdue pct>=100 sama-sama proyeksi=hari ini)
+            // dipecah pct DESC (paling jauh di atas ambang duluan). Sengaja
+            // TIDAK bergantung pada urutan computeCurrentCycle() di
+            // MaintenanceDashboardService/MaintenanceDiesDashboardService —
+            // itu diurutkan buat tampilan dashboard, bukan kontrak buat file
+            // ini, dan tidak boleh jadi satu-satunya sumber urutan prioritas.
+            ->sortBy(fn ($row) => [$row['proyeksi_overdue']->timestamp, -$row['pct']])
             ->values();
     }
 
