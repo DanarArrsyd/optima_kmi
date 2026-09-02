@@ -23,10 +23,18 @@ class ControlStrokeDiesController extends Controller
 
     public function index()
     {
+        $bulan = now()->timezone('Asia/Jakarta')->startOfMonth();
+        $schedule = PreventiveSchedule::where('bulan', $bulan->toDateString())
+            ->where('jenis', 'dies')
+            ->with('items.partProses.part')
+            ->first();
+
         // Opsi filter (part/customer/proses) dibangun di klien dari data yang dimuat — lihat
         // initFilters() di view. Controller cukup mengirim threshold.
         return view('maintenance.control-stroke-dies', [
             'threshold' => MaintenanceDiesDashboardService::STROKE_THRESHOLD,
+            'jadwalSchedule' => $schedule,
+            'jadwalBulan' => $bulan,
         ]);
     }
 

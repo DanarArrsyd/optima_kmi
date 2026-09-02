@@ -22,10 +22,18 @@ class ControlStrokeMesinController extends Controller
 
     public function index()
     {
+        $bulan = now()->timezone('Asia/Jakarta')->startOfMonth();
+        $schedule = PreventiveSchedule::where('bulan', $bulan->toDateString())
+            ->where('jenis', 'mesin')
+            ->with('items.mesin')
+            ->first();
+
         // Opsi filter (mesin/tipe/line) dibangun di klien dari data yang dimuat — lihat
         // initFilters() di view. Controller cukup mengirim threshold.
         return view('maintenance.control-stroke-mesin', [
             'threshold' => MaintenanceDashboardService::STROKE_THRESHOLD,
+            'jadwalSchedule' => $schedule,
+            'jadwalBulan' => $bulan,
         ]);
     }
 
