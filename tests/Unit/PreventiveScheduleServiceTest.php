@@ -277,4 +277,64 @@ class PreventiveScheduleServiceTest extends TestCase
 
         Carbon::setTestNow();
     }
+
+    /** Mesin cuma boleh PLAN Senin-Kamis — Jumat (14 jam) & Sabtu (10 jam) kependekan buat PM penuh. */
+    public function test_plan_mesin_nol_pernah_jatuh_jumat_atau_sabtu(): void
+    {
+        for ($i = 1; $i <= 5; $i++) {
+            $this->mesinDenganStroke("A{$i}", 310000);
+        }
+
+        $schedule = app(PreventiveScheduleService::class)->generate('mesin', Carbon::parse('2026-08-01'));
+
+        foreach ($schedule->items as $item) {
+            $this->assertNotContains(
+                $item->tanggal_rencana->isoWeekday(),
+                [5, 6],
+                "tanggal_rencana {$item->tanggal_rencana->toDateString()} jatuh di Jumat/Sabtu — mesin cuma boleh Senin-Kamis."
+            );
+        }
+    }
+
+    /**
+     * Dies boleh sampai Jumat (kapasitas 5/minggu, hari diizinkan persis 5 —
+     * Senin-Jumat — jadi minggu penuh otomatis makai SEMUA hari termasuk Jumat).
+     * Agustus 2026: 1 Agustus jatuh Sabtu (dikeluarkan dari hari diizinkan
+     * dies/mesin dua-duanya), jadi bucket minggu PERTAMA yang punya kandidat
+     * hari diizinkan dies adalah Senin 3 - Jumat 7 Agustus, persis 5 hari kerja.
+     */
+    public function test_plan_dies_boleh_jumat_tapi_nol_sabtu_minggu(): void
+    {
+        for ($i = 1; $i <= 5; $i++) {
+            $this->diesDenganStroke("D{$i}", 31000);
+        }
+
+        $schedule = app(PreventiveScheduleService::class)->generate('dies', Carbon::parse('2026-08-01'));
+
+        $this->assertCount(5, $schedule->items, 'Setup salah: 5 dies overdue harus semua kebagian slot minggu pertama (kapasitas 5).');
+
+        $weekdaysDipakai = $schedule->items->map(fn ($item) => $item->tanggal_rencana->isoWeekday())->sort()->values();
+
+        $this->assertSame([1, 2, 3, 4, 5], $weekdaysDipakai->all(), 'Minggu penuh 5 dies harus makai persis Senin s.d. Jumat.');
+        foreach ($schedule->items as $item) {
+            $this->assertNotContains($item->tanggal_rencana->isoWeekday(), [6, 7], 'Dies nol boleh Sabtu/Minggu.');
+        }
+    }
+
+    /** Rotasi: mesin di minggu berbeda nol boleh selalu jatuh hari yang sama (mis. Senin terus). */
+    public function test_rotasi_hari_mesin_antar_minggu_nol_monoton(): void
+    {
+        $this->mesinDenganStroke('W1', 310000);
+        $this->mesinDenganStroke('W2', 305000);
+
+        $schedule = app(PreventiveScheduleService::class)->generate('mesin', Carbon::parse('2026-08-01'));
+
+        $this->assertCount(2, $schedule->items);
+
+        $terurut = $schedule->items->sortBy('tanggal_rencana')->values();
+        $hariMinggu1 = $terurut[0]->tanggal_rencana->isoWeekday();
+        $hariMinggu2 = $terurut[1]->tanggal_rencana->isoWeekday();
+
+        $this->assertNotSame($hariMinggu1, $hariMinggu2, 'Rotasi nol jalan — dua mesin di minggu berbeda jatuh hari yang SAMA.');
+    }
 }

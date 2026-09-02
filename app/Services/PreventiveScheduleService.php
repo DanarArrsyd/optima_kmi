@@ -16,6 +16,18 @@ class PreventiveScheduleService
     /** Slot preventive per minggu, per jenis. Hardcode — nol UI setting (lihat spec). */
     private const KAPASITAS = ['mesin' => 1, 'dies' => 5];
 
+    /**
+     * Hari (isoWeekday, 1=Senin...7=Minggu) yang boleh jadi tanggal PLAN, per
+     * jenis. Mesin Senin-Kamis — Jumat (14 jam) & Sabtu (10 jam) di master_shift
+     * kependekan buat PM penuh. Dies Senin-Jumat — Sabtu tetap dihindari.
+     * Minggu & hari_libur SUDAH dikeluarkan duluan oleh hariKerjaDalamBulan(),
+     * jadi daftar ini nol perlu nyebut 7.
+     */
+    private const HARI_DIIZINKAN = [
+        'mesin' => [1, 2, 3, 4],
+        'dies' => [1, 2, 3, 4, 5],
+    ];
+
     public function __construct(
         private MaintenanceDashboardService $mesinSvc,
         private MaintenanceDiesDashboardService $diesSvc,
@@ -51,23 +63,35 @@ class PreventiveScheduleService
             $schedule->items()->delete();
 
             $eligible = $this->eligibleItems($jenis, $bulan);
-            $hariKerja = $this->hariKerjaDalamBulan($bulan);
+            $hariKerja = $this->hariKerjaDalamBulan($bulan)
+                ->filter(fn (Carbon $d) => in_array($d->isoWeekday(), self::HARI_DIIZINKAN[$jenis], true))
+                ->values();
             $mingguBuckets = $this->kelompokkanPerMinggu($hariKerja);
             $kapasitas = self::KAPASITAS[$jenis];
 
             $idx = 0;
             foreach ($mingguBuckets as $mingguIndex => $hariList) {
                 $mingguKe = $mingguIndex + 1;
+                $n = $hariList->count();
+                // Offset berputar per minggu — minggu 1 mulai dari hari
+                // pertama daftar hari-diizinkan, minggu 2 geser satu, dst,
+                // muter balik ke 0 kalau sudah lewat jumlah hari diizinkan.
+                // Ini yang mencegah PLAN mesin selalu jatuh Senin.
+                $offset = $n > 0 ? $mingguIndex % $n : 0;
+
                 for ($slot = 0; $slot < $kapasitas; $slot++) {
                     if ($idx >= $eligible->count()) {
                         break 2;
                     }
-                    if (! isset($hariList[$slot])) {
-                        // Minggu ini kehabisan hari kerja buat slot ke-$slot (mis. minggu
-                        // pertama/terakhir bulan cuma 1-2 hari kerja) — kapasitas sisa
-                        // minggu ini HANGUS, bukan dipindah ke minggu lain.
+                    if ($slot >= $n) {
+                        // Minggu ini kehabisan hari diizinkan buat slot ke-$slot
+                        // — kapasitas sisa minggu ini HANGUS, bukan dipindah ke
+                        // minggu lain.
                         continue;
                     }
+
+                    $posisi = ($offset + $slot) % $n;
+                    $hari = $hariList[$posisi];
 
                     $item = $eligible[$idx];
                     PreventiveScheduleItem::create([
@@ -77,7 +101,7 @@ class PreventiveScheduleService
                         'stroke_snapshot' => $item['current_stroke'],
                         'pct_snapshot' => $item['pct'],
                         'threshold_snapshot' => $item['threshold'],
-                        'tanggal_rencana' => $hariList[$slot]->toDateString(),
+                        'tanggal_rencana' => $hari->toDateString(),
                         'minggu_ke' => $mingguKe,
                     ]);
                     $idx++;
