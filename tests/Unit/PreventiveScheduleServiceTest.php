@@ -8,6 +8,7 @@ use App\Models\MasterPart;
 use App\Models\MasterPartProses;
 use App\Models\MasterShift;
 use App\Models\PreventiveSchedule;
+use App\Models\PreventiveScheduleItem;
 use App\Models\TransaksiProduksi;
 use App\Models\User;
 use App\Services\PreventiveScheduleService;
@@ -437,5 +438,100 @@ class PreventiveScheduleServiceTest extends TestCase
         $this->assertNotNull($itemBekasBacklog, 'mesin yang backlog Agustus harus tetap eligible & muncul di September');
         $this->assertNotNull($itemBekasBacklog->tanggal_rencana, 'harus kebagian slot September (eligible turun ke 4, kapasitas 5)');
         $this->assertNull($itemBekasBacklog->backlog_since, 'begitu kebagian slot, backlog_since HARUS null — bukan bertahan dari Agustus');
+    }
+
+    public function test_item_locked_manual_selamat_dari_regenerate(): void
+    {
+        $mesin = $this->mesinDenganStroke('LK1', 305000);
+        app(PreventiveScheduleService::class)->generate('mesin', Carbon::parse('2026-08-01'));
+
+        $item = PreventiveScheduleItem::where('id_mesin', $mesin->id)->first();
+        $item->update([
+            'tanggal_rencana' => '2026-08-04',
+            'minggu_ke' => 1,
+            'is_manual_override' => true,
+            'backlog_since' => null,
+        ]);
+
+        Carbon::setTestNow('2026-08-25');
+        $schedule2 = app(PreventiveScheduleService::class)->generate('mesin', Carbon::parse('2026-08-01'));
+
+        $itemSetelah = $schedule2->items->where('id_mesin', $mesin->id)->first();
+        $this->assertNotNull($itemSetelah, 'item locked harus tetap ada setelah regenerate');
+        $this->assertSame('2026-08-04', $itemSetelah->tanggal_rencana->toDateString(), 'tanggal locked nol boleh ketimpa algoritma');
+        $this->assertTrue($itemSetelah->is_manual_override);
+        $this->assertSame(1, $schedule2->items->where('id_mesin', $mesin->id)->count(), 'nol boleh dobel — 1 locked + 1 hasil algoritma buat target sama');
+    }
+
+    /**
+     * Beda dari test_item_locked_manual_selamat_dari_regenerate: di sini
+     * kompetisi (7 eligible) SENGAJA melebihi kapasitas bulan (5), supaya
+     * kalau exclude-dari-$eligible di generate() dicabut, baris locked bakal
+     * KETIMPA baris baru hasil algoritma (row baru = PK baru) — bukan cuma
+     * "tanggal_rencana nggak null" yang bisa juga kebetulan dipenuhi baris
+     * algoritma pengganti. PK yang sama adalah satu-satunya bukti baris LAMA
+     * yang selamat, bukan baris baru yang kebetulan dapat slot.
+     */
+    public function test_item_locked_row_sama_walau_kompetisi_lebihi_kapasitas_dan_mesin_lain_backlog(): void
+    {
+        $mesinList = [];
+        for ($i = 1; $i <= 7; $i++) {
+            $mesinList[$i] = $this->mesinDenganStroke("LK2{$i}", 305000);
+        }
+
+        app(PreventiveScheduleService::class)->generate('mesin', Carbon::parse('2026-08-01'));
+
+        $item = PreventiveScheduleItem::where('id_mesin', $mesinList[1]->id)->first();
+        $idLocked = $item->id;
+        $item->update([
+            'tanggal_rencana' => '2026-08-04',
+            'minggu_ke' => 1,
+            'is_manual_override' => true,
+            'backlog_since' => null,
+        ]);
+
+        $schedule2 = app(PreventiveScheduleService::class)->generate('mesin', Carbon::parse('2026-08-01'));
+        $itemSetelah = $schedule2->items->where('id_mesin', $mesinList[1]->id)->first();
+
+        $this->assertNotNull($itemSetelah, 'item locked harus tetap ada setelah regenerate');
+        $this->assertSame($idLocked, $itemSetelah->id, 'harus baris LAMA yang sama (PK sama) — kalau ini baris baru hasil algoritma, exclude-dari-eligible rusak');
+        $this->assertSame('2026-08-04', $itemSetelah->tanggal_rencana->toDateString(), 'tanggal locked nol boleh ketimpa algoritma');
+        $this->assertNull($itemSetelah->backlog_since);
+        $this->assertSame(1, $schedule2->items->where('id_mesin', $mesinList[1]->id)->count(), 'nol boleh dobel — 1 locked + 1 hasil algoritma buat target sama');
+
+        // 7 eligible - 1 locked (dikeluarkan dari $eligible) = 6 disodorkan ke
+        // algoritma, tapi kapasitas bulan cuma 5 slot -> 1 mesin LAIN (bukan
+        // yang locked) harus nyangkut backlog. Kalau lock ternyata TIDAK
+        // dikecualikan dari $eligible, kapasitas 5 justru terisi penuh oleh 5
+        // dari 7 (locked ikut dihitung salah satunya) dan baris locked bisa
+        // ketiban algoritma — persis yang mau ditangkap assertion PK di atas.
+        $backlogLain = $schedule2->items->whereNull('tanggal_rencana');
+        $this->assertGreaterThanOrEqual(1, $backlogLain->count(), 'kompetisi 6 sisa eligible vs kapasitas 5 harus nyisa backlog buat mesin lain');
+        $this->assertNotSame($idLocked, $backlogLain->first()->id, 'baris backlog bukan baris locked — locked sudah punya tanggal manual');
+    }
+
+    public function test_item_locked_dies_selamat_dari_regenerate(): void
+    {
+        $proses = $this->diesDenganStroke('LKD1', 31000);
+        app(PreventiveScheduleService::class)->generate('dies', Carbon::parse('2026-08-01'));
+
+        $item = PreventiveScheduleItem::where('id_part_proses', $proses->id)->first();
+        $idLocked = $item->id;
+        $item->update([
+            'tanggal_rencana' => '2026-08-06',
+            'minggu_ke' => 1,
+            'is_manual_override' => true,
+            'backlog_since' => null,
+        ]);
+
+        Carbon::setTestNow('2026-08-25');
+        $schedule2 = app(PreventiveScheduleService::class)->generate('dies', Carbon::parse('2026-08-01'));
+
+        $itemSetelah = $schedule2->items->where('id_part_proses', $proses->id)->first();
+        $this->assertNotNull($itemSetelah, 'item dies locked harus tetap ada setelah regenerate');
+        $this->assertSame($idLocked, $itemSetelah->id, 'harus baris dies LAMA yang sama (PK sama), bukan baris baru hasil algoritma');
+        $this->assertSame('2026-08-06', $itemSetelah->tanggal_rencana->toDateString(), 'tanggal locked nol boleh ketimpa algoritma');
+        $this->assertTrue($itemSetelah->is_manual_override);
+        $this->assertSame(1, $schedule2->items->where('id_part_proses', $proses->id)->count(), 'nol boleh dobel — 1 locked + 1 hasil algoritma buat target dies yang sama');
     }
 }

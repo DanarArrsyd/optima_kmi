@@ -213,7 +213,12 @@ Route::middleware('auth')->group(function () {
         Route::get('availability/control-stroke-dies/preventive/{diesPreventiveLog}/checksheet', [ControlStrokeDiesController::class, 'showChecksheet'])->name('control-stroke-dies.preventive.checksheet');
 
         Route::post('availability/control-stroke-mesin/schedule-generate', [ControlStrokeMesinController::class, 'scheduleGenerate'])->name('control-stroke-mesin.schedule-generate');
+        Route::patch('availability/control-stroke-mesin/schedule-item/{item}', [ControlStrokeMesinController::class, 'updateScheduleItem'])->name('control-stroke-mesin.schedule-item.update');
+        Route::post('availability/control-stroke-mesin/schedule-item/{item}/reset', [ControlStrokeMesinController::class, 'resetScheduleItem'])->name('control-stroke-mesin.schedule-item.reset');
+
         Route::post('availability/control-stroke-dies/schedule-generate', [ControlStrokeDiesController::class, 'scheduleGenerate'])->name('control-stroke-dies.schedule-generate');
+        Route::patch('availability/control-stroke-dies/schedule-item/{item}', [ControlStrokeDiesController::class, 'updateScheduleItem'])->name('control-stroke-dies.schedule-item.update');
+        Route::post('availability/control-stroke-dies/schedule-item/{item}/reset', [ControlStrokeDiesController::class, 'resetScheduleItem'])->name('control-stroke-dies.schedule-item.reset');
     });
 
     // --- MAINTENANCE: analitik read-only (guest boleh) ---

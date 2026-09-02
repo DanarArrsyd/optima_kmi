@@ -33,6 +33,35 @@ class PreventiveScheduleService
     /** Jendela hari buat hitung laju stroke/hari — lihat lajuHarian(). */
     private const HARI_WINDOW_LAJU = 30;
 
+    /** @return array<int> Hari (isoWeekday) yang diizinkan buat tanggal PLAN, per jenis. */
+    public function hariDiizinkan(string $jenis): array
+    {
+        return self::HARI_DIIZINKAN[$jenis] ?? [];
+    }
+
+    /**
+     * Posisi minggu (1-based) tanggal $tanggal dalam bulan $bulan, jenis $jenis —
+     * definisi SAMA persis dengan generate() (hariKerjaDalamBulan + HARI_DIIZINKAN +
+     * kelompokkanPerMinggu, index+1). Dipakai endpoint edit manual (Task 3) supaya
+     * minggu_ke yang ditulis manual konsisten dengan yang ditulis algoritma.
+     */
+    public function mingguKeUntuk(string $jenis, Carbon $bulan, Carbon $tanggal): ?int
+    {
+        $bulan = $bulan->copy()->startOfMonth();
+        $hariKerja = $this->hariKerjaDalamBulan($bulan)
+            ->filter(fn (Carbon $d) => in_array($d->isoWeekday(), self::HARI_DIIZINKAN[$jenis], true))
+            ->values();
+        $mingguBuckets = $this->kelompokkanPerMinggu($hariKerja);
+
+        foreach ($mingguBuckets as $mingguIndex => $hariList) {
+            if ($hariList->contains(fn (Carbon $d) => $d->isSameDay($tanggal))) {
+                return $mingguIndex + 1;
+            }
+        }
+
+        return null; // tanggal valid (hari kerja + hari diizinkan) tapi entah kenapa nol ketemu bucket — seharusnya nol pernah kejadian kalau validasi endpoint udah benar duluan, tapi nol crash kalau kejadian.
+    }
+
     public function __construct(
         private MaintenanceDashboardService $mesinSvc,
         private MaintenanceDiesDashboardService $diesSvc,
@@ -73,9 +102,22 @@ class PreventiveScheduleService
             $backlogDidukung = Schema::hasColumn('preventive_schedule_items', 'backlog_since');
             $backlogLama = $backlogDidukung ? $this->backlogSinceLama($jenis, $bulan, $sudahAda ? $schedule : null) : [];
 
-            $schedule->items()->delete();
+            // Kolom is_manual_override bisa juga belum ada di DB di window
+            // deploy yang sama (lihat komentar backlog_since di atas) — degradasi
+            // ke perilaku sebelum fitur lock: hapus SEMUA item lama, nol target
+            // yang dikecualikan dari eligible.
+            $lockDidukung = Schema::hasColumn('preventive_schedule_items', 'is_manual_override');
+
+            $schedule->items()->when($lockDidukung, fn ($q) => $q->where('is_manual_override', false))->delete();
 
             $eligible = $this->eligibleItems($jenis, $bulan);
+            $idTargetLocked = $lockDidukung
+                ? $schedule->items()->where('is_manual_override', true)->pluck($jenis === 'mesin' ? 'id_mesin' : 'id_part_proses')->all()
+                : [];
+            if ($idTargetLocked !== []) {
+                $kolomIdEligible = $jenis === 'mesin' ? 'id_mesin' : 'id_part_proses';
+                $eligible = $eligible->reject(fn ($row) => in_array($row[$kolomIdEligible], $idTargetLocked, true))->values();
+            }
             $hariKerja = $this->hariKerjaDalamBulan($bulan)
                 ->filter(fn (Carbon $d) => in_array($d->isoWeekday(), self::HARI_DIIZINKAN[$jenis], true))
                 ->values();

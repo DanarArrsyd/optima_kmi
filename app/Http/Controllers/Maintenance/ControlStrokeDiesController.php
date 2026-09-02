@@ -7,10 +7,14 @@ use App\Models\DiesPreventiveLog;
 use App\Models\MasterKaryawan;
 use App\Models\MasterPartProses;
 use App\Models\PreventiveSchedule;
+use App\Models\PreventiveScheduleItem;
+use App\Services\KalenderKerjaService;
 use App\Services\MaintenanceDiesDashboardService;
 use App\Services\PreventiveScheduleService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
 class ControlStrokeDiesController extends Controller
@@ -19,10 +23,19 @@ class ControlStrokeDiesController extends Controller
 
     public function index()
     {
+        $bulan = now()->timezone('Asia/Jakarta')->startOfMonth();
+        $schedule = PreventiveSchedule::where('bulan', $bulan->toDateString())
+            ->where('jenis', 'dies')
+            ->with('items.partProses.part')
+            ->first();
+
         // Opsi filter (part/customer/proses) dibangun di klien dari data yang dimuat — lihat
         // initFilters() di view. Controller cukup mengirim threshold.
         return view('maintenance.control-stroke-dies', [
             'threshold' => MaintenanceDiesDashboardService::STROKE_THRESHOLD,
+            'jadwalSchedule' => $schedule,
+            'jadwalBulan' => $bulan,
+            'bolehEditJadwal' => auth()->user()->hasRole(['admin', 'staff_maintenance']),
         ]);
     }
 
@@ -145,5 +158,64 @@ class ControlStrokeDiesController extends Controller
         return redirect()->route('maintenance.control-stroke-dies')->with(
             'success', 'Jadwal preventive dies bulan ini berhasil digenerate ulang.'
         );
+    }
+
+    public function updateScheduleItem(PreventiveScheduleItem $item, Request $request, PreventiveScheduleService $preventiveSvc)
+    {
+        abort_if(! auth()->user()->hasRole(['admin', 'staff_maintenance']), 403);
+        abort_unless(Schema::hasColumn('preventive_schedule_items', 'is_manual_override'), 503, 'Fitur belum tersedia, migrasi belum jalan.');
+
+        $item->loadMissing('schedule');
+        abort_if($item->schedule->jenis !== 'dies', 422, 'Item ini bukan jadwal dies.');
+
+        $validated = $request->validate(['tanggal_rencana' => 'required|date']);
+        $tanggal = Carbon::parse($validated['tanggal_rencana']);
+        $bulanSchedule = Carbon::parse($item->schedule->bulan);
+
+        if (! $tanggal->isSameMonth($bulanSchedule)) {
+            return response()->json(['message' => 'Tanggal harus dalam bulan yang sama dengan jadwal ini.'], 422);
+        }
+        if (! KalenderKerjaService::hariKerja($tanggal)) {
+            return response()->json(['message' => 'Tanggal itu hari libur / bukan hari kerja.'], 422);
+        }
+        if (! in_array($tanggal->isoWeekday(), $preventiveSvc->hariDiizinkan('dies'), true)) {
+            return response()->json(['message' => 'Tanggal itu di luar hari yang diizinkan untuk dies (Senin-Jumat).'], 422);
+        }
+
+        $mingguKe = $preventiveSvc->mingguKeUntuk('dies', $bulanSchedule, $tanggal);
+        if ($mingguKe === null) {
+            return response()->json(['message' => 'Gagal menentukan minggu untuk tanggal ini.'], 422);
+        }
+
+        $item->update([
+            'tanggal_rencana' => $tanggal->toDateString(),
+            'minggu_ke' => $mingguKe,
+            'backlog_since' => null,
+            'is_manual_override' => true,
+            'overridden_by' => auth()->id(),
+            'overridden_at' => now(),
+        ]);
+
+        return response()->json(['message' => 'Tanggal berhasil diubah.', 'tanggal_rencana' => $item->tanggal_rencana->toDateString()]);
+    }
+
+    public function resetScheduleItem(PreventiveScheduleItem $item)
+    {
+        abort_if(! auth()->user()->hasRole(['admin', 'staff_maintenance']), 403);
+        abort_unless(Schema::hasColumn('preventive_schedule_items', 'is_manual_override'), 503, 'Fitur belum tersedia, migrasi belum jalan.');
+
+        $item->loadMissing('schedule');
+        abort_if($item->schedule->jenis !== 'dies', 422, 'Item ini bukan jadwal dies.');
+
+        $item->update([
+            'is_manual_override' => false,
+            'tanggal_rencana' => null,
+            'minggu_ke' => null,
+            'overridden_by' => null,
+            'overridden_at' => null,
+            'backlog_since' => now()->timezone('Asia/Jakarta')->toDateString(),
+        ]);
+
+        return response()->json(['message' => 'Item direset ke otomatis, masuk backlog sampai regenerate berikutnya.']);
     }
 }

@@ -1573,6 +1573,76 @@ function taField(items, initText = '', initVal = null) {
     };
 }
 
+/* ═══════════════════════════════════════════════════════════════════
+   scheduleItemEdit() — klik cell PLAN di grid kalender preventive
+   (Control Stroke Mesin/Dies), pilih tanggal baru dari daftar tanggal
+   valid, PATCH ke server. Server tetap validasi ulang (defense-in-depth)
+   — daftar tanggal di sini cuma buat UX (disable pilihan yang jelas
+   invalid), bukan satu-satunya gerbang.
+══════════════════════════════════════════════════════════════════ */
+function scheduleItemEdit(itemId, tanggalAwal, isLocked, urlPatch, urlReset, validDates) {
+    return {
+        itemId, tanggal: tanggalAwal, isLocked, validDates,
+        editing: false, saving: false, error: null,
+
+        open() { this.editing = true; this.error = null; },
+        cancel() { this.editing = false; this.error = null; },
+
+        async simpan(tanggalBaru) {
+            if (! tanggalBaru) return;
+            this.saving = true; this.error = null;
+            try {
+                const res = await fetch(urlPatch, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({ tanggal_rencana: tanggalBaru }),
+                });
+                const data = await res.json();
+                if (! res.ok) {
+                    this.error = data.message || 'Gagal simpan.';
+                    this.saving = false;
+                    return;
+                }
+                this.tanggal = data.tanggal_rencana;
+                this.isLocked = true;
+                this.editing = false;
+                this.saving = false;
+                window.location.reload();
+            } catch (e) {
+                this.error = 'Gagal koneksi ke server.';
+                this.saving = false;
+            }
+        },
+
+        async reset() {
+            if (! confirm('Reset item ini ke otomatis? Tanggal manual akan hilang, item masuk backlog sampai regenerate berikutnya.')) return;
+            this.saving = true;
+            try {
+                const res = await fetch(urlReset, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json',
+                    },
+                });
+                if (res.ok) {
+                    window.location.reload();
+                } else {
+                    this.saving = false;
+                    this.error = 'Gagal reset.';
+                }
+            } catch (e) {
+                this.saving = false;
+                this.error = 'Gagal koneksi ke server.';
+            }
+        },
+    };
+}
+
 function filterSearchComp(items, initVal, initLabel, onPick) {
     return {
         items,
