@@ -17,6 +17,30 @@ manual dan SELAMAT dari regenerate algoritma berikutnya. Baris backlog (fase 2, 
 tanggal) juga bisa langsung di-assign tanggal lewat mekanisme yang sama, jadi keluar
 dari backlog. Admin bisa "reset ke otomatis" balik kalau mau algoritma pegang lagi.
 
+## Prasyarat — grid kalender HTML di halaman Control Stroke
+
+Halaman Control Stroke Mesin/Dies (`control-stroke-{mesin,dies}.blade.php`) SEKARANG cuma
+tabel status stroke live — grid kalender jadwal (nama/kode/tanggal 1-30/cell PLAN) CUMA
+ada di dalam PDF (`preventive-schedule-pdf.blade.php`, dompdf). PDF statis, nol bisa
+diklik-edit. Fitur ini butuh versi HTML dari grid itu DULU sebelum interaktivitas apa pun
+bisa ditempel.
+
+- View baru `resources/views/maintenance/preventive-schedule-grid.blade.php` — partial
+  yang di-`@include` di `control-stroke-mesin.blade.php` & `control-stroke-dies.blade.php`
+  (di bawah tabel status stroke existing, section baru "Jadwal Preventive Bulan Ini").
+  Layout kolom SAMA kayak PDF (nama, kode, PROSES khusus dies, STANDARD/ACTUAL stroke,
+  baris PLAN per item, kolom tanggal 1 s.d. akhir bulan) TAPI versi `<table>` HTML biasa,
+  bukan dompdf. Baris backlog (`tanggal_rencana IS NULL`, fase 2) IKUT tampil di grid ini
+  (beda dari PDF yang sengaja filter keluar) — ditandai visual (mis. baris/label "BACKLOG"
+  di kolom PLAN, nol ada cell tanggal ke-klik sampe di-assign).
+- Controller `index()` (mesin & dies) di-extend: query `PreventiveSchedule` bulan berjalan
+  + `items` (SEMUA baris, termasuk backlog — beda dari `schedulePdf()` yang filter
+  `whereNotNull`), lempar ke view. Kalau schedule bulan ini belum pernah digenerate,
+  partial nampilin pesan "Jadwal belum digenerate" (pola sama `schedulePdf()` existing
+  yang handle `$schedule` null).
+- Grid ini MURNI tampilan tambahan — PDF (`schedulePdf()`) NOL berubah, tetap filter
+  backlog keluar, tetap baca apa adanya (lihat "Di luar cakupan" di bawah).
+
 ## Skema
 
 Migrasi ALTER `preventive_schedule_items` (kolom baru, additive):
@@ -101,10 +125,9 @@ keputusan kapasitas nggak ditegakin ketat pas ada override manual.
 
 Komponen Alpine.js kecil baru (ikut konvensi 11 komponen bersama existing, didaftarkan
 di layout, dijaga test yang sama polanya dengan `KomponenBersamaTest`) — sebut
-`scheduleItemEdit`. Per cell PLAN yang di-generate blade (bukan PDF — PDF nol berubah,
-lihat "Di luar cakupan"):
+`scheduleItemEdit`. Ditempel ke grid HTML baru ("Prasyarat" di atas), per cell PLAN:
 
-- Klik cell tanggal (halaman Control Stroke, BUKAN PDF) → dropdown/date-picker muncul
+- Klik cell tanggal (grid HTML di halaman Control Stroke, BUKAN PDF) → dropdown/date-picker muncul
   in-place, isinya CUMA tanggal valid (hari kerja + HARI_DIIZINKAN[jenis], dalam bulan
   schedule) — tanggal lain didisable, nggak bisa diklik sama sekali (klien-side gate
   sesuai keputusan brainstorming Q2, backend tetap validasi ulang server-side sebagai
