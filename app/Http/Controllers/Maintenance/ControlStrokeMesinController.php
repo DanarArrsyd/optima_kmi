@@ -7,10 +7,14 @@ use App\Models\MasterKaryawan;
 use App\Models\MasterMesin;
 use App\Models\MesinPreventiveLog;
 use App\Models\PreventiveSchedule;
+use App\Models\PreventiveScheduleItem;
+use App\Services\KalenderKerjaService;
 use App\Services\MaintenanceDashboardService;
 use App\Services\PreventiveScheduleService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Schema;
 
 class ControlStrokeMesinController extends Controller
 {
@@ -123,5 +127,62 @@ class ControlStrokeMesinController extends Controller
         return redirect()->route('maintenance.control-stroke-mesin')->with(
             'success', 'Jadwal preventive mesin bulan ini berhasil digenerate ulang.'
         );
+    }
+
+    public function updateScheduleItem(PreventiveScheduleItem $item, Request $request, PreventiveScheduleService $preventiveSvc)
+    {
+        abort_if(! auth()->user()->hasRole(['admin', 'staff_maintenance']), 403);
+        abort_unless(Schema::hasColumn('preventive_schedule_items', 'is_manual_override'), 503, 'Fitur belum tersedia, migrasi belum jalan.');
+
+        $item->loadMissing('schedule');
+        abort_if($item->schedule->jenis !== 'mesin', 422, 'Item ini bukan jadwal mesin.');
+
+        $validated = $request->validate(['tanggal_rencana' => 'required|date']);
+        $tanggal = Carbon::parse($validated['tanggal_rencana']);
+        $bulanSchedule = Carbon::parse($item->schedule->bulan);
+
+        if (! $tanggal->isSameMonth($bulanSchedule)) {
+            return response()->json(['message' => 'Tanggal harus dalam bulan yang sama dengan jadwal ini.'], 422);
+        }
+        if (! KalenderKerjaService::hariKerja($tanggal)) {
+            return response()->json(['message' => 'Tanggal itu hari libur / bukan hari kerja.'], 422);
+        }
+        if (! in_array($tanggal->isoWeekday(), $preventiveSvc->hariDiizinkan('mesin'), true)) {
+            return response()->json(['message' => 'Tanggal itu di luar hari yang diizinkan untuk mesin (Senin-Kamis).'], 422);
+        }
+
+        $mingguPertamaBulan = $bulanSchedule->copy()->startOfWeek(Carbon::MONDAY);
+        $mingguKe = (int) $mingguPertamaBulan->diffInWeeks($tanggal->copy()->startOfWeek(Carbon::MONDAY)) + 1;
+
+        $item->update([
+            'tanggal_rencana' => $tanggal->toDateString(),
+            'minggu_ke' => $mingguKe,
+            'backlog_since' => null,
+            'is_manual_override' => true,
+            'overridden_by' => auth()->id(),
+            'overridden_at' => now(),
+        ]);
+
+        return response()->json(['message' => 'Tanggal berhasil diubah.', 'tanggal_rencana' => $item->tanggal_rencana->toDateString()]);
+    }
+
+    public function resetScheduleItem(PreventiveScheduleItem $item)
+    {
+        abort_if(! auth()->user()->hasRole(['admin', 'staff_maintenance']), 403);
+        abort_unless(Schema::hasColumn('preventive_schedule_items', 'is_manual_override'), 503, 'Fitur belum tersedia, migrasi belum jalan.');
+
+        $item->loadMissing('schedule');
+        abort_if($item->schedule->jenis !== 'mesin', 422, 'Item ini bukan jadwal mesin.');
+
+        $item->update([
+            'is_manual_override' => false,
+            'tanggal_rencana' => null,
+            'minggu_ke' => null,
+            'overridden_by' => null,
+            'overridden_at' => null,
+            'backlog_since' => now()->timezone('Asia/Jakarta')->toDateString(),
+        ]);
+
+        return response()->json(['message' => 'Item direset ke otomatis, masuk backlog sampai regenerate berikutnya.']);
     }
 }
