@@ -30,6 +30,13 @@ class PreventiveScheduleServiceTest extends TestCase
         $this->karyawan = MasterKaryawan::create([
             'nik' => uniqid(), 'nama_karyawan' => 'Operator N', 'departemen' => 'Produksi', 'is_aktif' => true,
         ]);
+        Carbon::setTestNow('2026-08-20');
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        parent::tearDown();
     }
 
     /** Mesin dengan stroke tinggi (mendekati/lewat threshold 300000) via 1 baris produksi besar. */
