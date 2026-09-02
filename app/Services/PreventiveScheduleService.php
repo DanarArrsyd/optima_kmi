@@ -39,6 +39,29 @@ class PreventiveScheduleService
         return self::HARI_DIIZINKAN[$jenis] ?? [];
     }
 
+    /**
+     * Posisi minggu (1-based) tanggal $tanggal dalam bulan $bulan, jenis $jenis —
+     * definisi SAMA persis dengan generate() (hariKerjaDalamBulan + HARI_DIIZINKAN +
+     * kelompokkanPerMinggu, index+1). Dipakai endpoint edit manual (Task 3) supaya
+     * minggu_ke yang ditulis manual konsisten dengan yang ditulis algoritma.
+     */
+    public function mingguKeUntuk(string $jenis, Carbon $bulan, Carbon $tanggal): ?int
+    {
+        $bulan = $bulan->copy()->startOfMonth();
+        $hariKerja = $this->hariKerjaDalamBulan($bulan)
+            ->filter(fn (Carbon $d) => in_array($d->isoWeekday(), self::HARI_DIIZINKAN[$jenis], true))
+            ->values();
+        $mingguBuckets = $this->kelompokkanPerMinggu($hariKerja);
+
+        foreach ($mingguBuckets as $mingguIndex => $hariList) {
+            if ($hariList->contains(fn (Carbon $d) => $d->isSameDay($tanggal))) {
+                return $mingguIndex + 1;
+            }
+        }
+
+        return null; // tanggal valid (hari kerja + hari diizinkan) tapi entah kenapa nol ketemu bucket — seharusnya nol pernah kejadian kalau validasi endpoint udah benar duluan, tapi nol crash kalau kejadian.
+    }
+
     public function __construct(
         private MaintenanceDashboardService $mesinSvc,
         private MaintenanceDiesDashboardService $diesSvc,

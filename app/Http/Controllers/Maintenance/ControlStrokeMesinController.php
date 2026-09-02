@@ -151,8 +151,10 @@ class ControlStrokeMesinController extends Controller
             return response()->json(['message' => 'Tanggal itu di luar hari yang diizinkan untuk mesin (Senin-Kamis).'], 422);
         }
 
-        $mingguPertamaBulan = $bulanSchedule->copy()->startOfWeek(Carbon::MONDAY);
-        $mingguKe = (int) $mingguPertamaBulan->diffInWeeks($tanggal->copy()->startOfWeek(Carbon::MONDAY)) + 1;
+        $mingguKe = $preventiveSvc->mingguKeUntuk('mesin', $bulanSchedule, $tanggal);
+        if ($mingguKe === null) {
+            return response()->json(['message' => 'Gagal menentukan minggu untuk tanggal ini.'], 422);
+        }
 
         $item->update([
             'tanggal_rencana' => $tanggal->toDateString(),

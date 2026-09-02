@@ -36,6 +36,98 @@ class PreventiveScheduleManualEditTest extends TestCase
         return $mesin;
     }
 
+    /** Part+proses dies dengan stroke tinggi (mendekati/lewat threshold 30000) via 1 baris produksi besar. */
+    private function setupDiesEligible(string $kode, int $stroke): MasterPartProses
+    {
+        $shift = MasterShift::create(['nama_shift' => 'Shift 1', 'jam_start' => '08:00', 'jam_finish' => '16:00']);
+        $karyawan = MasterKaryawan::create(['nik' => uniqid(), 'nama_karyawan' => 'Op', 'departemen' => 'Produksi', 'is_aktif' => true]);
+        $mesin = MasterMesin::create(['id_mesin' => "M-{$kode}", 'nama_mesin' => "Press M-{$kode}", 'line' => '1', 'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100, 'tanggal_instalasi' => '2020-01-01']);
+        $part = MasterPart::create(['part_no' => "D-{$kode}", 'part_name' => "Dies {$kode}", 'customer' => 'Toyota']);
+        $proses = MasterPartProses::create(['id_part' => $part->id, 'id_proses' => 1, 'nama_proses' => 'PROGRESSIVE', 'sph_standar_produksi' => 500, 'sph_standar_qc' => 250]);
+        TransaksiProduksi::create([
+            'tanggal_produksi' => '2026-08-01', 'id_shift' => $shift->id, 'id_karyawan' => $karyawan->id,
+            'id_mesin' => $mesin->id, 'id_part_proses' => $proses->id, 'jam_start' => '08:00', 'jam_finish' => '16:00',
+            'qty_aktual' => $stroke, 'actual_cycle_time' => 10, 'created_by' => User::factory()->create(['role' => 'admin'])->id,
+        ]);
+
+        return $proses;
+    }
+
+    public function test_admin_bisa_patch_tanggal_valid_dies(): void
+    {
+        Carbon::setTestNow('2026-08-20');
+        $admin = User::factory()->create(['role' => 'admin']);
+        $this->setupDiesEligible('DE1', 31000);
+        $schedule = app(PreventiveScheduleService::class)->generate('dies', Carbon::parse('2026-08-01'));
+        $item = $schedule->items->first();
+
+        // 2026-08-07 = Jumat, dies mengizinkan Senin-Jumat.
+        $this->actingAs($admin)
+            ->patchJson(route('maintenance.control-stroke-dies.schedule-item.update', $item), ['tanggal_rencana' => '2026-08-07'])
+            ->assertOk();
+
+        $item->refresh();
+        $this->assertSame('2026-08-07', $item->tanggal_rencana->toDateString());
+        $this->assertTrue($item->is_manual_override);
+        $this->assertSame($admin->id, $item->overridden_by);
+        $this->assertNotNull($item->overridden_at);
+    }
+
+    public function test_patch_tanggal_sabtu_ditolak_buat_dies_422(): void
+    {
+        Carbon::setTestNow('2026-08-20');
+        $admin = User::factory()->create(['role' => 'admin']);
+        $this->setupDiesEligible('DE2', 31000);
+        $schedule = app(PreventiveScheduleService::class)->generate('dies', Carbon::parse('2026-08-01'));
+        $item = $schedule->items->first();
+
+        // 2026-08-08 = Sabtu, dies tetap menghindari Sabtu.
+        $this->actingAs($admin)
+            ->patchJson(route('maintenance.control-stroke-dies.schedule-item.update', $item), ['tanggal_rencana' => '2026-08-08'])
+            ->assertStatus(422);
+    }
+
+    public function test_reset_dies_balik_ke_backlog(): void
+    {
+        Carbon::setTestNow('2026-08-20');
+        $admin = User::factory()->create(['role' => 'admin']);
+        $proses = $this->setupDiesEligible('DE3', 100);
+        $item = PreventiveScheduleItem::create([
+            'schedule_id' => PreventiveSchedule::create(['bulan' => '2026-08-01', 'jenis' => 'dies', 'nomor_dokumen' => 'X'])->id,
+            'id_part_proses' => $proses->id,
+            'stroke_snapshot' => 1, 'pct_snapshot' => 100, 'threshold_snapshot' => 1,
+            'tanggal_rencana' => '2026-08-04', 'minggu_ke' => 1,
+            'is_manual_override' => true, 'overridden_by' => $admin->id, 'overridden_at' => now(),
+        ]);
+
+        $this->actingAs($admin)
+            ->postJson(route('maintenance.control-stroke-dies.schedule-item.reset', $item))
+            ->assertOk();
+
+        $item->refresh();
+        $this->assertFalse($item->is_manual_override);
+        $this->assertNull($item->tanggal_rencana);
+        $this->assertNull($item->minggu_ke);
+        $this->assertNull($item->overridden_by);
+        $this->assertSame('2026-08-20', $item->backlog_since->toDateString());
+    }
+
+    public function test_patch_item_mesin_lewat_route_dies_ditolak_422(): void
+    {
+        Carbon::setTestNow('2026-08-20');
+        $admin = User::factory()->create(['role' => 'admin']);
+        $mesin = $this->setupMesinEligible('MEX', 305000);
+        $itemMesin = PreventiveScheduleItem::create([
+            'schedule_id' => PreventiveSchedule::create(['bulan' => '2026-08-01', 'jenis' => 'mesin', 'nomor_dokumen' => 'Y'])->id,
+            'id_mesin' => $mesin->id, 'stroke_snapshot' => 1, 'pct_snapshot' => 100, 'threshold_snapshot' => 1,
+            'tanggal_rencana' => '2026-08-04', 'minggu_ke' => 1,
+        ]);
+
+        $this->actingAs($admin)
+            ->patchJson(route('maintenance.control-stroke-dies.schedule-item.update', $itemMesin), ['tanggal_rencana' => '2026-08-05'])
+            ->assertStatus(422);
+    }
+
     public function test_admin_bisa_patch_tanggal_valid(): void
     {
         Carbon::setTestNow('2026-08-20');
