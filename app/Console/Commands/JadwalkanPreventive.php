@@ -21,7 +21,9 @@ class JadwalkanPreventive extends Command
         try {
             foreach (['mesin', 'dies'] as $jenis) {
                 $schedule = $svc->generate($jenis, $bulan);
-                $this->info("Jadwal {$jenis} {$bulan->format('F Y')}: {$schedule->nomor_dokumen}, {$schedule->items()->count()} item.");
+                $terjadwal = $schedule->items()->whereNotNull('tanggal_rencana')->count();
+                $backlog = $schedule->items()->whereNull('tanggal_rencana')->count();
+                $this->info("Jadwal {$jenis} {$bulan->format('F Y')}: {$schedule->nomor_dokumen}, {$terjadwal} item terjadwal, {$backlog} backlog.");
             }
 
             return self::SUCCESS;

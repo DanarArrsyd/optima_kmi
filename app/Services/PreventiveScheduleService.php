@@ -9,6 +9,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class PreventiveScheduleService
 {
@@ -65,7 +66,12 @@ class PreventiveScheduleService
             $schedule->generated_by = auth()->id();
             $schedule->save();
 
-            $backlogLama = $this->backlogSinceLama($jenis, $bulan, $sudahAda ? $schedule : null);
+            // Kolom backlog_since bisa belum ada di DB kalau kode ini live SEBELUM
+            // migrate jalan (jendela rsync→migrate saat deploy) — deploy target
+            // migrasi ini di window sama, tapi jaga-jaga cron collide, degradasi ke
+            // perilaku fase 1 (item nggak kebagian slot cuma dilog, bukan disimpan).
+            $backlogDidukung = Schema::hasColumn('preventive_schedule_items', 'backlog_since');
+            $backlogLama = $backlogDidukung ? $this->backlogSinceLama($jenis, $bulan, $sudahAda ? $schedule : null) : [];
 
             $schedule->items()->delete();
 
@@ -120,7 +126,7 @@ class PreventiveScheduleService
                         'threshold_snapshot' => $item['threshold'],
                         'tanggal_rencana' => $hari->toDateString(),
                         'minggu_ke' => $mingguKe,
-                        'backlog_since' => null,
+                        ...$backlogDidukung ? ['backlog_since' => null] : [],
                     ]);
                     $idx++;
                 }
@@ -128,20 +134,22 @@ class PreventiveScheduleService
 
             if ($idx < $eligible->count()) {
                 $idxSebelumBacklog = $idx;
-                $sisaHariIni = now()->timezone('Asia/Jakarta')->toDateString();
-                for (; $idx < $eligible->count(); $idx++) {
-                    $item = $eligible[$idx];
-                    PreventiveScheduleItem::create([
-                        'schedule_id' => $schedule->id,
-                        'id_mesin' => $jenis === 'mesin' ? $item['id_mesin'] : null,
-                        'id_part_proses' => $jenis === 'dies' ? $item['id_part_proses'] : null,
-                        'stroke_snapshot' => $item['current_stroke'],
-                        'pct_snapshot' => $item['pct'],
-                        'threshold_snapshot' => $item['threshold'],
-                        'tanggal_rencana' => null,
-                        'minggu_ke' => null,
-                        'backlog_since' => $backlogLama[$item[$kolomId]] ?? $sisaHariIni,
-                    ]);
+                if ($backlogDidukung) {
+                    $sisaHariIni = now()->timezone('Asia/Jakarta')->toDateString();
+                    for (; $idx < $eligible->count(); $idx++) {
+                        $item = $eligible[$idx];
+                        PreventiveScheduleItem::create([
+                            'schedule_id' => $schedule->id,
+                            'id_mesin' => $jenis === 'mesin' ? $item['id_mesin'] : null,
+                            'id_part_proses' => $jenis === 'dies' ? $item['id_part_proses'] : null,
+                            'stroke_snapshot' => $item['current_stroke'],
+                            'pct_snapshot' => $item['pct'],
+                            'threshold_snapshot' => $item['threshold'],
+                            'tanggal_rencana' => null,
+                            'minggu_ke' => null,
+                            'backlog_since' => $backlogLama[$item[$kolomId]] ?? $sisaHariIni,
+                        ]);
+                    }
                 }
                 Log::info(sprintf(
                     'PreventiveSchedule %s %s: %d item eligible dicatat sebagai backlog (kapasitas bulan ini habis).',
