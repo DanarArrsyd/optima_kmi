@@ -389,4 +389,53 @@ class PreventiveScheduleServiceTest extends TestCase
 
         $this->assertNull($schedule->items->first()->backlog_since);
     }
+
+    public function test_backlog_since_bertahan_saat_regenerate_bulan_yang_sama(): void
+    {
+        for ($i = 1; $i <= 6; $i++) {
+            $this->mesinDenganStroke("RG{$i}", 305000);
+        }
+
+        $schedule1 = app(PreventiveScheduleService::class)->generate('mesin', Carbon::parse('2026-08-01'));
+        $backlogAwal = $schedule1->items->whereNull('tanggal_rencana')->first();
+        $this->assertNotNull($backlogAwal, 'harus ada 1 backlog (6 eligible, kapasitas 5)');
+        $this->assertSame('2026-08-20', $backlogAwal->backlog_since->toDateString());
+
+        Carbon::setTestNow('2026-08-25');
+        $schedule2 = app(PreventiveScheduleService::class)->generate('mesin', Carbon::parse('2026-08-01'));
+        $backlogUlang = $schedule2->items->whereNull('tanggal_rencana')->first();
+
+        $this->assertNotNull($backlogUlang);
+        $this->assertSame('2026-08-20', $backlogUlang->backlog_since->toDateString(), 'regenerate bulan sama HARUS pertahankan backlog_since lama, bukan reset ke 08-25');
+    }
+
+    public function test_item_backlog_yang_akhirnya_kebagian_slot_backlog_since_jadi_null(): void
+    {
+        for ($i = 1; $i <= 6; $i++) {
+            $this->mesinDenganStroke("TR{$i}", 305000);
+        }
+        $scheduleAgustus = app(PreventiveScheduleService::class)->generate('mesin', Carbon::parse('2026-08-01'));
+        $backlogAgustus = $scheduleAgustus->items->whereNull('tanggal_rencana')->first();
+        $this->assertNotNull($backlogAgustus);
+        $idMesinBacklog = $backlogAgustus->id_mesin;
+
+        // September: hapus 2 mesin LAIN (bukan yang backlog Agustus) biar total eligible
+        // turun jadi 4, di bawah kapasitas 5 — mesin yang backlog Agustus dijamin kebagian
+        // slot September ini (eligible via pct>=100 tetap). Dipilih dinamis (bukan hardcode
+        // nama) karena mesin mana yang jadi backlog tergantung tie-break urutan internal.
+        $kodeDihapus = MasterMesin::whereIn('id_mesin', ['TR1', 'TR2', 'TR3', 'TR4', 'TR5', 'TR6'])
+            ->where('id', '!=', $idMesinBacklog)
+            ->orderBy('id_mesin')
+            ->limit(2)
+            ->pluck('id_mesin');
+        MasterMesin::whereIn('id_mesin', $kodeDihapus)->delete();
+
+        Carbon::setTestNow('2026-09-05');
+        $scheduleSeptember = app(PreventiveScheduleService::class)->generate('mesin', Carbon::parse('2026-09-01'));
+        $itemBekasBacklog = $scheduleSeptember->items->firstWhere('id_mesin', $idMesinBacklog);
+
+        $this->assertNotNull($itemBekasBacklog, 'mesin yang backlog Agustus harus tetap eligible & muncul di September');
+        $this->assertNotNull($itemBekasBacklog->tanggal_rencana, 'harus kebagian slot September (eligible turun ke 4, kapasitas 5)');
+        $this->assertNull($itemBekasBacklog->backlog_since, 'begitu kebagian slot, backlog_since HARUS null — bukan bertahan dari Agustus');
+    }
 }
