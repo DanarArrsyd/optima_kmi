@@ -30,6 +30,13 @@ class PreventiveScheduleServiceTest extends TestCase
         $this->karyawan = MasterKaryawan::create([
             'nik' => uniqid(), 'nama_karyawan' => 'Operator N', 'departemen' => 'Produksi', 'is_aktif' => true,
         ]);
+        Carbon::setTestNow('2026-08-20');
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        parent::tearDown();
     }
 
     /** Mesin dengan stroke tinggi (mendekati/lewat threshold 300000) via 1 baris produksi besar. */
@@ -190,5 +197,144 @@ class PreventiveScheduleServiceTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
 
         app(PreventiveScheduleService::class)->generate('DIES', Carbon::parse('2026-08-01'));
+    }
+
+    /**
+     * Item di bawah pct reaktif (80%) tapi laju produksinya tinggi sehingga
+     * DIPROYEKSIKAN overdue sebelum generate bulan depan — harus tetap masuk
+     * jadwal PROAKTIF, dan diurut proyeksi PALING DEKAT duluan (bukan pct
+     * tertinggi duluan seperti sebelumnya).
+     *
+     * Angka dihitung manual supaya deterministik — baca komentar di tiap baris
+     * sebelum mengubah nilai apa pun:
+     *
+     * EARLY: current_stroke 220.000 (73,3%) — di bawah 80%, TIDAK reaktif.
+     *   Baris lama (di luar window 30 hari dari "sekarang" 2026-08-15): 50.000.
+     *   Baris baru (dalam window, 2026-08-01): 170.000 → laju = 170.000/30 ≈ 5.666,67/hari.
+     *   Sisa = 300.000 - 220.000 = 80.000. Hari = ceil(80.000/5.666,67) = 15.
+     *   Proyeksi = 2026-08-15 + 15 hari = 2026-08-30 (SEBELUM cutoff 2026-09-01).
+     *
+     * LATE: current_stroke 236.000 (78,7%) — juga di bawah 80%, TIDAK reaktif.
+     *   Baris lama: 116.000. Baris baru (2026-08-01): 120.000 → laju = 120.000/30 = 4.000/hari.
+     *   Sisa = 300.000 - 236.000 = 64.000. Hari = ceil(64.000/4.000) = 16.
+     *   Proyeksi = 2026-08-15 + 16 hari = 2026-08-31 (SEBELUM cutoff, TAPI setelah EARLY).
+     *
+     * FAR: current_stroke 100.000 (33,3%) — jauh dari threshold.
+     *   Semua produksi dalam window: 100.000 → laju = 100.000/30 ≈ 3.333,33/hari.
+     *   Sisa = 200.000. Hari = ceil(200.000/3.333,33) = 60.
+     *   Proyeksi = 2026-08-15 + 60 hari = 2026-10-14 (SETELAH cutoff 2026-09-01) → TIDAK eligible.
+     */
+    public function test_item_dibawah_pct_reaktif_tapi_proyeksi_dekat_tetap_masuk_dan_urut_lebih_dulu(): void
+    {
+        Carbon::setTestNow('2026-08-15');
+
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $buatMesin = function (string $kode, int $strokeLama, int $strokeBaru) use ($admin) {
+            $mesin = MasterMesin::create([
+                'id_mesin' => $kode, 'nama_mesin' => "Press {$kode}", 'line' => '1',
+                'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100,
+                'tanggal_instalasi' => '2020-01-01',
+            ]);
+            $part = MasterPart::create(['part_no' => "P-{$kode}", 'part_name' => "Part {$kode}", 'customer' => 'Toyota']);
+            $proses = MasterPartProses::create([
+                'id_part' => $part->id, 'id_proses' => 1, 'nama_proses' => 'PROGRESSIVE',
+                'sph_standar_produksi' => 500, 'sph_standar_qc' => 250,
+            ]);
+            if ($strokeLama > 0) {
+                TransaksiProduksi::create([
+                    'tanggal_produksi' => '2026-06-01', 'id_shift' => $this->shift->id,
+                    'id_karyawan' => $this->karyawan->id, 'id_mesin' => $mesin->id, 'id_part_proses' => $proses->id,
+                    'jam_start' => '08:00', 'jam_finish' => '16:00', 'qty_aktual' => $strokeLama,
+                    'actual_cycle_time' => 10, 'created_by' => $admin->id,
+                ]);
+            }
+            TransaksiProduksi::create([
+                'tanggal_produksi' => '2026-08-01', 'id_shift' => $this->shift->id,
+                'id_karyawan' => $this->karyawan->id, 'id_mesin' => $mesin->id, 'id_part_proses' => $proses->id,
+                'jam_start' => '08:00', 'jam_finish' => '16:00', 'qty_aktual' => $strokeBaru,
+                'actual_cycle_time' => 10, 'created_by' => $admin->id,
+            ]);
+
+            return $mesin;
+        };
+
+        $buatMesin('EARLY', 50000, 170000);  // current_stroke 220.000, proyeksi 2026-08-30
+        $buatMesin('LATE', 116000, 120000);  // current_stroke 236.000, proyeksi 2026-08-31
+        $buatMesin('FAR', 0, 100000);        // current_stroke 100.000, proyeksi 2026-10-14 (excluded)
+
+        $schedule = app(PreventiveScheduleService::class)->generate('mesin', Carbon::parse('2026-08-01'));
+        $items = $schedule->items()->with('mesin')->get()->keyBy(fn ($i) => $i->mesin->id_mesin);
+
+        $this->assertCount(2, $items, 'FAR seharusnya tidak eligible (proyeksi lewat cutoff).');
+        $this->assertArrayNotHasKey('FAR', $items);
+        $this->assertArrayHasKey('EARLY', $items);
+        $this->assertArrayHasKey('LATE', $items);
+        $this->assertTrue(
+            $items['EARLY']->tanggal_rencana->lt($items['LATE']->tanggal_rencana),
+            'EARLY (proyeksi lebih dekat) harus dapat slot lebih awal dari LATE, walau pct EARLY (73,3%) lebih rendah dari LATE (78,7%).'
+        );
+
+        Carbon::setTestNow();
+    }
+
+    /** Mesin cuma boleh PLAN Senin-Kamis — Jumat (14 jam) & Sabtu (10 jam) kependekan buat PM penuh. */
+    public function test_plan_mesin_nol_pernah_jatuh_jumat_atau_sabtu(): void
+    {
+        for ($i = 1; $i <= 5; $i++) {
+            $this->mesinDenganStroke("A{$i}", 310000);
+        }
+
+        $schedule = app(PreventiveScheduleService::class)->generate('mesin', Carbon::parse('2026-08-01'));
+
+        foreach ($schedule->items as $item) {
+            $this->assertNotContains(
+                $item->tanggal_rencana->isoWeekday(),
+                [5, 6],
+                "tanggal_rencana {$item->tanggal_rencana->toDateString()} jatuh di Jumat/Sabtu — mesin cuma boleh Senin-Kamis."
+            );
+        }
+    }
+
+    /**
+     * Dies boleh sampai Jumat (kapasitas 5/minggu, hari diizinkan persis 5 —
+     * Senin-Jumat — jadi minggu penuh otomatis makai SEMUA hari termasuk Jumat).
+     * Agustus 2026: 1 Agustus jatuh Sabtu (dikeluarkan dari hari diizinkan
+     * dies/mesin dua-duanya), jadi bucket minggu PERTAMA yang punya kandidat
+     * hari diizinkan dies adalah Senin 3 - Jumat 7 Agustus, persis 5 hari kerja.
+     */
+    public function test_plan_dies_boleh_jumat_tapi_nol_sabtu_minggu(): void
+    {
+        for ($i = 1; $i <= 5; $i++) {
+            $this->diesDenganStroke("D{$i}", 31000);
+        }
+
+        $schedule = app(PreventiveScheduleService::class)->generate('dies', Carbon::parse('2026-08-01'));
+
+        $this->assertCount(5, $schedule->items, 'Setup salah: 5 dies overdue harus semua kebagian slot minggu pertama (kapasitas 5).');
+
+        $weekdaysDipakai = $schedule->items->map(fn ($item) => $item->tanggal_rencana->isoWeekday())->sort()->values();
+
+        $this->assertSame([1, 2, 3, 4, 5], $weekdaysDipakai->all(), 'Minggu penuh 5 dies harus makai persis Senin s.d. Jumat.');
+        foreach ($schedule->items as $item) {
+            $this->assertNotContains($item->tanggal_rencana->isoWeekday(), [6, 7], 'Dies nol boleh Sabtu/Minggu.');
+        }
+    }
+
+    /** Rotasi: mesin di minggu berbeda nol boleh selalu jatuh hari yang sama (mis. Senin terus). */
+    public function test_rotasi_hari_mesin_antar_minggu_nol_monoton(): void
+    {
+        $this->mesinDenganStroke('W1', 310000);
+        $this->mesinDenganStroke('W2', 305000);
+
+        $schedule = app(PreventiveScheduleService::class)->generate('mesin', Carbon::parse('2026-08-01'));
+
+        $this->assertCount(2, $schedule->items);
+
+        $terurut = $schedule->items->sortBy('tanggal_rencana')->values();
+        $hariMinggu1 = $terurut[0]->tanggal_rencana->isoWeekday();
+        $hariMinggu2 = $terurut[1]->tanggal_rencana->isoWeekday();
+
+        $this->assertNotSame($hariMinggu1, $hariMinggu2, 'Rotasi nol jalan — dua mesin di minggu berbeda jatuh hari yang SAMA.');
     }
 }
