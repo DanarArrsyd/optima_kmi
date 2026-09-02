@@ -10,12 +10,13 @@ class PreventiveScheduleItem extends Model
     protected $fillable = [
         'schedule_id', 'id_mesin', 'id_part_proses',
         'stroke_snapshot', 'pct_snapshot', 'threshold_snapshot',
-        'tanggal_rencana', 'minggu_ke',
+        'tanggal_rencana', 'minggu_ke', 'backlog_since',
     ];
 
     protected $casts = [
         'tanggal_rencana' => 'date:Y-m-d',
         'pct_snapshot' => 'float',
+        'backlog_since' => 'date:Y-m-d',
     ];
 
     public function schedule(): BelongsTo

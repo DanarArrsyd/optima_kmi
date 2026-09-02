@@ -99,7 +99,7 @@ class ControlStrokeMesinController extends Controller
         $bulan = now()->timezone('Asia/Jakarta')->startOfMonth();
         $schedule = PreventiveSchedule::where('bulan', $bulan->toDateString())
             ->where('jenis', 'mesin')
-            ->with('items.mesin.preventiveLogs')
+            ->with(['items' => fn ($q) => $q->whereNotNull('tanggal_rencana')->with('mesin.preventiveLogs')])
             ->first();
 
         $pdf = Pdf::loadView('maintenance.preventive-schedule-pdf', [

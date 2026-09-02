@@ -9,6 +9,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class PreventiveScheduleService
 {
@@ -57,12 +58,20 @@ class PreventiveScheduleService
                 'bulan' => $bulan->toDateString(),
                 'jenis' => $jenis,
             ]);
-            if (! $schedule->exists) {
+            $sudahAda = $schedule->exists;
+            if (! $sudahAda) {
                 $schedule->nomor_dokumen = $this->nomorDokumen($jenis, $bulan);
             }
             $schedule->generated_at = now();
             $schedule->generated_by = auth()->id();
             $schedule->save();
+
+            // Kolom backlog_since bisa belum ada di DB kalau kode ini live SEBELUM
+            // migrate jalan (jendela rsync→migrate saat deploy) — deploy target
+            // migrasi ini di window sama, tapi jaga-jaga cron collide, degradasi ke
+            // perilaku fase 1 (item nggak kebagian slot cuma dilog, bukan disimpan).
+            $backlogDidukung = Schema::hasColumn('preventive_schedule_items', 'backlog_since');
+            $backlogLama = $backlogDidukung ? $this->backlogSinceLama($jenis, $bulan, $sudahAda ? $schedule : null) : [];
 
             $schedule->items()->delete();
 
@@ -72,6 +81,7 @@ class PreventiveScheduleService
                 ->values();
             $mingguBuckets = $this->kelompokkanPerMinggu($hariKerja);
             $kapasitas = self::KAPASITAS[$jenis];
+            $kolomId = $jenis === 'mesin' ? 'id_mesin' : 'id_part_proses';
 
             $idx = 0;
             // Slot diisi urut prioritas (proyeksi paling dekat duluan), TAPI tanggal
@@ -116,20 +126,75 @@ class PreventiveScheduleService
                         'threshold_snapshot' => $item['threshold'],
                         'tanggal_rencana' => $hari->toDateString(),
                         'minggu_ke' => $mingguKe,
+                        ...$backlogDidukung ? ['backlog_since' => null] : [],
                     ]);
                     $idx++;
                 }
             }
 
             if ($idx < $eligible->count()) {
+                $idxSebelumBacklog = $idx;
+                if ($backlogDidukung) {
+                    $sisaHariIni = now()->timezone('Asia/Jakarta')->toDateString();
+                    for (; $idx < $eligible->count(); $idx++) {
+                        $item = $eligible[$idx];
+                        PreventiveScheduleItem::create([
+                            'schedule_id' => $schedule->id,
+                            'id_mesin' => $jenis === 'mesin' ? $item['id_mesin'] : null,
+                            'id_part_proses' => $jenis === 'dies' ? $item['id_part_proses'] : null,
+                            'stroke_snapshot' => $item['current_stroke'],
+                            'pct_snapshot' => $item['pct'],
+                            'threshold_snapshot' => $item['threshold'],
+                            'tanggal_rencana' => null,
+                            'minggu_ke' => null,
+                            'backlog_since' => $backlogLama[$item[$kolomId]] ?? $sisaHariIni,
+                        ]);
+                    }
+                }
                 Log::info(sprintf(
-                    'PreventiveSchedule %s %s: %d item eligible tidak kebagian slot bulan ini (kapasitas habis).',
-                    $jenis, $bulan->toDateString(), $eligible->count() - $idx
+                    'PreventiveSchedule %s %s: %d item eligible dicatat sebagai backlog (kapasitas bulan ini habis).',
+                    $jenis, $bulan->toDateString(), $eligible->count() - $idxSebelumBacklog
                 ));
             }
 
             return $schedule->fresh('items');
         });
+    }
+
+    /**
+     * Map target_id => backlog_since LAMA, dipakai carry-over supaya
+     * backlog_since nggak reset tiap generate. Sumbernya beda tergantung
+     * situasi (lihat spec bagian "Logika generate()"):
+     * - Regenerate bulan SAMA ($scheduleExists non-null) → baris lama
+     *   milik schedule itu sendiri (sebentar lagi dihapus & dibangun ulang).
+     * - Generate bulan BARU ($scheduleExists null) → schedule jenis yang
+     *   sama di bulan SEBELUM $bulan yang PALING BARU.
+     *
+     * @return array<int, string> [id_mesin_atau_id_part_proses => 'Y-m-d']
+     */
+    private function backlogSinceLama(string $jenis, Carbon $bulan, ?PreventiveSchedule $scheduleExists): array
+    {
+        $kolomId = $jenis === 'mesin' ? 'id_mesin' : 'id_part_proses';
+
+        if ($scheduleExists !== null) {
+            $sumber = $scheduleExists;
+        } else {
+            $sumber = PreventiveSchedule::where('jenis', $jenis)
+                ->where('bulan', '<', $bulan->toDateString())
+                ->orderByDesc('bulan')
+                ->first();
+        }
+
+        if ($sumber === null) {
+            return [];
+        }
+
+        return $sumber->items()
+            ->whereNull('tanggal_rencana')
+            ->whereNotNull('backlog_since')
+            ->get([$kolomId, 'backlog_since'])
+            ->mapWithKeys(fn ($row) => [$row->{$kolomId} => $row->backlog_since->toDateString()])
+            ->all();
     }
 
     /**

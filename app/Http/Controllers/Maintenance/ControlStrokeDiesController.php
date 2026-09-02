@@ -121,7 +121,7 @@ class ControlStrokeDiesController extends Controller
         $bulan = now()->timezone('Asia/Jakarta')->startOfMonth();
         $schedule = PreventiveSchedule::where('bulan', $bulan->toDateString())
             ->where('jenis', 'dies')
-            ->with('items.partProses.part', 'items.partProses.preventiveLogs')
+            ->with(['items' => fn ($q) => $q->whereNotNull('tanggal_rencana')->with('partProses.part', 'partProses.preventiveLogs')])
             ->first();
 
         $pdf = Pdf::loadView('maintenance.preventive-schedule-pdf', [
