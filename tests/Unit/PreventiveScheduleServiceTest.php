@@ -337,4 +337,56 @@ class PreventiveScheduleServiceTest extends TestCase
 
         $this->assertNotSame($hariMinggu1, $hariMinggu2, 'Rotasi nol jalan — dua mesin di minggu berbeda jatuh hari yang SAMA.');
     }
+
+    /**
+     * Kapasitas mesin 1/minggu. Diverifikasi lewat KalenderKerjaService bahwa
+     * Agustus 2026 punya 5 bucket minggu kerja mesin (Senin-Kamis) — bukan 4
+     * seperti dugaan awal — jadi kapasitas riil sebulan = 5 slot. Paksa
+     * backlog beneran: bikin 6 mesin eligible (LEBIH dari kapasitas 5), 1
+     * pasti nggak kebagian slot. Stroke dipatok jauh di atas STROKE_THRESHOLD
+     * (300000, lihat MaintenanceDashboardService) supaya pct>=100 — nilai 100
+     * dari draf brief nggak cukup bikin eligible (pct 0.03%, di bawah ambang
+     * 80% dan proyeksi tidak overdue karena baris produksinya di luar window
+     * laju 30 hari).
+     */
+    public function test_item_eligible_yang_kehabisan_slot_jadi_baris_backlog(): void
+    {
+        for ($i = 1; $i <= 6; $i++) {
+            $this->mesinDenganStroke("BL{$i}", 305000);
+        }
+
+        $schedule = app(PreventiveScheduleService::class)->generate('mesin', Carbon::parse('2026-08-01'));
+
+        $terjadwal = $schedule->items->whereNotNull('tanggal_rencana');
+        $backlog = $schedule->items->whereNull('tanggal_rencana');
+
+        $this->assertCount(5, $terjadwal, 'kapasitas mesin Agustus 2026 = 5 slot (1/minggu x5 minggu kerja, diverifikasi via KalenderKerjaService)');
+        $this->assertCount(1, $backlog, 'sisa 1 mesin eligible nggak kebagian slot harus jadi backlog');
+        $this->assertSame('2026-08-20', $backlog->first()->backlog_since->toDateString(), 'backlog_since = hari generate (Carbon::setTestNow di setUp)');
+        $this->assertNull($backlog->first()->minggu_ke);
+    }
+
+    public function test_backlog_since_nyambung_lintas_bulan_bukan_reset(): void
+    {
+        for ($i = 1; $i <= 6; $i++) {
+            $this->mesinDenganStroke("XB{$i}", 305000);
+        }
+        app(PreventiveScheduleService::class)->generate('mesin', Carbon::parse('2026-08-01'));
+
+        Carbon::setTestNow('2026-09-05');
+        $septemberSchedule = app(PreventiveScheduleService::class)->generate('mesin', Carbon::parse('2026-09-01'));
+
+        $backlogSeptember = $septemberSchedule->items->whereNull('tanggal_rencana');
+        $this->assertGreaterThanOrEqual(1, $backlogSeptember->count(), 'item backlog Agustus yang masih eligible harus tetap backlog di September');
+        $this->assertSame('2026-08-20', $backlogSeptember->first()->backlog_since->toDateString(), 'backlog_since HARUS tetap tanggal Agustus, bukan direset ke September');
+    }
+
+    public function test_item_yang_kebagian_slot_backlog_since_null(): void
+    {
+        $this->mesinDenganStroke('OK1', 305000);
+
+        $schedule = app(PreventiveScheduleService::class)->generate('mesin', Carbon::parse('2026-08-01'));
+
+        $this->assertNull($schedule->items->first()->backlog_since);
+    }
 }
