@@ -43,9 +43,25 @@ Migrasi ALTER `preventive_schedule_items` (kolom baru, additive):
 
 ## Logika `generate()`
 
-Sebelum `$schedule->items()->delete()` (hapus baris lama), REKAM dulu
-`backlog_since` existing dari baris backlog LAMA (`tanggal_rencana IS NULL`),
-di-keyed per target (`id_mesin`/`id_part_proses`) — buat referensi carry-over.
+⚠️ **`backlog_since` WAJIB nyambung LINTAS BULAN** — kasus nyata yang harus benar:
+dies X backlog di jadwal Agustus, generate September (`generate('dies', 2026-09-01)`)
+harus TETAP baca `backlog_since` dari Agustus, bukan reset ke tanggal generate
+September. Sumber "baris lama" buat REKAM `backlog_since` beda tergantung situasi:
+
+- **Regenerate bulan yang SAMA** (`$schedule->exists` true sebelum disentuh) → sumbernya
+  baris LAMA milik `$schedule` itu sendiri (yang sebentar lagi dihapus & dibangun
+  ulang).
+- **Generate bulan BARU pertama kali** (`$schedule->exists` false) → `$schedule` itu
+  sendiri belum punya baris apa pun (baru dibuat). Sumbernya jadwal jenis yang SAMA di
+  bulan SEBELUM `$bulan` yang PALING BARU (`PreventiveSchedule::where('jenis',
+  $jenis)->where('bulan', '<', $bulan)->orderByDesc('bulan')->first()`) — kalau ada,
+  ambil baris backlog-nya. Kalau nggak ada (bulan pertama fitur ini jalan, atau jenis
+  itu belum pernah digenerate), nol sumber — semua backlog baru dianggap baru.
+
+Sebelum `$schedule->items()->delete()` (hapus baris lama punya `$schedule` sendiri —
+cuma relevan buat kasus regenerate, no-op kalau baru), REKAM dulu `backlog_since`
+existing dari SUMBER yang tepat di atas (baris backlog LAMA, `tanggal_rencana IS
+NULL`), di-keyed per target (`id_mesin`/`id_part_proses`) — buat referensi carry-over.
 
 Alur assignment TIDAK berubah (proyeksi+prioritas fase 1, restriksi hari+rotasi fase
 1, semua utuh) — yang berubah cuma APA YANG TERJADI ke item yang nggak kebagian slot
@@ -79,9 +95,10 @@ supaya baris backlog nggak ikut nyoba digambar di tabel kalender PDF (yang butuh
 `tanggal_rencana` buat nentuin kolom PLAN-nya) — kalau nggak difilter, baris backlog
 bakal null-pointer atau nongol di kolom yang salah pas render.
 
-## Di luar cakupan tapi WAJIB nol regresi
+## Regresi test lama
 
-- 3 test `PreventiveScheduleServiceTest` yang ngecek `$schedule->items()->count()`
-  buat mesin/dies (mis. `test_kapasitas_mesin_satu_per_minggu_membatasi_jumlah_terjadwal`)
-  akan BERUBAH artinya — count sekarang termasuk baris backlog. WAJIB ditinjau ulang
-  di plan (bukan diasumsikan tetap sama), lihat instruksi detail per-test di plan.
+Udah dicek manual: SEMUA 12 fixture test `PreventiveScheduleServiceTest` yang ada
+sengaja dibikin muat pas di kapasitas bulan itu (nol pernah nyoba bikin item eligible
+LEBIH BANYAK dari total slot sebulan) — jadi NOL satu pun yang bakal mengalami jalur
+backlog. 12 test itu WAJIB tetep lolos TANPA diubah. Test baru buat backlog ditulis
+terpisah (lihat plan).
