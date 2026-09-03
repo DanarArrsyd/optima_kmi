@@ -41,6 +41,14 @@
         @if (! $schedule)
             <p class="text-muted p-3 mb-0">Belum ada jadwal untuk {{ $namaBulan }}. Klik "Generate Ulang" di toolbar atas.</p>
         @else
+            @if ($bolehEdit)
+                <p class="text-muted small px-3 pt-2 mb-2">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Klik tanggal mana pun buat pindahin jadwal — nol perlu reset dulu meski item-nya udah
+                    terkunci. Ikon <i class="bi bi-lock-fill text-warning"></i> di kolom PLAN = reset balik ke
+                    otomatis (item masuk backlog, nunggu Generate Ulang berikutnya).
+                </p>
+            @endif
             <div style="overflow-x:auto">
                 <table class="erp-table psg-table">
                     <thead>
@@ -87,9 +95,9 @@
                                     PLAN
                                     <template x-if="isLocked">
                                         @if ($bolehEdit)
-                                            <i class="bi bi-lock-fill text-warning ms-1" title="Dikunci manual" @click="reset()" style="cursor:pointer"></i>
+                                            <i class="bi bi-lock-fill text-warning ms-1" title="Terkunci manual — klik buat reset ke otomatis (bukan syarat buat pindahin, klik tanggal lain aja langsung bisa)" @click="reset()" style="cursor:pointer"></i>
                                         @else
-                                            <i class="bi bi-lock-fill text-warning ms-1" title="Dikunci manual"></i>
+                                            <i class="bi bi-lock-fill text-warning ms-1" title="Terkunci manual"></i>
                                         @endif
                                     </template>
                                 </td>
@@ -101,7 +109,7 @@
                                     @endphp
                                     <td class="psg-cell psg-day-col {{ $isLibur ? 'psg-libur' : '' }} {{ $bolehEdit ? '' : 'psg-readonly' }}"
                                         :class="tanggal === '{{ $tglStr }}' ? 'psg-plan' : ''"
-                                        @if (! $isLibur && $bolehEdit) @click="open()" @endif>
+                                        @if (! $isLibur && $bolehEdit) title="Klik buat pindahin PLAN ke tanggal {{ $d }}" @click="open()" @endif>
                                         <template x-if="editing && tanggal !== '{{ $tglStr }}' && validDates.includes('{{ $tglStr }}')">
                                             <button type="button" class="btn btn-sm btn-outline-dark py-0 px-1" style="font-size:9px" @click.stop="simpan('{{ $tglStr }}')" :disabled="saving">→</button>
                                         </template>
