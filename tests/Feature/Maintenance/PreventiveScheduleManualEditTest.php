@@ -342,4 +342,44 @@ class PreventiveScheduleManualEditTest extends TestCase
         $this->assertNotNull($item->overridden_at);
         $this->assertSame(5, $item->minggu_ke);
     }
+
+    public function test_patch_item_schedule_bulan_lalu_ditolak_422(): void
+    {
+        // Audit keamanan 2026-09-03: endpoint edit manual cuma boleh nyentuh jadwal bulan
+        // BERJALAN — ID item schedule bulan lalu (udah dicetak/diedarkan) nol boleh ditembus
+        // lewat request manual meski grid UI cuma pernah nampilin bulan ini.
+        $admin = User::factory()->create(['role' => 'admin']);
+        $mesin = $this->setupMesinEligible('MEL1', 305000);
+        Carbon::setTestNow('2026-08-20');
+        $scheduleAgustus = app(PreventiveScheduleService::class)->generate('mesin', Carbon::parse('2026-08-01'));
+        $item = $scheduleAgustus->items->first();
+
+        Carbon::setTestNow('2026-09-05');
+
+        $this->actingAs($admin)
+            ->patchJson(route('maintenance.control-stroke-mesin.schedule-item.update', $item), ['tanggal_rencana' => '2026-08-25'])
+            ->assertStatus(422);
+
+        $item->refresh();
+        $this->assertFalse($item->is_manual_override, 'PATCH ke jadwal bulan lalu nol boleh berhasil nulis apa pun.');
+    }
+
+    public function test_reset_item_schedule_bulan_lalu_ditolak_422(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $mesin = $this->setupMesinEligible('MEL2', 305000);
+        Carbon::setTestNow('2026-08-20');
+        $scheduleAgustus = app(PreventiveScheduleService::class)->generate('mesin', Carbon::parse('2026-08-01'));
+        $item = $scheduleAgustus->items->first();
+        $tanggalAsli = $item->tanggal_rencana->toDateString();
+
+        Carbon::setTestNow('2026-09-05');
+
+        $this->actingAs($admin)
+            ->postJson(route('maintenance.control-stroke-mesin.schedule-item.reset', $item))
+            ->assertStatus(422);
+
+        $item->refresh();
+        $this->assertSame($tanggalAsli, $item->tanggal_rencana->toDateString(), 'Reset ke jadwal bulan lalu nol boleh ngubah apa pun.');
+    }
 }

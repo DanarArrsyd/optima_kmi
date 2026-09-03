@@ -380,6 +380,10 @@ class HalamanBatchDandoriTest extends TestCase
         // marshalling ulang $errors dari JSON gara-gara 'serialization' =>
         // 'json' di config/session.php, membuat pengujian ini gagal dengan
         // alasan yang salah walau perbaikannya sendiri benar).
+        // dandori.import admin-only sejak audit keamanan 2026-09-03 (upsert lewat
+        // import bisa nembus batas dandori.update yang admin-only) — panel importnya
+        // sendiri di view juga sudah @if(hasRole('admin')), jadi ganti aktor di sini.
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
         Storage::fake('local');
 
         $filePdf = UploadedFile::fake()->create('data.pdf', 10, 'application/pdf');
@@ -401,5 +405,18 @@ class HalamanBatchDandoriTest extends TestCase
             $halaman,
             'Pesan validasi file spesifik (file.mimes) tidak sampai ke halaman.'
         );
+    }
+
+    public function test_staff_produksi_tidak_boleh_import_dandori_403(): void
+    {
+        // Route ini upsert-by-natural-key (App\Imports\DandoriImport) — beda dari
+        // batch() yang insert-only — jadi bisa dipakai nembus batas dandori.update
+        // yang sengaja admin-only. Audit keamanan 2026-09-03.
+        Storage::fake('local');
+        $filePdf = UploadedFile::fake()->create('data.pdf', 10, 'application/pdf');
+
+        // setUp() sudah actingAs staff_produksi.
+        $this->post(route('input.dandori.import'), ['file' => $filePdf])
+            ->assertForbidden();
     }
 }
