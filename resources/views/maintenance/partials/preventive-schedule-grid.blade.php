@@ -14,7 +14,11 @@
     .psg-plan { background: #facc15; cursor: pointer; }
     .psg-cell:not(.psg-libur):not(.psg-readonly) { cursor: pointer; }
     .psg-cell:hover:not(.psg-libur):not(.psg-readonly) { outline: 2px solid #111827; outline-offset: -2px; }
-    .psg-locked td { background: #fef9c3; }
+    /* Kuning muda locked CUMA di kolom label (No/Nama/ID/Proses/PLAN) — kolom tanggal
+       (.psg-day-col) SENGAJA dikecualikan, biar cell PLAN asli (.psg-plan, kuning
+       tegas) tetep KELIATAN JELAS di antara kolom tanggal lain, bukan ketutup wash
+       kuning satu baris penuh. */
+    .psg-locked td:not(.psg-day-col) { background: #fef9c3; }
 </style>
 
 @php
