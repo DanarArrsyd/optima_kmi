@@ -25,13 +25,6 @@
     .cs-toolbar .cs-search { flex:1 1 220px; min-width:180px; }
     .filter-badge { font-size:10px; }
 
-    .psg-table th, .psg-table td { text-align: center; white-space: nowrap; font-size: 11px; }
-    .psg-table td:nth-child(2) { text-align: left; white-space: normal; min-width: 160px; }
-    .psg-libur { background: #fca5a5; }
-    .psg-plan { background: #facc15; cursor: pointer; }
-    .psg-cell:not(.psg-libur):not(.psg-readonly) { cursor: pointer; }
-    .psg-cell:hover:not(.psg-libur):not(.psg-readonly) { outline: 2px solid #111827; outline-offset: -2px; }
-    .psg-locked td { background: #fef9c3; }
 </style>
 
 {{-- ══ RUANG KERJA ERP ══════════════════════════════════════════
@@ -48,6 +41,9 @@
     <a href="{{ route('maintenance.control-stroke-dies') }}" class="erp-tb-btn"><i class="bi bi-arrow-clockwise"></i>Refresh</a>
     <a href="{{ route('maintenance.control-stroke-dies.schedule-pdf') }}" target="_blank" class="erp-tb-btn">
         <i class="bi bi-file-earmark-pdf"></i>Schedule PDF
+    </a>
+    <a href="{{ route('maintenance.control-stroke-dies.schedule-edit') }}" class="erp-tb-btn">
+        <i class="bi bi-calendar-week"></i>Edit Jadwal
     </a>
     @if(auth()->user()->hasRole(['admin', 'staff_maintenance']))
     <form method="POST" action="{{ route('maintenance.control-stroke-dies.schedule-generate') }}" style="display:contents"
@@ -155,7 +151,6 @@
     </div>
 </div>
 
-@include('maintenance.partials.preventive-schedule-grid', ['jenis' => 'dies', 'schedule' => $jadwalSchedule, 'bulan' => $jadwalBulan, 'bolehEdit' => $bolehEditJadwal])
 </div>{{-- /erp-scroll --}}
 </div>{{-- /erp-ws-main --}}
 </div>{{-- /erp-ws-body --}}

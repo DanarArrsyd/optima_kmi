@@ -22,19 +22,27 @@ class ControlStrokeMesinController extends Controller
 
     public function index()
     {
+        // Opsi filter (mesin/tipe/line) dibangun di klien dari data yang dimuat — lihat
+        // initFilters() di view. Controller cukup mengirim threshold.
+        return view('maintenance.control-stroke-mesin', [
+            'threshold' => MaintenanceDashboardService::STROKE_THRESHOLD,
+        ]);
+    }
+
+    /** Halaman terpisah — grid kalender jadwal preventive (edit manual tanggal PLAN). */
+    public function scheduleEdit()
+    {
         $bulan = now()->timezone('Asia/Jakarta')->startOfMonth();
         $schedule = PreventiveSchedule::where('bulan', $bulan->toDateString())
             ->where('jenis', 'mesin')
             ->with('items.mesin')
             ->first();
 
-        // Opsi filter (mesin/tipe/line) dibangun di klien dari data yang dimuat — lihat
-        // initFilters() di view. Controller cukup mengirim threshold.
-        return view('maintenance.control-stroke-mesin', [
-            'threshold' => MaintenanceDashboardService::STROKE_THRESHOLD,
-            'jadwalSchedule' => $schedule,
-            'jadwalBulan' => $bulan,
-            'bolehEditJadwal' => auth()->user()->hasRole(['admin', 'staff_maintenance']),
+        return view('maintenance.control-stroke-mesin-schedule', [
+            'jenis' => 'mesin',
+            'schedule' => $schedule,
+            'bulan' => $bulan,
+            'bolehEdit' => auth()->user()->hasRole(['admin', 'staff_maintenance']),
         ]);
     }
 
