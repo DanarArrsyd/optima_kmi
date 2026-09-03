@@ -175,6 +175,7 @@ class ControlStrokeDiesController extends Controller
 
         $item->loadMissing('schedule');
         abort_if($item->schedule->jenis !== 'dies', 422, 'Item ini bukan jadwal dies.');
+        abort_if(! $this->scheduleBulanBerjalan($item->schedule), 422, 'Jadwal bulan ini sudah lewat — cuma jadwal bulan berjalan yang bisa diedit manual.');
 
         $validated = $request->validate(['tanggal_rencana' => 'required|date']);
         $tanggal = Carbon::parse($validated['tanggal_rencana']);
@@ -214,6 +215,7 @@ class ControlStrokeDiesController extends Controller
 
         $item->loadMissing('schedule');
         abort_if($item->schedule->jenis !== 'dies', 422, 'Item ini bukan jadwal dies.');
+        abort_if(! $this->scheduleBulanBerjalan($item->schedule), 422, 'Jadwal bulan ini sudah lewat — cuma jadwal bulan berjalan yang bisa diedit manual.');
 
         $item->update([
             'is_manual_override' => false,
@@ -225,5 +227,16 @@ class ControlStrokeDiesController extends Controller
         ]);
 
         return response()->json(['message' => 'Item direset ke otomatis, masuk backlog sampai regenerate berikutnya.']);
+    }
+
+    /**
+     * Endpoint edit manual cuma boleh nyentuh jadwal bulan BERJALAN (WIB) — tanpa guard ini,
+     * ID item lama (schedule bulan lalu, udah dicetak/diedarkan) bisa diketik langsung ke
+     * request PATCH/reset meski UI (grid) cuma pernah nampilin bulan ini (audit keamanan
+     * 2026-09-03).
+     */
+    private function scheduleBulanBerjalan(PreventiveSchedule $schedule): bool
+    {
+        return Carbon::parse($schedule->bulan)->isSameMonth(now()->timezone('Asia/Jakarta')->startOfMonth());
     }
 }

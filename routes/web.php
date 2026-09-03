@@ -108,7 +108,6 @@ Route::middleware('auth')->group(function () {
         Route::post('produksi-note', [ProduksiController::class, 'note'])->name('produksi.note');
         Route::post('dandori/batch', [DandoriController::class, 'batch'])->name('dandori.batch');
         Route::resource('dandori', DandoriController::class)->only(['create', 'destroy']);
-        Route::post('dandori/import',          [DandoriController::class, 'import'])->name('dandori.import');
         Route::get('dandori/import-template',  [DandoriController::class, 'importTemplate'])->name('dandori.import-template');
         Route::get('dandori/export',           [DandoriController::class, 'export'])->name('dandori.export');
         Route::post('dandori-note', [DandoriController::class, 'note'])->name('dandori.note');
@@ -133,6 +132,10 @@ Route::middleware('auth')->group(function () {
         Route::get('dandori/{dandori}/edit', [DandoriController::class, 'edit'])->name('dandori.edit');
         Route::put('dandori/{dandori}', [DandoriController::class, 'update'])->name('dandori.update');
         Route::post('dandori-note-resolve', [DandoriController::class, 'resolveNote'])->name('dandori.note-resolve');
+        // Import Excel dandori UPSERT (timpa baris existing lewat kunci natural, termasuk
+        // hidupin baris yang di-soft-delete admin) — beda dari batch() yang insert-only.
+        // Admin-only, samain sama boundary dandori.update di atas (audit keamanan 2026-09-03).
+        Route::post('dandori/import', [DandoriController::class, 'import'])->name('dandori.import');
     });
 
     // --- INPUT QC: daftar (read-only, guest boleh) ---
