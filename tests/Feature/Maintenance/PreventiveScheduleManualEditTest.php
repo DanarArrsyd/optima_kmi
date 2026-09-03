@@ -302,6 +302,25 @@ class PreventiveScheduleManualEditTest extends TestCase
             ->assertStatus(403);
     }
 
+    public function test_staff_maintenance_tidak_boleh_patch_atau_reset_403(): void
+    {
+        // Dicabut 2026-09-03 — sebelumnya staff_maintenance BOLEH edit manual, sekarang
+        // admin-only, PDF+halaman edit+PATCH+reset sama-sama dicabut.
+        Carbon::setTestNow('2026-08-20');
+        $staffMaintenance = User::factory()->create(['role' => 'staff_maintenance']);
+        $mesin = $this->setupMesinEligible('ME11', 305000);
+        $schedule = app(PreventiveScheduleService::class)->generate('mesin', Carbon::parse('2026-08-01'));
+        $item = $schedule->items->first();
+
+        $this->actingAs($staffMaintenance)
+            ->patchJson(route('maintenance.control-stroke-mesin.schedule-item.update', $item), ['tanggal_rencana' => '2026-08-11'])
+            ->assertStatus(403);
+
+        $this->actingAs($staffMaintenance)
+            ->postJson(route('maintenance.control-stroke-mesin.schedule-item.reset', $item))
+            ->assertStatus(403);
+    }
+
     public function test_activitylog_kecatet_saat_patch(): void
     {
         Carbon::setTestNow('2026-08-20');

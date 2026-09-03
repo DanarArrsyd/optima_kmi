@@ -243,12 +243,17 @@ Route::middleware('auth')->group(function () {
         Route::get('availability/control-stroke-mesin',       [ControlStrokeMesinController::class, 'index'])->name('control-stroke-mesin');
         Route::get('availability/control-stroke-mesin/data',   [ControlStrokeMesinController::class, 'data'])->name('control-stroke-mesin.data');
         Route::get('availability/control-stroke-mesin/{mesin}/history', [ControlStrokeMesinController::class, 'history'])->name('control-stroke-mesin.history');
-        Route::get('availability/control-stroke-mesin/schedule-pdf', [ControlStrokeMesinController::class, 'schedulePdf'])->name('control-stroke-mesin.schedule-pdf');
-        Route::get('availability/control-stroke-mesin/schedule', [ControlStrokeMesinController::class, 'scheduleEdit'])->name('control-stroke-mesin.schedule-edit');
 
         Route::get('availability/control-stroke-dies',        [ControlStrokeDiesController::class, 'index'])->name('control-stroke-dies');
         Route::get('availability/control-stroke-dies/data',    [ControlStrokeDiesController::class, 'data'])->name('control-stroke-dies.data');
         Route::get('availability/control-stroke-dies/{partProses}/history', [ControlStrokeDiesController::class, 'history'])->name('control-stroke-dies.history');
+    });
+
+    // --- SCHEDULE PREVENTIVE: PDF & edit manual — admin only (dicabut dari staff_maintenance/
+    // manager/guest 2026-09-03, sebelumnya ikut grup baca Control Stroke di atas) ---
+    Route::middleware('role:admin')->prefix('maintenance')->name('maintenance.')->group(function () {
+        Route::get('availability/control-stroke-mesin/schedule-pdf', [ControlStrokeMesinController::class, 'schedulePdf'])->name('control-stroke-mesin.schedule-pdf');
+        Route::get('availability/control-stroke-mesin/schedule', [ControlStrokeMesinController::class, 'scheduleEdit'])->name('control-stroke-mesin.schedule-edit');
         Route::get('availability/control-stroke-dies/schedule-pdf', [ControlStrokeDiesController::class, 'schedulePdf'])->name('control-stroke-dies.schedule-pdf');
         Route::get('availability/control-stroke-dies/schedule', [ControlStrokeDiesController::class, 'scheduleEdit'])->name('control-stroke-dies.schedule-edit');
     });

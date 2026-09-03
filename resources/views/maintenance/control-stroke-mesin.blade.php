@@ -40,12 +40,14 @@
         <i class="bi bi-funnel"></i>Filter
     </button>
     <a href="{{ route('maintenance.control-stroke-mesin') }}" class="erp-tb-btn"><i class="bi bi-arrow-clockwise"></i>Refresh</a>
+    @if(auth()->user()->hasRole('admin'))
     <a href="{{ route('maintenance.control-stroke-mesin.schedule-pdf') }}" target="_blank" class="erp-tb-btn">
         <i class="bi bi-file-earmark-pdf"></i>Schedule PDF
     </a>
     <a href="{{ route('maintenance.control-stroke-mesin.schedule-edit') }}" class="erp-tb-btn">
         <i class="bi bi-calendar-week"></i>Edit Jadwal
     </a>
+    @endif
     @if(auth()->user()->hasRole(['admin', 'staff_maintenance']))
     <form method="POST" action="{{ route('maintenance.control-stroke-mesin.schedule-generate') }}" style="display:contents"
           onsubmit="return confirm('Generate ulang jadwal preventive bulan ini? Jadwal lama akan ditimpa.');">

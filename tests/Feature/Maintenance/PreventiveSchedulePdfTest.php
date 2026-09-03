@@ -206,16 +206,44 @@ class PreventiveSchedulePdfTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_guest_boleh_lihat_pdf_tapi_tidak_boleh_generate(): void
+    public function test_guest_tidak_boleh_lihat_pdf_dan_tidak_boleh_generate(): void
     {
+        // Schedule PDF dicabut dari guest 2026-09-03 (admin-only) — sebelumnya guest boleh
+        // lihat, sekarang route-nya sendiri udah nol termasuk guest sama sekali.
         $guest = User::factory()->create(['role' => 'guest']);
 
         $this->actingAs($guest)
             ->get(route('maintenance.control-stroke-mesin.schedule-pdf'))
-            ->assertOk();
+            ->assertForbidden();
 
         $this->actingAs($guest)
             ->post(route('maintenance.control-stroke-mesin.schedule-generate'))
             ->assertForbidden();
+    }
+
+    public function test_staff_maintenance_dan_manager_tidak_boleh_lihat_pdf_atau_edit_jadwal(): void
+    {
+        // Schedule PDF + halaman Edit Jadwal dicabut dari staff_maintenance & manager
+        // 2026-09-03 (admin-only) — sebelumnya staff_maintenance bisa edit manual, sekarang
+        // nol satu pun selain admin yang bisa lihat/edit jadwal preventive.
+        foreach (['staff_maintenance', 'manager'] as $role) {
+            $user = User::factory()->create(['role' => $role]);
+
+            $this->actingAs($user)
+                ->get(route('maintenance.control-stroke-mesin.schedule-pdf'))
+                ->assertForbidden();
+
+            $this->actingAs($user)
+                ->get(route('maintenance.control-stroke-mesin.schedule-edit'))
+                ->assertForbidden();
+
+            $this->actingAs($user)
+                ->get(route('maintenance.control-stroke-dies.schedule-pdf'))
+                ->assertForbidden();
+
+            $this->actingAs($user)
+                ->get(route('maintenance.control-stroke-dies.schedule-edit'))
+                ->assertForbidden();
+        }
     }
 }

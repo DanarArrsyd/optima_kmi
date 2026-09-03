@@ -117,10 +117,9 @@ class AuthorizationTest extends TestCase
             ['maintenance.availability-dies'], ['maintenance.availability-dies.data'],
             ['maintenance.control-stroke-mesin'], ['maintenance.control-stroke-mesin.data'],
             ['maintenance.control-stroke-dies'], ['maintenance.control-stroke-dies.data'],
-            ['maintenance.control-stroke-mesin.schedule-pdf'],
-            ['maintenance.control-stroke-dies.schedule-pdf'],
-            ['maintenance.control-stroke-mesin.schedule-edit'],
-            ['maintenance.control-stroke-dies.schedule-edit'],
+            // schedule-pdf & schedule-edit SENGAJA nol di sini — dicabut dari guest (dan
+            // staff_maintenance/manager) 2026-09-03, sekarang admin-only route group
+            // terpisah. Lihat test_staff_maintenance_dan_guest_tidak_boleh_akses_schedule_admin_only().
             ['input.produksi.index'], ['input.qc.index'], ['input.dandori.index'],
             // Overview: grafik global pabrik, read-only, tanpa export.
             ['overview'],
@@ -159,6 +158,10 @@ class AuthorizationTest extends TestCase
             ['maintenance.breakdown.export'], ['maintenance.breakdown-dies.export'],
             ['maintenance.breakdown.create'], ['maintenance.breakdown-dies.create'],
             ['chatbot.index'], ['admin.anomali'],
+            ['maintenance.control-stroke-mesin.schedule-pdf'],
+            ['maintenance.control-stroke-dies.schedule-pdf'],
+            ['maintenance.control-stroke-mesin.schedule-edit'],
+            ['maintenance.control-stroke-dies.schedule-edit'],
         ];
     }
 

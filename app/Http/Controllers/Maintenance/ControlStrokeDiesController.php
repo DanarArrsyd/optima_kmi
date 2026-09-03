@@ -30,9 +30,11 @@ class ControlStrokeDiesController extends Controller
         ]);
     }
 
-    /** Halaman terpisah — grid kalender jadwal preventive (edit manual tanggal PLAN). */
+    /** Halaman terpisah — grid kalender jadwal preventive (edit manual tanggal PLAN). Admin-only. */
     public function scheduleEdit()
     {
+        abort_if(! auth()->user()->hasRole('admin'), 403);
+
         $bulan = now()->timezone('Asia/Jakarta')->startOfMonth();
         $schedule = PreventiveSchedule::where('bulan', $bulan->toDateString())
             ->where('jenis', 'dies')
@@ -43,7 +45,7 @@ class ControlStrokeDiesController extends Controller
             'jenis' => 'dies',
             'schedule' => $schedule,
             'bulan' => $bulan,
-            'bolehEdit' => auth()->user()->hasRole(['admin', 'staff_maintenance']),
+            'bolehEdit' => auth()->user()->hasRole('admin'),
         ]);
     }
 
@@ -137,8 +139,11 @@ class ControlStrokeDiesController extends Controller
         return response()->file(Storage::disk('local')->path($diesPreventiveLog->checksheet_path));
     }
 
+    /** Admin-only. */
     public function schedulePdf()
     {
+        abort_if(! auth()->user()->hasRole('admin'), 403);
+
         $bulan = now()->timezone('Asia/Jakarta')->startOfMonth();
         $schedule = PreventiveSchedule::where('bulan', $bulan->toDateString())
             ->where('jenis', 'dies')
@@ -170,7 +175,7 @@ class ControlStrokeDiesController extends Controller
 
     public function updateScheduleItem(PreventiveScheduleItem $item, Request $request, PreventiveScheduleService $preventiveSvc)
     {
-        abort_if(! auth()->user()->hasRole(['admin', 'staff_maintenance']), 403);
+        abort_if(! auth()->user()->hasRole('admin'), 403);
         abort_unless(Schema::hasColumn('preventive_schedule_items', 'is_manual_override'), 503, 'Fitur belum tersedia, migrasi belum jalan.');
 
         $item->loadMissing('schedule');
@@ -210,7 +215,7 @@ class ControlStrokeDiesController extends Controller
 
     public function resetScheduleItem(PreventiveScheduleItem $item)
     {
-        abort_if(! auth()->user()->hasRole(['admin', 'staff_maintenance']), 403);
+        abort_if(! auth()->user()->hasRole('admin'), 403);
         abort_unless(Schema::hasColumn('preventive_schedule_items', 'is_manual_override'), 503, 'Fitur belum tersedia, migrasi belum jalan.');
 
         $item->loadMissing('schedule');
