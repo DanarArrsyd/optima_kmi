@@ -1,18 +1,30 @@
 @extends('layouts.app')
 @section('title', 'Edit Jadwal Preventive Dies')
+{{-- erp-flush + erp-ws — WAJIB buat halaman yang punya tabel lebar (banyak kolom
+     tanggal). Tanpa ini, tabel lebar bikin SELURUH HALAMAN ikut geser horizontal
+     (topbar ikutan), bukan cuma tabelnya — #main.erp-flush ngunci overflow:hidden,
+     cuma .erp-scroll di dalamnya yang boleh scroll. Lihat memory
+     feedback_sticky_header_scroll_wrapper. --}}
+@section('main_mod', 'erp-flush')
 
 @section('content')
-<div class="page-header">
-    <h1 class="page-title"><i class="bi bi-calendar-week"></i>Edit Jadwal Preventive Dies</h1>
-    <div class="d-flex gap-2">
-        <a href="{{ route('maintenance.control-stroke-dies.schedule-pdf') }}" target="_blank" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-file-earmark-pdf me-1"></i>Schedule PDF
+<div class="erp-ws">
+    <div class="erp-tb">
+        <span style="font-weight:600"><i class="bi bi-calendar-week me-1"></i>Edit Jadwal Preventive Dies</span>
+        <span class="erp-tb-sp"></span>
+        <a href="{{ route('maintenance.control-stroke-dies.schedule-pdf') }}" target="_blank" class="erp-tb-btn">
+            <i class="bi bi-file-earmark-pdf"></i>Schedule PDF
         </a>
-        <a href="{{ route('maintenance.control-stroke-dies') }}" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-arrow-left me-1"></i>Kembali
+        <a href="{{ route('maintenance.control-stroke-dies') }}" class="erp-tb-btn">
+            <i class="bi bi-arrow-left"></i>Kembali
         </a>
     </div>
+    <div class="erp-ws-body">
+        <div class="erp-ws-main">
+            <div class="erp-scroll erp-scroll-pad">
+                @include('maintenance.partials.preventive-schedule-grid', ['jenis' => 'dies', 'schedule' => $schedule, 'bulan' => $bulan, 'bolehEdit' => $bolehEdit])
+            </div>
+        </div>
+    </div>
 </div>
-
-@include('maintenance.partials.preventive-schedule-grid', ['jenis' => 'dies', 'schedule' => $schedule, 'bulan' => $bulan, 'bolehEdit' => $bolehEdit])
 @endsection
