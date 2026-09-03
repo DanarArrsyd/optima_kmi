@@ -1,8 +1,29 @@
+<style>
+    .psg-table th, .psg-table td { text-align: center; white-space: nowrap; font-size: 11px; overflow: hidden; }
+    .psg-col-nama, .psg-table td:nth-child(2) { text-align: left; white-space: normal; }
+    .psg-libur { background: #fca5a5; }
+    .psg-plan { background: #facc15; cursor: pointer; }
+    .psg-cell:not(.psg-libur):not(.psg-readonly) { cursor: pointer; }
+    .psg-cell:hover:not(.psg-libur):not(.psg-readonly) { outline: 2px solid #111827; outline-offset: -2px; }
+    .psg-locked td { background: #fef9c3; }
+</style>
+
 @php
     $jumlahHari = $bulan->daysInMonth;
     $namaBulan = mb_strtoupper($bulan->locale('id')->translatedFormat('F Y'));
     $labelKode = $jenis === 'mesin' ? 'ID MESIN' : 'ID DIES';
     $labelNama = $jenis === 'mesin' ? 'NAMA MESIN' : 'NAMA PART/DIES';
+    // table-layout:fixed + lebar kolom label EKSPLISIT (persen) — tanpa ini lebar
+    // kolom tanggal ikut-ikutan beda tiap kolom (tombol "→" bikin kolom itu lebih
+    // lebar dari kolom kosong sebelahnya). Sisa lebar dibagi RATA ke kolom tanggal,
+    // pola sama persis preventive-schedule-pdf.blade.php.
+    $lebarNo = 4;
+    $lebarNama = 13;
+    $lebarId = 6;
+    $lebarProses = 13;
+    $lebarPlan = 6;
+    $lebarLabel = $lebarNo + $lebarNama + $lebarId + ($jenis === 'dies' ? $lebarProses : 0) + $lebarPlan;
+    $lebarHari = round((100 - $lebarLabel) / $jumlahHari, 3);
 
     $tanggalValid = collect(range(1, $jumlahHari))
         ->map(fn ($d) => $bulan->copy()->day($d))
@@ -23,19 +44,19 @@
             <p class="text-muted p-3 mb-0">Belum ada jadwal untuk {{ $namaBulan }}. Klik "Generate Ulang" di toolbar atas.</p>
         @else
             <div style="overflow-x:auto">
-                <table class="erp-table psg-table">
+                <table class="erp-table psg-table" style="table-layout:fixed;width:100%">
                     <thead>
                         <tr>
-                            <th>No</th>
-                            <th>{{ $labelNama }}</th>
-                            <th>{{ $labelKode }}</th>
+                            <th style="width:{{ $lebarNo }}%">No</th>
+                            <th style="width:{{ $lebarNama }}%" class="psg-col-nama">{{ $labelNama }}</th>
+                            <th style="width:{{ $lebarId }}%">{{ $labelKode }}</th>
                             @if ($jenis === 'dies')
-                                <th>Proses</th>
+                                <th style="width:{{ $lebarProses }}%">Proses</th>
                             @endif
-                            <th>PLAN</th>
+                            <th style="width:{{ $lebarPlan }}%">PLAN</th>
                             @for ($d = 1; $d <= $jumlahHari; $d++)
                                 @php $tgl = $bulan->copy()->day($d); @endphp
-                                <th class="{{ \App\Services\KalenderKerjaService::hariKerja($tgl) ? '' : 'psg-libur' }}">{{ $d }}</th>
+                                <th style="width:{{ $lebarHari }}%" class="{{ \App\Services\KalenderKerjaService::hariKerja($tgl) ? '' : 'psg-libur' }}">{{ $d }}</th>
                             @endfor
                         </tr>
                     </thead>

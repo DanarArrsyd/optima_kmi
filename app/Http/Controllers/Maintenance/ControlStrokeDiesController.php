@@ -23,19 +23,27 @@ class ControlStrokeDiesController extends Controller
 
     public function index()
     {
+        // Opsi filter (part/customer/proses) dibangun di klien dari data yang dimuat — lihat
+        // initFilters() di view. Controller cukup mengirim threshold.
+        return view('maintenance.control-stroke-dies', [
+            'threshold' => MaintenanceDiesDashboardService::STROKE_THRESHOLD,
+        ]);
+    }
+
+    /** Halaman terpisah — grid kalender jadwal preventive (edit manual tanggal PLAN). */
+    public function scheduleEdit()
+    {
         $bulan = now()->timezone('Asia/Jakarta')->startOfMonth();
         $schedule = PreventiveSchedule::where('bulan', $bulan->toDateString())
             ->where('jenis', 'dies')
             ->with('items.partProses.part')
             ->first();
 
-        // Opsi filter (part/customer/proses) dibangun di klien dari data yang dimuat — lihat
-        // initFilters() di view. Controller cukup mengirim threshold.
-        return view('maintenance.control-stroke-dies', [
-            'threshold' => MaintenanceDiesDashboardService::STROKE_THRESHOLD,
-            'jadwalSchedule' => $schedule,
-            'jadwalBulan' => $bulan,
-            'bolehEditJadwal' => auth()->user()->hasRole(['admin', 'staff_maintenance']),
+        return view('maintenance.control-stroke-dies-schedule', [
+            'jenis' => 'dies',
+            'schedule' => $schedule,
+            'bulan' => $bulan,
+            'bolehEdit' => auth()->user()->hasRole(['admin', 'staff_maintenance']),
         ]);
     }
 
