@@ -232,11 +232,7 @@ function qcPartSelectorEdit(initText, initProsesId) {
     return {
         ...taField(taParts, initText, initProsesId ? (partsData.find(p => p.proses && p.proses.id == initProsesId)?.id ?? null) : null),
         proses: initProsesQcEdit,
-        get filtered() {
-            if (!this.query.trim()) return this.items.slice(0, 60);
-            const q = this.query.toLowerCase();
-            return this.items.filter(i => i.t.toLowerCase().includes(q)).slice(0, 60);
-        },
+        get filtered() { return taFieldFiltered(this.query, this.items); },
         pick(item) {
             this.query  = item.t; this.val = item.v; this.open = false; this.idx = -1;
             const part  = partsData.find(p => p.id == item.v);

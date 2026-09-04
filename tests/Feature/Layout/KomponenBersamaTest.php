@@ -20,6 +20,7 @@ class KomponenBersamaTest extends TestCase
     /** Komponen yang definisinya dikunci di layouts/app.blade.php. */
     private const KOMPONEN = [
         'function taField(',
+        'function taFieldFiltered(',
         'function filterSearchComp(',
         'function partGroupComp(',
         'function erpToggleDock(',
