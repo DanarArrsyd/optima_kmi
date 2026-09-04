@@ -14,6 +14,7 @@ use App\Services\SphRecommendationService;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Facades\Excel;
@@ -125,9 +126,24 @@ class PartController extends Controller
 
     public function store(StoreMasterPartRequest $request)
     {
-        MasterPart::create($request->validated());
+        $data = $request->validated();
+        $prosesRows = $data['proses'] ?? [];
+        unset($data['proses']);
 
-        return redirect()->route('master.part.index')->with('success', 'Part berhasil ditambahkan. Tambahkan proses di halaman edit.');
+        $part = DB::transaction(function () use ($data, $prosesRows) {
+            $part = MasterPart::create($data);
+            foreach ($prosesRows as $row) {
+                $part->proses()->create($row);
+            }
+
+            return $part;
+        });
+
+        $pesan = count($prosesRows) > 0
+            ? 'Part "'.$part->part_no.'" berhasil ditambahkan bersama '.count($prosesRows).' proses.'
+            : 'Part "'.$part->part_no.'" berhasil ditambahkan. Tambahkan proses di halaman ini.';
+
+        return redirect()->route('master.part.edit', $part)->with('success', $pesan);
     }
 
     public function edit(MasterPart $part)
