@@ -32,6 +32,7 @@ $filterActive = $partId || $filterProsesId || $filterPic !== '' || $filterStatus
 @php
     $filterActive = $partId > 0 || $dateFrom !== date('Y-m-01') || $dateTo !== date('Y-m-d');
     $isAdmin      = auth()->user()->hasRole('admin');
+    $bolehTulis   = auth()->user()->hasRole(['admin', 'staff_maintenance']);
 @endphp
 
 <style>
@@ -47,9 +48,11 @@ $filterActive = $partId || $filterProsesId || $filterPic !== '' || $filterStatus
 
 {{-- ── Strip toolbar ─────────────────────────────────────────── --}}
 <div class="erp-tb">
+    @if($bolehTulis)
     <a href="{{ route('maintenance.breakdown-dies.create') }}" class="erp-tb-btn is-new">
         <i class="bi bi-plus-lg"></i>Input Baru
     </a>
+    @endif
 
     <button type="button" class="erp-tb-btn" :class="filterOpen ? 'is-on' : ''"
             @click="filterOpen = !filterOpen">
@@ -57,10 +60,12 @@ $filterActive = $partId || $filterProsesId || $filterPic !== '' || $filterStatus
         @if($filterActive)<span aria-hidden="true">&bull;</span>@endif
     </button>
 
+    @if($bolehTulis)
     <button type="button" class="erp-tb-btn"
             onclick="document.getElementById('import-dies-panel').classList.toggle('d-none')">
         <i class="bi bi-file-earmark-arrow-up"></i>Import Excel
     </button>
+    @endif
     <button type="button" class="erp-tb-btn"
             onclick="document.getElementById('exportDiesPanel').classList.toggle('d-none')">
         <i class="bi bi-file-earmark-excel"></i>Export Excel
@@ -227,6 +232,7 @@ $filterActive = $partId || $filterProsesId || $filterPic !== '' || $filterStatus
 />
 
 {{-- Import Panel --}}
+@if($bolehTulis)
 <div id="import-breakdown-dies-panel" class="erp-panel mb-3 {{ session('import_errors') !== null || session('import_success') ? '' : 'd-none' }}">
     <div class="erp-panel-header" style="display:flex;justify-content:space-between;align-items:center">
         <span><i class="bi bi-file-earmark-arrow-up me-1"></i>Import Breakdown Dies dari Excel</span>
@@ -252,6 +258,7 @@ $filterActive = $partId || $filterProsesId || $filterPic !== '' || $filterStatus
         </form>
     </div>
 </div>
+@endif
 
 @if(session('import_errors') && count(session('import_errors')) > 0)
     <div class="alert alert-warning alert-dismissible fade show mb-3">

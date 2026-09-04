@@ -16,7 +16,7 @@ class StoreBreakdownDiesBatchRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->hasRole(['admin', 'staff_maintenance', 'manager']) ?? false;
+        return $this->user()?->hasRole(['admin', 'staff_maintenance']) ?? false;
     }
 
     public function rules(): array

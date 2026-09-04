@@ -322,6 +322,28 @@ class BreakdownMesinBatchTest extends TestCase
         $this->assertSame(0, TransaksiBreakdownMesin::count());
     }
 
+    /**
+     * Manager cuma boleh lihat hasil (index, export, MTTR/MTBF/Availability),
+     * nol input data apa pun — halaman index tetap bisa dibuka (route middleware
+     * masih mengizinkan lewat), tapi create/batch/import ditolak di sini.
+     */
+    public function test_manager_tidak_bisa_menyimpan(): void
+    {
+        $manager = User::factory()->create(['role' => 'manager']);
+
+        $this->actingAs($manager)->post(route('maintenance.breakdown.batch'), ['rows' => [$this->baris()]])
+            ->assertForbidden();
+
+        $this->assertSame(0, TransaksiBreakdownMesin::count());
+    }
+
+    public function test_manager_tidak_bisa_buka_halaman_tambah(): void
+    {
+        $manager = User::factory()->create(['role' => 'manager']);
+
+        $this->actingAs($manager)->get(route('maintenance.breakdown.create'))->assertForbidden();
+    }
+
     public function test_rows_json_menyimpan_baris(): void
     {
         $this->kirimJson([$this->baris()])->assertRedirect(route('maintenance.breakdown.index'));
