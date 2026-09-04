@@ -2,7 +2,10 @@
 
 namespace App\Http\Requests;
 
+use App\Models\MasterPart;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Validation\Rule;
 
 class StoreMasterPartRequest extends FormRequest
@@ -32,5 +35,36 @@ class StoreMasterPartRequest extends FormRequest
             'part_name' => 'required|string|max:200',
             'tanggal_instalasi' => 'nullable|date|after_or_equal:1990-01-01|before_or_equal:tomorrow',
         ];
+    }
+
+    /**
+     * Kalau gagalnya gara-gara part_no+part_name PERSIS sama kayak part yang
+     * sudah ada (bukan konflik LH/RH), user hampir pasti bukan mau bikin part
+     * baru — dia mau menambah proses ke part yang sudah ada itu, tapi form
+     * Tambah Part tidak punya jalan ke sana. Dulu berhenti di error "sudah
+     * dipakai" tanpa arah; sekarang langsung diantar ke halaman edit part
+     * tersebut. Hanya berlaku saat create (route('part') kosong) — saat edit,
+     * konflik part_no.unique berarti bentrok dengan part LAIN yang sungguhan,
+     * tetap harus jadi error biasa.
+     */
+    protected function failedValidation(Validator $validator)
+    {
+        if (! $this->route('part') && $validator->errors()->has('part_no')) {
+            $existing = MasterPart::where('part_no', $this->input('part_no'))
+                ->where('part_name', $this->input('part_name'))
+                ->whereNull('deleted_at')
+                ->first();
+
+            if ($existing) {
+                throw new HttpResponseException(
+                    redirect()->route('master.part.edit', $existing)->with(
+                        'success',
+                        "Part \"{$existing->part_no}\" — \"{$existing->part_name}\" sudah ada. Tambahkan proses barunya di sini."
+                    )
+                );
+            }
+        }
+
+        parent::failedValidation($validator);
     }
 }
