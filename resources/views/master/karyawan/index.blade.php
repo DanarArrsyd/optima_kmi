@@ -97,27 +97,15 @@
     </div>
 </div>
 
-{{-- ── FILTER TABS ──────────────────────────────────────────────── --}}
-<div style="display:flex;gap:6px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
-    <a href="{{ route('master.karyawan.index', ['filter'=>'aktif']) }}"
-       class="btn btn-sm {{ $filter==='aktif' ? 'btn-success' : 'btn-outline-secondary' }}">
-        <i class="bi bi-person-check me-1"></i>Aktif
-    </a>
-    <a href="{{ route('master.karyawan.index', ['filter'=>'nonaktif']) }}"
-       class="btn btn-sm {{ $filter==='nonaktif' ? 'btn-secondary' : 'btn-outline-secondary' }}">
-        <i class="bi bi-person-slash me-1"></i>Non-Aktif
-    </a>
-    <a href="{{ route('master.karyawan.index', ['filter'=>'semua']) }}"
-       class="btn btn-sm {{ $filter==='semua' ? 'btn-dark' : 'btn-outline-secondary' }}">
-        <i class="bi bi-people me-1"></i>Semua
-    </a>
-    <span style="font-size:0.78rem;color:#6b7280;margin-left:4px">
-        {{ $karyawan->total() }} karyawan
-        @if($filter==='aktif') aktif
-        @elseif($filter==='nonaktif') non-aktif
-        @else (semua)
-        @endif
-    </span>
+{{-- Status Aktif/Non-Aktif/Semua disaring lewat dropdown "Semua Status" di
+     dock Filter, bukan tombol sendiri di sini — satu kontrol per fungsi,
+     nggak dobel sama select yang sudah ada. --}}
+<div style="font-size:0.78rem;color:#6b7280;margin-bottom:10px">
+    {{ $karyawan->total() }} karyawan
+    @if($filter==='aktif') aktif
+    @elseif($filter==='nonaktif') non-aktif
+    @else (semua)
+    @endif
 </div>
 
 {{-- Kepala panel dibuang: judul sudah di topbar, jumlah sudah di status bar.
