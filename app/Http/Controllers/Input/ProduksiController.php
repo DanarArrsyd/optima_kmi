@@ -246,7 +246,29 @@ class ProduksiController extends Controller
             $produksi->tanggal_produksi->format('Y-m-d')
         );
 
-        return redirect()->route('input.produksi.index')->with('success', 'LHP Produksi berhasil diupdate.');
+        return redirect()->route('input.produksi.index', $this->backQueryParams($request))
+            ->with('success', 'LHP Produksi berhasil diupdate.');
+    }
+
+    /**
+     * Halaman Edit adalah navigasi terpisah dari index (beda dari note/destroy
+     * yang formnya nempel di index sendiri, jadi back() saja cukup) — begitu
+     * submit selesai di sini, index tidak tahu lagi rentang tanggal/filter apa
+     * yang sedang dilihat user sebelum klik Edit. `back_query` dibawa sebagai
+     * hidden field dari query string index saat link Edit di-klik, supaya user
+     * yang lagi meriksa LHP bulan Juli tidak dilempar balik ke default bulan
+     * berjalan (September) begitu submit — dia balik ke Juli lagi.
+     */
+    private function backQueryParams(Request $request): array
+    {
+        parse_str((string) $request->input('back_query', ''), $params);
+
+        return collect($params)->only([
+            'date_from', 'date_to', 'q', 'mesin_ids',
+            'filter_customer', 'filter_part_id', 'filter_karyawan_id',
+            'filter_proses_id', 'filter_jenis_ng_id',
+            'pakai_tanggal', 'filter_apply', 'only_open_notes', 'page',
+        ])->toArray();
     }
 
     public function import(Request $request)
@@ -314,7 +336,9 @@ class ProduksiController extends Controller
         }
         $msg = $request->input('staff_note') ? 'Note berhasil dikirim ke admin.' : 'Note berhasil dihapus.';
 
-        return redirect()->route('input.produksi.index')->with('success', $msg);
+        // Form note dikirim langsung dari halaman index (drawer) — back() balik
+        // ke URL persis itu (rentang tanggal/filter ikut), bukan reset ke default.
+        return back(fallback: route('input.produksi.index'))->with('success', $msg);
     }
 
     public function resolveNote(Request $request)
@@ -340,7 +364,7 @@ class ProduksiController extends Controller
         } catch (\Throwable) { /* notification failure must not break main flow */
         }
 
-        return redirect()->route('input.produksi.index')->with('success', 'Note ditandai sudah ditangani.');
+        return back(fallback: route('input.produksi.index'))->with('success', 'Note ditandai sudah ditangani.');
     }
 
     public function destroy(TransaksiProduksi $produksi)
@@ -350,6 +374,7 @@ class ProduksiController extends Controller
         }
         $produksi->delete();
 
-        return redirect()->route('input.produksi.index')->with('success', 'Data berhasil dihapus.');
+        // Form hapus juga dikirim langsung dari halaman index (baris tabel).
+        return back(fallback: route('input.produksi.index'))->with('success', 'Data berhasil dihapus.');
     }
 }

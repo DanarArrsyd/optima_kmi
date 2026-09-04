@@ -414,7 +414,7 @@ $filterActive = ($search ?? '') !== '' || $filterKarId || $filterMesinId || $fil
                     <td>
                         @if(auth()->user()->hasRole('admin'))
                         <div class="action-btns">
-                            <a href="{{ route('input.dandori.edit', $r) }}" class="btn btn-warning btn-sm">Edit</a>
+                            <a href="{{ route('input.dandori.edit', $r) }}?back_query={{ urlencode(http_build_query(request()->query())) }}" class="btn btn-warning btn-sm">Edit</a>
                             <form method="POST" action="{{ route('input.dandori.destroy', $r) }}"
                                   onsubmit="return confirm('Hapus baris loss time ini?')">
                                 @csrf @method('DELETE')

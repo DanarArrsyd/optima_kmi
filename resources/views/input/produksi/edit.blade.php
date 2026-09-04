@@ -75,6 +75,10 @@ $initProsesListPhp = $initPart
     <div class="erp-panel-body">
         <form method="POST" action="{{ route('input.produksi.update', $produksi) }}">
             @csrf @method('PUT')
+            {{-- Dibawa dari query string link Edit di index — dipakai controller
+                 buat balik ke rentang tanggal/filter yang sama setelah simpan,
+                 bukan reset ke default bulan berjalan. --}}
+            <input type="hidden" name="back_query" value="{{ request()->query('back_query', '') }}">
             <div class="row g-3">
 
                 {{-- Tanggal --}}

@@ -488,7 +488,7 @@ $lastUrl = $myLastRecord
                         @php $note = $t->staff_note ?? null; @endphp
                         @if(auth()->user()->hasRole('admin'))
                         <div class="action-btns">
-                            <a href="{{ route('input.produksi.edit', $t) }}" class="btn btn-warning btn-sm">Edit</a>
+                            <a href="{{ route('input.produksi.edit', $t) }}?back_query={{ urlencode(http_build_query(request()->query())) }}" class="btn btn-warning btn-sm">Edit</a>
                             <form method="POST" action="{{ route('input.produksi.destroy', $t) }}"
                                   onsubmit="return confirm('Hapus data ini?')">
                                 @csrf @method('DELETE')

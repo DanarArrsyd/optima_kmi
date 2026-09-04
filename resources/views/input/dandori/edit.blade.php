@@ -25,6 +25,10 @@
 
     <form method="POST" action="{{ route('input.dandori.update', $dandori) }}" style="padding:24px">
         @csrf @method('PUT')
+        {{-- Dibawa dari query string link Edit di index — dipakai controller
+             buat balik ke rentang tanggal/filter yang sama setelah simpan,
+             bukan reset ke default bulan berjalan. --}}
+        <input type="hidden" name="back_query" value="{{ request()->query('back_query', '') }}">
 
         <div class="row g-3">
 
