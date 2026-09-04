@@ -53,7 +53,7 @@ class ProduksiImport implements ToCollection, WithHeadingRow
 
                 /* ── Shift ─────────────────────────────────── */
                 $namaShift = trim((string) ($row['nama_shift'] ?? ''));
-                $shift = MasterShift::whereRaw('LOWER(TRIM(nama_shift)) = ?', [strtolower($namaShift)])->first();
+                $shift = $this->resolveShift($namaShift);
                 if (! $shift) {
                     $this->errors[] = "Baris {$rowNum}: Shift \"{$namaShift}\" tidak ditemukan di master Shift.";
 
@@ -62,9 +62,7 @@ class ProduksiImport implements ToCollection, WithHeadingRow
 
                 /* ── Operator ──────────────────────────────── */
                 $namaOp = trim((string) ($row['nama_operator'] ?? ''));
-                $karyawan = MasterKaryawan::where('departemen', 'Produksi')
-                    ->whereRaw('LOWER(TRIM(nama_karyawan)) = ?', [strtolower($namaOp)])
-                    ->first();
+                $karyawan = $this->resolveOperator($namaOp);
                 if (! $karyawan) {
                     $this->errors[] = "Baris {$rowNum}: Operator \"{$namaOp}\" tidak ditemukan (periksa departemen = Produksi).";
 
@@ -73,7 +71,7 @@ class ProduksiImport implements ToCollection, WithHeadingRow
 
                 /* ── Mesin ─────────────────────────────────── */
                 $idMesin = trim((string) ($row['id_mesin'] ?? ''));
-                $mesin = MasterMesin::whereRaw('LOWER(TRIM(id_mesin)) = ?', [strtolower($idMesin)])->first();
+                $mesin = $this->resolveMesin($idMesin);
                 if (! $mesin) {
                     $this->errors[] = "Baris {$rowNum}: Mesin \"{$idMesin}\" tidak ditemukan di master Mesin.";
 
@@ -82,7 +80,7 @@ class ProduksiImport implements ToCollection, WithHeadingRow
 
                 /* ── Part ──────────────────────────────────── */
                 $partNo = trim((string) ($row['part_no'] ?? ''));
-                $part = MasterPart::whereRaw('LOWER(TRIM(part_no)) = ?', [strtolower($partNo)])->first();
+                $part = $this->resolvePart($partNo);
                 if (! $part) {
                     $this->errors[] = "Baris {$rowNum}: Part No \"{$partNo}\" tidak ditemukan di master Part.";
 
@@ -91,9 +89,7 @@ class ProduksiImport implements ToCollection, WithHeadingRow
 
                 /* ── Proses ────────────────────────────────── */
                 $idProses = trim((string) ($row['id_proses'] ?? ''));
-                $partProses = MasterPartProses::where('id_part', $part->id)
-                    ->where('id_proses', $idProses)
-                    ->first();
+                $partProses = $this->resolvePartProses($part->id, $idProses);
                 if (! $partProses) {
                     $this->errors[] = "Baris {$rowNum}: Proses \"{$idProses}\" untuk Part No \"{$partNo}\" tidak ditemukan.";
 
@@ -134,7 +130,7 @@ class ProduksiImport implements ToCollection, WithHeadingRow
                         continue;
                     }
 
-                    $jenisNg = MasterJenisNg::whereRaw('LOWER(TRIM(kode)) = ?', [strtolower($kodeNg)])->first();
+                    $jenisNg = $this->resolveJenisNg($kodeNg);
 
                     if (! $jenisNg) {
                         $this->errors[] = "Baris {$rowNum}: Jenis NG \"{$kodeNg}\" tidak ditemukan di master Jenis NG.";
@@ -178,5 +174,41 @@ class ProduksiImport implements ToCollection, WithHeadingRow
                 $this->errors[] = "Baris {$rowNum}: Error tidak terduga — ".$e->getMessage();
             }
         }
+    }
+
+    /* ── Lookup helpers ──────────────────────────────────────────────── */
+
+    private function resolveShift(string $nama): ?MasterShift
+    {
+        return MasterShift::whereRaw('LOWER(TRIM(nama_shift)) = ?', [strtolower($nama)])->first();
+    }
+
+    private function resolveOperator(string $nama): ?MasterKaryawan
+    {
+        return MasterKaryawan::where('departemen', 'Produksi')
+            ->whereRaw('LOWER(TRIM(nama_karyawan)) = ?', [strtolower($nama)])
+            ->first();
+    }
+
+    private function resolveMesin(string $idMesin): ?MasterMesin
+    {
+        return MasterMesin::whereRaw('LOWER(TRIM(id_mesin)) = ?', [strtolower($idMesin)])->first();
+    }
+
+    private function resolvePart(string $partNo): ?MasterPart
+    {
+        return MasterPart::whereRaw('LOWER(TRIM(part_no)) = ?', [strtolower($partNo)])->first();
+    }
+
+    private function resolvePartProses(int $idPart, string $idProses): ?MasterPartProses
+    {
+        return MasterPartProses::where('id_part', $idPart)
+            ->where('id_proses', $idProses)
+            ->first();
+    }
+
+    private function resolveJenisNg(string $kode): ?MasterJenisNg
+    {
+        return MasterJenisNg::whereRaw('LOWER(TRIM(kode)) = ?', [strtolower($kode)])->first();
     }
 }

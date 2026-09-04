@@ -57,7 +57,7 @@ class QcImport implements ToCollection, WithHeadingRow
 
                 /* ── Shift ─────────────────────────────────── */
                 $namaShift = trim((string) ($row['nama_shift'] ?? ''));
-                $shift = MasterShift::whereRaw('LOWER(TRIM(nama_shift)) = ?', [strtolower($namaShift)])->first();
+                $shift = $this->resolveShift($namaShift);
                 if (! $shift) {
                     $this->errors[] = "Baris {$rowNum}: Shift \"{$namaShift}\" tidak ditemukan.";
 
@@ -66,9 +66,7 @@ class QcImport implements ToCollection, WithHeadingRow
 
                 /* ── QC Inspector ──────────────────────────── */
                 $namaInsp = trim((string) ($row['nama_inspector'] ?? ''));
-                $karyawan = MasterKaryawan::where('departemen', 'QC')
-                    ->whereRaw('LOWER(TRIM(nama_karyawan)) = ?', [strtolower($namaInsp)])
-                    ->first();
+                $karyawan = $this->resolveInspector($namaInsp);
                 if (! $karyawan) {
                     $this->errors[] = "Baris {$rowNum}: Inspector \"{$namaInsp}\" tidak ditemukan (periksa departemen = QC).";
 
@@ -77,17 +75,14 @@ class QcImport implements ToCollection, WithHeadingRow
 
                 /* ── Part — auto-select finish-good proses ─── */
                 $partNo = trim((string) ($row['part_no'] ?? ''));
-                $part = MasterPart::whereRaw('LOWER(TRIM(part_no)) = ?', [strtolower($partNo)])->first();
+                $part = $this->resolvePart($partNo);
                 if (! $part) {
                     $this->errors[] = "Baris {$rowNum}: Part No \"{$partNo}\" tidak ditemukan.";
 
                     continue;
                 }
 
-                /* Finish-good = proses dengan id_proses tertinggi */
-                $partProses = MasterPartProses::where('id_part', $part->id)
-                    ->orderByDesc('id_proses')
-                    ->first();
+                $partProses = $this->resolveFinishGoodProses($part->id);
                 if (! $partProses) {
                     $this->errors[] = "Baris {$rowNum}: Part \"{$partNo}\" belum memiliki proses.";
 
@@ -123,7 +118,7 @@ class QcImport implements ToCollection, WithHeadingRow
                         continue;
                     }
 
-                    $jenisNg = MasterJenisNg::whereRaw('LOWER(TRIM(kode)) = ?', [strtolower($kodeNg)])->first();
+                    $jenisNg = $this->resolveJenisNg($kodeNg);
                     if (! $jenisNg) {
                         $this->errors[] = "Baris {$rowNum}: Jenis NG \"{$kodeNg}\" tidak ditemukan di master Jenis NG.";
 
@@ -166,5 +161,37 @@ class QcImport implements ToCollection, WithHeadingRow
                 $this->errors[] = "Baris {$rowNum}: Error tidak terduga — ".$e->getMessage();
             }
         }
+    }
+
+    /* ── Lookup helpers ──────────────────────────────────────────────── */
+
+    private function resolveShift(string $nama): ?MasterShift
+    {
+        return MasterShift::whereRaw('LOWER(TRIM(nama_shift)) = ?', [strtolower($nama)])->first();
+    }
+
+    private function resolveInspector(string $nama): ?MasterKaryawan
+    {
+        return MasterKaryawan::where('departemen', 'QC')
+            ->whereRaw('LOWER(TRIM(nama_karyawan)) = ?', [strtolower($nama)])
+            ->first();
+    }
+
+    private function resolvePart(string $partNo): ?MasterPart
+    {
+        return MasterPart::whereRaw('LOWER(TRIM(part_no)) = ?', [strtolower($partNo)])->first();
+    }
+
+    /** Finish-good = proses dengan id_proses tertinggi */
+    private function resolveFinishGoodProses(int $idPart): ?MasterPartProses
+    {
+        return MasterPartProses::where('id_part', $idPart)
+            ->orderByDesc('id_proses')
+            ->first();
+    }
+
+    private function resolveJenisNg(string $kode): ?MasterJenisNg
+    {
+        return MasterJenisNg::whereRaw('LOWER(TRIM(kode)) = ?', [strtolower($kode)])->first();
     }
 }
