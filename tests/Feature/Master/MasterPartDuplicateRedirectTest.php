@@ -53,7 +53,8 @@ class MasterPartDuplicateRedirectTest extends TestCase
             'customer' => 'TOYOTA',
         ]);
 
-        $response->assertRedirect(route('master.part.index'));
+        $baru = MasterPart::where('part_no', 'BT-091A')->where('part_name', 'BRACKET KANAN')->firstOrFail();
+        $response->assertRedirect(route('master.part.edit', $baru));
         $response->assertSessionDoesntHaveErrors();
         $this->assertSame(2, MasterPart::where('part_no', 'BT-091A')->count());
     }

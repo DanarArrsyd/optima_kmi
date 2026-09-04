@@ -34,6 +34,25 @@ class StoreMasterPartRequest extends FormRequest
             'customer' => 'nullable|string|max:100',
             'part_name' => 'required|string|max:200',
             'tanggal_instalasi' => 'nullable|date|after_or_equal:1990-01-01|before_or_equal:tomorrow',
+
+            // Proses opsional, diisi langsung di halaman Tambah Part alih-alih
+            // wajib lompat ke halaman edit dulu. `route('part')` null di create,
+            // jadi nol konflik dengan validasi unique id_proses per-part di
+            // StoreMasterPartProsesRequest (part-nya belum ada saat ini divalidasi).
+            'proses' => 'nullable|array',
+            'proses.*.id_proses' => 'required|string|max:10|distinct',
+            'proses.*.nama_proses' => 'required|string|max:100',
+            'proses.*.sph_standar_produksi' => 'required|numeric|min:0',
+            'proses.*.sph_standar_qc' => 'required|numeric|min:0',
+            'proses.*.std_trial_qc_menit' => 'required|integer|min:0',
+            'proses.*.std_setting_dies_menit' => 'required|integer|min:0',
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'proses.*.id_proses.distinct' => 'ID Proses tidak boleh sama antar baris.',
         ];
     }
 
