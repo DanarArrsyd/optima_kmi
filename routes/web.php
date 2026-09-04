@@ -69,6 +69,7 @@ Route::middleware('auth')->group(function () {
         Route::get('jenis-ng/import-template', [JenisNgController::class, 'importTemplate'])->name('jenis-ng.import-template');
         Route::resource('jenis-ng', JenisNgController::class)->only(['index', 'store', 'update', 'destroy']);
         // Sub-resource: proses per part
+        Route::get('part/{part}/proses/create',               [PartController::class, 'createProses'])->name('part.proses.create');
         Route::post('part/{part}/proses',                     [PartController::class, 'storeProses'])->name('part.proses.store');
         Route::delete('part/{part}/proses/{proses}',          [PartController::class, 'destroyProses'])->name('part.proses.destroy');
         Route::patch('part/{part}/proses/{proses}/upgrade-sph',    [PartController::class, 'upgradeSph'])->name('part.proses.upgrade-sph');
