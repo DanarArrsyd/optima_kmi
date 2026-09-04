@@ -6,108 +6,7 @@
 
 @section('content')
 
-<div x-data="{ drawerOpen: {{ $errors->any() ? 'true' : 'false' }}, filterOpen: false }">
-
-{{-- ── DRAWER BACKDROP ──────────────────────────────────────────── --}}
-<div x-show="drawerOpen"
-     x-cloak
-     @click="drawerOpen = false"
-     x-transition:enter="transition ease-out duration-200"
-     x-transition:enter-start="opacity-0"
-     x-transition:enter-end="opacity-100"
-     x-transition:leave="transition ease-in duration-150"
-     x-transition:leave-start="opacity-100"
-     x-transition:leave-end="opacity-0"
-     style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1040">
-</div>
-
-{{-- ── DRAWER PANEL ─────────────────────────────────────────────── --}}
-<div x-show="drawerOpen"
-     x-cloak
-     x-transition:enter="transition ease-out duration-250"
-     x-transition:enter-start="transform translate-x-full"
-     x-transition:enter-end="transform translate-x-0"
-     x-transition:leave="transition ease-in duration-200"
-     x-transition:leave-start="transform translate-x-0"
-     x-transition:leave-end="transform translate-x-full"
-     style="position:fixed;top:0;right:0;height:100dvh;width:440px;max-width:100vw;z-index:1050;">
-    <div style="display:flex;flex-direction:column;height:100%;background:#fff;box-shadow:-4px 0 24px rgba(0,0,0,.18)">
-
-    {{-- Header --}}
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:#111827;color:#fff;flex-shrink:0">
-        <div style="font-weight:700;font-size:0.95rem;letter-spacing:.02em">
-            <i class="bi bi-exclamation-triangle me-2"></i>Tambah Loss Time
-        </div>
-        <button type="button" @click="drawerOpen = false"
-                style="background:none;border:none;color:#fff;font-size:1.25rem;cursor:pointer;padding:0;line-height:1">
-            <i class="bi bi-x-lg"></i>
-        </button>
-    </div>
-
-    {{-- Body (scrollable) --}}
-    <div style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:24px;overscroll-behavior:contain">
-
-        @if($errors->any())
-        <div class="alert alert-danger mb-3" style="font-size:0.82rem">
-            <ul class="mb-0 ps-3">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
-        </div>
-        @endif
-
-        <form method="POST" action="{{ route('master.losstime.store') }}" novalidate>
-            @csrf
-            <div class="row g-3">
-
-                <div class="col-12">
-                    <label class="form-label" style="font-size:0.8rem">Kode <span class="text-danger">*</span></label>
-                    <input type="text" name="kode"
-                           class="form-control form-control-sm @error('kode') is-invalid @enderror"
-                           value="{{ old('kode') }}" placeholder="Contoh: BRD">
-                    @error('kode')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                </div>
-
-                <div class="col-12">
-                    <label class="form-label" style="font-size:0.8rem">Jenis Loss Time <span class="text-danger">*</span></label>
-                    <input type="text" name="jenis_losstime"
-                           class="form-control form-control-sm @error('jenis_losstime') is-invalid @enderror"
-                           value="{{ old('jenis_losstime') }}" placeholder="Nama jenis loss time">
-                    @error('jenis_losstime')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                </div>
-
-                <div class="col-12">
-                    <label class="form-label" style="font-size:0.8rem">
-                        Std Menit Default <span class="text-muted" style="font-weight:400">(opsional)</span>
-                    </label>
-                    <input type="number" name="std_menit_default"
-                           class="form-control form-control-sm @error('std_menit_default') is-invalid @enderror"
-                           value="{{ old('std_menit_default') }}" min="0" step="0.01" placeholder="Menit">
-                    @error('std_menit_default')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                    <div style="font-size:0.72rem;color:#6c757d;margin-top:4px">Kosongkan = full loss</div>
-                </div>
-
-                <div class="col-12">
-                    <label class="form-label" style="font-size:0.8rem">
-                        Std Menit Progressive <span class="text-muted" style="font-weight:400">(opsional)</span>
-                    </label>
-                    <input type="number" name="std_menit_progressive"
-                           class="form-control form-control-sm @error('std_menit_progressive') is-invalid @enderror"
-                           value="{{ old('std_menit_progressive') }}" min="0" step="0.01" placeholder="Menit">
-                    @error('std_menit_progressive')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                </div>
-
-            </div>
-
-            <div style="margin-top:20px;padding-top:16px;border-top:1px solid #e5e7eb;display:flex;gap:8px">
-                <button type="submit" class="btn btn-primary btn-sm" style="flex:1">
-                    <i class="bi bi-save me-1"></i>Simpan
-                </button>
-                <button type="button" @click="drawerOpen = false" class="btn btn-outline-secondary btn-sm">
-                    Batal
-                </button>
-            </div>
-        </form>
-    </div>{{-- /drawer body --}}
-    </div>{{-- /inner flex container --}}
-</div>{{-- /drawer panel --}}
+<div x-data="{ filterOpen: false }">
 
 {{-- ══ KONTEN HALAMAN ══════════════════════════════════════════ --}}
 
@@ -115,9 +14,9 @@
 <div class="erp-ws">
 
 <div class="erp-tb">
-    <button type="button" class="erp-tb-btn is-new" @click="drawerOpen = true">
+    <a href="{{ route('master.losstime.create') }}" class="erp-tb-btn is-new">
         <i class="bi bi-plus-lg"></i>Tambah
-    </button>
+    </a>
     <button type="button" class="erp-tb-btn" :class="filterOpen ? 'is-on' : ''" @click="filterOpen = !filterOpen">
         <i class="bi bi-funnel"></i>Filter @if($search !== '')<span aria-hidden="true">&bull;</span>@endif
     </button>

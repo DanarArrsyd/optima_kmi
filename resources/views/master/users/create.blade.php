@@ -36,18 +36,14 @@
                 <input type="password" name="password" class="form-control @error('password') is-invalid @enderror">
                 @error('password')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
+            {{-- Role tunggal di sini adalah sisa UI SEBELUM migrasi multi-role
+                 (PR #135) — StoreMasterUserRequest sekarang mewajibkan
+                 `roles[]` array, jadi field `role` lama ini nol pernah lolos
+                 validasi. Halaman ini sempat sama sekali nol bisa dipakai
+                 buat bikin user baru. Diganti partial yang sama dipakai
+                 drawer & edit.blade.php. --}}
             <div class="mb-3">
-                <label class="form-label">Role <span class="text-danger">*</span></label>
-                <select name="role" class="form-select @error('role') is-invalid @enderror">
-                    <option value="">-- Pilih Role --</option>
-                    <option value="admin" {{ old('role') === 'admin' ? 'selected' : '' }}>Admin</option>
-                    <option value="staff_produksi"    {{ old('role') === 'staff_produksi'    ? 'selected' : '' }}>Staff Produksi</option>
-                    <option value="staff_qc"          {{ old('role') === 'staff_qc'          ? 'selected' : '' }}>Staff QC</option>
-                    <option value="staff_maintenance" {{ old('role') === 'staff_maintenance' ? 'selected' : '' }}>Staff Maintenance</option>
-                    <option value="manager"           {{ old('role') === 'manager'           ? 'selected' : '' }}>Manager</option>
-                    <option value="guest"             {{ old('role') === 'guest'             ? 'selected' : '' }}>Guest (Read-Only)</option>
-                </select>
-                @error('role')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                @include('master.users.partials.roles-fields', ['selectedRoles' => old('roles', [])])
             </div>
             <div class="mb-4">
                 <label class="form-label">Tautkan ke Karyawan (opsional)</label>

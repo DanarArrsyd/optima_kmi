@@ -6,6 +6,11 @@
 
 @section('content')
 
+{{-- Tombol Filter di bawah butuh filterOpen — sebelumnya nol ada x-data
+     pembungkus sama sekali, jadi filterOpen undefined dan dock filter
+     nol pernah kebuka; klik tombolnya nol berefek apa pun. --}}
+<div x-data="{ filterOpen: false }">
+
 {{-- ══ RUANG KERJA ERP ══════════════════════════════════════════ --}}
 <div class="erp-ws">
 
@@ -205,6 +210,7 @@
     </div>
 </div>
 
+</div>{{-- /alpine outer scope --}}
 @endsection
 @push('scripts')
 <script>

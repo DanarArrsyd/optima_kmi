@@ -34,11 +34,17 @@ class ShiftController extends Controller
 
     public function store(StoreMasterShiftRequest $request)
     {
+        // 'dihitung_availability' sempat ketinggalan dari whitelist ini — checkbox-nya
+        // ada di form (drawer lama nol punya sama sekali, create.blade.php punya tapi
+        // percuma) dan StoreMasterShiftRequest sudah menormalkannya jadi boolean,
+        // tapi nol pernah ikut ke MasterShift::create() sama sekali. Kolom selalu
+        // jatuh ke default DB (true), berapa pun checkbox-nya dicentang.
         $shift = MasterShift::create($request->only([
             'nama_shift',
             'jam_start', 'jam_finish',
             'jam_start_jumat', 'jam_finish_jumat',
             'jam_start_sabtu', 'jam_finish_sabtu',
+            'dihitung_availability',
         ]));
 
         $this->syncIstirahat($shift, $request);
@@ -56,11 +62,14 @@ class ShiftController extends Controller
 
     public function update(StoreMasterShiftRequest $request, MasterShift $shift)
     {
+        // Sama seperti store() — 'dihitung_availability' ketinggalan dari whitelist,
+        // jadi mencentang/melepas centang di halaman edit nol pernah tersimpan.
         $shift->update($request->only([
             'nama_shift',
             'jam_start', 'jam_finish',
             'jam_start_jumat', 'jam_finish_jumat',
             'jam_start_sabtu', 'jam_finish_sabtu',
+            'dihitung_availability',
         ]));
 
         $this->syncIstirahat($shift, $request);
