@@ -2,6 +2,27 @@
 @section('title', 'Edit Dandori')
 
 @section('content')
+@php
+/* Data buat typeahead Part/Proses — bentuknya sama persis dengan dock filter
+   di index.blade.php (partGroupComp, komponen bersama di layouts/app.blade.php)
+   supaya nol menyimpang jadi implementasi ketiga. */
+$_partsForFilter = $parts->map(fn ($p) => [
+    'id' => $p->id, 'part_no' => $p->part_no, 'part_name' => $p->part_name, 'customer' => $p->customer,
+    'proses' => $p->proses->map(fn ($pr) => ['id' => $pr->id, 'label' => $pr->id_proses.' – '.$pr->nama_proses])->values(),
+])->values();
+$_partsTA = $_partsForFilter->map(fn ($x) => ['v' => $x['id'], 't' => $x['part_name'], 'sub' => $x['part_no'], 'pno' => $x['part_no']])->values();
+$_prosesTA = $parts->flatMap(fn ($p) => $p->proses)->unique('id')
+    ->map(fn ($pr) => ['v' => $pr->id, 't' => $pr->id_proses.' – '.$pr->nama_proses])->values();
+
+$_partIdInit = $dandori->partProses?->id_part ?: 0;
+$_partLabelInit = $dandori->partProses?->part
+    ? $dandori->partProses->part->part_no.' — '.$dandori->partProses->part->part_name
+    : '';
+$_prosesIdInit = old('id_part_proses', $dandori->id_part_proses) ?: 0;
+$_prosesLabelInit = $dandori->partProses
+    ? $dandori->partProses->id_proses.' — '.$dandori->partProses->nama_proses
+    : '';
+@endphp
 <div class="page-header">
     <h1 class="page-title"><i class="bi bi-pencil-square"></i>Edit Dandori</h1>
     <a href="{{ route('input.dandori.index') }}" class="btn btn-outline-secondary btn-sm">
@@ -82,35 +103,53 @@
                 @error('id_mesin')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
 
-            {{-- Part & Proses --}}
-            <div class="col-6">
-                <label class="form-label" style="font-size:0.92rem">Part <span class="text-danger">*</span></label>
-                <select id="editPartSelect" class="form-select" onchange="loadProses(this.value)">
-                    <option value="">— Pilih Part —</option>
-                    @foreach($parts as $p)
-                    <option value="{{ $p->id }}"
-                            {{ $dandori->partProses?->id_part == $p->id ? 'selected' : '' }}
-                            data-proses='@json($p->proses->map(fn($pr) => ["id"=>$pr->id,"label"=>"{$pr->id_proses} — {$pr->nama_proses}"]))'>
-                        {{ $p->part_no }} — {{ $p->part_name }}
-                    </option>
-                    @endforeach
-                </select>
-            </div>
+            {{-- Part & Proses — typeahead ketik-cari, komponen bersama (partGroupComp)
+                 yang sama dipakai dock filter di halaman index. Dulu <select> native
+                 nampilin RATUSAN part sekaligus (dropdown OS mentah, nol bisa dicari),
+                 sekarang ketik nama part buat nyaring. --}}
+            <div class="col-12">
+            <div class="row g-3" x-data="partGroupComp({{ $_partIdInit }}, '{{ addslashes($_partLabelInit) }}', {{ $_prosesIdInit }}, '{{ addslashes($_prosesLabelInit) }}')">
+                <div class="col-6">
+                    <label class="form-label" style="font-size:0.92rem">Part <span class="text-danger">*</span></label>
+                    <div @click.outside="partOpen=false" style="position:relative">
+                        <input type="text" x-model="partQuery" @focus="partOpen=true"
+                               @input="partOpen=true;partVal='';prosesVal='';prosesQuery=''"
+                               @keydown.escape="partOpen=false" placeholder="Ketik nama part..."
+                               class="form-control">
+                        <button type="button" x-show="partVal"
+                                @mousedown.prevent="partVal='';partQuery='';prosesVal='';prosesQuery=''"
+                                class="erp-clr">&times;</button>
+                        <div x-show="partOpen && filteredParts.length > 0" x-cloak class="erp-dd">
+                            <template x-for="item in filteredParts" :key="item.v">
+                                <div @mousedown.prevent="pickPart(item)" class="erp-dd-item" :title="item.t">
+                                    <span style="font-weight:700" x-text="item.t"></span>
+                                    <span class="sub" x-text="item.sub"></span>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                    <div style="font-size:0.78rem;color:#6b7280;margin-top:4px" x-show="partNo" x-text="'Part No: ' + partNo"></div>
+                </div>
 
-            <div class="col-6">
-                <label class="form-label" style="font-size:0.92rem">Proses <span class="text-danger">*</span></label>
-                <select name="id_part_proses" id="editProsesSelect"
-                        class="form-select @error('id_part_proses') is-invalid @enderror" required>
-                    <option value="">— Pilih Proses —</option>
-                    @if($dandori->partProses)
-                    @foreach($dandori->partProses->part?->proses ?? [] as $pr)
-                    <option value="{{ $pr->id }}" {{ $dandori->id_part_proses == $pr->id ? 'selected' : '' }}>
-                        {{ $pr->id_proses }} — {{ $pr->nama_proses }}
-                    </option>
-                    @endforeach
-                    @endif
-                </select>
-                @error('id_part_proses')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                <div class="col-6">
+                    <label class="form-label" style="font-size:0.92rem">Proses <span class="text-danger">*</span></label>
+                    <div @click.outside="prosesOpen=false" style="position:relative">
+                        <input type="hidden" name="id_part_proses" :value="prosesVal">
+                        <input type="text" x-model="prosesQuery" @focus="prosesOpen=true"
+                               @input="prosesOpen=true;prosesVal=''" @keydown.escape="prosesOpen=false"
+                               placeholder="Ketik / pilih proses..."
+                               class="form-control @error('id_part_proses') is-invalid @enderror">
+                        <button type="button" x-show="prosesVal" @mousedown.prevent="prosesVal='';prosesQuery=''" class="erp-clr">&times;</button>
+                        <div x-show="prosesOpen && filteredProses.length > 0" x-cloak class="erp-dd">
+                            <template x-for="item in filteredProses" :key="item.v">
+                                <div @mousedown.prevent="prosesVal=item.v;prosesQuery=item.t;prosesOpen=false"
+                                     class="erp-dd-item" x-text="item.t"></div>
+                            </template>
+                        </div>
+                    </div>
+                    @error('id_part_proses')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                </div>
+            </div>
             </div>
 
             {{-- Loss Time --}}
@@ -162,22 +201,13 @@
     </form>
 </div>
 
-<script>
-/* Cegah stored XSS: label proses berasal dari data master. */
-function escHtml(str) {
-    if (str === null || str === undefined) return "";
-    return String(str).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c]));
-}
-function loadProses(partId) {
-    const sel = document.getElementById('editPartSelect');
-    const opt = sel.options[sel.selectedIndex];
-    const prosesData = opt ? JSON.parse(opt.dataset.proses || '[]') : [];
-    const proseSel = document.getElementById('editProsesSelect');
-    proseSel.innerHTML = '<option value="">— Pilih Proses —</option>';
-    prosesData.forEach(p => {
-        // p.label berasal dari master_part_proses — escape agar markup tak dieksekusi.
-        proseSel.innerHTML += `<option value="${Number(p.id)}">${escHtml(p.label)}</option>`;
-    });
-}
-</script>
 @endsection
+
+@push('scripts')
+<script>
+/* Data buat typeahead Part/Proses (partGroupComp, definisi di layouts/app.blade.php). */
+const _partsTA = @json($_partsTA);
+const _partsFullData = @json($_partsForFilter);
+const _prosesTA = @json($_prosesTA);
+</script>
+@endpush
