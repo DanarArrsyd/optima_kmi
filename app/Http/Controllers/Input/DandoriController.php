@@ -96,6 +96,17 @@ class DandoriController extends Controller
             });
         }
 
+        /* Note staff→admin gampang kelewat kalau tenggelam di tengah baris
+         * per halaman lintas beberapa hari — badge di toolbar menghitung SEMUA
+         * yang belum di-resolve dalam cakupan filter saat ini (bukan cuma
+         * halaman ini), dan togglenya menyaring tabel supaya cuma baris itu
+         * yang tampil. */
+        $onlyOpenNotes = $request->boolean('only_open_notes');
+        $openNotesCount = (clone $q)->whereNotNull('staff_note')->whereNull('staff_note_resolved_at')->count();
+        if ($onlyOpenNotes) {
+            $q->whereNotNull('staff_note')->whereNull('staff_note_resolved_at');
+        }
+
         $highlightId = (int) $request->input('highlight_id', 0);
         if ($highlightId && ! $request->has('page')) {
             $target = TransaksiDandoriRincian::find($highlightId);
@@ -160,7 +171,8 @@ class DandoriController extends Controller
             'karyawan', 'mesin', 'parts', 'losstimes', 'customers',
             'filterKarId', 'filterMesinId', 'filterLosstimeId',
             'filterCustomer', 'filterPartId', 'filterProsesId', 'pakaiTanggal',
-            'myLastRecord', 'myLastOnPage'
+            'myLastRecord', 'myLastOnPage',
+            'onlyOpenNotes', 'openNotesCount'
         ));
     }
 

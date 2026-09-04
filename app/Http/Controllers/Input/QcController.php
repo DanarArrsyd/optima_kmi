@@ -85,6 +85,17 @@ class QcController extends Controller
             });
         }
 
+        /* Note staff→admin gampang kelewat kalau tenggelam di tengah 30 baris
+         * per halaman lintas beberapa hari — badge di toolbar menghitung SEMUA
+         * yang belum di-resolve dalam cakupan filter saat ini (bukan cuma
+         * halaman ini), dan togglenya menyaring tabel supaya cuma baris itu
+         * yang tampil. */
+        $onlyOpenNotes = $request->boolean('only_open_notes');
+        $openNotesCount = (clone $q)->whereNotNull('staff_note')->whereNull('staff_note_resolved_at')->count();
+        if ($onlyOpenNotes) {
+            $q->whereNotNull('staff_note')->whereNull('staff_note_resolved_at');
+        }
+
         $highlightId = (int) $request->input('highlight_id', 0);
         if ($highlightId && ! $request->has('page')) {
             $target = TransaksiQc::find($highlightId);
@@ -137,7 +148,8 @@ class QcController extends Controller
             'karyawan', 'parts', 'jenisNg', 'customers',
             'pakaiTanggal', 'filterKarId', 'filterJenisNgId',
             'filterCustomer', 'filterPartId', 'filterProsesId',
-            'myLastRecord', 'myLastOnPage'
+            'myLastRecord', 'myLastOnPage',
+            'onlyOpenNotes', 'openNotesCount'
         ));
     }
 
