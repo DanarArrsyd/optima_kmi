@@ -1,34 +1,40 @@
 <?php
-use Illuminate\Support\Facades\Route;
+
+use App\Http\Controllers\Admin\AnomalyController;
+use App\Http\Controllers\ChatbotController;
 use App\Http\Controllers\HomeController;
-use App\Http\Controllers\Master\KaryawanController;
-use App\Http\Controllers\Master\MesinController;
-use App\Http\Controllers\Master\PartController;
-use App\Http\Controllers\Master\LosstimeController;
-use App\Http\Controllers\Master\ShiftController;
-use App\Http\Controllers\Master\UserController;
-use App\Http\Controllers\Master\JenisNgController;
+use App\Http\Controllers\Input\DandoriController;
 use App\Http\Controllers\Input\ProduksiController;
 use App\Http\Controllers\Input\QcController;
-use App\Http\Controllers\Input\DandoriController;
-use App\Http\Controllers\Vcb\VcbProduksiController;
-use App\Http\Controllers\Vcb\VcbMesinController;
-use App\Http\Controllers\Vcb\VcbQualityController;
+use App\Http\Controllers\Maintenance\AvailabilityController;
+use App\Http\Controllers\Maintenance\AvailabilityDiesController;
+use App\Http\Controllers\Maintenance\BreakdownDiesController;
+use App\Http\Controllers\Maintenance\BreakdownMesinController;
+use App\Http\Controllers\Maintenance\ControlStrokeDiesController;
+use App\Http\Controllers\Maintenance\ControlStrokeMesinController;
+use App\Http\Controllers\Maintenance\MtbfController;
+use App\Http\Controllers\Maintenance\MtbfDiesController;
+use App\Http\Controllers\Maintenance\MttrController;
+use App\Http\Controllers\Maintenance\MttrDiesController;
+use App\Http\Controllers\Master\JenisNgController;
+use App\Http\Controllers\Master\KaryawanController;
+use App\Http\Controllers\Master\LosstimeController;
+use App\Http\Controllers\Master\MesinController;
+use App\Http\Controllers\Master\PartController;
+use App\Http\Controllers\Master\ShiftController;
+use App\Http\Controllers\Master\UserController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\OverviewController;
+use App\Http\Controllers\Sistem\BackupController;
+use App\Http\Controllers\Sistem\LogAktivitasController;
+use App\Http\Controllers\TwoFactorAuthController;
 use App\Http\Controllers\Vcb\VcbDandoriController;
+use App\Http\Controllers\Vcb\VcbMesinController;
 use App\Http\Controllers\Vcb\VcbNgProsesController;
 use App\Http\Controllers\Vcb\VcbNgTotalController;
-use App\Http\Controllers\Admin\AnomalyController;
-use App\Http\Controllers\Maintenance\BreakdownMesinController;
-use App\Http\Controllers\Maintenance\MttrController;
-use App\Http\Controllers\Maintenance\MtbfController;
-use App\Http\Controllers\Maintenance\AvailabilityController;
-use App\Http\Controllers\Maintenance\BreakdownDiesController;
-use App\Http\Controllers\Maintenance\MttrDiesController;
-use App\Http\Controllers\Maintenance\MtbfDiesController;
-use App\Http\Controllers\Maintenance\AvailabilityDiesController;
-use App\Http\Controllers\Maintenance\ControlStrokeMesinController;
-use App\Http\Controllers\Maintenance\ControlStrokeDiesController;
-use App\Http\Controllers\TwoFactorAuthController;
+use App\Http\Controllers\Vcb\VcbProduksiController;
+use App\Http\Controllers\Vcb\VcbQualityController;
+use Illuminate\Support\Facades\Route;
 
 Route::get('/', [HomeController::class, 'root']);
 
@@ -39,25 +45,25 @@ Route::middleware('auth')->group(function () {
     // --- MASTER DATA (admin only) ---
     Route::middleware('role:admin')->prefix('master')->name('master.')->group(function () {
         // Import routes must come BEFORE resource routes to avoid model-binding conflicts
-        Route::post('karyawan/import',                          [KaryawanController::class, 'import'])->name('karyawan.import');
-        Route::get('karyawan/import-template',                  [KaryawanController::class, 'importTemplate'])->name('karyawan.import-template');
-        Route::patch('karyawan/{karyawan}/toggle-aktif',        [KaryawanController::class, 'toggleAktif'])->name('karyawan.toggle-aktif');
+        Route::post('karyawan/import', [KaryawanController::class, 'import'])->name('karyawan.import');
+        Route::get('karyawan/import-template', [KaryawanController::class, 'importTemplate'])->name('karyawan.import-template');
+        Route::patch('karyawan/{karyawan}/toggle-aktif', [KaryawanController::class, 'toggleAktif'])->name('karyawan.toggle-aktif');
 
-        Route::post('mesin/import',              [MesinController::class, 'import'])->name('mesin.import');
-        Route::get('mesin/import-template',      [MesinController::class, 'importTemplate'])->name('mesin.import-template');
+        Route::post('mesin/import', [MesinController::class, 'import'])->name('mesin.import');
+        Route::get('mesin/import-template', [MesinController::class, 'importTemplate'])->name('mesin.import-template');
 
-        Route::post('part/import',               [PartController::class, 'import'])->name('part.import');
-        Route::get('part/import-template',       [PartController::class, 'importTemplate'])->name('part.import-template');
-        Route::get('part/export',                [PartController::class, 'export'])->name('part.export');
-        Route::get('part/sph-recommendations',   [PartController::class, 'sphRecommendations'])->name('part.sph-recommendations');
-        Route::post('part/sph-dismiss',          [PartController::class, 'dismissSphRecommendation'])->name('part.sph-dismiss');
-        Route::post('part/sph-dismiss-reset',    [PartController::class, 'resetSphDismissed'])->name('part.sph-dismiss-reset');
+        Route::post('part/import', [PartController::class, 'import'])->name('part.import');
+        Route::get('part/import-template', [PartController::class, 'importTemplate'])->name('part.import-template');
+        Route::get('part/export', [PartController::class, 'export'])->name('part.export');
+        Route::get('part/sph-recommendations', [PartController::class, 'sphRecommendations'])->name('part.sph-recommendations');
+        Route::post('part/sph-dismiss', [PartController::class, 'dismissSphRecommendation'])->name('part.sph-dismiss');
+        Route::post('part/sph-dismiss-reset', [PartController::class, 'resetSphDismissed'])->name('part.sph-dismiss-reset');
 
-        Route::post('losstime/import',           [LosstimeController::class, 'import'])->name('losstime.import');
-        Route::get('losstime/import-template',   [LosstimeController::class, 'importTemplate'])->name('losstime.import-template');
+        Route::post('losstime/import', [LosstimeController::class, 'import'])->name('losstime.import');
+        Route::get('losstime/import-template', [LosstimeController::class, 'importTemplate'])->name('losstime.import-template');
 
-        Route::post('shift/import',              [ShiftController::class, 'import'])->name('shift.import');
-        Route::get('shift/import-template',      [ShiftController::class, 'importTemplate'])->name('shift.import-template');
+        Route::post('shift/import', [ShiftController::class, 'import'])->name('shift.import');
+        Route::get('shift/import-template', [ShiftController::class, 'importTemplate'])->name('shift.import-template');
 
         Route::resource('karyawan', KaryawanController::class);
         Route::resource('mesin', MesinController::class);
@@ -66,24 +72,24 @@ Route::middleware('auth')->group(function () {
         Route::resource('shift', ShiftController::class);
         Route::patch('users/{user}/toggle-aktif', [UserController::class, 'toggleAktif'])->name('users.toggle-aktif');
         Route::resource('users', UserController::class);
-        Route::post('jenis-ng/import',         [JenisNgController::class, 'import'])->name('jenis-ng.import');
+        Route::post('jenis-ng/import', [JenisNgController::class, 'import'])->name('jenis-ng.import');
         Route::get('jenis-ng/import-template', [JenisNgController::class, 'importTemplate'])->name('jenis-ng.import-template');
-        Route::resource('jenis-ng', JenisNgController::class)->only(['index', 'store', 'update', 'destroy']);
+        Route::resource('jenis-ng', JenisNgController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
         // Sub-resource: proses per part
-        Route::get('part/{part}/proses/create',               [PartController::class, 'createProses'])->name('part.proses.create');
-        Route::post('part/{part}/proses',                     [PartController::class, 'storeProses'])->name('part.proses.store');
-        Route::delete('part/{part}/proses/{proses}',          [PartController::class, 'destroyProses'])->name('part.proses.destroy');
-        Route::patch('part/{part}/proses/{proses}/upgrade-sph',    [PartController::class, 'upgradeSph'])->name('part.proses.upgrade-sph');
+        Route::get('part/{part}/proses/create', [PartController::class, 'createProses'])->name('part.proses.create');
+        Route::post('part/{part}/proses', [PartController::class, 'storeProses'])->name('part.proses.store');
+        Route::delete('part/{part}/proses/{proses}', [PartController::class, 'destroyProses'])->name('part.proses.destroy');
+        Route::patch('part/{part}/proses/{proses}/upgrade-sph', [PartController::class, 'upgradeSph'])->name('part.proses.upgrade-sph');
         Route::patch('part/{part}/proses/{proses}/upgrade-qc-sph', [PartController::class, 'upgradeQcSph'])->name('part.proses.upgrade-qc-sph');
     });
 
     // --- SISTEM (admin only) — satu arsip memuat seluruh DB termasuk tabel users ---
     Route::middleware('role:admin')->prefix('sistem')->name('sistem.')->group(function () {
-        Route::get('backup', [\App\Http\Controllers\Sistem\BackupController::class, 'index'])->name('backup.index');
-        Route::post('backup/jalankan', [\App\Http\Controllers\Sistem\BackupController::class, 'jalankan'])->name('backup.jalankan');
-        Route::get('backup/{berkas}/unduh', [\App\Http\Controllers\Sistem\BackupController::class, 'unduh'])->name('backup.unduh');
-        Route::delete('backup/{berkas}', [\App\Http\Controllers\Sistem\BackupController::class, 'hapus'])->name('backup.hapus');
-        Route::get('log-aktivitas', [\App\Http\Controllers\Sistem\LogAktivitasController::class, 'index'])->name('log-aktivitas.index');
+        Route::get('backup', [BackupController::class, 'index'])->name('backup.index');
+        Route::post('backup/jalankan', [BackupController::class, 'jalankan'])->name('backup.jalankan');
+        Route::get('backup/{berkas}/unduh', [BackupController::class, 'unduh'])->name('backup.unduh');
+        Route::delete('backup/{berkas}', [BackupController::class, 'hapus'])->name('backup.hapus');
+        Route::get('log-aktivitas', [LogAktivitasController::class, 'index'])->name('log-aktivitas.index');
     });
 
     // --- 2FA (admin only) — setup/nonaktifkan TOTP. Nol route 'profile.*' lain
@@ -97,7 +103,7 @@ Route::middleware('auth')->group(function () {
     // --- INPUT PRODUKSI: daftar (read-only, guest boleh) ---
     Route::middleware('role:admin,staff_produksi,guest')->prefix('input')->name('input.')->group(function () {
         Route::get('produksi', [ProduksiController::class, 'index'])->name('produksi.index');
-        Route::get('dandori',  [DandoriController::class, 'index'])->name('dandori.index');
+        Route::get('dandori', [DandoriController::class, 'index'])->name('dandori.index');
     });
 
     // --- INPUT PRODUKSI: tulis & export (guest TIDAK boleh) ---
@@ -110,8 +116,8 @@ Route::middleware('auth')->group(function () {
         Route::post('produksi-note', [ProduksiController::class, 'note'])->name('produksi.note');
         Route::post('dandori/batch', [DandoriController::class, 'batch'])->name('dandori.batch');
         Route::resource('dandori', DandoriController::class)->only(['create', 'destroy']);
-        Route::get('dandori/import-template',  [DandoriController::class, 'importTemplate'])->name('dandori.import-template');
-        Route::get('dandori/export',           [DandoriController::class, 'export'])->name('dandori.export');
+        Route::get('dandori/import-template', [DandoriController::class, 'importTemplate'])->name('dandori.import-template');
+        Route::get('dandori/export', [DandoriController::class, 'export'])->name('dandori.export');
         Route::post('dandori-note', [DandoriController::class, 'note'])->name('dandori.note');
         // AJAX: get proses list for a part (used by form JS)
         Route::get('dandori/part-proses/{part}', [DandoriController::class, 'getPartProses'])->name('dandori.part-proses');
@@ -228,26 +234,26 @@ Route::middleware('auth')->group(function () {
 
     // --- MAINTENANCE: analitik read-only (guest boleh) ---
     Route::middleware('role:admin,staff_maintenance,manager,guest')->prefix('maintenance')->name('maintenance.')->group(function () {
-        Route::get('mttr',          [MttrController::class, 'index'])->name('mttr');
-        Route::get('mttr/data',     [MttrController::class, 'data'])->name('mttr.data');
-        Route::get('mtbf',          [MtbfController::class, 'index'])->name('mtbf');
-        Route::get('mtbf/data',     [MtbfController::class, 'data'])->name('mtbf.data');
-        Route::get('availability',      [AvailabilityController::class, 'index'])->name('availability');
+        Route::get('mttr', [MttrController::class, 'index'])->name('mttr');
+        Route::get('mttr/data', [MttrController::class, 'data'])->name('mttr.data');
+        Route::get('mtbf', [MtbfController::class, 'index'])->name('mtbf');
+        Route::get('mtbf/data', [MtbfController::class, 'data'])->name('mtbf.data');
+        Route::get('availability', [AvailabilityController::class, 'index'])->name('availability');
         Route::get('availability/data', [AvailabilityController::class, 'data'])->name('availability.data');
 
-        Route::get('mttr-dies',          [MttrDiesController::class, 'index'])->name('mttr-dies');
-        Route::get('mttr-dies/data',     [MttrDiesController::class, 'data'])->name('mttr-dies.data');
-        Route::get('mtbf-dies',          [MtbfDiesController::class, 'index'])->name('mtbf-dies');
-        Route::get('mtbf-dies/data',     [MtbfDiesController::class, 'data'])->name('mtbf-dies.data');
-        Route::get('availability-dies',      [AvailabilityDiesController::class, 'index'])->name('availability-dies');
+        Route::get('mttr-dies', [MttrDiesController::class, 'index'])->name('mttr-dies');
+        Route::get('mttr-dies/data', [MttrDiesController::class, 'data'])->name('mttr-dies.data');
+        Route::get('mtbf-dies', [MtbfDiesController::class, 'index'])->name('mtbf-dies');
+        Route::get('mtbf-dies/data', [MtbfDiesController::class, 'data'])->name('mtbf-dies.data');
+        Route::get('availability-dies', [AvailabilityDiesController::class, 'index'])->name('availability-dies');
         Route::get('availability-dies/data', [AvailabilityDiesController::class, 'data'])->name('availability-dies.data');
 
-        Route::get('availability/control-stroke-mesin',       [ControlStrokeMesinController::class, 'index'])->name('control-stroke-mesin');
-        Route::get('availability/control-stroke-mesin/data',   [ControlStrokeMesinController::class, 'data'])->name('control-stroke-mesin.data');
+        Route::get('availability/control-stroke-mesin', [ControlStrokeMesinController::class, 'index'])->name('control-stroke-mesin');
+        Route::get('availability/control-stroke-mesin/data', [ControlStrokeMesinController::class, 'data'])->name('control-stroke-mesin.data');
         Route::get('availability/control-stroke-mesin/{mesin}/history', [ControlStrokeMesinController::class, 'history'])->name('control-stroke-mesin.history');
 
-        Route::get('availability/control-stroke-dies',        [ControlStrokeDiesController::class, 'index'])->name('control-stroke-dies');
-        Route::get('availability/control-stroke-dies/data',    [ControlStrokeDiesController::class, 'data'])->name('control-stroke-dies.data');
+        Route::get('availability/control-stroke-dies', [ControlStrokeDiesController::class, 'index'])->name('control-stroke-dies');
+        Route::get('availability/control-stroke-dies/data', [ControlStrokeDiesController::class, 'data'])->name('control-stroke-dies.data');
         Route::get('availability/control-stroke-dies/{partProses}/history', [ControlStrokeDiesController::class, 'history'])->name('control-stroke-dies.history');
     });
 
@@ -261,19 +267,19 @@ Route::middleware('auth')->group(function () {
     });
 
     // --- NOTIFICATIONS (all authenticated users) ---
-    Route::get('/notifications/poll', [\App\Http\Controllers\NotificationController::class, 'poll']);
-    Route::post('/notifications/read-all', [\App\Http\Controllers\NotificationController::class, 'markAllRead']);
-    Route::post('/notifications/{id}/read', [\App\Http\Controllers\NotificationController::class, 'markRead']);
+    Route::get('/notifications/poll', [NotificationController::class, 'poll']);
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead']);
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markRead']);
 
     // --- MAINTENANCE edit/hapus (admin only) ---
     Route::middleware('role:admin')->prefix('maintenance')->name('maintenance.')->group(function () {
         Route::get('breakdown/{breakdown}/edit', [BreakdownMesinController::class, 'edit'])->name('breakdown.edit');
-        Route::put('breakdown/{breakdown}',      [BreakdownMesinController::class, 'update'])->name('breakdown.update');
-        Route::delete('breakdown/{breakdown}',   [BreakdownMesinController::class, 'destroy'])->name('breakdown.destroy');
+        Route::put('breakdown/{breakdown}', [BreakdownMesinController::class, 'update'])->name('breakdown.update');
+        Route::delete('breakdown/{breakdown}', [BreakdownMesinController::class, 'destroy'])->name('breakdown.destroy');
 
         Route::get('breakdown-dies/{breakdownDy}/edit', [BreakdownDiesController::class, 'edit'])->name('breakdown-dies.edit');
-        Route::put('breakdown-dies/{breakdownDy}',      [BreakdownDiesController::class, 'update'])->name('breakdown-dies.update');
-        Route::delete('breakdown-dies/{breakdownDy}',   [BreakdownDiesController::class, 'destroy'])->name('breakdown-dies.destroy');
+        Route::put('breakdown-dies/{breakdownDy}', [BreakdownDiesController::class, 'update'])->name('breakdown-dies.update');
+        Route::delete('breakdown-dies/{breakdownDy}', [BreakdownDiesController::class, 'destroy'])->name('breakdown-dies.destroy');
     });
 
     // --- OVERVIEW (grafik global pabrik, semua role) ---
@@ -288,15 +294,15 @@ Route::middleware('auth')->group(function () {
     // benar-benar bisa dicapai guest dengan whitelist itu, jadi menambah guest
     // di sini tanpa mendaftarkannya bikin test merah (bukan bolong senyap).
     Route::middleware('role:admin,manager,staff_produksi,staff_qc,staff_maintenance,guest')
-        ->get('overview', [\App\Http\Controllers\OverviewController::class, 'index'])
+        ->get('overview', [OverviewController::class, 'index'])
         ->name('overview');
 
     // --- AI CHATBOT (admin & manager only) ---
     Route::middleware('role:admin,manager')->prefix('chatbot')->name('chatbot.')->group(function () {
-        Route::get('/', [\App\Http\Controllers\ChatbotController::class, 'index'])->name('index');
-        Route::post('message', [\App\Http\Controllers\ChatbotController::class, 'sendMessage'])
+        Route::get('/', [ChatbotController::class, 'index'])->name('index');
+        Route::post('message', [ChatbotController::class, 'sendMessage'])
             ->middleware('throttle:20,1')->name('send-message');
-        Route::post('stream', [\App\Http\Controllers\ChatbotController::class, 'stream'])
+        Route::post('stream', [ChatbotController::class, 'stream'])
             ->middleware('throttle:20,1')->name('stream');
     });
 });

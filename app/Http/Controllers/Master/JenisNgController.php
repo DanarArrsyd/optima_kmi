@@ -30,6 +30,11 @@ class JenisNgController extends Controller
         return view('master.jenis-ng.index', compact('jenisNg', 'search', 'filterKategori', 'kategoriList'));
     }
 
+    public function create()
+    {
+        return view('master.jenis-ng.create');
+    }
+
     public function store(Request $request)
     {
         $data = $request->validate([
@@ -40,6 +45,11 @@ class JenisNgController extends Controller
         MasterJenisNg::create($data);
 
         return redirect()->route('master.jenis-ng.index')->with('success', 'Jenis NG berhasil ditambahkan.');
+    }
+
+    public function edit(MasterJenisNg $jenisNg)
+    {
+        return view('master.jenis-ng.edit', compact('jenisNg'));
     }
 
     public function update(Request $request, MasterJenisNg $jenisNg)

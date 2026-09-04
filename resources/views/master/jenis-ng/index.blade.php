@@ -15,10 +15,9 @@
 <div class="erp-ws">
 
 <div class="erp-tb">
-    <button type="button" class="erp-tb-btn is-new"
-            onclick="document.getElementById('add-panel').classList.toggle('d-none')">
+    <a href="{{ route('master.jenis-ng.create') }}" class="erp-tb-btn is-new">
         <i class="bi bi-plus-lg"></i>Tambah
-    </button>
+    </a>
     <button type="button" class="erp-tb-btn" :class="filterOpen ? 'is-on' : ''" @click="filterOpen = !filterOpen">
         <i class="bi bi-funnel"></i>Filter @if($search !== '' || $filterKategori !== '')<span aria-hidden="true">&bull;</span>@endif
     </button>
@@ -58,40 +57,6 @@
 <div class="erp-scroll">
 
 
-
-{{-- Add Panel --}}
-<div id="add-panel" class="erp-panel mb-3 {{ $errors->any() ? '' : 'd-none' }}">
-    <div class="erp-panel-header"><i class="bi bi-plus-circle me-1"></i>Tambah Jenis NG</div>
-    <div class="erp-panel-body">
-        <form method="POST" action="{{ route('master.jenis-ng.store') }}">
-            @csrf
-            <div class="row g-2 align-items-end">
-                <div class="col-md-2">
-                    <label class="form-label mb-1">Kode <span class="text-danger">*</span></label>
-                    <input type="text" name="kode" class="form-control form-control-sm @error('kode') is-invalid @enderror"
-                           value="{{ old('kode') }}" placeholder="DIM" style="text-transform:uppercase" maxlength="20">
-                    @error('kode')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label mb-1">Nama NG <span class="text-danger">*</span></label>
-                    <input type="text" name="nama_ng" class="form-control form-control-sm @error('nama_ng') is-invalid @enderror"
-                           value="{{ old('nama_ng') }}" placeholder="Dimensi Over/Under" maxlength="100">
-                    @error('nama_ng')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label mb-1">Deskripsi</label>
-                    <input type="text" name="deskripsi" class="form-control form-control-sm"
-                           value="{{ old('deskripsi') }}" placeholder="Opsional" maxlength="255">
-                </div>
-                <div class="col-auto">
-                    <button type="submit" class="btn btn-primary btn-sm">
-                        <i class="bi bi-save me-1"></i>Simpan
-                    </button>
-                </div>
-            </div>
-        </form>
-    </div>
-</div>
 
 {{-- Import Panel --}}
 <div id="import-panel" class="erp-panel mb-3 d-none">
@@ -140,10 +105,7 @@
                 <td style="color:#6b7280">{{ $ng->deskripsi ?? '—' }}</td>
                 <td>
                     <div class="action-btns">
-                        <button class="btn btn-warning btn-sm"
-                                onclick="openEdit({{ $ng->id }}, '{{ addslashes($ng->kode) }}', '{{ addslashes($ng->nama_ng) }}', '{{ addslashes($ng->deskripsi ?? '') }}')">
-                            Edit
-                        </button>
+                        <a href="{{ route('master.jenis-ng.edit', $ng) }}" class="btn btn-warning btn-sm">Edit</a>
                         <form method="POST" action="{{ route('master.jenis-ng.destroy', $ng) }}"
                               onsubmit="return confirm('Hapus jenis NG ini?')">
                             @csrf @method('DELETE')
@@ -174,52 +136,5 @@
 </div>{{-- /erp-ws --}}
 
 
-{{-- Edit Modal --}}
-<div class="modal fade" id="editModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Edit Jenis NG</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form method="POST" id="editForm">
-                @csrf @method('PUT')
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">Kode <span class="text-danger">*</span></label>
-                        <input type="text" name="kode" id="edit_kode" class="form-control"
-                               style="text-transform:uppercase" maxlength="20" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Nama NG <span class="text-danger">*</span></label>
-                        <input type="text" name="nama_ng" id="edit_nama_ng" class="form-control"
-                               maxlength="100" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Deskripsi</label>
-                        <input type="text" name="deskripsi" id="edit_deskripsi" class="form-control"
-                               maxlength="255">
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-save me-1"></i>Update</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
 </div>{{-- /alpine outer scope --}}
 @endsection
-@push('scripts')
-<script>
-function openEdit(id, kode, nama, deskripsi) {
-    document.getElementById('editForm').action = `/master/jenis-ng/${id}`;
-    document.getElementById('edit_kode').value     = kode;
-    document.getElementById('edit_nama_ng').value  = nama;
-    document.getElementById('edit_deskripsi').value = deskripsi;
-    new bootstrap.Modal(document.getElementById('editModal')).show();
-}
-</script>
-@endpush
