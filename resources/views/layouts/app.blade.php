@@ -1546,6 +1546,18 @@ if (!isMobile() && localStorage.getItem(SB_KEY) === '1') {
    Keenam halaman analitik memanggil taField() tanpa initText/initVal,
    jadi bagi mereka perilakunya persis sama seperti sebelumnya.
 ══════════════════════════════════════════════════════════════════ */
+/* Object spread ({...taField(...)}) mengevaluasi getter SEKALI saat spread
+   dan membekukan hasilnya jadi properti statis — bukan menyalin getter-nya.
+   Jadi setiap komponen yang meng-extend taField() lewat spread (lihat
+   produksiPartSelectorEdit/qcPartSelectorEdit) WAJIB deklarasi ulang getter
+   `filtered` sendiri supaya tetap reaktif terhadap this.query. Logika
+   penyaringannya sendiri satu tempat di sini biar nol menyimpang. */
+function taFieldFiltered(query, items, limit = 60) {
+    if (!query.trim()) return items.slice(0, limit);
+    const q = query.toLowerCase();
+    return items.filter(i => i.t.toLowerCase().includes(q)).slice(0, limit);
+}
+
 function taField(items, initText = '', initVal = null) {
     return {
         items,
@@ -1554,11 +1566,7 @@ function taField(items, initText = '', initVal = null) {
         open:  false,
         idx:   -1,
 
-        get filtered() {
-            if (!this.query.trim()) return this.items.slice(0, 60);
-            const q = this.query.toLowerCase();
-            return this.items.filter(i => i.t.toLowerCase().includes(q)).slice(0, 60);
-        },
+        get filtered() { return taFieldFiltered(this.query, this.items); },
 
         openDd()  { this.open = true; this.idx = -1; },
 
