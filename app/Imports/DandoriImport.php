@@ -2,6 +2,7 @@
 
 namespace App\Imports;
 
+use App\Imports\Concerns\ParsesStrictImportDateTime;
 use App\Models\MasterKaryawan;
 use App\Models\MasterLosstime;
 use App\Models\MasterMesin;
@@ -10,15 +11,15 @@ use App\Models\MasterPartProses;
 use App\Models\MasterShift;
 use App\Models\TransaksiDandoriRincian;
 use App\Support\SaneDate;
-use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithStartRow;
-use PhpOffice\PhpSpreadsheet\Shared\Date;
 
 class DandoriImport implements ToCollection, WithHeadingRow, WithStartRow
 {
+    use ParsesStrictImportDateTime;
+
     public int $importedCount = 0;
 
     public array $errors = [];
@@ -42,7 +43,7 @@ class DandoriImport implements ToCollection, WithHeadingRow, WithStartRow
 
             try {
                 /* ── Tanggal ───────────────────────────── */
-                $tanggal = $this->parseDate($row['tanggal']);
+                $tanggal = $this->parseDateUnbounded($row['tanggal']);
                 if (! $tanggal) {
                     $this->errors[] = "Baris {$rowNum}: Format tanggal tidak valid (gunakan YYYY-MM-DD atau DD/MM/YYYY).";
 
@@ -157,36 +158,5 @@ class DandoriImport implements ToCollection, WithHeadingRow, WithStartRow
                 $this->errors[] = "Baris {$rowNum}: Error tidak terduga — ".$e->getMessage();
             }
         }
-    }
-
-    /* ── Helpers ───────────────────────────────────────────────────── */
-
-    private function parseDate(mixed $value): ?string
-    {
-        if ($value === null || trim((string) $value) === '') {
-            return null;
-        }
-
-        if (is_numeric($value)) {
-            try {
-                return Date::excelToDateTimeObject((float) $value)
-                    ->format('Y-m-d');
-            } catch (\Throwable) {
-            }
-        }
-
-        if ($value instanceof Carbon || $value instanceof \DateTime) {
-            return $value->format('Y-m-d');
-        }
-
-        $str = trim((string) $value);
-        foreach (['Y-m-d', 'd/m/Y', 'd-m-Y', 'm/d/Y', 'Y/m/d'] as $fmt) {
-            $d = \DateTime::createFromFormat($fmt, $str);
-            if ($d && $d->format($fmt) === $str) {
-                return $d->format('Y-m-d');
-            }
-        }
-
-        return null;
     }
 }
