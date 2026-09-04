@@ -136,12 +136,9 @@
             <tr style="{{ !$k->is_aktif ? 'opacity:0.55;background:#f9fafb' : '' }}">
                 <td style="white-space:nowrap">{{ $karyawan->firstItem() + $i }}</td>
                 <td style="font-family:monospace;white-space:nowrap">{{ $k->nik }}</td>
-                <td>
-                    {{ $k->nama_karyawan }}
-                    @if(!$k->is_aktif)
-                    <span style="font-size:0.68rem;background:#4b5563;color:#fff;padding:1px 6px;border-radius:3px;margin-left:4px;letter-spacing:.04em">NON-AKTIF</span>
-                    @endif
-                </td>
+                {{-- Badge "NON-AKTIF" di sini dulu dobel sama kolom Status di sebelah —
+                     satu penanda cukup, dua bikin baris berisik. --}}
+                <td>{{ $k->nama_karyawan }}</td>
                 <td style="white-space:nowrap">{{ $k->departemen }}</td>
                 <td style="text-align:center;white-space:nowrap">
                     @if($k->is_aktif)
@@ -164,8 +161,7 @@
                               x-data="{ buka: false }" style="display:inline-block">
                             @csrf @method('PATCH')
                             @if($k->is_aktif)
-                                <button type="button" class="btn btn-sm"
-                                        style="background:#4b5563;color:#fff;border:none"
+                                <button type="button" class="btn btn-outline-secondary btn-sm"
                                         x-on:click="buka = ! buka">
                                     <i class="bi bi-person-slash me-1"></i>Non-Aktifkan
                                 </button>
