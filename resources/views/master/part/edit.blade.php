@@ -12,7 +12,7 @@
      x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
      x-transition:leave="transition ease-in duration-150"
      x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
-     style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1040"></div>
+     style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1190"></div>
 
 {{-- ── DRAWER PANEL — Tambah Proses ───────────────────────────── --}}
 <div x-show="drawerOpen" x-cloak
@@ -20,19 +20,16 @@
      x-transition:enter-start="transform translate-x-full" x-transition:enter-end="transform translate-x-0"
      x-transition:leave="transition ease-in duration-200"
      x-transition:leave-start="transform translate-x-0" x-transition:leave-end="transform translate-x-full"
-     style="position:fixed;top:0;right:0;height:100dvh;width:520px;max-width:100vw;z-index:1050;">
-    <div style="display:flex;flex-direction:column;height:100%;background:#fff;box-shadow:-4px 0 24px rgba(0,0,0,.18)">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:#111827;color:#fff;flex-shrink:0">
-        <div style="font-weight:700;font-size:0.95rem">
-            <i class="bi bi-plus-circle me-2"></i>Tambah Proses — {{ $part->part_no }}
-        </div>
-        <button @click="drawerOpen = false" style="background:none;border:none;color:#fff;font-size:1.25rem;cursor:pointer;padding:0">
-            <i class="bi bi-x-lg"></i>
-        </button>
+     class="erp-drawer"
+     style="position:fixed;top:0;right:0;height:100dvh;width:520px;max-width:100vw;z-index:1200;
+            display:flex;flex-direction:column;background:#fff;box-shadow:-4px 0 24px rgba(0,0,0,.18)">
+    <div class="erp-drawer-hd">
+        <div><i class="bi bi-plus-circle me-2"></i>Tambah Proses — {{ $part->part_no }}</div>
+        <button @click="drawerOpen = false"><i class="bi bi-x-lg"></i></button>
     </div>
-    <div style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:24px;overscroll-behavior:contain">
+    <div style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:20px;overscroll-behavior:contain">
         @if($errors->has('id_proses') || $errors->has('nama_proses') || $errors->has('sph_standar_produksi'))
-        <div class="alert alert-danger mb-4" style="font-size:0.82rem">
+        <div class="alert alert-danger mb-4">
             <ul class="mb-0 ps-3">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
         </div>
         @endif
@@ -41,76 +38,76 @@
             @csrf
             <div class="row g-3 mb-4">
                 <div class="col-4">
-                    <label class="form-label" style="font-size:0.82rem;font-weight:600">ID Proses <span class="text-danger">*</span></label>
+                    <label class="form-label">ID Proses <span class="text-danger">*</span></label>
                     <input type="text" name="id_proses"
-                           class="form-control form-control-sm @error('id_proses') is-invalid @enderror"
+                           class="form-control @error('id_proses') is-invalid @enderror"
                            placeholder="1" value="{{ old('id_proses') }}">
                     @error('id_proses')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
                 <div class="col-8">
-                    <label class="form-label" style="font-size:0.82rem;font-weight:600">Nama Proses <span class="text-danger">*</span></label>
+                    <label class="form-label">Nama Proses <span class="text-danger">*</span></label>
                     <input type="text" name="nama_proses"
-                           class="form-control form-control-sm @error('nama_proses') is-invalid @enderror"
+                           class="form-control @error('nama_proses') is-invalid @enderror"
                            placeholder="PROGRESSIVE / BENDING / dll"
                            value="{{ old('nama_proses') }}">
                     @error('nama_proses')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
             </div>
 
-            <div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:6px;padding:16px;margin-bottom:20px">
-                <div style="font-size:0.72rem;font-weight:700;color:#6b7280;letter-spacing:.06em;text-transform:uppercase;margin-bottom:12px">
+            <div style="background:var(--surface-2);border:1px solid var(--border-2);border-radius:2px;padding:14px;margin-bottom:20px">
+                <div class="erp-meta" style="font-weight:700;color:var(--text-3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:12px">
                     <i class="bi bi-speedometer2 me-1"></i>Standar SPH
                 </div>
                 <div class="row g-3 mb-3">
                     <div class="col-6">
-                        <label class="form-label" style="font-size:0.8rem">SPH Produksi <span class="text-danger">*</span></label>
+                        <label class="form-label">SPH Produksi <span class="text-danger">*</span></label>
                         <div class="input-group input-group-sm">
                             <input type="number" step="1" name="sph_standar_produksi"
                                    class="form-control @error('sph_standar_produksi') is-invalid @enderror"
                                    value="{{ old('sph_standar_produksi', 0) }}" min="0">
-                            <span class="input-group-text" style="font-size:0.75rem">pcs/jam</span>
+                            <span class="input-group-text erp-meta">pcs/jam</span>
                         </div>
-                        @error('sph_standar_produksi')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+                        @error('sph_standar_produksi')<div class="text-danger erp-meta mt-1">{{ $message }}</div>@enderror
                     </div>
                     <div class="col-6">
-                        <label class="form-label" style="font-size:0.8rem">SPH QC <span class="text-danger">*</span></label>
+                        <label class="form-label">SPH QC <span class="text-danger">*</span></label>
                         <div class="input-group input-group-sm">
                             <input type="number" step="1" name="sph_standar_qc"
                                    class="form-control @error('sph_standar_qc') is-invalid @enderror"
                                    value="{{ old('sph_standar_qc', 0) }}" min="0">
-                            <span class="input-group-text" style="font-size:0.75rem">pcs/jam</span>
+                            <span class="input-group-text erp-meta">pcs/jam</span>
                         </div>
-                        @error('sph_standar_qc')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+                        @error('sph_standar_qc')<div class="text-danger erp-meta mt-1">{{ $message }}</div>@enderror
                     </div>
                 </div>
-                <div style="font-size:0.72rem;font-weight:700;color:#6b7280;letter-spacing:.06em;text-transform:uppercase;margin-bottom:12px">
+                <div class="erp-meta" style="font-weight:700;color:var(--text-3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:12px">
                     <i class="bi bi-clock me-1"></i>Standar Waktu Dandori
                 </div>
                 <div class="row g-3">
                     <div class="col-6">
-                        <label class="form-label" style="font-size:0.8rem">Std Trial QC <span class="text-danger">*</span></label>
+                        <label class="form-label">Std Trial QC <span class="text-danger">*</span></label>
                         <div class="input-group input-group-sm">
                             <input type="number" name="std_trial_qc_menit"
                                    class="form-control @error('std_trial_qc_menit') is-invalid @enderror"
                                    value="{{ old('std_trial_qc_menit', 0) }}" min="0">
-                            <span class="input-group-text" style="font-size:0.75rem">mnt</span>
+                            <span class="input-group-text erp-meta">mnt</span>
                         </div>
-                        @error('std_trial_qc_menit')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+                        @error('std_trial_qc_menit')<div class="text-danger erp-meta mt-1">{{ $message }}</div>@enderror
                     </div>
                     <div class="col-6">
-                        <label class="form-label" style="font-size:0.8rem">Std Setting Dies <span class="text-danger">*</span></label>
+                        <label class="form-label">Std Setting Dies <span class="text-danger">*</span></label>
                         <div class="input-group input-group-sm">
                             <input type="number" name="std_setting_dies_menit"
                                    class="form-control @error('std_setting_dies_menit') is-invalid @enderror"
                                    value="{{ old('std_setting_dies_menit', 0) }}" min="0">
-                            <span class="input-group-text" style="font-size:0.75rem">mnt</span>
+                            <span class="input-group-text erp-meta">mnt</span>
                         </div>
-                        @error('std_setting_dies_menit')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+                        @error('std_setting_dies_menit')<div class="text-danger erp-meta mt-1">{{ $message }}</div>@enderror
                     </div>
                 </div>
             </div>
 
-            <div style="display:flex;gap:8px;border-top:1px solid #e5e7eb;padding-top:16px">
+            <div style="display:flex;gap:8px;border-top:1px solid var(--border-2);padding-top:16px">
                 <button type="submit" class="btn btn-success btn-sm" style="flex:1">
                     <i class="bi bi-plus-lg me-1"></i>Tambah Proses
                 </button>
@@ -118,7 +115,6 @@
             </div>
         </form>
     </div>
-    </div>{{-- /drawer inner wrapper --}}
 </div>{{-- /drawer panel --}}
 
 {{-- ══ PAGE CONTENT ════════════════════════════════════════════════ --}}
@@ -192,8 +188,8 @@
                     <div style="display:flex;justify-content:space-between">
                         <span style="font-size:0.82rem;color:#6b7280">Rekomendasi SPH</span>
                         <span style="font-size:0.82rem">
-                            @if($recommendations->count())<span style="color:#d4a017;font-weight:600">{{ $recommendations->count() }} Prod</span>@endif
-                            @if($recommendationsQc->count())<span style="color:#1a6b7c;font-weight:600" class="{{ $recommendations->count() ? 'ms-1' : '' }}">{{ $recommendationsQc->count() }} QC</span>@endif
+                            @if($recommendations->count())<span style="color:var(--c-sph-prod);font-weight:600">{{ $recommendations->count() }} Prod</span>@endif
+                            @if($recommendationsQc->count())<span style="color:var(--c-sph-qc);font-weight:600" class="{{ $recommendations->count() ? 'ms-1' : '' }}">{{ $recommendationsQc->count() }} QC</span>@endif
                         </span>
                     </div>
                     @endif
@@ -239,7 +235,7 @@
                         @php
                             $rec   = $recommendations->get($p->id)   ?? null;
                             $recQc = $recommendationsQc->get($p->id) ?? null;
-                            $rowBg = ($rec && $recQc) ? 'background:#fff9ee' : ($rec ? 'background:#fffdf0' : ($recQc ? 'background:#f5fbfd' : ''));
+                            $rowBg = ($rec && $recQc) ? 'background:#fff9ee' : ($rec ? 'background:var(--c-sph-prod-bg-3)' : ($recQc ? 'background:var(--c-sph-qc-bg)' : ''));
                         @endphp
                         {{-- Main row --}}
                         <tr style="{{ $rowBg }}">
@@ -250,10 +246,10 @@
                                     <span class="badge bg-info text-dark ms-1" style="font-size:0.65rem">PROG</span>
                                 @endif
                                 @if($rec)
-                                    <span class="badge ms-1" style="background:#d4a017;color:#fff;font-size:0.62rem">Prod ↑</span>
+                                    <span class="badge ms-1" style="background:var(--c-sph-prod);color:#fff;font-size:0.62rem">Prod ↑</span>
                                 @endif
                                 @if($recQc)
-                                    <span class="badge ms-1" style="background:#1a6b7c;color:#fff;font-size:0.62rem">QC ↑</span>
+                                    <span class="badge ms-1" style="background:var(--c-sph-qc);color:#fff;font-size:0.62rem">QC ↑</span>
                                 @endif
                             </td>
                             <td style="text-align:right">
@@ -275,7 +271,7 @@
                                 <span style="font-weight:600">{{ number_format($p->sph_standar_qc) }}</span>
                                 <span style="font-size:0.72rem;color:#9ca3af"> pcs/j</span>
                                 @if($p->sph_qc_last_upgraded_at)
-                                <br><span style="font-size:0.68rem;color:#1a6b7c">
+                                <br><span style="font-size:0.68rem;color:var(--c-sph-qc)">
                                     <i class="bi bi-arrow-up-circle-fill"></i> {{ $p->sph_qc_last_upgraded_at->format('d M Y') }}
                                 </span>
                                 @endif
@@ -320,7 +316,7 @@
                                             <tr style="border-top:1px solid #e5e7eb">
                                                 <td style="padding:4px 10px">{{ $log->upgraded_at->format('d M Y') }} <span style="color:#9ca3af">{{ $log->upgraded_at->format('H:i') }}</span></td>
                                                 <td style="padding:4px 10px;text-align:right;color:#6b7280">{{ number_format($log->sph_standar_lama) }}</td>
-                                                <td style="padding:4px 10px;text-align:center;color:#d4a017">→</td>
+                                                <td style="padding:4px 10px;text-align:center;color:var(--c-sph-prod)">→</td>
                                                 <td style="padding:4px 10px;text-align:right;font-weight:700;color:#2d7a2d">{{ number_format($log->sph_standar_baru) }}</td>
                                                 <td style="padding:4px 10px;text-align:right;color:#2d7a2d">+{{ $lp }}%</td>
                                                 <td style="padding:4px 10px">{{ $log->upgradedBy?->name ?? '—' }}</td>
@@ -335,20 +331,20 @@
 
                         {{-- Riwayat SPH QC (collapsible) --}}
                         @if($p->sphQcLog->isNotEmpty())
-                        <tr id="sph-qc-log-{{ $p->id }}" style="display:none;background:#f0f8fa">
+                        <tr id="sph-qc-log-{{ $p->id }}" style="display:none;background:var(--c-sph-qc-bg-3)">
                             <td colspan="7" style="padding:0 12px 10px;border-top:none">
-                                <div style="border:1px solid #a5d8e0;border-radius:4px;overflow:hidden;margin-top:4px">
-                                    <div style="background:#e0f2f7;padding:5px 10px;font-size:0.72rem;font-weight:700;color:#1a6b7c;text-transform:uppercase;letter-spacing:.04em">
+                                <div style="border:1px solid var(--c-sph-qc-border);border-radius:4px;overflow:hidden;margin-top:4px">
+                                    <div style="background:#e0f2f7;padding:5px 10px;font-size:0.72rem;font-weight:700;color:var(--c-sph-qc);text-transform:uppercase;letter-spacing:.04em">
                                         <i class="bi bi-clock-history me-1"></i>Riwayat Upgrade SPH QC — {{ $p->nama_proses }}
                                     </div>
                                     <table style="width:100%;font-size:0.78rem;border-collapse:collapse">
                                         <thead><tr style="background:#ccedf5">
-                                            <th style="padding:4px 10px;font-weight:600;text-align:left;color:#1a6b7c">Tanggal</th>
-                                            <th style="padding:4px 10px;font-weight:600;text-align:right;color:#1a6b7c">Lama</th>
-                                            <th style="padding:4px 10px;text-align:center;color:#1a6b7c">→</th>
-                                            <th style="padding:4px 10px;font-weight:600;text-align:right;color:#1a6b7c">Baru</th>
-                                            <th style="padding:4px 10px;font-weight:600;text-align:right;color:#1a6b7c">+%</th>
-                                            <th style="padding:4px 10px;font-weight:600;text-align:left;color:#1a6b7c">Oleh</th>
+                                            <th style="padding:4px 10px;font-weight:600;text-align:left;color:var(--c-sph-qc)">Tanggal</th>
+                                            <th style="padding:4px 10px;font-weight:600;text-align:right;color:var(--c-sph-qc)">Lama</th>
+                                            <th style="padding:4px 10px;text-align:center;color:var(--c-sph-qc)">→</th>
+                                            <th style="padding:4px 10px;font-weight:600;text-align:right;color:var(--c-sph-qc)">Baru</th>
+                                            <th style="padding:4px 10px;font-weight:600;text-align:right;color:var(--c-sph-qc)">+%</th>
+                                            <th style="padding:4px 10px;font-weight:600;text-align:left;color:var(--c-sph-qc)">Oleh</th>
                                         </tr></thead>
                                         <tbody>
                                         @foreach($p->sphQcLog as $log)
@@ -356,9 +352,9 @@
                                             <tr style="border-top:1px solid #b2d8e4">
                                                 <td style="padding:4px 10px">{{ $log->upgraded_at->format('d M Y') }} <span style="color:#9ca3af">{{ $log->upgraded_at->format('H:i') }}</span></td>
                                                 <td style="padding:4px 10px;text-align:right;color:#6b7280">{{ number_format($log->sph_standar_lama) }}</td>
-                                                <td style="padding:4px 10px;text-align:center;color:#1a6b7c">→</td>
-                                                <td style="padding:4px 10px;text-align:right;font-weight:700;color:#1a6b7c">{{ number_format($log->sph_standar_baru) }}</td>
-                                                <td style="padding:4px 10px;text-align:right;color:#1a6b7c">+{{ $lp }}%</td>
+                                                <td style="padding:4px 10px;text-align:center;color:var(--c-sph-qc)">→</td>
+                                                <td style="padding:4px 10px;text-align:right;font-weight:700;color:var(--c-sph-qc)">{{ number_format($log->sph_standar_baru) }}</td>
+                                                <td style="padding:4px 10px;text-align:right;color:var(--c-sph-qc)">+{{ $lp }}%</td>
                                                 <td style="padding:4px 10px">{{ $log->upgradedBy?->name ?? '—' }}</td>
                                             </tr>
                                         @endforeach
@@ -371,10 +367,10 @@
 
                         {{-- Rekomendasi SPH Produksi --}}
                         @if($rec)
-                        <tr style="background:#fffdf0">
+                        <tr style="background:var(--c-sph-prod-bg-3)">
                             <td colspan="7" style="padding:0 12px 10px;border-top:none">
-                                <div style="border:1px solid #d4a017;border-radius:4px;overflow:hidden;margin-top:4px">
-                                    <div style="background:#d4a017;padding:6px 12px;display:flex;align-items:center;justify-content:space-between">
+                                <div style="border:1px solid var(--c-sph-prod);border-radius:4px;overflow:hidden;margin-top:4px">
+                                    <div style="background:var(--c-sph-prod);padding:6px 12px;display:flex;align-items:center;justify-content:space-between">
                                         <span style="font-size:0.75rem;font-weight:700;color:#fff">
                                             <i class="bi bi-graph-up-arrow me-1"></i>Rekomendasi Upgrade SPH Produksi
                                         </span>
@@ -382,15 +378,15 @@
                                             {{ $rec->exceed_count }}× dari {{ $rec->total_sessions }} sesi ({{ $rec->exceed_pct }}%)
                                         </span>
                                     </div>
-                                    <div style="background:#fffdf5;padding:10px 14px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+                                    <div style="background:var(--c-sph-prod-bg);padding:10px 14px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
                                         <div style="display:flex;align-items:center;gap:10px">
                                             <span style="font-size:1.4rem;font-weight:700;color:#374151">{{ number_format($rec->sph_standar_produksi) }}</span>
-                                            <span style="color:#d4a017;font-size:1.2rem">→</span>
+                                            <span style="color:var(--c-sph-prod);font-size:1.2rem">→</span>
                                             <span style="font-size:1.4rem;font-weight:800;color:#2d7a2d">{{ number_format($rec->recommended_sph) }}</span>
                                             <span style="font-size:0.8rem;color:#6b7280">pcs/jam &nbsp;<strong style="color:#2d7a2d">+{{ $rec->increase_pct }}%</strong></span>
                                         </div>
                                         <div style="font-size:0.75rem;color:#6b7280;flex:1">
-                                            <i class="bi bi-bar-chart-line me-1" style="color:#d4a017"></i>Rata-rata semua sesi: <strong>{{ number_format($rec->avg_all_sph) }}</strong>
+                                            <i class="bi bi-bar-chart-line me-1" style="color:var(--c-sph-prod)"></i>Rata-rata semua sesi: <strong>{{ number_format($rec->avg_all_sph) }}</strong>
                                             &nbsp;·&nbsp; Tertinggi: <strong>{{ number_format($rec->max_sph) }}</strong>
                                         </div>
                                         <form method="POST" action="{{ route('master.part.proses.upgrade-sph', [$part, $p]) }}"
@@ -409,10 +405,10 @@
 
                         {{-- Rekomendasi SPH QC --}}
                         @if($recQc)
-                        <tr style="background:#f5fbfd">
+                        <tr style="background:var(--c-sph-qc-bg)">
                             <td colspan="7" style="padding:0 12px 10px;border-top:none">
-                                <div style="border:1px solid #1a6b7c;border-radius:4px;overflow:hidden;margin-top:4px">
-                                    <div style="background:#1a6b7c;padding:6px 12px;display:flex;align-items:center;justify-content:space-between">
+                                <div style="border:1px solid var(--c-sph-qc);border-radius:4px;overflow:hidden;margin-top:4px">
+                                    <div style="background:var(--c-sph-qc);padding:6px 12px;display:flex;align-items:center;justify-content:space-between">
                                         <span style="font-size:0.75rem;font-weight:700;color:#fff">
                                             <i class="bi bi-graph-up-arrow me-1"></i>Rekomendasi Upgrade SPH QC
                                         </span>
@@ -420,22 +416,22 @@
                                             {{ $recQc->exceed_count }}× dari {{ $recQc->total_sessions }} sesi ({{ $recQc->exceed_pct }}%)
                                         </span>
                                     </div>
-                                    <div style="background:#f5fbfd;padding:10px 14px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+                                    <div style="background:var(--c-sph-qc-bg);padding:10px 14px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
                                         <div style="display:flex;align-items:center;gap:10px">
                                             <span style="font-size:1.4rem;font-weight:700;color:#374151">{{ number_format($recQc->sph_standar_qc) }}</span>
-                                            <span style="color:#1a6b7c;font-size:1.2rem">→</span>
-                                            <span style="font-size:1.4rem;font-weight:800;color:#1a6b7c">{{ number_format($recQc->recommended_sph) }}</span>
-                                            <span style="font-size:0.8rem;color:#6b7280">pcs/jam &nbsp;<strong style="color:#1a6b7c">+{{ $recQc->increase_pct }}%</strong></span>
+                                            <span style="color:var(--c-sph-qc);font-size:1.2rem">→</span>
+                                            <span style="font-size:1.4rem;font-weight:800;color:var(--c-sph-qc)">{{ number_format($recQc->recommended_sph) }}</span>
+                                            <span style="font-size:0.8rem;color:#6b7280">pcs/jam &nbsp;<strong style="color:var(--c-sph-qc)">+{{ $recQc->increase_pct }}%</strong></span>
                                         </div>
                                         <div style="font-size:0.75rem;color:#6b7280;flex:1">
-                                            <i class="bi bi-bar-chart-line me-1" style="color:#1a6b7c"></i>Rata-rata semua sesi: <strong>{{ number_format($recQc->avg_all_sph) }}</strong>
+                                            <i class="bi bi-bar-chart-line me-1" style="color:var(--c-sph-qc)"></i>Rata-rata semua sesi: <strong>{{ number_format($recQc->avg_all_sph) }}</strong>
                                             &nbsp;·&nbsp; Tertinggi: <strong>{{ number_format($recQc->max_sph) }}</strong>
                                         </div>
                                         <form method="POST" action="{{ route('master.part.proses.upgrade-qc-sph', [$part, $p]) }}"
                                               onsubmit="return confirm('Terapkan upgrade SPH QC {{ addslashes($p->nama_proses) }}?\n{{ $recQc->sph_standar_qc }} → {{ $recQc->recommended_sph }} pcs/jam')">
                                             @csrf @method('PATCH')
                                             <input type="hidden" name="recommended_sph" value="{{ $recQc->recommended_sph }}">
-                                            <button type="submit" class="btn btn-sm" style="background:#1a6b7c;color:#fff;border:none;padding:6px 14px;font-weight:600;font-size:0.8rem">
+                                            <button type="submit" class="btn btn-sm" style="background:var(--c-sph-qc);color:#fff;border:none;padding:6px 14px;font-weight:600;font-size:0.8rem">
                                                 <i class="bi bi-arrow-up-circle me-1"></i>Terapkan {{ number_format($recQc->recommended_sph) }}
                                             </button>
                                         </form>
