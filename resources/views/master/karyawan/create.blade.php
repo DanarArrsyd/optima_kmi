@@ -37,6 +37,7 @@
                     <option value="">-- Pilih Departemen --</option>
                     <option value="Produksi" {{ old('departemen') === 'Produksi' ? 'selected' : '' }}>Produksi</option>
                     <option value="QC" {{ old('departemen') === 'QC' ? 'selected' : '' }}>QC</option>
+                    <option value="Maintenance" {{ old('departemen') === 'Maintenance' ? 'selected' : '' }}>Maintenance</option>
                 </select>
                 @error('departemen')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>

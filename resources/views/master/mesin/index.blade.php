@@ -6,122 +6,7 @@
 
 @section('content')
 
-<div x-data="{ drawerOpen: {{ $errors->any() ? 'true' : 'false' }}, filterOpen: false }">
-
-{{-- ── DRAWER BACKDROP ──────────────────────────────────────────── --}}
-<div x-show="drawerOpen"
-     x-cloak
-     @click="drawerOpen = false"
-     x-transition:enter="transition ease-out duration-200"
-     x-transition:enter-start="opacity-0"
-     x-transition:enter-end="opacity-100"
-     x-transition:leave="transition ease-in duration-150"
-     x-transition:leave-start="opacity-100"
-     x-transition:leave-end="opacity-0"
-     style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1040">
-</div>
-
-{{-- ── DRAWER PANEL ─────────────────────────────────────────────── --}}
-<div x-show="drawerOpen"
-     x-cloak
-     x-transition:enter="transition ease-out duration-250"
-     x-transition:enter-start="transform translate-x-full"
-     x-transition:enter-end="transform translate-x-0"
-     x-transition:leave="transition ease-in duration-200"
-     x-transition:leave-start="transform translate-x-0"
-     x-transition:leave-end="transform translate-x-full"
-     style="position:fixed;top:0;right:0;height:100dvh;width:440px;max-width:100vw;z-index:1050;">
-    <div style="display:flex;flex-direction:column;height:100%;background:#fff;box-shadow:-4px 0 24px rgba(0,0,0,.18)">
-
-    {{-- Header --}}
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:#111827;color:#fff;flex-shrink:0">
-        <div style="font-weight:700;font-size:0.95rem;letter-spacing:.02em">
-            <i class="bi bi-cpu me-2"></i>Tambah Mesin
-        </div>
-        <button type="button" @click="drawerOpen = false"
-                style="background:none;border:none;color:#fff;font-size:1.25rem;cursor:pointer;padding:0;line-height:1">
-            <i class="bi bi-x-lg"></i>
-        </button>
-    </div>
-
-    {{-- Body (scrollable) --}}
-    <div style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:24px;overscroll-behavior:contain">
-
-        @if($errors->any())
-        <div class="alert alert-danger mb-3" style="font-size:0.82rem">
-            <ul class="mb-0 ps-3">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
-        </div>
-        @endif
-
-        <form method="POST" action="{{ route('master.mesin.store') }}" novalidate>
-            @csrf
-            <div class="row g-3">
-
-                <div class="col-6">
-                    <label class="form-label" style="font-size:0.8rem">ID Mesin <span class="text-danger">*</span></label>
-                    <input type="text" name="id_mesin"
-                           class="form-control form-control-sm @error('id_mesin') is-invalid @enderror"
-                           value="{{ old('id_mesin') }}" placeholder="Contoh: M-001">
-                    @error('id_mesin')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                </div>
-
-                <div class="col-6">
-                    <label class="form-label" style="font-size:0.8rem">Line <span class="text-danger">*</span></label>
-                    <input type="text" name="line"
-                           class="form-control form-control-sm @error('line') is-invalid @enderror"
-                           value="{{ old('line') }}" placeholder="Contoh: A">
-                    @error('line')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                </div>
-
-                <div class="col-12">
-                    <label class="form-label" style="font-size:0.8rem">Nama Mesin <span class="text-danger">*</span></label>
-                    <input type="text" name="nama_mesin"
-                           class="form-control form-control-sm @error('nama_mesin') is-invalid @enderror"
-                           value="{{ old('nama_mesin') }}" placeholder="Nama mesin">
-                    @error('nama_mesin')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                </div>
-
-                <div class="col-12">
-                    <label class="form-label" style="font-size:0.8rem">Tipe Mesin <span class="text-danger">*</span></label>
-                    <select name="tipe_mesin" class="form-select form-select-sm @error('tipe_mesin') is-invalid @enderror">
-                        <option value="">-- Pilih --</option>
-                        @foreach(\App\Models\MasterMesin::TIPE_MESIN as $tipe)
-                            <option value="{{ $tipe }}" {{ old('tipe_mesin') === $tipe ? 'selected' : '' }}>{{ $tipe }}</option>
-                        @endforeach
-                    </select>
-                    @error('tipe_mesin')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                </div>
-
-                <div class="col-12">
-                    <label class="form-label" style="font-size:0.8rem">Kapasitas Max Stroke <span class="text-muted" style="font-weight:400">(opsional)</span></label>
-                    <input type="number" name="kapasitas_max_stroke"
-                           class="form-control form-control-sm @error('kapasitas_max_stroke') is-invalid @enderror"
-                           value="{{ old('kapasitas_max_stroke') }}" min="0" placeholder="stroke/jam">
-                    @error('kapasitas_max_stroke')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                </div>
-
-                <div class="col-12">
-                    <label class="form-label" style="font-size:0.8rem">Tanggal Instalasi <span class="text-muted" style="font-weight:400">(opsional — basis MTBF & Availability)</span></label>
-                    <input type="date" name="tanggal_instalasi"
-                           class="form-control form-control-sm @error('tanggal_instalasi') is-invalid @enderror"
-                           value="{{ old('tanggal_instalasi') }}">
-                    @error('tanggal_instalasi')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                </div>
-
-            </div>
-
-            <div style="margin-top:20px;padding-top:16px;border-top:1px solid #e5e7eb;display:flex;gap:8px">
-                <button type="submit" class="btn btn-primary btn-sm" style="flex:1">
-                    <i class="bi bi-save me-1"></i>Simpan
-                </button>
-                <button type="button" @click="drawerOpen = false" class="btn btn-outline-secondary btn-sm">
-                    Batal
-                </button>
-            </div>
-        </form>
-    </div>{{-- /drawer body --}}
-    </div>{{-- /inner flex container --}}
-</div>{{-- /drawer panel --}}
+<div x-data="{ filterOpen: false }">
 
 {{-- ══ KONTEN HALAMAN ══════════════════════════════════════════ --}}
 
@@ -129,9 +14,9 @@
 <div class="erp-ws">
 
 <div class="erp-tb">
-    <button type="button" class="erp-tb-btn is-new" @click="drawerOpen = true">
+    <a href="{{ route('master.mesin.create') }}" class="erp-tb-btn is-new">
         <i class="bi bi-plus-lg"></i>Tambah
-    </button>
+    </a>
     <button type="button" class="erp-tb-btn" :class="filterOpen ? 'is-on' : ''" @click="filterOpen = !filterOpen">
         <i class="bi bi-funnel"></i>Filter @if($search !== '' || $filterLine !== '' || $filterTipe !== '')<span aria-hidden="true">&bull;</span>@endif
     </button>
