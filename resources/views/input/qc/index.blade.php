@@ -82,6 +82,19 @@ $filterActive = ($search ?? '') !== '' || $filterKarId || $filterJenisNgId
         <i class="bi bi-arrow-clockwise"></i>Refresh
     </a>
 
+    @if(auth()->user()->hasRole('admin'))
+    {{-- Note staff yang belum di-resolve gampang kelewat kalau tenggelam di
+         tengah baris lintas beberapa hari. Badge menghitung SEMUA yang belum
+         resolve dalam cakupan filter aktif (bukan cuma halaman ini); klik
+         menyaring tabel supaya cuma baris ber-note terbuka yang tampil. --}}
+    <a href="{{ request()->fullUrlWithQuery(['only_open_notes' => $onlyOpenNotes ? 0 : 1, 'page' => null]) }}"
+       class="erp-tb-btn @if($onlyOpenNotes) is-on @elseif($openNotesCount > 0) is-anom @endif"
+       title="{{ $openNotesCount }} note dari staff belum di-resolve{{ $onlyOpenNotes ? ' — klik untuk tampilkan semua lagi' : '' }}">
+        <i class="bi bi-chat-left-text-fill"></i>Note
+        @if($openNotesCount > 0)<span aria-hidden="true">&bull; {{ $openNotesCount }}</span>@endif
+    </a>
+    @endif
+
     @if($myLastRecord)
     <a href="{{ $myLastOnPage ? '#last-input' : $lastUrl }}" class="erp-tb-btn"
        title="Input terakhir Anda: {{ \Carbon\Carbon::parse($myLastRecord->tgl_pengecekan)->format('d/m/Y') }} &middot; {{ $myLastRecord->partProses?->part?->part_name ?? '—' }}">
