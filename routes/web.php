@@ -49,6 +49,7 @@ Route::middleware('auth')->group(function () {
         Route::post('part/import',               [PartController::class, 'import'])->name('part.import');
         Route::get('part/import-template',       [PartController::class, 'importTemplate'])->name('part.import-template');
         Route::get('part/export',                [PartController::class, 'export'])->name('part.export');
+        Route::get('part/sph-recommendations',   [PartController::class, 'sphRecommendations'])->name('part.sph-recommendations');
         Route::post('part/sph-dismiss',          [PartController::class, 'dismissSphRecommendation'])->name('part.sph-dismiss');
         Route::post('part/sph-dismiss-reset',    [PartController::class, 'resetSphDismissed'])->name('part.sph-dismiss-reset');
 

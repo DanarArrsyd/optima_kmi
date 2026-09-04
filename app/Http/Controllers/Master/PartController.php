@@ -62,29 +62,57 @@ class PartController extends Controller
 
         $rows = $q->paginate(30)->withQueryString();
 
-        $isAdmin = auth()->user()?->hasRole('admin') ?? false;
-
-        $dismissedProd = session('sph_dismissed_produksi', []);
-        $dismissedQc = session('sph_dismissed_qc', []);
-
-        $recommendations = $isAdmin
-            ? $this->sphSvc->getAll()->filter(fn ($r) => ! in_array($r->id_part_proses, $dismissedProd))->values()
-            : collect();
-        $recommendationsQc = $isAdmin
-            ? $this->sphSvc->getAllQc()->filter(fn ($r) => ! in_array($r->id_part_proses, $dismissedQc))->values()
-            : collect();
-
-        $dismissedProdCount = count($dismissedProd);
-        $dismissedQcCount = count($dismissedQc);
+        // Daftar rekomendasi lengkap sudah pindah ke halaman sendiri
+        // (master.part.sph-recommendations) — di sini cuma butuh totalnya
+        // buat badge tombol toolbar, bukan isinya.
+        $sphRecTotal = $this->sphRecommendationCounts();
 
         $customerList = MasterPart::whereNotNull('customer')->where('customer', '!=', '')
             ->distinct()->orderBy('customer')->pluck('customer');
         $partsForFilter = MasterPart::with('proses')->orderBy('part_name')->get();
 
         return view('master.part.index', compact(
-            'rows', 'recommendations', 'recommendationsQc', 'search',
-            'dismissedProdCount', 'dismissedQcCount', 'customerList',
+            'rows', 'sphRecTotal', 'search', 'customerList',
             'filterCustomer', 'filterPartId', 'filterProsesId', 'partsForFilter'
+        ));
+    }
+
+    /** Total gabungan rekomendasi Produksi + QC yang belum di-dismiss, buat badge toolbar. */
+    private function sphRecommendationCounts(): int
+    {
+        if (! (auth()->user()?->hasRole('admin') ?? false)) {
+            return 0;
+        }
+
+        $dismissedProd = session('sph_dismissed_produksi', []);
+        $dismissedQc = session('sph_dismissed_qc', []);
+
+        $prod = $this->sphSvc->getAll()->filter(fn ($r) => ! in_array($r->id_part_proses, $dismissedProd))->count();
+        $qc = $this->sphSvc->getAllQc()->filter(fn ($r) => ! in_array($r->id_part_proses, $dismissedQc))->count();
+
+        return $prod + $qc;
+    }
+
+    /**
+     * Halaman rekomendasi upgrade SPH — dulu numpang di index Master Part,
+     * dipindah ke sini karena bisa ratusan baris dan menenggelamkan grid
+     * part yang sebenarnya jadi fokus halaman Master Part.
+     */
+    public function sphRecommendations()
+    {
+        abort_unless(auth()->user()?->hasRole('admin') ?? false, 403);
+
+        $dismissedProd = session('sph_dismissed_produksi', []);
+        $dismissedQc = session('sph_dismissed_qc', []);
+
+        $recommendations = $this->sphSvc->getAll()->filter(fn ($r) => ! in_array($r->id_part_proses, $dismissedProd))->values();
+        $recommendationsQc = $this->sphSvc->getAllQc()->filter(fn ($r) => ! in_array($r->id_part_proses, $dismissedQc))->values();
+
+        $dismissedProdCount = count($dismissedProd);
+        $dismissedQcCount = count($dismissedQc);
+
+        return view('master.part.sph-recommendations', compact(
+            'recommendations', 'recommendationsQc', 'dismissedProdCount', 'dismissedQcCount'
         ));
     }
 
