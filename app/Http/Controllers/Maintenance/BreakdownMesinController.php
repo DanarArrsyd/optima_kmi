@@ -36,6 +36,8 @@ class BreakdownMesinController extends Controller
 
     public function import(Request $request)
     {
+        abort_if(! auth()->user()->hasRole(['admin', 'staff_maintenance']), 403);
+
         $request->validate(['file' => 'required|file|mimes:xlsx,xls,csv|max:5120']);
         $import = new BreakdownMesinImport($this->svc);
         Excel::import($import, $request->file('file'));
@@ -48,6 +50,8 @@ class BreakdownMesinController extends Controller
 
     public function importTemplate()
     {
+        abort_if(! auth()->user()->hasRole(['admin', 'staff_maintenance']), 403);
+
         $export = new class implements FromArray, WithHeadings
         {
             public function headings(): array
@@ -119,6 +123,8 @@ class BreakdownMesinController extends Controller
 
     public function create()
     {
+        abort_if(! auth()->user()->hasRole(['admin', 'staff_maintenance']), 403);
+
         return view('maintenance.breakdown.create', [
             'mesinList' => MasterMesin::orderBy('id_mesin')->get(),
             'picList' => MasterKaryawan::where('departemen', 'Maintenance')->aktif()->orderBy('nama_karyawan')->get(),
@@ -128,6 +134,8 @@ class BreakdownMesinController extends Controller
 
     public function lastNoLkm()
     {
+        abort_if(! auth()->user()->hasRole(['admin', 'staff_maintenance']), 403);
+
         return response()->json(['next_nomor' => $this->svc->nextNomorUrut()]);
     }
 

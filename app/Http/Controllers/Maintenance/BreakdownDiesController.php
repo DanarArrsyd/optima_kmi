@@ -36,6 +36,8 @@ class BreakdownDiesController extends Controller
 
     public function import(Request $request)
     {
+        abort_if(! auth()->user()->hasRole(['admin', 'staff_maintenance']), 403);
+
         $request->validate(['file' => 'required|file|mimes:xlsx,xls,csv|max:5120']);
         $import = new BreakdownDiesImport($this->svc);
         Excel::import($import, $request->file('file'));
@@ -48,6 +50,8 @@ class BreakdownDiesController extends Controller
 
     public function importTemplate()
     {
+        abort_if(! auth()->user()->hasRole(['admin', 'staff_maintenance']), 403);
+
         $export = new class implements FromArray, WithHeadings
         {
             public function headings(): array
@@ -126,11 +130,15 @@ class BreakdownDiesController extends Controller
 
     public function lastNoLkd()
     {
+        abort_if(! auth()->user()->hasRole(['admin', 'staff_maintenance']), 403);
+
         return response()->json(['next_nomor' => $this->svc->nextNomorUrut()]);
     }
 
     public function create()
     {
+        abort_if(! auth()->user()->hasRole(['admin', 'staff_maintenance']), 403);
+
         return view('maintenance.breakdown-dies.create', [
             'partList' => MasterPart::with('proses')->orderBy('part_no')->get(),
             'picList' => MasterKaryawan::where('departemen', 'Maintenance')->aktif()->orderBy('nama_karyawan')->get(),

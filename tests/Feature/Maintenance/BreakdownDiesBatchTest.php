@@ -302,6 +302,27 @@ class BreakdownDiesBatchTest extends TestCase
         $this->assertSame(0, TransaksiBreakdownDies::count());
     }
 
+    /**
+     * Manager cuma boleh lihat hasil, nol input data apa pun — lihat kembaran
+     * di BreakdownMesinBatchTest.
+     */
+    public function test_manager_tidak_bisa_menyimpan(): void
+    {
+        $manager = User::factory()->create(['role' => 'manager']);
+
+        $this->actingAs($manager)->post(route('maintenance.breakdown-dies.batch'), ['rows' => [$this->baris()]])
+            ->assertForbidden();
+
+        $this->assertSame(0, TransaksiBreakdownDies::count());
+    }
+
+    public function test_manager_tidak_bisa_buka_halaman_tambah(): void
+    {
+        $manager = User::factory()->create(['role' => 'manager']);
+
+        $this->actingAs($manager)->get(route('maintenance.breakdown-dies.create'))->assertForbidden();
+    }
+
     public function test_rows_json_menyimpan_baris(): void
     {
         $this->kirimJson([$this->baris()])->assertRedirect(route('maintenance.breakdown-dies.index'));
