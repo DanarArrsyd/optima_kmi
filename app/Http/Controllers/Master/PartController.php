@@ -173,6 +173,11 @@ class PartController extends Controller
         return redirect()->route('master.part.index')->with('success', 'Part berhasil dihapus.');
     }
 
+    public function createProses(MasterPart $part)
+    {
+        return view('master.part.proses-create', compact('part'));
+    }
+
     public function storeProses(StoreMasterPartProsesRequest $request, MasterPart $part)
     {
         $part->proses()->create($request->validated());

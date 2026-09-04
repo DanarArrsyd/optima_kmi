@@ -3,120 +3,6 @@
 @section('suppress_layout_flash', 'yes')
 @section('content')
 
-{{-- ══ ALPINE SCOPE (drawer tambah proses) ══ --}}
-<div x-data="{ drawerOpen: {{ $errors->has('id_proses') || $errors->has('nama_proses') || $errors->has('sph_standar_produksi') ? 'true' : 'false' }} }">
-
-{{-- ── DRAWER BACKDROP ─────────────────────────────────────────── --}}
-<div x-show="drawerOpen" x-cloak @click="drawerOpen = false"
-     x-transition:enter="transition ease-out duration-200"
-     x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
-     x-transition:leave="transition ease-in duration-150"
-     x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
-     style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1190"></div>
-
-{{-- ── DRAWER PANEL — Tambah Proses ───────────────────────────── --}}
-<div x-show="drawerOpen" x-cloak
-     x-transition:enter="transition ease-out duration-250"
-     x-transition:enter-start="transform translate-x-full" x-transition:enter-end="transform translate-x-0"
-     x-transition:leave="transition ease-in duration-200"
-     x-transition:leave-start="transform translate-x-0" x-transition:leave-end="transform translate-x-full"
-     class="erp-drawer"
-     style="position:fixed;top:0;right:0;height:100dvh;width:520px;max-width:100vw;z-index:1200;
-            display:flex;flex-direction:column;background:#fff;box-shadow:-4px 0 24px rgba(0,0,0,.18)">
-    <div class="erp-drawer-hd">
-        <div><i class="bi bi-plus-circle me-2"></i>Tambah Proses — {{ $part->part_no }}</div>
-        <button @click="drawerOpen = false"><i class="bi bi-x-lg"></i></button>
-    </div>
-    <div style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:20px;overscroll-behavior:contain">
-        @if($errors->has('id_proses') || $errors->has('nama_proses') || $errors->has('sph_standar_produksi'))
-        <div class="alert alert-danger mb-4">
-            <ul class="mb-0 ps-3">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
-        </div>
-        @endif
-
-        <form method="POST" action="{{ route('master.part.proses.store', $part) }}">
-            @csrf
-            <div class="row g-3 mb-4">
-                <div class="col-4">
-                    <label class="form-label">ID Proses <span class="text-danger">*</span></label>
-                    <input type="text" name="id_proses"
-                           class="form-control @error('id_proses') is-invalid @enderror"
-                           placeholder="1" value="{{ old('id_proses') }}">
-                    @error('id_proses')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                </div>
-                <div class="col-8">
-                    <label class="form-label">Nama Proses <span class="text-danger">*</span></label>
-                    <input type="text" name="nama_proses"
-                           class="form-control @error('nama_proses') is-invalid @enderror"
-                           placeholder="PROGRESSIVE / BENDING / dll"
-                           value="{{ old('nama_proses') }}">
-                    @error('nama_proses')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                </div>
-            </div>
-
-            <div style="background:var(--surface-2);border:1px solid var(--border-2);border-radius:2px;padding:14px;margin-bottom:20px">
-                <div class="erp-meta" style="font-weight:700;color:var(--text-3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:12px">
-                    <i class="bi bi-speedometer2 me-1"></i>Standar SPH
-                </div>
-                <div class="row g-3 mb-3">
-                    <div class="col-6">
-                        <label class="form-label">SPH Produksi <span class="text-danger">*</span></label>
-                        <div class="input-group input-group-sm">
-                            <input type="number" step="1" name="sph_standar_produksi"
-                                   class="form-control @error('sph_standar_produksi') is-invalid @enderror"
-                                   value="{{ old('sph_standar_produksi', 0) }}" min="0">
-                            <span class="input-group-text erp-meta">pcs/jam</span>
-                        </div>
-                        @error('sph_standar_produksi')<div class="text-danger erp-meta mt-1">{{ $message }}</div>@enderror
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label">SPH QC <span class="text-danger">*</span></label>
-                        <div class="input-group input-group-sm">
-                            <input type="number" step="1" name="sph_standar_qc"
-                                   class="form-control @error('sph_standar_qc') is-invalid @enderror"
-                                   value="{{ old('sph_standar_qc', 0) }}" min="0">
-                            <span class="input-group-text erp-meta">pcs/jam</span>
-                        </div>
-                        @error('sph_standar_qc')<div class="text-danger erp-meta mt-1">{{ $message }}</div>@enderror
-                    </div>
-                </div>
-                <div class="erp-meta" style="font-weight:700;color:var(--text-3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:12px">
-                    <i class="bi bi-clock me-1"></i>Standar Waktu Dandori
-                </div>
-                <div class="row g-3">
-                    <div class="col-6">
-                        <label class="form-label">Std Trial QC <span class="text-danger">*</span></label>
-                        <div class="input-group input-group-sm">
-                            <input type="number" name="std_trial_qc_menit"
-                                   class="form-control @error('std_trial_qc_menit') is-invalid @enderror"
-                                   value="{{ old('std_trial_qc_menit', 0) }}" min="0">
-                            <span class="input-group-text erp-meta">mnt</span>
-                        </div>
-                        @error('std_trial_qc_menit')<div class="text-danger erp-meta mt-1">{{ $message }}</div>@enderror
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label">Std Setting Dies <span class="text-danger">*</span></label>
-                        <div class="input-group input-group-sm">
-                            <input type="number" name="std_setting_dies_menit"
-                                   class="form-control @error('std_setting_dies_menit') is-invalid @enderror"
-                                   value="{{ old('std_setting_dies_menit', 0) }}" min="0">
-                            <span class="input-group-text erp-meta">mnt</span>
-                        </div>
-                        @error('std_setting_dies_menit')<div class="text-danger erp-meta mt-1">{{ $message }}</div>@enderror
-                    </div>
-                </div>
-            </div>
-
-            <div style="display:flex;gap:8px;border-top:1px solid var(--border-2);padding-top:16px">
-                <button type="submit" class="btn btn-success btn-sm" style="flex:1">
-                    <i class="bi bi-plus-lg me-1"></i>Tambah Proses
-                </button>
-                <button type="button" @click="drawerOpen = false" class="btn btn-outline-secondary btn-sm">Batal</button>
-            </div>
-        </form>
-    </div>
-</div>{{-- /drawer panel --}}
-
 {{-- ══ PAGE CONTENT ════════════════════════════════════════════════ --}}
 
 <div class="page-header">
@@ -203,18 +89,18 @@
         <div class="erp-panel">
             <div class="erp-panel-header" style="display:flex;justify-content:space-between;align-items:center">
                 <span><i class="bi bi-list-ol me-1"></i>Daftar Proses <span class="badge bg-secondary ms-1">{{ $part->proses->count() }}</span></span>
-                <button class="btn btn-success btn-sm" @click="drawerOpen = true">
+                <a href="{{ route('master.part.proses.create', $part) }}" class="btn btn-success btn-sm">
                     <i class="bi bi-plus-lg me-1"></i>Tambah Proses
-                </button>
+                </a>
             </div>
 
             @if($part->proses->isEmpty())
             <div style="text-align:center;padding:40px;color:#9ca3af">
                 <i class="bi bi-inbox" style="font-size:2rem;display:block;margin-bottom:10px"></i>
                 <div style="margin-bottom:12px">Belum ada proses. Tambahkan proses pertama.</div>
-                <button class="btn btn-success btn-sm" @click="drawerOpen = true">
+                <a href="{{ route('master.part.proses.create', $part) }}" class="btn btn-success btn-sm">
                     <i class="bi bi-plus-lg me-1"></i>Tambah Proses
-                </button>
+                </a>
             </div>
             @else
             <div style="overflow-x:auto">
@@ -450,7 +336,6 @@
     </div>
 
 </div>{{-- /row --}}
-</div>{{-- /alpine --}}
 
 @push('scripts')
 <script>

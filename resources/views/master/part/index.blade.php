@@ -22,110 +22,7 @@ $_prosesLabel = $_prosesObjF ? $_prosesObjF->id_proses.' – '.$_prosesObjF->nam
 @section('content')
 
 {{-- ══ ALPINE SCOPE ══ --}}
-<div x-data="{ drawerOpen: {{ $errors->any() ? 'true' : 'false' }}, filterOpen: false }">
-
-{{-- ── DRAWER BACKDROP ──────────────────────────────────────────── --}}
-<div x-show="drawerOpen"
-     x-cloak
-     @click="drawerOpen = false"
-     x-transition:enter="transition ease-out duration-200"
-     x-transition:enter-start="opacity-0"
-     x-transition:enter-end="opacity-100"
-     x-transition:leave="transition ease-in duration-150"
-     x-transition:leave-start="opacity-100"
-     x-transition:leave-end="opacity-0"
-     style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1190">
-</div>
-
-{{-- ── DRAWER PANEL ─────────────────────────────────────────────── --}}
-<div x-show="drawerOpen"
-     x-cloak
-     x-transition:enter="transition ease-out duration-250"
-     x-transition:enter-start="transform translate-x-full"
-     x-transition:enter-end="transform translate-x-0"
-     x-transition:leave="transition ease-in duration-200"
-     x-transition:leave-start="transform translate-x-0"
-     x-transition:leave-end="transform translate-x-full"
-     class="erp-drawer"
-     style="position:fixed;top:0;right:0;height:100dvh;width:440px;max-width:100vw;z-index:1200;
-            display:flex;flex-direction:column;background:#fff;box-shadow:-4px 0 24px rgba(0,0,0,.18)">
-
-    {{-- Header --}}
-    <div class="erp-drawer-hd">
-        <div><i class="bi bi-box-seam me-2"></i>Tambah Part</div>
-        <button type="button" @click="drawerOpen = false"><i class="bi bi-x-lg"></i></button>
-    </div>
-
-    {{-- Body (scrollable) --}}
-    <div style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:20px;overscroll-behavior:contain">
-
-        @if($errors->any())
-        <div class="alert alert-danger mb-3">
-            <ul class="mb-0 ps-3">@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
-        </div>
-        @endif
-
-        <div class="erp-meta" style="color:var(--text-3);margin-bottom:16px">
-            <i class="bi bi-info-circle me-1"></i>
-            Setelah menyimpan, Anda akan diarahkan ke halaman edit untuk menambahkan proses.
-        </div>
-
-        <form method="POST" action="{{ route('master.part.store') }}" novalidate>
-            @csrf
-            <div class="row g-3">
-
-                {{-- Customer --}}
-                <div class="col-12">
-                    <label class="form-label">Customer <span class="text-muted">(opsional)</span></label>
-                    <input type="text" name="customer"
-                           class="form-control @error('customer') is-invalid @enderror"
-                           value="{{ old('customer') }}"
-                           placeholder="Nama customer">
-                    @error('customer')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                </div>
-
-                {{-- Part No --}}
-                <div class="col-12">
-                    <label class="form-label">Part No <span class="text-danger">*</span></label>
-                    <input type="text" name="part_no"
-                           class="form-control @error('part_no') is-invalid @enderror"
-                           value="{{ old('part_no') }}"
-                           placeholder="Nomor part">
-                    @error('part_no')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                </div>
-
-                {{-- Part Name --}}
-                <div class="col-12">
-                    <label class="form-label">Part Name <span class="text-danger">*</span></label>
-                    <input type="text" name="part_name"
-                           class="form-control @error('part_name') is-invalid @enderror"
-                           value="{{ old('part_name') }}"
-                           placeholder="Nama part">
-                    @error('part_name')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                </div>
-
-                {{-- Tanggal Instalasi Dies --}}
-                <div class="col-12">
-                    <label class="form-label">Tanggal Instalasi Dies <span class="text-muted" style="font-weight:400">(opsional — basis MTBF &amp; Availability Dies)</span></label>
-                    <input type="date" name="tanggal_instalasi"
-                           class="form-control @error('tanggal_instalasi') is-invalid @enderror"
-                           value="{{ old('tanggal_instalasi') }}">
-                    @error('tanggal_instalasi')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                </div>
-
-            </div>
-
-            <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border-2);display:flex;gap:8px">
-                <button type="submit" class="btn btn-primary btn-sm" style="flex:1">
-                    <i class="bi bi-save me-1"></i>Simpan &amp; Lanjut ke Proses
-                </button>
-                <button type="button" @click="drawerOpen = false" class="btn btn-outline-secondary btn-sm">
-                    Batal
-                </button>
-            </div>
-        </form>
-    </div>{{-- /drawer body --}}
-</div>{{-- /drawer panel --}}
+<div x-data="{ filterOpen: false }">
 
 {{-- ══ KONTEN HALAMAN ══════════════════════════════════════════ --}}
 
@@ -133,9 +30,9 @@ $_prosesLabel = $_prosesObjF ? $_prosesObjF->id_proses.' – '.$_prosesObjF->nam
 <div class="erp-ws">
 
 <div class="erp-tb">
-    <button type="button" class="erp-tb-btn is-new" @click="drawerOpen = true">
+    <a href="{{ route('master.part.create') }}" class="erp-tb-btn is-new">
         <i class="bi bi-plus-lg"></i>Tambah Part
-    </button>
+    </a>
     <button type="button" class="erp-tb-btn" :class="filterOpen ? 'is-on' : ''" @click="filterOpen = !filterOpen">
         <i class="bi bi-funnel"></i>Filter @if($search !== '' || $filterCustomer !== '' || $filterPartId || $filterProsesId)<span aria-hidden="true">&bull;</span>@endif
     </button>
