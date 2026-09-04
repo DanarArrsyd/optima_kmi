@@ -70,6 +70,25 @@
             --c-info:      #1e40af;
             --c-info-bg:   #eff6ff;
 
+            /* SPH-upgrade accents (Master Part) — dua kategori rekomendasi,
+               Produksi vs QC, perlu dibedakan warnanya sendiri dari status
+               umum di atas. Sebelumnya disalin sebagai hex literal berkali-
+               kali di part/index.blade.php & part/edit.blade.php (tiap
+               salinan berisiko menyimpang); satu token per warna di sini. */
+            --c-sph-prod:       #d4a017;
+            --c-sph-prod-bg:    #fffdf5;
+            --c-sph-prod-bg-2:  #fff8e1;
+            --c-sph-prod-bg-3:  #fffdf0;
+            --c-sph-prod-text:  #7a5c00;
+            --c-sph-prod-text-2:#9a7a20;
+            --c-sph-qc:         #1a6b7c;
+            --c-sph-qc-bg:      #f5fbfd;
+            --c-sph-qc-bg-2:    #e8f4f7;
+            --c-sph-qc-bg-3:    #f0f8fa;
+            --c-sph-qc-text:    #0d3d4a;
+            --c-sph-qc-text-2:  #2a8a9c;
+            --c-sph-qc-border:  #a5d8e0;
+
             /* Transitions (strict <0.2s) */
             --t:           0.16s ease;
         }
