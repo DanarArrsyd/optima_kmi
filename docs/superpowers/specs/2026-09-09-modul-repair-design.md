@@ -97,9 +97,15 @@ Model `TransaksiRepair` (`app/Models/TransaksiRepair.php`):
 | `index` | `input.repair.index` | `admin, staff_repair` |
 | `create` | `input.repair.create` | `admin, staff_repair` |
 | `batch` | `input.repair.batch` (POST) | `admin, staff_repair` |
-| `edit` | `input.repair.edit` | `admin, staff_repair` |
-| `update` | `input.repair.update` (PUT) | `admin, staff_repair` |
-| `destroy` | `input.repair.destroy` (DELETE) | `admin, staff_repair` |
+| `edit` | `input.repair.edit` | `admin` saja |
+| `update` | `input.repair.update` (PUT) | `admin` saja |
+| `destroy` | `input.repair.destroy` (DELETE) | `admin` saja |
+
+**Koreksi dari draf awal:** dicek ulang ke `routes/web.php` — LHP Produksi/QC/Dandori
+semuanya menaruh edit+update di blok middleware admin-only terpisah
+(`// --- EDIT/UPDATE LHP — admin only ---`), dan tombol Edit/Hapus di tabel
+daftar cuma dirender `@if(auth()->user()->hasRole('admin'))`. Repair ikut pola
+itu persis, BUKAN `admin, staff_repair` seperti draf awal.
 | `export` | `input.repair.export` | `admin, staff_repair` |
 
 Route group prefix `input/repair`, di `routes/web.php` nempel di blok existing
