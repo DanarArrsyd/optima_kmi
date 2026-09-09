@@ -203,9 +203,13 @@ Mirror suite existing, disesuaikan nama:
   bisa dipilih di form LHR — kalau kosong, dropdown proses tampil kosong dengan
   pesan "Belum ada proses repair untuk part ini, tambah di Master Data dulu."
 
-## Yang sengaja belum diputuskan (open question, boleh diputuskan saat implementasi)
+## Keputusan final (update dari review awal)
 
-- Apakah `staff_repair` perlu lihat halaman Overview — default TIDAK di scope ini.
-- Nama kolom `id_proses` di `master_part_proses_repair` — string bebas seperti
-  existing `master_part_proses.id_proses`, atau auto-increment lokal per part.
-  Ikuti pola existing (string bebas) kecuali ada alasan kuat berbeda.
+- `staff_repair` **DAPAT** akses halaman Overview. `config/sidebar.php` baris
+  Overview (`roles`) dan `routes/web.php` middleware `role:...` untuk route
+  `overview` tambah `staff_repair`. `tests/Feature/OverviewPageTest.php`
+  (loop role literal ~baris 350) ikut ditambah `staff_repair`.
+- `id_proses` di `master_part_proses_repair` ikut pola existing
+  `master_part_proses.id_proses`: string bebas diisi manual (bukan
+  auto-increment) — konsisten, satu pola id_proses untuk seluruh sistem,
+  nggak nambah varian baru tanpa alasan kuat.
