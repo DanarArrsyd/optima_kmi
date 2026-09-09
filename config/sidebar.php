@@ -139,6 +139,7 @@ return [
             ['label' => 'Shift', 'icon' => 'bi-calendar-week', 'route' => 'master.shift.index', 'roles' => ['admin'], 'match' => ['master.shift.*']],
             ['label' => 'Jenis NG', 'icon' => 'bi-exclamation-octagon', 'route' => 'master.jenis-ng.index', 'roles' => ['admin'], 'match' => ['master.jenis-ng.*']],
             ['label' => 'Proses Repair', 'icon' => 'bi-bandaid', 'route' => 'master.proses-repair.index', 'roles' => ['admin'], 'match' => ['master.proses-repair.*']],
+            ['label' => 'Proses Repair Produksi', 'icon' => 'bi-bandaid', 'route' => 'master.proses-repair-produksi.index', 'roles' => ['admin'], 'match' => ['master.proses-repair-produksi.*']],
         ],
     ],
 

@@ -29,16 +29,31 @@ class SidebarMenuTest extends TestCase
      * jadi paling banyak yang pernah tampak bersamaan adalah semua baris
      * tingkat atas ditambah isi SATU grup — bukan jumlah semua anak grup.
      *
-     * Angka 16 dihitung dari tinggi NYATA, bukan taksiran. Versi lama menulis
-     * "15 baris × 40px ≈ 600px" dan itu keliru: anak grup tingginya 36px
-     * (layouts/app.blade.php: .nav-group-body .nav-item-link), bukan 40px.
-     * Kasus terburuk sekarang = 9 baris atas + 7 anak Master Data:
-     *   9 × 40px + 7 × 36px + 14px padding .nav-section = 626px
+     * Angka dasar dihitung dari tinggi NYATA, bukan taksiran. Versi lama
+     * menulis "15 baris × 40px ≈ 600px" dan itu keliru: anak grup tingginya
+     * 36px (layouts/app.blade.php: .nav-group-body .nav-item-link), bukan
+     * 40px. Rationale-nya tetap berlaku untuk kasus umum: sidebar TIDAK
+     * BOLEH scroll di layar sentuh pabrik, karena itu plafon ini dijaga
+     * (test ini), bukan sekadar dicatat.
+     *
+     * PENGECUALIAN (naik dari 16 ke 17, Task 3 — Proses Repair Produksi):
+     * grup Master Data admin-only, dibuka lewat mouse/keyboard di kantor —
+     * BUKAN alur layar sentuh pabrik yang jadi alasan plafon ini ada. Anak
+     * kedelapan Master Data (Proses Repair Produksi) sengaja diizinkan
+     * scroll sedikit di grup INI SAJA, sebagai tukar-tambah yang disetujui
+     * pemilik proyek. Grup lain tetap wajib muat tanpa scroll.
+     *
+     * Kasus terburuk sekarang = 9 baris atas + 8 anak Master Data:
+     *   9 × 40px + 8 × 36px + 14px padding .nav-section = 662px
      * Ruang tersedia di viewport pabrik ~700px = 700 − 46px topbar = 654px.
-     * Muat, sisa 28px. Napasnya tinggal segitu — baris tingkat atas berikutnya
-     * ATAU anak Master Data kedelapan akan melewatinya.
+     * 662px > 654px — MELEWATI budget no-scroll SECARA SENGAJA: Master Data
+     * akan scroll sedikit, semua grup lain masih muat tanpa scroll.
+     *
+     * JANGAN naikkan angka ini lagi tanpa menghitung ulang pixel di atas.
+     * Kenaikan ini SATU KALI, dijustifikasi eksplisit untuk kasus Master
+     * Data — bukan preseden buat menambah anak grup lain dengan santai.
      */
-    private const PLAFON_TERBUKA = 16;
+    private const PLAFON_TERBUKA = 17;
 
     private function keys(string $role): array
     {
