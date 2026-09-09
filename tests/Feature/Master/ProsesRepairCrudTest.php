@@ -51,4 +51,19 @@ class ProsesRepairCrudTest extends TestCase
 
         $this->actingAs($staff)->get(route('master.proses-repair.index'))->assertForbidden();
     }
+
+    public function test_sph_standar_repair_kosong_gagal_validasi_bukan_500(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $part = MasterPart::create(['part_no' => 'P-1', 'part_name' => 'PART SATU']);
+
+        $this->actingAs($admin)->post(route('master.proses-repair.store'), [
+            'id_part' => $part->id,
+            'id_proses' => 'RP1',
+            'nama_proses' => 'REPAIR LAS',
+            'sph_standar_repair' => '',
+        ])->assertSessionHasErrors('sph_standar_repair');
+
+        $this->assertDatabaseMissing('master_part_proses_repair', ['id_proses' => 'RP1']);
+    }
 }

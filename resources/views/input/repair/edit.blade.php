@@ -1,10 +1,6 @@
 @extends('layouts.app')
 @section('title', 'Edit LHR')
 
-@php
-    $_taKaryawan = $karyawan->map(fn ($k) => ['v' => $k->id, 't' => $k->nama_karyawan])->values();
-@endphp
-
 @section('content')
 <div class="page-header">
     <h1 class="page-title"><i class="bi bi-bandaid"></i>Edit LHR</h1>

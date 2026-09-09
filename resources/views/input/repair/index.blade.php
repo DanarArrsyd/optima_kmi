@@ -33,7 +33,7 @@ $_prosesLabel = $_prosesObjF ? $_prosesObjF->id_proses.' – '.$_prosesObjF->nam
     <button type="button" class="erp-tb-btn" :class="filterOpen ? 'is-on' : ''" @click="filterOpen = !filterOpen">
         <i class="bi bi-funnel"></i>Filter @if($filterActive)<span aria-hidden="true">&bull;</span>@endif
     </button>
-    @if(auth()->user()->hasRole('admin'))
+    @if(auth()->user()->hasRole(['admin', 'staff_repair']))
     <button type="button" class="erp-tb-btn"
             onclick="document.getElementById('exportRepairPanel').classList.toggle('d-none')">
         <i class="bi bi-file-earmark-excel"></i>Export Excel
@@ -150,7 +150,7 @@ $_prosesLabel = $_prosesObjF ? $_prosesObjF->id_proses.' – '.$_prosesObjF->nam
 
 <div class="erp-ws-main">
 
-@if(auth()->user()->hasRole('admin'))
+@if(auth()->user()->hasRole(['admin', 'staff_repair']))
 <x-export-modal
     panelId="exportRepairPanel"
     :exportUrl="route('input.repair.export')"

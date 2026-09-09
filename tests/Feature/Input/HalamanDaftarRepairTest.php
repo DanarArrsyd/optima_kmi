@@ -54,4 +54,15 @@ class HalamanDaftarRepairTest extends TestCase
 
         $response->assertDontSee(route('input.repair.edit', TransaksiRepair::first()), false);
     }
+
+    public function test_staff_repair_tetap_lihat_tombol_export(): void
+    {
+        $user = User::factory()->create(['role' => 'staff_repair']);
+
+        $response = $this->actingAs($user)->get(route('input.repair.index'));
+
+        $response->assertOk();
+        $response->assertSee('exportRepairPanel', false);
+        $response->assertSee('Export Excel');
+    }
 }

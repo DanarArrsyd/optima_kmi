@@ -337,7 +337,7 @@ function konfigRepair() {
             operator.pick({ v: row.id_karyawan, t: row.karyawan_teks });
 
             const p = picker();
-            const dataPart = partsData.find(p => p.proses.some(pr => pr.id == row.id_part_proses_repair));
+            const dataPart = partsData.find(dp => dp.proses.some(pr => pr.id == row.id_part_proses_repair));
             if (dataPart) {
                 p.pilih({ v: dataPart.id, t: `${dataPart.part_no} — ${dataPart.part_name}` });
                 Alpine.nextTick(() => {

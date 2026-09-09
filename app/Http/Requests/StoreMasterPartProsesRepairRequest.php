@@ -26,7 +26,7 @@ class StoreMasterPartProsesRepairRequest extends FormRequest
                     ->whereNull('deleted_at'),
             ],
             'nama_proses' => 'required|string|max:100',
-            'sph_standar_repair' => 'nullable|numeric|min:0',
+            'sph_standar_repair' => 'required|numeric|min:0',
         ];
     }
 }

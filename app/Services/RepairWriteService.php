@@ -13,14 +13,23 @@ class RepairWriteService
 {
     public function simpan(array $baris): TransaksiRepair
     {
-        $durasiDetik = $this->durasiDetik($baris['jam_start'].':00', $baris['jam_finish'].':00');
-        $cycleTime = (int) $baris['qty_aktual'] > 0 ? round($durasiDetik / $baris['qty_aktual'], 2) : 0.0;
+        $cycleTime = $this->hitungCycleTime($baris['jam_start'].':00', $baris['jam_finish'].':00', (int) $baris['qty_aktual']);
 
         return TransaksiRepair::create([
             ...$baris,
             'actual_cycle_time' => $cycleTime,
             'created_by' => auth()->id(),
         ]);
+    }
+
+    /** Cycle time aktual (detik / qty), dipakai saat create maupun update. */
+    public function hitungCycleTime(string $jamStart, string $jamFinish, int $qtyAktual): float
+    {
+        if ($qtyAktual === 0) {
+            return 0.0;
+        }
+
+        return round($this->durasiDetik($jamStart, $jamFinish) / $qtyAktual, 2);
     }
 
     /** Durasi dalam detik, rentang lewat tengah malam ditangani (selesai <= mulai berarti +1 hari). */

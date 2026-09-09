@@ -115,7 +115,16 @@ class RepairController extends Controller
     {
         $validated = $request->validated();
 
-        $repair->update($validated);
+        $cycleTime = $this->repairWriteService->hitungCycleTime(
+            $validated['jam_start'].':00',
+            $validated['jam_finish'].':00',
+            (int) $validated['qty_aktual']
+        );
+
+        $repair->update([
+            ...$validated,
+            'actual_cycle_time' => $cycleTime,
+        ]);
 
         return redirect()->route('input.repair.index', $this->backQueryParams($request))
             ->with('success', 'LHR berhasil diupdate.');

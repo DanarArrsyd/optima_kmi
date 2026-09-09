@@ -107,4 +107,22 @@ class RepairBatchTest extends TestCase
         $response->assertRedirect(route('input.repair.index'));
         $this->assertSame(200, $repair->fresh()->qty_aktual);
     }
+
+    public function test_update_repair_menghitung_ulang_actual_cycle_time(): void
+    {
+        $repair = TransaksiRepair::create([
+            ...$this->baris(), 'actual_cycle_time' => 72, 'created_by' => auth()->id(),
+        ]);
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $response = $this->actingAs($admin)->put(route('input.repair.update', $repair), $this->baris([
+            'jam_start' => '08:00',
+            'jam_finish' => '10:00',
+            'qty_aktual' => 300,
+        ]));
+
+        $response->assertRedirect(route('input.repair.index'));
+        // durasi 2 jam = 7200 detik / 300 = 24, BUKAN nilai lama 72 yang stale.
+        $this->assertEquals(24.0, $repair->fresh()->actual_cycle_time);
+    }
 }
