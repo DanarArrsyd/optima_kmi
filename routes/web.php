@@ -6,6 +6,7 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\Input\DandoriController;
 use App\Http\Controllers\Input\ProduksiController;
 use App\Http\Controllers\Input\QcController;
+use App\Http\Controllers\Input\RepairController;
 use App\Http\Controllers\Maintenance\AvailabilityController;
 use App\Http\Controllers\Maintenance\AvailabilityDiesController;
 use App\Http\Controllers\Maintenance\BreakdownDiesController;
@@ -136,6 +137,14 @@ Route::middleware('auth')->group(function () {
         Route::post('admin/anomali/{transaksi}/approve', [AnomalyController::class, 'approve'])->name('anomali.approve');
     });
 
+    // --- INPUT & DAFTAR LHR (staff_repair + admin) ---
+    Route::middleware('role:admin,staff_repair')->prefix('input')->name('input.')->group(function () {
+        Route::get('repair', [RepairController::class, 'index'])->name('repair.index');
+        Route::get('repair/create', [RepairController::class, 'create'])->name('repair.create');
+        Route::post('repair/batch', [RepairController::class, 'batch'])->name('repair.batch');
+        Route::get('repair/export', [RepairController::class, 'export'])->name('repair.export');
+    });
+
     // --- EDIT/UPDATE LHP — admin only ---
     Route::middleware('role:admin')->prefix('input')->name('input.')->group(function () {
         Route::get('produksi/{produksi}/edit', [ProduksiController::class, 'edit'])->name('produksi.edit');
@@ -151,6 +160,9 @@ Route::middleware('auth')->group(function () {
         // hidupin baris yang di-soft-delete admin) — beda dari batch() yang insert-only.
         // Admin-only, samain sama boundary dandori.update di atas (audit keamanan 2026-09-03).
         Route::post('dandori/import', [DandoriController::class, 'import'])->name('dandori.import');
+        Route::get('repair/{repair}/edit', [RepairController::class, 'edit'])->name('repair.edit');
+        Route::put('repair/{repair}', [RepairController::class, 'update'])->name('repair.update');
+        Route::delete('repair/{repair}', [RepairController::class, 'destroy'])->name('repair.destroy');
     });
 
     // --- INPUT QC: daftar (read-only, guest boleh) ---

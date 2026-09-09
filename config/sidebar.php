@@ -39,7 +39,7 @@ return [
         'label' => 'Overview',
         'icon' => 'bi-graph-up-arrow',
         'route' => 'overview',
-        'roles' => ['admin', 'manager', 'staff_produksi', 'staff_qc', 'staff_maintenance', 'guest'],
+        'roles' => ['admin', 'manager', 'staff_produksi', 'staff_qc', 'staff_maintenance', 'staff_repair', 'guest'],
         'match' => ['overview'],
     ],
 
@@ -111,6 +111,16 @@ return [
             ['label' => 'MTBF', 'icon' => 'bi-arrow-repeat', 'route' => 'maintenance.mtbf-dies', 'roles' => ['admin', 'staff_maintenance', 'manager', 'guest'], 'match' => ['maintenance.mtbf-dies']],
             ['label' => 'Availability', 'icon' => 'bi-graph-up', 'route' => 'maintenance.availability-dies', 'roles' => ['admin', 'staff_maintenance', 'manager', 'guest'], 'match' => ['maintenance.availability-dies']],
             ['label' => 'Control Stroke', 'icon' => 'bi-speedometer2', 'route' => 'maintenance.control-stroke-dies', 'roles' => ['admin', 'staff_maintenance', 'manager', 'guest'], 'match' => ['maintenance.control-stroke-dies*']],
+        ],
+    ],
+
+    [
+        'type' => 'group',
+        'key' => 'repair',
+        'label' => 'Repair',
+        'icon' => 'bi-bandaid',
+        'items' => [
+            ['label' => 'Input LHR', 'icon' => 'bi-clipboard-data', 'route' => 'input.repair.index', 'roles' => ['admin', 'staff_repair'], 'match' => ['input.repair.*']],
         ],
     ],
 

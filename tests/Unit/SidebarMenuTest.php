@@ -49,14 +49,14 @@ class SidebarMenuTest extends TestCase
     {
         // Urutan disengaja: pekerjaan harian di atas, administrasi di bawah.
         $this->assertSame(
-            ['overview', 'chatbot', 'produksi', 'quality', 'mtcmesin', 'mtcdies', 'master', 'sistem'],
+            ['overview', 'chatbot', 'produksi', 'quality', 'mtcmesin', 'mtcdies', 'repair', 'master', 'sistem'],
             $this->keys('admin')
         );
     }
 
     public function test_tiap_role_tidak_melewati_plafon_baris(): void
     {
-        foreach (['admin', 'manager', 'staff_produksi', 'staff_qc', 'staff_maintenance', 'guest'] as $role) {
+        foreach (['admin', 'manager', 'staff_produksi', 'staff_qc', 'staff_maintenance', 'staff_repair', 'guest'] as $role) {
             $this->assertLessThanOrEqual(
                 self::PLAFON_BARIS,
                 count(SidebarMenu::forRoles([$role])),
@@ -67,7 +67,7 @@ class SidebarMenuTest extends TestCase
 
     public function test_tiap_role_tidak_melewati_plafon_saat_satu_grup_terbuka(): void
     {
-        foreach (['admin', 'manager', 'staff_produksi', 'staff_qc', 'staff_maintenance', 'guest'] as $role) {
+        foreach (['admin', 'manager', 'staff_produksi', 'staff_qc', 'staff_maintenance', 'staff_repair', 'guest'] as $role) {
             $entries = SidebarMenu::forRoles([$role]);
 
             $ukuranGrup = array_map(
@@ -141,7 +141,7 @@ class SidebarMenuTest extends TestCase
         // ke peran lain lewat menu, sekalipun route-nya sudah dijaga role:admin.
         $this->assertContains('sistem', $this->keys('admin'));
 
-        foreach (['manager', 'staff_produksi', 'staff_qc', 'staff_maintenance', 'guest'] as $role) {
+        foreach (['manager', 'staff_produksi', 'staff_qc', 'staff_maintenance', 'staff_repair', 'guest'] as $role) {
             $this->assertNotContains('sistem', $this->keys($role), "Grup sistem bocor ke {$role}.");
         }
     }

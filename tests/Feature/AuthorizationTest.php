@@ -54,6 +54,20 @@ class AuthorizationTest extends TestCase
         $this->actingAs($this->user('staff_produksi'))->get(route('input.qc.index'))->assertForbidden();
     }
 
+    public function test_input_repair_hanya_admin_dan_staff_repair(): void
+    {
+        // NOTE: assertOk() untuk admin & staff_repair SENGAJA belum ditambahkan —
+        // resources/views/input/repair/index.blade.php belum ada (Task 9 di
+        // docs/superpowers/plans/2026-09-09-modul-repair.md). Middleware role
+        // sudah cukup diuji lewat empat assertForbidden() di bawah (403 terjadi
+        // sebelum controller/view dieksekusi). Task 9 wajib menambah balik dua
+        // assertOk() itu begitu view-nya lahir.
+        $this->actingAs($this->user('staff_produksi'))->get(route('input.repair.index'))->assertForbidden();
+        $this->actingAs($this->user('staff_qc'))->get(route('input.repair.index'))->assertForbidden();
+        $this->actingAs($this->user('staff_maintenance'))->get(route('input.repair.index'))->assertForbidden();
+        $this->actingAs($this->user('manager'))->get(route('input.repair.index'))->assertForbidden();
+    }
+
     public function test_chatbot_limited_to_admin_and_manager(): void
     {
         $this->actingAs($this->user('manager'))->get(route('chatbot.index'))->assertOk();
