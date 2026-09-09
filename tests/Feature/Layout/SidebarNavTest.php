@@ -19,7 +19,7 @@ class SidebarNavTest extends TestCase
     use RefreshDatabase;
 
     /** Role nyata sistem — dipakai untuk iterasi, bukan role 'group' semu apa pun. */
-    private const ROLES = ['admin', 'manager', 'staff_produksi', 'staff_qc', 'staff_maintenance', 'guest'];
+    private const ROLES = ['admin', 'manager', 'staff_produksi', 'staff_qc', 'staff_maintenance', 'staff_repair', 'guest'];
 
     /**
      * Substitusi route: nama route di config/sidebar.php → nama route lain
@@ -49,7 +49,8 @@ class SidebarNavTest extends TestCase
             $daftar = ($entri['type'] ?? 'link') === 'group' ? $entri['items'] : [$entri];
 
             foreach ($daftar as $item) {
-                $routes[] = self::SUBSTITUSI_ROUTE[$item['route']] ?? $item['route'];
+                $namaRoute = self::SUBSTITUSI_ROUTE[$item['route']] ?? $item['route'];
+                $routes[] = $namaRoute;
             }
         }
 

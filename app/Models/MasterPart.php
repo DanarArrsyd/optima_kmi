@@ -27,4 +27,9 @@ class MasterPart extends Model
     {
         return $this->hasMany(MasterPartProses::class, 'id_part');
     }
+
+    public function prosesRepair(): HasMany
+    {
+        return $this->hasMany(MasterPartProsesRepair::class, 'id_part');
+    }
 }

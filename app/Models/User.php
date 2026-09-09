@@ -36,6 +36,7 @@ class User extends Authenticatable
         'staff_produksi' => 'Staff Produksi',
         'staff_qc' => 'Staff QC',
         'staff_maintenance' => 'Staff Maintenance',
+        'staff_repair' => 'Staff Repair',
         'manager' => 'Manager',
         'guest' => 'Guest (Read-Only)',
     ];

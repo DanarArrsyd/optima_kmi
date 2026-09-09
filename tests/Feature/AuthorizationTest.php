@@ -54,6 +54,16 @@ class AuthorizationTest extends TestCase
         $this->actingAs($this->user('staff_produksi'))->get(route('input.qc.index'))->assertForbidden();
     }
 
+    public function test_input_repair_hanya_admin_dan_staff_repair(): void
+    {
+        $this->actingAs($this->user('admin'))->get(route('input.repair.index'))->assertOk();
+        $this->actingAs($this->user('staff_repair'))->get(route('input.repair.index'))->assertOk();
+        $this->actingAs($this->user('staff_produksi'))->get(route('input.repair.index'))->assertForbidden();
+        $this->actingAs($this->user('staff_qc'))->get(route('input.repair.index'))->assertForbidden();
+        $this->actingAs($this->user('staff_maintenance'))->get(route('input.repair.index'))->assertForbidden();
+        $this->actingAs($this->user('manager'))->get(route('input.repair.index'))->assertForbidden();
+    }
+
     public function test_chatbot_limited_to_admin_and_manager(): void
     {
         $this->actingAs($this->user('manager'))->get(route('chatbot.index'))->assertOk();

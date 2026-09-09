@@ -39,7 +39,7 @@ return [
         'label' => 'Overview',
         'icon' => 'bi-graph-up-arrow',
         'route' => 'overview',
-        'roles' => ['admin', 'manager', 'staff_produksi', 'staff_qc', 'staff_maintenance', 'guest'],
+        'roles' => ['admin', 'manager', 'staff_produksi', 'staff_qc', 'staff_maintenance', 'staff_repair', 'guest'],
         'match' => ['overview'],
     ],
 
@@ -114,6 +114,16 @@ return [
         ],
     ],
 
+    [
+        'type' => 'group',
+        'key' => 'repair',
+        'label' => 'Repair',
+        'icon' => 'bi-bandaid',
+        'items' => [
+            ['label' => 'Input LHR', 'icon' => 'bi-clipboard-data', 'route' => 'input.repair.index', 'roles' => ['admin', 'staff_repair'], 'match' => ['input.repair.*']],
+        ],
+    ],
+
     // Master data pabrik. Users PINDAH ke grup Sistem: akun dan peran itu
     // administrasi sistem, bukan data pabrik.
     [
@@ -128,6 +138,7 @@ return [
             ['label' => 'Loss Time', 'icon' => 'bi-stopwatch', 'route' => 'master.losstime.index', 'roles' => ['admin'], 'match' => ['master.losstime.*']],
             ['label' => 'Shift', 'icon' => 'bi-calendar-week', 'route' => 'master.shift.index', 'roles' => ['admin'], 'match' => ['master.shift.*']],
             ['label' => 'Jenis NG', 'icon' => 'bi-exclamation-octagon', 'route' => 'master.jenis-ng.index', 'roles' => ['admin'], 'match' => ['master.jenis-ng.*']],
+            ['label' => 'Proses Repair', 'icon' => 'bi-bandaid', 'route' => 'master.proses-repair.index', 'roles' => ['admin'], 'match' => ['master.proses-repair.*']],
         ],
     ],
 

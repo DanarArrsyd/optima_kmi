@@ -6,6 +6,7 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\Input\DandoriController;
 use App\Http\Controllers\Input\ProduksiController;
 use App\Http\Controllers\Input\QcController;
+use App\Http\Controllers\Input\RepairController;
 use App\Http\Controllers\Maintenance\AvailabilityController;
 use App\Http\Controllers\Maintenance\AvailabilityDiesController;
 use App\Http\Controllers\Maintenance\BreakdownDiesController;
@@ -21,6 +22,7 @@ use App\Http\Controllers\Master\KaryawanController;
 use App\Http\Controllers\Master\LosstimeController;
 use App\Http\Controllers\Master\MesinController;
 use App\Http\Controllers\Master\PartController;
+use App\Http\Controllers\Master\ProsesRepairController;
 use App\Http\Controllers\Master\ShiftController;
 use App\Http\Controllers\Master\UserController;
 use App\Http\Controllers\NotificationController;
@@ -69,6 +71,12 @@ Route::middleware('auth')->group(function () {
         Route::resource('mesin', MesinController::class);
         Route::resource('part', PartController::class)->except(['show']);
         Route::resource('losstime', LosstimeController::class);
+        Route::get('proses-repair', [ProsesRepairController::class, 'index'])->name('proses-repair.index');
+        Route::get('proses-repair/create', [ProsesRepairController::class, 'create'])->name('proses-repair.create');
+        Route::post('proses-repair', [ProsesRepairController::class, 'store'])->name('proses-repair.store');
+        Route::get('proses-repair/{prosesRepair}/edit', [ProsesRepairController::class, 'edit'])->name('proses-repair.edit');
+        Route::put('proses-repair/{prosesRepair}', [ProsesRepairController::class, 'update'])->name('proses-repair.update');
+        Route::delete('proses-repair/{prosesRepair}', [ProsesRepairController::class, 'destroy'])->name('proses-repair.destroy');
         Route::resource('shift', ShiftController::class);
         Route::patch('users/{user}/toggle-aktif', [UserController::class, 'toggleAktif'])->name('users.toggle-aktif');
         Route::resource('users', UserController::class);
@@ -129,6 +137,14 @@ Route::middleware('auth')->group(function () {
         Route::post('admin/anomali/{transaksi}/approve', [AnomalyController::class, 'approve'])->name('anomali.approve');
     });
 
+    // --- INPUT & DAFTAR LHR (staff_repair + admin) ---
+    Route::middleware('role:admin,staff_repair')->prefix('input')->name('input.')->group(function () {
+        Route::get('repair', [RepairController::class, 'index'])->name('repair.index');
+        Route::get('repair/create', [RepairController::class, 'create'])->name('repair.create');
+        Route::post('repair/batch', [RepairController::class, 'batch'])->name('repair.batch');
+        Route::get('repair/export', [RepairController::class, 'export'])->name('repair.export');
+    });
+
     // --- EDIT/UPDATE LHP — admin only ---
     Route::middleware('role:admin')->prefix('input')->name('input.')->group(function () {
         Route::get('produksi/{produksi}/edit', [ProduksiController::class, 'edit'])->name('produksi.edit');
@@ -144,6 +160,9 @@ Route::middleware('auth')->group(function () {
         // hidupin baris yang di-soft-delete admin) — beda dari batch() yang insert-only.
         // Admin-only, samain sama boundary dandori.update di atas (audit keamanan 2026-09-03).
         Route::post('dandori/import', [DandoriController::class, 'import'])->name('dandori.import');
+        Route::get('repair/{repair}/edit', [RepairController::class, 'edit'])->name('repair.edit');
+        Route::put('repair/{repair}', [RepairController::class, 'update'])->name('repair.update');
+        Route::delete('repair/{repair}', [RepairController::class, 'destroy'])->name('repair.destroy');
     });
 
     // --- INPUT QC: daftar (read-only, guest boleh) ---
@@ -293,7 +312,7 @@ Route::middleware('auth')->group(function () {
     // — assertion default-deny di sana membandingkan himpunan route yang
     // benar-benar bisa dicapai guest dengan whitelist itu, jadi menambah guest
     // di sini tanpa mendaftarkannya bikin test merah (bukan bolong senyap).
-    Route::middleware('role:admin,manager,staff_produksi,staff_qc,staff_maintenance,guest')
+    Route::middleware('role:admin,manager,staff_produksi,staff_qc,staff_maintenance,staff_repair,guest')
         ->get('overview', [OverviewController::class, 'index'])
         ->name('overview');
 
