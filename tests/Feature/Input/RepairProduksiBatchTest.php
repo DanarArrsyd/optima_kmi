@@ -80,8 +80,9 @@ class RepairProduksiBatchTest extends TestCase
         $this->delete(route('input.repair-produksi.destroy', $repair))->assertForbidden();
 
         $admin = User::factory()->create(['role' => 'admin']);
-        // assertOk() untuk GET edit SENGAJA belum ditulis di sini — view belum
-        // ada sampai Task 9. Cukup uji destroy (redirect, nol render).
+        // GET edit admin (assertOk) sekarang diuji terpisah di
+        // test_admin_bisa_buka_dan_update_repair_produksi_lewat_form_edit
+        // (Task 9). Method ini fokus pada otorisasi 403 non-admin + destroy.
 
         // destroy() memakai back(fallback: ...) — GET forbidden di atas tadi
         // (walau 403) tetap ditulis StartSession sebagai "previous URL" sesi
@@ -93,6 +94,23 @@ class RepairProduksiBatchTest extends TestCase
         $this->actingAs($admin)->delete(route('input.repair-produksi.destroy', $repair))
             ->assertRedirect(route('input.repair-produksi.index'));
         $this->assertSoftDeleted('transaksi_repair_produksi', ['id' => $repair->id]);
+    }
+
+    public function test_admin_bisa_buka_dan_update_repair_produksi_lewat_form_edit(): void
+    {
+        $repair = TransaksiRepairProduksi::create([
+            ...$this->baris(), 'actual_cycle_time' => 72, 'created_by' => auth()->id(),
+        ]);
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $this->actingAs($admin)->get(route('input.repair-produksi.edit', $repair))->assertOk();
+
+        $response = $this->actingAs($admin)->put(route('input.repair-produksi.update', $repair), $this->baris([
+            'qty_aktual' => 200,
+        ]));
+
+        $response->assertRedirect(route('input.repair-produksi.index'));
+        $this->assertSame(200, $repair->fresh()->qty_aktual);
     }
 
     public function test_update_repair_produksi_menghitung_ulang_actual_cycle_time(): void
