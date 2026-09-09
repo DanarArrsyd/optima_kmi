@@ -7,6 +7,7 @@ use App\Http\Controllers\Input\DandoriController;
 use App\Http\Controllers\Input\ProduksiController;
 use App\Http\Controllers\Input\QcController;
 use App\Http\Controllers\Input\RepairController;
+use App\Http\Controllers\Input\RepairProduksiController;
 use App\Http\Controllers\Maintenance\AvailabilityController;
 use App\Http\Controllers\Maintenance\AvailabilityDiesController;
 use App\Http\Controllers\Maintenance\BreakdownDiesController;
@@ -152,6 +153,14 @@ Route::middleware('auth')->group(function () {
         Route::get('repair/export', [RepairController::class, 'export'])->name('repair.export');
     });
 
+    // --- INPUT & DAFTAR LHR PRODUKSI (staff_produksi + staff_repair + admin) ---
+    Route::middleware('role:admin,staff_repair,staff_produksi')->prefix('input')->name('input.')->group(function () {
+        Route::get('repair-produksi', [RepairProduksiController::class, 'index'])->name('repair-produksi.index');
+        Route::get('repair-produksi/create', [RepairProduksiController::class, 'create'])->name('repair-produksi.create');
+        Route::post('repair-produksi/batch', [RepairProduksiController::class, 'batch'])->name('repair-produksi.batch');
+        Route::get('repair-produksi/export', [RepairProduksiController::class, 'export'])->name('repair-produksi.export');
+    });
+
     // --- EDIT/UPDATE LHP — admin only ---
     Route::middleware('role:admin')->prefix('input')->name('input.')->group(function () {
         Route::get('produksi/{produksi}/edit', [ProduksiController::class, 'edit'])->name('produksi.edit');
@@ -170,6 +179,9 @@ Route::middleware('auth')->group(function () {
         Route::get('repair/{repair}/edit', [RepairController::class, 'edit'])->name('repair.edit');
         Route::put('repair/{repair}', [RepairController::class, 'update'])->name('repair.update');
         Route::delete('repair/{repair}', [RepairController::class, 'destroy'])->name('repair.destroy');
+        Route::get('repair-produksi/{repairProduksi}/edit', [RepairProduksiController::class, 'edit'])->name('repair-produksi.edit');
+        Route::put('repair-produksi/{repairProduksi}', [RepairProduksiController::class, 'update'])->name('repair-produksi.update');
+        Route::delete('repair-produksi/{repairProduksi}', [RepairProduksiController::class, 'destroy'])->name('repair-produksi.destroy');
     });
 
     // --- INPUT QC: daftar (read-only, guest boleh) ---

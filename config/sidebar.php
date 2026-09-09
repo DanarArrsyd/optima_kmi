@@ -120,7 +120,8 @@ return [
         'label' => 'Repair',
         'icon' => 'bi-bandaid',
         'items' => [
-            ['label' => 'Input LHR', 'icon' => 'bi-clipboard-data', 'route' => 'input.repair.index', 'roles' => ['admin', 'staff_repair'], 'match' => ['input.repair.*']],
+            ['label' => 'LHR Regular', 'icon' => 'bi-clipboard-data', 'route' => 'input.repair.index', 'roles' => ['admin', 'staff_repair'], 'match' => ['input.repair.*']],
+            ['label' => 'LHR Produksi', 'icon' => 'bi-clipboard-data', 'route' => 'input.repair-produksi.index', 'roles' => ['admin', 'staff_repair', 'staff_produksi'], 'match' => ['input.repair-produksi.*']],
         ],
     ],
 
