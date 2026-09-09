@@ -293,7 +293,7 @@ Route::middleware('auth')->group(function () {
     // — assertion default-deny di sana membandingkan himpunan route yang
     // benar-benar bisa dicapai guest dengan whitelist itu, jadi menambah guest
     // di sini tanpa mendaftarkannya bikin test merah (bukan bolong senyap).
-    Route::middleware('role:admin,manager,staff_produksi,staff_qc,staff_maintenance,guest')
+    Route::middleware('role:admin,manager,staff_produksi,staff_qc,staff_maintenance,staff_repair,guest')
         ->get('overview', [OverviewController::class, 'index'])
         ->name('overview');
 
