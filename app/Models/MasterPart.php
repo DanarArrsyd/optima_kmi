@@ -32,4 +32,9 @@ class MasterPart extends Model
     {
         return $this->hasMany(MasterPartProsesRepair::class, 'id_part');
     }
+
+    public function prosesRepairProduksi(): HasMany
+    {
+        return $this->hasMany(MasterPartProsesRepairProduksi::class, 'id_part');
+    }
 }

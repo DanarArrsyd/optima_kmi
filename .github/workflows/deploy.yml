@@ -167,7 +167,8 @@ jobs:
               --path=database/migrations/2026_09_03_000001_add_manual_override_columns_to_preventive_schedule_items_table.php \
               --path=database/migrations/2026_09_04_000001_change_departemen_to_string_on_master_karyawan.php \
               --path=database/migrations/2026_09_09_100001_create_master_part_proses_repair_table.php \
-              --path=database/migrations/2026_09_09_100002_create_transaksi_repair_table.php"
+              --path=database/migrations/2026_09_09_100002_create_transaksi_repair_table.php \
+              --path=database/migrations/2026_09_10_100001_create_master_part_proses_repair_produksi_table.php"
 
       # Inject secret runtime (mis. CEREBRAS_API_KEY) ke .env server dari GitHub
       # Secrets — .env tidak pernah di-commit. No-op kalau secret belum diisi.
