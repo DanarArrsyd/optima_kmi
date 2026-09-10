@@ -23,7 +23,11 @@ return new class extends Migration
             $table->foreignId('updated_by')->nullable()->constrained('users');
             $table->softDeletes();
             $table->timestamps();
-            $table->index(['tanggal_repair_produksi', 'id_karyawan']);
+            // Nama index eksplisit: nama auto Laravel (>64 karakter, gabungan nama
+            // tabel+kolom yang panjang) ditolak MySQL "Identifier name too long" —
+            // sempat gagal deploy karenanya, SQLite lokal tidak menegakkan batas ini
+            // jadi lolos test suite.
+            $table->index(['tanggal_repair_produksi', 'id_karyawan'], 'trp_tanggal_karyawan_idx');
         });
     }
 
