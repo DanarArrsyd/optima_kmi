@@ -25,23 +25,37 @@ class SidebarMenuTest extends TestCase
 
     /**
      * Plafon gabungan baris tingkat atas + anak grup yang paling banyak
-     * dibuka sekaligus. Accordion cuma boleh satu grup terbuka (single-open),
-     * jadi paling banyak yang pernah tampak bersamaan adalah semua baris
-     * tingkat atas ditambah isi SATU grup — bukan jumlah semua anak grup.
+     * dibuka sekaligus, untuk grup SELAIN Master Data. Accordion cuma boleh
+     * satu grup terbuka (single-open), jadi paling banyak yang pernah
+     * tampak bersamaan adalah semua baris tingkat atas ditambah isi SATU
+     * grup — bukan jumlah semua anak grup.
      *
      * Angka dasar dihitung dari tinggi NYATA, bukan taksiran. Versi lama
      * menulis "15 baris × 40px ≈ 600px" dan itu keliru: anak grup tingginya
      * 36px (layouts/app.blade.php: .nav-group-body .nav-item-link), bukan
-     * 40px. Rationale-nya tetap berlaku untuk kasus umum: sidebar TIDAK
-     * BOLEH scroll di layar sentuh pabrik, karena itu plafon ini dijaga
-     * (test ini), bukan sekadar dicatat.
+     * 40px. Rationale ini berlaku untuk grup layar sentuh pabrik (produksi,
+     * quality, mtcmesin, mtcdies, repair, dst) — sidebar TIDAK BOLEH scroll
+     * di sana, karena itu plafon ini dijaga (test ini), bukan sekadar
+     * dicatat.
+     *
+     * Grup Master Data TIDAK dijaga oleh konstanta ini — dia admin-only,
+     * dibuka lewat mouse/keyboard di kantor, dan punya plafonnya sendiri:
+     * lihat PLAFON_TERBUKA_MASTER. Test WAJIB mengecualikan grup master
+     * saat menghitung $maks di sini, supaya pengecualian Master Data tidak
+     * ikut mengendurkan plafon grup layar sentuh yang lain.
+     */
+    private const PLAFON_TERBUKA = 16;
+
+    /**
+     * Plafon gabungan baris tingkat atas + anak grup Master Data SAJA.
      *
      * PENGECUALIAN (naik dari 16 ke 17, Task 3 — Proses Repair Produksi):
      * grup Master Data admin-only, dibuka lewat mouse/keyboard di kantor —
-     * BUKAN alur layar sentuh pabrik yang jadi alasan plafon ini ada. Anak
-     * kedelapan Master Data (Proses Repair Produksi) sengaja diizinkan
+     * BUKAN alur layar sentuh pabrik yang jadi alasan PLAFON_TERBUKA ada.
+     * Anak kedelapan Master Data (Proses Repair Produksi) sengaja diizinkan
      * scroll sedikit di grup INI SAJA, sebagai tukar-tambah yang disetujui
-     * pemilik proyek. Grup lain tetap wajib muat tanpa scroll.
+     * pemilik proyek. Grup lain tetap wajib muat tanpa scroll di bawah
+     * PLAFON_TERBUKA (16) — konstanta ini TIDAK berlaku untuk grup lain.
      *
      * Kasus terburuk sekarang = 9 baris atas + 8 anak Master Data:
      *   9 × 40px + 8 × 36px + 14px padding .nav-section = 662px
@@ -53,7 +67,7 @@ class SidebarMenuTest extends TestCase
      * Kenaikan ini SATU KALI, dijustifikasi eksplisit untuk kasus Master
      * Data — bukan preseden buat menambah anak grup lain dengan santai.
      */
-    private const PLAFON_TERBUKA = 17;
+    private const PLAFON_TERBUKA_MASTER = 17;
 
     private function keys(string $role): array
     {
@@ -85,8 +99,12 @@ class SidebarMenuTest extends TestCase
         foreach (['admin', 'manager', 'staff_produksi', 'staff_qc', 'staff_maintenance', 'staff_repair', 'guest'] as $role) {
             $entries = SidebarMenu::forRoles([$role]);
 
+            // Grup master dikecualikan dari perhitungan umum ini — dia
+            // punya plafon sendiri (PLAFON_TERBUKA_MASTER) yang dicek
+            // terpisah di bawah, supaya pengecualian Master Data tidak
+            // ikut mengendurkan plafon grup layar sentuh pabrik yang lain.
             $ukuranGrup = array_map(
-                fn (array $e) => ($e['type'] ?? 'link') === 'group' ? count($e['items']) : 0,
+                fn (array $e) => ($e['type'] ?? 'link') === 'group' && $e['key'] !== 'master' ? count($e['items']) : 0,
                 $entries
             );
 
@@ -97,8 +115,18 @@ class SidebarMenuTest extends TestCase
             $this->assertLessThanOrEqual(
                 self::PLAFON_TERBUKA,
                 count($entries) + $maks,
-                "Sidebar role {$role} melewati plafon {baris tingkat atas + grup terbesar terbuka}."
+                "Sidebar role {$role} melewati plafon {baris tingkat atas + grup terbesar terbuka} (selain master)."
             );
+
+            $master = collect($entries)->firstWhere('key', 'master');
+
+            if ($master !== null) {
+                $this->assertLessThanOrEqual(
+                    self::PLAFON_TERBUKA_MASTER,
+                    count($entries) + count($master['items']),
+                    "Sidebar role {$role} melewati plafon khusus grup Master Data."
+                );
+            }
         }
     }
 
