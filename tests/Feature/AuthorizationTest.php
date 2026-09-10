@@ -64,6 +64,18 @@ class AuthorizationTest extends TestCase
         $this->actingAs($this->user('manager'))->get(route('input.repair.index'))->assertForbidden();
     }
 
+    public function test_input_repair_produksi_bisa_diakses_staff_produksi_staff_repair_admin(): void
+    {
+        $this->actingAs($this->user('staff_produksi'))->post(route('input.repair-produksi.batch'), ['rows' => []])
+            ->assertSessionHasErrors(); // authorized (403 tidak terjadi), gagal validasi rows kosong — itu bukti lolos middleware
+        $this->actingAs($this->user('staff_qc'))->post(route('input.repair-produksi.batch'), ['rows' => []])
+            ->assertForbidden();
+        $this->actingAs($this->user('staff_maintenance'))->post(route('input.repair-produksi.batch'), ['rows' => []])
+            ->assertForbidden();
+        $this->actingAs($this->user('manager'))->post(route('input.repair-produksi.batch'), ['rows' => []])
+            ->assertForbidden();
+    }
+
     public function test_chatbot_limited_to_admin_and_manager(): void
     {
         $this->actingAs($this->user('manager'))->get(route('chatbot.index'))->assertOk();

@@ -120,7 +120,8 @@ return [
         'label' => 'Repair',
         'icon' => 'bi-bandaid',
         'items' => [
-            ['label' => 'Input LHR', 'icon' => 'bi-clipboard-data', 'route' => 'input.repair.index', 'roles' => ['admin', 'staff_repair'], 'match' => ['input.repair.*']],
+            ['label' => 'LHR Regular', 'icon' => 'bi-clipboard-data', 'route' => 'input.repair.index', 'roles' => ['admin', 'staff_repair'], 'match' => ['input.repair.*']],
+            ['label' => 'LHR Produksi', 'icon' => 'bi-clipboard-data', 'route' => 'input.repair-produksi.index', 'roles' => ['admin', 'staff_repair', 'staff_produksi'], 'match' => ['input.repair-produksi.*']],
         ],
     ],
 
@@ -139,6 +140,7 @@ return [
             ['label' => 'Shift', 'icon' => 'bi-calendar-week', 'route' => 'master.shift.index', 'roles' => ['admin'], 'match' => ['master.shift.*']],
             ['label' => 'Jenis NG', 'icon' => 'bi-exclamation-octagon', 'route' => 'master.jenis-ng.index', 'roles' => ['admin'], 'match' => ['master.jenis-ng.*']],
             ['label' => 'Proses Repair', 'icon' => 'bi-bandaid', 'route' => 'master.proses-repair.index', 'roles' => ['admin'], 'match' => ['master.proses-repair.*']],
+            ['label' => 'Proses Repair Produksi', 'icon' => 'bi-bandaid', 'route' => 'master.proses-repair-produksi.index', 'roles' => ['admin'], 'match' => ['master.proses-repair-produksi.*']],
         ],
     ],
 

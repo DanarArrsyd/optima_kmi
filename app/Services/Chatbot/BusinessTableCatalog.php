@@ -17,6 +17,7 @@ class BusinessTableCatalog
         'master_part_proses' => 'Proses per part + standar SPH (nama_proses, sph_standar_produksi, sph_standar_qc).',
         'master_part_proses_sph_log' => 'Riwayat perubahan standar SPH per proses.',
         'master_part_proses_repair' => 'Proses repair per part + standar SPH (id_part, id_proses, nama_proses, sph_standar_repair).',
+        'master_part_proses_repair_produksi' => 'Proses repair per part + standar SPH dikerjakan OPERATOR PRODUKSI (id_part, id_proses, nama_proses, sph_standar_repair_produksi). Beda dari master_part_proses_repair yang dikerjakan tim repair khusus.',
         'master_shift' => 'Master shift (nama_shift, jam_start, jam_finish).',
         'master_shift_istirahat' => 'Jadwal istirahat per shift.',
         'master_jenis_ng' => 'Master jenis defect/NG.',
@@ -28,6 +29,8 @@ class BusinessTableCatalog
             .'qty_ok = barang baik saja. Rincian jenis NG ada di transaksi_qc_ng.',
         'transaksi_repair' => 'LHR repair (tanggal_repair, id_shift, id_karyawan, id_part_proses_repair, jam_start, jam_finish, qty_aktual, actual_cycle_time). '
             .'qty_aktual = barang yang berhasil di-repair. Repair TIDAK punya konsep NG/qty_ng seperti transaksi_produksi.',
+        'transaksi_repair_produksi' => 'LHR repair produksi dikerjakan OPERATOR PRODUKSI (tanggal_repair_produksi, id_shift, id_karyawan, id_part_proses_repair_produksi, jam_start, jam_finish, qty_aktual, actual_cycle_time). '
+            .'qty_aktual = barang yang berhasil di-repair. Repair produksi TIDAK punya konsep NG/qty_ng seperti transaksi_produksi.',
         'transaksi_produksi_ng' => 'Rincian NG per jenis untuk satu sesi LHP produksi '
             .'(id_transaksi_produksi, id_jenis_ng, qty). Satu baris = satu jenis NG dalam satu sesi; '
             .'SUM(qty) per sesi sama dengan transaksi_produksi.qty_ng. '
