@@ -32,13 +32,26 @@
     /* Saat mencetak, cuma kartu QR yang tampak — shell (topbar/sidebar) dan
        kartu lain disembunyikan supaya satu print job = satu QR di satu lembar.
 
-       @page kecil (bukan A4 penuh) supaya kertas/label yang keluar seukuran
-       kartu QR-nya sendiri, bukan selembar A4 dengan QR kecil nyempil di
-       pojok kiri atas — pemborosan kertas kalau ditempel di stasiun. */
+       @page kecil dipasang buat browser yang menghormatinya (mis. print-to-PDF
+       via command line), TAPI kebanyakan dialog print interaktif (Chrome/Safari
+       di macOS/Windows) MENGABAIKAN @page size dan tetap pakai ukuran kertas
+       default (A4/Letter) dari sistem — itu bukan bug di sini, keterbatasan
+       browser yang nol bisa dipaksa dari CSS. Makanya jangan cuma andalkan
+       @page: kartu WAJIB diketengahkan (flex center di #main, bukan cuma
+       align-items di kartunya sendiri) supaya di kertas ukuran APAPUN yang
+       kepilih, QR-nya tetap di tengah — bukan nempel pojok kiri atas. */
     @media print {
         @page { size: 90mm 120mm; margin: 6mm; }
+        html, body { height: 100%; }
         #topbar, #sidebar, #sb-overlay, .page-header, .qr-tombol-cetak { display: none !important; }
-        #main { padding: 0 !important; margin: 0 !important; }
+        #main {
+            padding: 0 !important;
+            margin: 0 !important;
+            min-height: 100vh;
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+        }
         .qr-kartu { display: none !important; }
         .qr-kartu.qr-cetak {
             display: flex !important;
