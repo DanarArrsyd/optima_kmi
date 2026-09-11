@@ -43,6 +43,7 @@
     <table class="erp-table" style="min-width:720px;width:100%">
         <thead style="position:sticky;top:0;z-index:10">
             <tr>
+                <th style="width:130px">Customer</th>
                 <th style="width:130px">Part No.</th>
                 <th>Part Name</th>
                 <th style="width:100px">ID Proses</th>
@@ -54,6 +55,7 @@
         <tbody>
         @forelse($prosesRepairProduksi as $pr)
             <tr>
+                <td>{{ $pr->part?->customer ?? '—' }}</td>
                 <td>{{ $pr->part?->part_no ?? '—' }}</td>
                 <td>{{ $pr->part?->part_name ?? '—' }}</td>
                 <td style="font-family:monospace">{{ $pr->id_proses }}</td>
@@ -71,7 +73,7 @@
                 </td>
             </tr>
         @empty
-            <tr><td colspan="6" style="text-align:center;color:#888;padding:20px">Belum ada proses repair produksi.</td></tr>
+            <tr><td colspan="7" style="text-align:center;color:#888;padding:20px">Belum ada proses repair produksi.</td></tr>
         @endforelse
         </tbody>
     </table>
