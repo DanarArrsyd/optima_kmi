@@ -157,6 +157,7 @@ return [
             ['label' => 'Users', 'icon' => 'bi-person-gear', 'route' => 'master.users.index', 'roles' => ['admin'], 'match' => ['master.users.*']],
             ['label' => 'Backup', 'icon' => 'bi-download', 'route' => 'sistem.backup.index', 'roles' => ['admin'], 'match' => ['sistem.backup.*']],
             ['label' => 'Log Aktivitas', 'icon' => 'bi-journal-text', 'route' => 'sistem.log-aktivitas.index', 'roles' => ['admin'], 'match' => ['sistem.log-aktivitas.*']],
+            ['label' => 'Generate QR Stasiun', 'icon' => 'bi-qr-code', 'route' => 'sistem.qr-stasiun.index', 'roles' => ['admin'], 'match' => ['sistem.qr-stasiun.*']],
         ],
     ],
 ];
