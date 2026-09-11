@@ -6,9 +6,9 @@
     <h1 class="page-title"><i class="bi bi-qr-code"></i>Generate QR Stasiun</h1>
 </div>
 
-<div style="font-size:12.5px;color:var(--text-3);margin-bottom:18px">
+<div class="qr-deskripsi" style="font-size:12.5px;color:var(--text-3);margin-bottom:18px">
     QR di bawah statis — sekali dicetak dan ditempel di stasiun, tidak perlu digenerate ulang.
-    Nambah stasiun baru dilakukan lewat kode (`config/qr_stasiun.php`), bukan dari halaman ini.
+    Nambah stasiun baru dilakukan lewat kode (<code>config/qr_stasiun.php</code>), bukan dari halaman ini.
 </div>
 
 <div style="display:flex;flex-wrap:wrap;gap:16px">
@@ -41,9 +41,9 @@
        align-items di kartunya sendiri) supaya di kertas ukuran APAPUN yang
        kepilih, QR-nya tetap di tengah — bukan nempel pojok kiri atas. */
     @media print {
-        @page { size: 90mm 120mm; margin: 6mm; }
+        @page { size: 105mm 148mm; margin: 6mm; } /* A6 */
         html, body { height: 100%; }
-        #topbar, #sidebar, #sb-overlay, .page-header, .qr-tombol-cetak { display: none !important; }
+        #topbar, #sidebar, #sb-overlay, .page-header, .qr-deskripsi, .qr-tombol-cetak { display: none !important; }
         #main {
             padding: 0 !important;
             margin: 0 !important;
