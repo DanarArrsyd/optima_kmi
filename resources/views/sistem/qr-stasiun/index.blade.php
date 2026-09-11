@@ -30,12 +30,25 @@
 @push('styles')
 <style>
     /* Saat mencetak, cuma kartu QR yang tampak — shell (topbar/sidebar) dan
-       kartu lain disembunyikan supaya satu print job = satu QR di satu lembar. */
+       kartu lain disembunyikan supaya satu print job = satu QR di satu lembar.
+
+       @page kecil (bukan A4 penuh) supaya kertas/label yang keluar seukuran
+       kartu QR-nya sendiri, bukan selembar A4 dengan QR kecil nyempil di
+       pojok kiri atas — pemborosan kertas kalau ditempel di stasiun. */
     @media print {
+        @page { size: 90mm 120mm; margin: 6mm; }
         #topbar, #sidebar, #sb-overlay, .page-header, .qr-tombol-cetak { display: none !important; }
         #main { padding: 0 !important; margin: 0 !important; }
         .qr-kartu { display: none !important; }
-        .qr-kartu.qr-cetak { display: block !important; border: none !important; }
+        .qr-kartu.qr-cetak {
+            display: flex !important;
+            flex-direction: column;
+            align-items: center;
+            width: auto !important;
+            border: none !important;
+            box-shadow: none !important;
+            margin: 0 !important;
+        }
     }
 </style>
 @endpush
