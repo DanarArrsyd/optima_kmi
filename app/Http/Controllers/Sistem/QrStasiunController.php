@@ -12,7 +12,8 @@ class QrStasiunController extends Controller
     public function index()
     {
         $stasiun = collect(config('qr_stasiun'))->map(function (array $item) {
-            $url = route($item['route']);
+            $path = route($item['route'], absolute: false);
+            $url = rtrim(config('app.url'), '/').$path;
 
             return [
                 'label' => $item['label'],

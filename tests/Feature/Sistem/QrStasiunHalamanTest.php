@@ -20,6 +20,7 @@ class QrStasiunHalamanTest extends TestCase
         $response->assertOk();
         $response->assertSee('LHR Regular');
         $response->assertSee('<svg', false);
+        $response->assertSee(route('input.repair.create'));
     }
 
     public static function peranBukanAdmin(): array

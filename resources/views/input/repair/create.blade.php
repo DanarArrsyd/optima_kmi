@@ -38,6 +38,7 @@
     .lhp-aksi-reversed { flex-direction: column-reverse; align-items: stretch; }
     .lhp-aksi-forward { flex-direction: column; align-items: stretch; }
     .lhp-aksi-reversed > .btn, .lhp-aksi-forward > .btn { width: 100%; min-height: 44px; }
+    .lhp-isi .form-control, .lhp-isi .form-select { font-size: 16px; min-height: 44px; }
 }
 </style>
 @endpush
