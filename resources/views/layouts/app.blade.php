@@ -363,6 +363,17 @@
             body.sb-mobile-open #sidebar    { width: var(--sb-exp-w); overflow-y: auto; }
             body:not(.sb-mobile-open) #sidebar { width: 0; }
             #main { margin-left: 0 !important; }
+
+            /* Topbar penuh sesak di layar sempit — breadcrumb judul, tanggal,
+               teks nama+role user, dan tag "MES" dibuang, sisa ikon inti
+               (hamburger, brand, notif, ikon user) yang muat di satu baris
+               tanpa overflow horizontal. */
+            .topbar-page,
+            .tb-tanggal,
+            .brand-tag,
+            .user-info { display: none; }
+            .app-brand { padding: 0 10px; }
+            .topbar-item.user-block { padding: 0 12px; }
         }
 
         /* ══ Main ═══════════════════════════════════════════════════ */
@@ -1321,7 +1332,7 @@
             $initial = strtoupper(substr($u->name ?? 'U', 0, 1));
         @endphp
 
-        <div class="topbar-item">
+        <div class="topbar-item tb-tanggal">
             <i class="bi bi-calendar3"></i>
             <span>{{ now()->format('d M Y') }}</span>
         </div>

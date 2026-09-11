@@ -32,6 +32,13 @@
     .lhp-baris { flex-direction: column; align-items: stretch; gap: 4px; }
     .lhp-baris > label { flex: none; }
     .lhp-isi { flex: none; }
+
+    /* Tombol aksi jadi tumpuk penuh lebar — target jempol lebih besar
+       daripada tombol kecil berdempetan di ujung kanan. */
+    .lhp-aksi-reversed { flex-direction: column-reverse; align-items: stretch; }
+    .lhp-aksi-forward { flex-direction: column; align-items: stretch; }
+    .lhp-aksi-reversed > .btn, .lhp-aksi-forward > .btn { width: 100%; min-height: 44px; }
+    .lhp-isi .form-control, .lhp-isi .form-select { font-size: 16px; min-height: 44px; }
 }
 </style>
 @endpush
@@ -168,7 +175,7 @@
                 <div class="alert alert-danger py-2 mt-3 mb-0" x-text="galat"></div>
             </template>
 
-            <div class="d-flex justify-content-end gap-2 mt-3">
+            <div class="d-flex justify-content-end gap-2 mt-3 lhp-aksi-reversed">
                 <button type="button" class="btn btn-outline-secondary" x-show="editIndex !== null" x-cloak
                         @click="batalEdit()">
                     Batal Edit
@@ -240,7 +247,7 @@
             @csrf
             <input type="hidden" name="rows_json" :value="JSON.stringify(payloadRows())">
 
-            <div class="d-flex gap-2 justify-content-end">
+            <div class="d-flex gap-2 justify-content-end lhp-aksi-forward">
                 <span class="text-muted small align-self-center" x-show="editIndex !== null" x-cloak>
                     Selesaikan UPDATE BARIS atau Batal Edit dulu sebelum submit.
                 </span>
