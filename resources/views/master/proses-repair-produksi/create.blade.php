@@ -15,7 +15,7 @@
 @endif
 
 @php
-    $_taParts = $parts->map(fn ($p) => ['v' => $p->id, 't' => "{$p->part_no} — {$p->part_name}"])->values();
+    $_taParts = $parts->map(fn ($p) => ['v' => $p->id, 't' => "{$p->part_no} — {$p->part_name}", 'c' => $p->customer])->values();
     $_oldPartId = old('id_part');
     $_oldPart = $_oldPartId ? $parts->firstWhere('id', (int) $_oldPartId) : null;
     $_oldPartText = $_oldPart ? "{$_oldPart->part_no} — {$_oldPart->part_name}" : '';
@@ -43,6 +43,7 @@
                     </div>
                 </div>
                 @error('id_part')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                <div class="form-text" x-show="val" x-cloak>Customer: <b x-text="(items.find(i => i.v == val) || {}).c || '—'"></b></div>
             </div>
             <div class="mb-3">
                 <label class="form-label">ID Proses <span class="text-danger">*</span></label>
