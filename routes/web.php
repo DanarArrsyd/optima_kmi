@@ -31,6 +31,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OverviewController;
 use App\Http\Controllers\Sistem\BackupController;
 use App\Http\Controllers\Sistem\LogAktivitasController;
+use App\Http\Controllers\Sistem\QrStasiunController;
 use App\Http\Controllers\TwoFactorAuthController;
 use App\Http\Controllers\Vcb\VcbDandoriController;
 use App\Http\Controllers\Vcb\VcbMesinController;
@@ -106,6 +107,7 @@ Route::middleware('auth')->group(function () {
         Route::get('backup/{berkas}/unduh', [BackupController::class, 'unduh'])->name('backup.unduh');
         Route::delete('backup/{berkas}', [BackupController::class, 'hapus'])->name('backup.hapus');
         Route::get('log-aktivitas', [LogAktivitasController::class, 'index'])->name('log-aktivitas.index');
+        Route::get('qr-stasiun', [QrStasiunController::class, 'index'])->name('qr-stasiun.index');
     });
 
     // --- 2FA (admin only) — setup/nonaktifkan TOTP. Nol route 'profile.*' lain
