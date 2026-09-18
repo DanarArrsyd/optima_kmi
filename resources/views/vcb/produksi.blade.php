@@ -59,6 +59,17 @@
                 </select>
             </div>
             <div class="erp-grp">
+                <b>Line</b>
+                <div style="display:flex;flex-wrap:wrap;gap:8px">
+                    @foreach($lineList as $l)
+                    <label class="erp-chk">
+                        <input type="checkbox" class="all-line-cb" value="{{ $l }}">
+                        {{ $l }}
+                    </label>
+                    @endforeach
+                </div>
+            </div>
+            <div class="erp-grp">
                 <button type="submit" class="erp-btn is-pri">
                     <i class="bi bi-funnel me-1"></i>Tampilkan
                 </button>
@@ -98,6 +109,17 @@
                         <option value="{{ $s->id }}">{{ $s->nama_shift }}</option>
                     @endforeach
                 </select>
+            </div>
+            <div class="erp-grp">
+                <b>Line</b>
+                <div style="display:flex;flex-wrap:wrap;gap:8px">
+                    @foreach($lineList as $l)
+                    <label class="erp-chk">
+                        <input type="checkbox" class="one-line-cb" value="{{ $l }}">
+                        {{ $l }}
+                    </label>
+                    @endforeach
+                </div>
             </div>
             <div class="erp-grp">
                 <button type="submit" class="erp-btn is-pri">
@@ -508,6 +530,7 @@ async function loadAllOperators() {
         date_to:   document.getElementById('all_date_to').value,
         shift_id:  document.getElementById('all_shift_id').value,
     });
+    document.querySelectorAll('.all-line-cb:checked').forEach(cb => params.append('line[]', cb.value));
     document.getElementById('allPeriodLabel').textContent =
         document.getElementById('all_date_from').value + ' — ' + document.getElementById('all_date_to').value;
 
@@ -717,6 +740,7 @@ async function loadOneOperator() {
         karyawan_id: karyawanId,
         shift_id:    document.getElementById('one_shift_id').value,
     });
+    document.querySelectorAll('.one-line-cb:checked').forEach(cb => params.append('line[]', cb.value));
     // Tombol export tidak dirender untuk role guest.
     const exportBtn = document.getElementById('oneExportBtn');
     if (exportBtn) exportBtn.href = `/export/produksi?${params}&format=excel`;

@@ -12,11 +12,13 @@ class DashboardService
     /**
      * VCB Produksi: aggregate by karyawan for date range.
      */
-    public function getVcbProduksi(Carbon $dateFrom, Carbon $dateTo, ?int $shiftId = null): array
+    public function getVcbProduksi(Carbon $dateFrom, Carbon $dateTo, ?int $shiftId = null, array $lines = []): array
     {
         $records = TransaksiProduksi::with(['karyawan', 'partProses.part', 'mesin'])
             ->whereBetween('tanggal_produksi', [$dateFrom->toDateString(), $dateTo->toDateString()])
             ->when($shiftId, fn ($q) => $q->where('id_shift', $shiftId))
+            // Mesin soft-deleted otomatis tersaring whereHas ini DAN nol muncul di $lineList — data lama jadi "hilang" begitu filter line dicentang.
+            ->when(! empty($lines), fn ($q) => $q->whereHas('mesin', fn ($q2) => $q2->whereIn('line', $lines)))
             ->get();
 
         return $records->groupBy('id_karyawan')->map(function ($rows) {
@@ -69,12 +71,13 @@ class DashboardService
      * VCB Produksi: aggregate by DATE for a specific operator.
      * Returns daily achievement breakdown with per-session detail.
      */
-    public function getVcbProduksiByDate(Carbon $dateFrom, Carbon $dateTo, int $karyawanId, ?int $shiftId = null): array
+    public function getVcbProduksiByDate(Carbon $dateFrom, Carbon $dateTo, int $karyawanId, ?int $shiftId = null, array $lines = []): array
     {
         $records = TransaksiProduksi::with(['partProses.part', 'mesin'])
             ->whereBetween('tanggal_produksi', [$dateFrom->toDateString(), $dateTo->toDateString()])
             ->where('id_karyawan', $karyawanId)
             ->when($shiftId, fn ($q) => $q->where('id_shift', $shiftId))
+            ->when(! empty($lines), fn ($q) => $q->whereHas('mesin', fn ($q2) => $q2->whereIn('line', $lines)))
             ->orderBy('tanggal_produksi')
             ->orderBy('jam_start')
             ->get();
@@ -130,11 +133,12 @@ class DashboardService
     /**
      * VCB Mesin: aggregate by mesin for date range.
      */
-    public function getVcbMesin(Carbon $dateFrom, Carbon $dateTo, ?int $shiftId = null): array
+    public function getVcbMesin(Carbon $dateFrom, Carbon $dateTo, ?int $shiftId = null, array $lines = []): array
     {
         $records = TransaksiProduksi::with(['mesin', 'partProses'])
             ->whereBetween('tanggal_produksi', [$dateFrom->toDateString(), $dateTo->toDateString()])
             ->when($shiftId, fn ($q) => $q->where('id_shift', $shiftId))
+            ->when(! empty($lines), fn ($q) => $q->whereHas('mesin', fn ($q2) => $q2->whereIn('line', $lines)))
             ->get();
 
         return $records->groupBy('id_mesin')->map(function ($rows) {

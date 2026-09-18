@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Vcb;
 
 use App\Http\Controllers\Controller;
+use App\Models\MasterMesin;
 use App\Models\MasterShift;
 use App\Services\DashboardService;
 use Illuminate\Http\Request;
@@ -15,8 +16,9 @@ class VcbMesinController extends Controller
     public function index()
     {
         $shifts = MasterShift::orderBy('jam_start')->get();
+        $lineList = MasterMesin::query()->distinct()->orderBy('line')->pluck('line')->filter(fn ($l) => $l !== null && $l !== '')->values();
 
-        return view('vcb.mesin', compact('shifts'));
+        return view('vcb.mesin', compact('shifts', 'lineList'));
     }
 
     public function data(Request $request)
@@ -24,8 +26,9 @@ class VcbMesinController extends Controller
         $dateFrom = Carbon::parse($request->input('date_from', today()->toDateString()));
         $dateTo = Carbon::parse($request->input('date_to', today()->toDateString()));
         $shiftId = $request->filled('shift_id') ? (int) $request->input('shift_id') : null;
+        $lines = array_values(array_filter((array) $request->input('line', []), 'is_string'));
 
-        $rows = $this->dashboardService->getVcbMesin($dateFrom, $dateTo, $shiftId);
+        $rows = $this->dashboardService->getVcbMesin($dateFrom, $dateTo, $shiftId, $lines);
 
         $labels = array_column($rows, 'mesin');
         $targets = array_column($rows, 'total_target_qty');
