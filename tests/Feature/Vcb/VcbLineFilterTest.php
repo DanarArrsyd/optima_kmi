@@ -123,4 +123,16 @@ class VcbLineFilterTest extends TestCase
 
         $this->assertCount(2, $json['labels']);
     }
+
+    public function test_vcb_mesin_menampilkan_checkbox_line_dari_master_data(): void
+    {
+        MasterMesin::create(['id_mesin' => 'A-'.uniqid(), 'nama_mesin' => 'MESIN A', 'line' => 'A', 'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100]);
+        MasterMesin::create(['id_mesin' => 'B-'.uniqid(), 'nama_mesin' => 'MESIN B', 'line' => 'B', 'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100]);
+
+        $html = $this->get(route('vcb.mesin'))->assertOk()->getContent();
+
+        $this->assertStringContainsString('class="line-cb" value="A"', $html);
+        $this->assertStringContainsString('class="line-cb" value="B"', $html);
+        $this->assertStringContainsString("params.append('line[]'", $html);
+    }
 }

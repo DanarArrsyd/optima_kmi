@@ -49,6 +49,17 @@
             </select>
         </div>
         <div class="erp-grp">
+            <b>Line</b>
+            <div style="display:flex;flex-wrap:wrap;gap:8px">
+                @foreach($lineList as $l)
+                <label class="erp-chk">
+                    <input type="checkbox" class="line-cb" value="{{ $l }}">
+                    {{ $l }}
+                </label>
+                @endforeach
+            </div>
+        </div>
+        <div class="erp-grp">
             <button type="submit" class="erp-btn is-pri"><i class="bi bi-search"></i>Tampilkan</button>
         </div>
     </form>
@@ -116,6 +127,7 @@ async function loadData() {
         date_to:   document.getElementById('date_to').value,
         shift_id:  document.getElementById('shift_id').value,
     });
+    document.querySelectorAll('.line-cb:checked').forEach(cb => params.append('line[]', cb.value));
     // Tombol export tidak dirender untuk role guest.
     const exportBtn = document.getElementById('exportExcel');
     if (exportBtn) exportBtn.href = `/export/produksi?${params}&group=mesin&format=excel`;
