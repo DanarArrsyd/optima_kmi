@@ -135,4 +135,16 @@ class VcbLineFilterTest extends TestCase
         $this->assertStringContainsString('class="line-cb" value="B"', $html);
         $this->assertStringContainsString("params.append('line[]'", $html);
     }
+
+    public function test_vcb_produksi_menampilkan_checkbox_line_di_kedua_form(): void
+    {
+        MasterMesin::create(['id_mesin' => 'A-'.uniqid(), 'nama_mesin' => 'MESIN A', 'line' => 'A', 'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100]);
+
+        $html = $this->get(route('vcb.produksi'))->assertOk()->getContent();
+
+        $this->assertStringContainsString('class="all-line-cb" value="A"', $html);
+        $this->assertStringContainsString('class="one-line-cb" value="A"', $html);
+        $this->assertStringContainsString("querySelectorAll('.all-line-cb:checked')", $html);
+        $this->assertStringContainsString("querySelectorAll('.one-line-cb:checked')", $html);
+    }
 }
