@@ -20,7 +20,7 @@ class VcbProduksiController extends Controller
         $karyawan = MasterKaryawan::whereRaw('LOWER(departemen) = ?', ['produksi'])
             ->orderBy('nama_karyawan')
             ->get();
-        $lineList = MasterMesin::query()->distinct()->orderBy('line')->pluck('line')->filter()->values();
+        $lineList = MasterMesin::query()->distinct()->orderBy('line')->pluck('line')->filter(fn ($l) => $l !== null && $l !== '')->values();
 
         return view('vcb.produksi', compact('shifts', 'karyawan', 'lineList'));
     }
@@ -33,7 +33,7 @@ class VcbProduksiController extends Controller
         $dateFrom = Carbon::parse($request->input('date_from', today()->toDateString()));
         $dateTo = Carbon::parse($request->input('date_to', today()->toDateString()));
         $shiftId = $request->filled('shift_id') ? (int) $request->input('shift_id') : null;
-        $lines = (array) $request->input('line', []);
+        $lines = array_values(array_filter((array) $request->input('line', []), 'is_string'));
 
         $rows = $this->dashboardService->getVcbProduksi($dateFrom, $dateTo, $shiftId, $lines);
 
@@ -58,7 +58,7 @@ class VcbProduksiController extends Controller
         $dateTo = Carbon::parse($request->input('date_to', today()->toDateString()));
         $karyawanId = (int) $request->input('karyawan_id');
         $shiftId = $request->filled('shift_id') ? (int) $request->input('shift_id') : null;
-        $lines = (array) $request->input('line', []);
+        $lines = array_values(array_filter((array) $request->input('line', []), 'is_string'));
 
         if (! $karyawanId) {
             return response()->json(['error' => 'Pilih operator terlebih dahulu.'], 422);

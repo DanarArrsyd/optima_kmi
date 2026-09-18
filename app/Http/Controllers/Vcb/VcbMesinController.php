@@ -16,7 +16,7 @@ class VcbMesinController extends Controller
     public function index()
     {
         $shifts = MasterShift::orderBy('jam_start')->get();
-        $lineList = MasterMesin::query()->distinct()->orderBy('line')->pluck('line')->filter()->values();
+        $lineList = MasterMesin::query()->distinct()->orderBy('line')->pluck('line')->filter(fn ($l) => $l !== null && $l !== '')->values();
 
         return view('vcb.mesin', compact('shifts', 'lineList'));
     }
@@ -26,7 +26,7 @@ class VcbMesinController extends Controller
         $dateFrom = Carbon::parse($request->input('date_from', today()->toDateString()));
         $dateTo = Carbon::parse($request->input('date_to', today()->toDateString()));
         $shiftId = $request->filled('shift_id') ? (int) $request->input('shift_id') : null;
-        $lines = (array) $request->input('line', []);
+        $lines = array_values(array_filter((array) $request->input('line', []), 'is_string'));
 
         $rows = $this->dashboardService->getVcbMesin($dateFrom, $dateTo, $shiftId, $lines);
 

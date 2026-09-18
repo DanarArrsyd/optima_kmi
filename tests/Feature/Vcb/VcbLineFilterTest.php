@@ -115,13 +115,26 @@ class VcbLineFilterTest extends TestCase
 
     public function test_vcb_mesin_data_menerima_multi_line(): void
     {
-        $this->duaLine();
+        $b = $this->duaLine();
+
+        // Line ketiga TIDAK diikutkan di filter — kalau filter benar-benar tercabut,
+        // labels bakal 3 baris dan ikut memuat MESIN C.
+        $mesinC = MasterMesin::create(['id_mesin' => 'C-'.uniqid(), 'nama_mesin' => 'MESIN C', 'line' => 'C', 'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100]);
+        $opC = MasterKaryawan::create(['nik' => uniqid(), 'nama_karyawan' => 'OPERATOR C', 'departemen' => 'Produksi', 'is_aktif' => true]);
+        TransaksiProduksi::create([
+            'tanggal_produksi' => '2026-08-20', 'id_shift' => $b['shift']->id, 'id_karyawan' => $opC->id,
+            'id_mesin' => $mesinC->id, 'id_part_proses' => $b['proses']->id,
+            'jam_start' => '08:00', 'jam_finish' => '16:00', 'qty_aktual' => 500, 'created_by' => $this->admin->id,
+        ]);
 
         $json = $this->getJson(route('vcb.mesin.data', [
             'date_from' => '2026-08-20', 'date_to' => '2026-08-20', 'line' => ['A', 'B'],
         ]))->json();
 
         $this->assertCount(2, $json['labels']);
+        $labels = $json['labels'];
+        sort($labels);
+        $this->assertEqualsCanonicalizing(['MESIN A', 'MESIN B'], $labels);
     }
 
     public function test_vcb_mesin_menampilkan_checkbox_line_dari_master_data(): void

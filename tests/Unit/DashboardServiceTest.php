@@ -197,7 +197,17 @@ class DashboardServiceTest extends TestCase
             'jam_start' => '08:00', 'jam_finish' => '16:00', 'qty_aktual' => 999, 'created_by' => $b['user']->id,
         ]);
 
+        // Line ketiga TIDAK diikutkan di filter — kalau filter benar-benar tercabut,
+        // count jadi 3 (bukan 2) dan line-nya bakal ikut muncul.
+        $mesinC = MasterMesin::create(['id_mesin' => 'M-'.uniqid(), 'nama_mesin' => 'Press 3', 'line' => '3', 'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100]);
+        TransaksiProduksi::create([
+            'tanggal_produksi' => '2026-07-01', 'id_shift' => $b['shift']->id, 'id_karyawan' => $b['karyawan']->id,
+            'id_mesin' => $mesinC->id, 'id_part_proses' => $b['proses']->id,
+            'jam_start' => '08:00', 'jam_finish' => '16:00', 'qty_aktual' => 111, 'created_by' => $b['user']->id,
+        ]);
+
         $rows = $this->svc->getVcbMesin(Carbon::parse('2026-07-01'), Carbon::parse('2026-07-31'), null, ['1', '2']);
         $this->assertCount(2, $rows);
+        $this->assertEqualsCanonicalizing(['1', '2'], array_column($rows, 'line'));
     }
 }

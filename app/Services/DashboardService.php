@@ -17,6 +17,7 @@ class DashboardService
         $records = TransaksiProduksi::with(['karyawan', 'partProses.part', 'mesin'])
             ->whereBetween('tanggal_produksi', [$dateFrom->toDateString(), $dateTo->toDateString()])
             ->when($shiftId, fn ($q) => $q->where('id_shift', $shiftId))
+            // Mesin soft-deleted otomatis tersaring whereHas ini DAN nol muncul di $lineList — data lama jadi "hilang" begitu filter line dicentang.
             ->when(! empty($lines), fn ($q) => $q->whereHas('mesin', fn ($q2) => $q2->whereIn('line', $lines)))
             ->get();
 
