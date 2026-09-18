@@ -147,4 +147,57 @@ class DashboardServiceTest extends TestCase
         $this->assertCount(1, $rows);
         $this->assertSame(4000, $rows[0]['total_qty_aktual']); // sesi shift2 tersaring
     }
+
+    public function test_line_filter_narrows_produksi(): void
+    {
+        $b = $this->base(); // mesin line '1'
+        $this->produksi($b, '2026-07-01', '08:00', '16:00', 4000);
+
+        $mesinB = MasterMesin::create(['id_mesin' => 'M-'.uniqid(), 'nama_mesin' => 'Press 2', 'line' => '2', 'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100]);
+        TransaksiProduksi::create([
+            'tanggal_produksi' => '2026-07-01', 'id_shift' => $b['shift']->id, 'id_karyawan' => $b['karyawan']->id,
+            'id_mesin' => $mesinB->id, 'id_part_proses' => $b['proses']->id,
+            'jam_start' => '08:00', 'jam_finish' => '16:00', 'qty_aktual' => 999, 'created_by' => $b['user']->id,
+        ]);
+
+        // Karyawan sama di kedua sesi → tanpa filter jadi 1 baris gabungan (4999).
+        // Dengan filter line '1', sesi mesin line '2' harus tersaring.
+        $rows = $this->svc->getVcbProduksi(Carbon::parse('2026-07-01'), Carbon::parse('2026-07-31'), null, ['1']);
+        $this->assertCount(1, $rows);
+        $this->assertSame(4000, $rows[0]['total_qty_aktual']);
+    }
+
+    public function test_line_filter_narrows_mesin(): void
+    {
+        $b = $this->base(); // mesin line '1'
+        $this->produksi($b, '2026-07-01', '08:00', '16:00', 4000);
+
+        $mesinB = MasterMesin::create(['id_mesin' => 'M-'.uniqid(), 'nama_mesin' => 'Press 2', 'line' => '2', 'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100]);
+        TransaksiProduksi::create([
+            'tanggal_produksi' => '2026-07-01', 'id_shift' => $b['shift']->id, 'id_karyawan' => $b['karyawan']->id,
+            'id_mesin' => $mesinB->id, 'id_part_proses' => $b['proses']->id,
+            'jam_start' => '08:00', 'jam_finish' => '16:00', 'qty_aktual' => 999, 'created_by' => $b['user']->id,
+        ]);
+
+        $rows = $this->svc->getVcbMesin(Carbon::parse('2026-07-01'), Carbon::parse('2026-07-31'), null, ['2']);
+        $this->assertCount(1, $rows);
+        $this->assertSame('2', $rows[0]['line']);
+        $this->assertSame(999, $rows[0]['total_qty_aktual']);
+    }
+
+    public function test_line_filter_accepts_multiple_values(): void
+    {
+        $b = $this->base(); // mesin line '1'
+        $this->produksi($b, '2026-07-01', '08:00', '16:00', 4000);
+
+        $mesinB = MasterMesin::create(['id_mesin' => 'M-'.uniqid(), 'nama_mesin' => 'Press 2', 'line' => '2', 'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100]);
+        TransaksiProduksi::create([
+            'tanggal_produksi' => '2026-07-01', 'id_shift' => $b['shift']->id, 'id_karyawan' => $b['karyawan']->id,
+            'id_mesin' => $mesinB->id, 'id_part_proses' => $b['proses']->id,
+            'jam_start' => '08:00', 'jam_finish' => '16:00', 'qty_aktual' => 999, 'created_by' => $b['user']->id,
+        ]);
+
+        $rows = $this->svc->getVcbMesin(Carbon::parse('2026-07-01'), Carbon::parse('2026-07-31'), null, ['1', '2']);
+        $this->assertCount(2, $rows);
+    }
 }
