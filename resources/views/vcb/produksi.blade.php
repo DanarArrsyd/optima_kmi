@@ -4,6 +4,10 @@
 @section('main_mod', 'erp-flush')
 
 @section('content')
+@php
+$mesinByLine = $mesin->groupBy('line');
+$_mesinForJs = $mesin->map(fn ($m) => ['id' => $m->id, 'code' => $m->id_mesin, 'name' => $m->nama_mesin, 'line' => $m->line])->values();
+@endphp
 
 {{-- ══════════════════════════════════════════════════════════════
      Ruang kerja ERP. Berbeda dari halaman input: isinya KPI + grafik +
@@ -36,7 +40,7 @@
     </div>
     <div class="erp-dock-body">
         <div id="dockAll">
-    <form id="formAll" class="erp-dock-form">
+    <form id="formAll" class="erp-dock-form" x-data="mesinFilterComp(_mesinForJs, [])">
             <div class="erp-grp">
                 <b>Dari Tanggal</b>
                 <input type="date" id="all_date_from" class="erp-in" value="{{ now('Asia/Jakarta')->startOfMonth()->toDateString() }}">
@@ -59,15 +63,8 @@
                 </select>
             </div>
             <div class="erp-grp">
-                <b>Line</b>
-                <div style="display:flex;flex-wrap:wrap;gap:8px">
-                    @foreach($lineList as $l)
-                    <label class="erp-chk">
-                        <input type="checkbox" class="all-line-cb" value="{{ $l }}">
-                        {{ $l }}
-                    </label>
-                    @endforeach
-                </div>
+                <b>Mesin</b>
+                @include('partials.mesin-picker', ['mesinByLine' => $mesinByLine])
             </div>
             <div class="erp-grp">
                 <button type="submit" class="erp-btn is-pri">
@@ -77,7 +74,7 @@
         </form>
         </div>
         <div id="dockOne" style="display:none">
-    <form id="formOne" class="erp-dock-form">
+    <form id="formOne" class="erp-dock-form" x-data="mesinFilterComp(_mesinForJs, [])">
             <div class="erp-grp">
                 <b>Dari Tanggal</b>
                 <input type="date" id="one_date_from" class="erp-in" value="{{ now('Asia/Jakarta')->startOfMonth()->toDateString() }}">
@@ -111,15 +108,8 @@
                 </select>
             </div>
             <div class="erp-grp">
-                <b>Line</b>
-                <div style="display:flex;flex-wrap:wrap;gap:8px">
-                    @foreach($lineList as $l)
-                    <label class="erp-chk">
-                        <input type="checkbox" class="one-line-cb" value="{{ $l }}">
-                        {{ $l }}
-                    </label>
-                    @endforeach
-                </div>
+                <b>Mesin</b>
+                @include('partials.mesin-picker', ['mesinByLine' => $mesinByLine])
             </div>
             <div class="erp-grp">
                 <button type="submit" class="erp-btn is-pri">
@@ -279,6 +269,7 @@
 
 @push('scripts')
 <script>
+const _mesinForJs = @json($_mesinForJs);
 /* Cegah stored XSS: data master (nama mesin, part, proses, karyawan) bisa memuat markup. */
 function escHtml(str) {
     if (str === null || str === undefined) return "";
@@ -530,7 +521,7 @@ async function loadAllOperators() {
         date_to:   document.getElementById('all_date_to').value,
         shift_id:  document.getElementById('all_shift_id').value,
     });
-    document.querySelectorAll('.all-line-cb:checked').forEach(cb => params.append('line[]', cb.value));
+    document.querySelectorAll('#formAll input[name="mesin_ids[]"]').forEach(el => params.append('mesin_ids[]', el.value));
     document.getElementById('allPeriodLabel').textContent =
         document.getElementById('all_date_from').value + ' — ' + document.getElementById('all_date_to').value;
 
@@ -740,7 +731,7 @@ async function loadOneOperator() {
         karyawan_id: karyawanId,
         shift_id:    document.getElementById('one_shift_id').value,
     });
-    document.querySelectorAll('.one-line-cb:checked').forEach(cb => params.append('line[]', cb.value));
+    document.querySelectorAll('#formOne input[name="mesin_ids[]"]').forEach(el => params.append('mesin_ids[]', el.value));
     // Tombol export tidak dirender untuk role guest.
     const exportBtn = document.getElementById('oneExportBtn');
     if (exportBtn) exportBtn.href = `/export/produksi?${params}&format=excel`;
