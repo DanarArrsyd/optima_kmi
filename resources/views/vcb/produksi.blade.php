@@ -269,6 +269,7 @@ $_mesinForJs = $mesin->map(fn ($m) => ['id' => $m->id, 'code' => $m->id_mesin, '
 
 @push('scripts')
 <script>
+const _mesinForJs = @json($_mesinForJs);
 /* Cegah stored XSS: data master (nama mesin, part, proses, karyawan) bisa memuat markup. */
 function escHtml(str) {
     if (str === null || str === undefined) return "";
