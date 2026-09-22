@@ -1701,6 +1701,27 @@ function filterSearchComp(items, initVal, initLabel, onPick) {
     };
 }
 
+/* mesinFilterComp — multi-select mesin grouped by line ("Semua Mesin").
+   Satu definisi, dipakai LHP Produksi + VCB Produksi (2 instance: Mode 1 &
+   Mode 2) + VCB Mesin. Sebelumnya bespoke di LHP Produksi, baca const
+   global _mesinList/_mesinSelected — sekarang nerima data lewat parameter
+   supaya bisa dipasang lebih dari sekali di satu halaman (VCB Produksi). */
+function mesinFilterComp(mesinList, initialSelected = []) {
+    return {
+        mesinOpen: false,
+        selected:  [...initialSelected],
+        mesinList,
+        get labelSingle() {
+            if (this.selected.length !== 1) return '';
+            const m = this.mesinList.find(m => m.id == this.selected[0]);
+            return m ? m.code : '1 mesin';
+        },
+        toggle(id)     { const i = this.selected.indexOf(id); i === -1 ? this.selected.push(id) : this.selected.splice(i, 1); },
+        isSelected(id) { return this.selected.includes(id); },
+        clearAll()     { this.selected = []; },
+    };
+}
+
 function partGroupComp(initPartId, initPartLabel, initProsesId, initProsesLabel) {
     return {
         partQuery:   initPartLabel   || '',

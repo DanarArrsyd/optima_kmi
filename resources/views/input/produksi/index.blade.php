@@ -157,11 +157,7 @@ $lastUrl = $myLastRecord
     </div>
 
     <form method="GET" action="{{ route('input.produksi.index') }}" id="filterForm"
-          x-data="mesinFilterComp()" class="erp-dock-body">
-
-        <template x-for="id in selected" :key="id">
-            <input type="hidden" name="mesin_ids[]" :value="id">
-        </template>
+          x-data="mesinFilterComp(_mesinForJs, _mesinSelected)" class="erp-dock-body">
 
         {{-- ══ Find ══ --}}
         <div class="erp-grp">
@@ -181,38 +177,7 @@ $lastUrl = $myLastRecord
                 </div>
             </div>
 
-            <button type="button" @click="mesinOpen = !mesinOpen" class="erp-in is-mesin"
-                    :class="selected.length > 0 ? 'is-set' : ''"
-                    style="text-align:left;cursor:pointer;display:flex;align-items:center;gap:5px">
-                <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-                    <span x-show="selected.length === 0">Semua Mesin</span>
-                    <span x-show="selected.length === 1" x-text="labelSingle"></span>
-                    <span x-show="selected.length > 1"><span x-text="selected.length"></span> mesin</span>
-                </span>
-                <i class="bi" :class="mesinOpen ? 'bi-chevron-up' : 'bi-chevron-down'" style="font-size:.6rem;opacity:.5"></i>
-            </button>
-
-            {{-- Daftar mesin: memanjang ke bawah di dalam dock, bukan melayang.
-                 Dock cuma 210px — panel melayang akan keluar layar. --}}
-            <div x-show="mesinOpen" x-cloak class="erp-mesin-pick">
-                @foreach($mesinByLine as $line => $mesinGroup)
-                <div class="erp-mesin-line">Line {{ $line }}</div>
-                <div class="erp-mesin-chips">
-                    @foreach($mesinGroup as $m)
-                    <button type="button" @click="toggle({{ $m->id }})"
-                            class="erp-chip" :class="isSelected({{ $m->id }}) ? 'is-on' : ''"
-                            :aria-pressed="isSelected({{ $m->id }}) ? 'true' : 'false'"
-                            title="{{ $m->id_mesin }} &mdash; {{ $m->nama_mesin }}">
-                        <span class="kode">{{ $m->id_mesin }}</span>
-                        <span class="nama">{{ $m->nama_mesin }}</span>
-                        <i class="bi bi-check-lg tik" aria-hidden="true"></i>
-                    </button>
-                    @endforeach
-                </div>
-                @endforeach
-                <button type="button" x-show="selected.length > 0" @click="clearAll()"
-                        class="erp-mesin-clear">&times; Hapus semua pilihan</button>
-            </div>
+            @include('partials.mesin-picker', ['mesinByLine' => $mesinByLine])
 
             <div x-data="filterSearchComp(_jenisNgTA, {{ $filterJenisNgId ?: 0 }}, '{{ addslashes($_ngLabel) }}')"
                  @click.outside="open=false" style="position:relative">
@@ -781,24 +746,8 @@ function openNoteDrawer(type, id, existingNote, isAdmin, updatedAt, noteAt, reso
 
 @push('scripts')
 <script>
-/* ── Filter Mesin multi-select ── */
-const _mesinList     = @json($_mesinForJs);
+const _mesinForJs    = @json($_mesinForJs);
 const _mesinSelected = @json(array_values($mesinIds));
-function mesinFilterComp() {
-    return {
-        mesinOpen: false,
-        selected:  [..._mesinSelected],
-        mesinList: _mesinList,
-        get labelSingle() {
-            if (this.selected.length !== 1) return '';
-            const m = this.mesinList.find(m => m.id == this.selected[0]);
-            return m ? m.code : '1 mesin';
-        },
-        toggle(id)     { const i = this.selected.indexOf(id); i === -1 ? this.selected.push(id) : this.selected.splice(i, 1); },
-        isSelected(id) { return this.selected.includes(id); },
-        clearAll()     { this.selected = []; },
-    };
-}
 
 /* ── Filter Lanjutan typeahead ── */
 const _customersTA   = @json($_customersTA);
