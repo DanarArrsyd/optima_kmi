@@ -29,6 +29,7 @@ use App\Http\Controllers\Master\ShiftController;
 use App\Http\Controllers\Master\UserController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OverviewController;
+use App\Http\Controllers\PingController;
 use App\Http\Controllers\Sistem\BackupController;
 use App\Http\Controllers\Sistem\LogAktivitasController;
 use App\Http\Controllers\Sistem\QrStasiunController;
@@ -308,6 +309,7 @@ Route::middleware('auth')->group(function () {
 
     // --- NOTIFICATIONS (all authenticated users) ---
     Route::get('/notifications/poll', [NotificationController::class, 'poll']);
+    Route::get('/ping', [PingController::class, 'ping'])->name('ping');
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead']);
     Route::post('/notifications/{id}/read', [NotificationController::class, 'markRead']);
 
