@@ -4,6 +4,10 @@
 @section('main_mod', 'erp-flush')
 
 @section('content')
+@php
+$mesinByLine = $mesin->groupBy('line');
+$_mesinForJs = $mesin->map(fn ($m) => ['id' => $m->id, 'code' => $m->id_mesin, 'name' => $m->nama_mesin, 'line' => $m->line])->values();
+@endphp
 <div class="erp-ws">
 
 <div class="erp-tb">
@@ -26,7 +30,7 @@
         <span>Filter</span>
         <button type="button" class="erp-dock-x" onclick="erpToggleDock('mesinDock','btnDock')" title="Tutup filter">&times;</button>
     </div>
-    <form id="filterForm" class="erp-dock-body">
+    <form id="filterForm" class="erp-dock-body" x-data="mesinFilterComp(_mesinForJs, [])">
         <div class="erp-grp">
             <b>Tanggal Dari</b>
             <input type="date" id="date_from" name="date_from" class="erp-in" value="{{ date('Y-m-01') }}">
@@ -49,15 +53,8 @@
             </select>
         </div>
         <div class="erp-grp">
-            <b>Line</b>
-            <div style="display:flex;flex-wrap:wrap;gap:8px">
-                @foreach($lineList as $l)
-                <label class="erp-chk">
-                    <input type="checkbox" class="line-cb" value="{{ $l }}">
-                    {{ $l }}
-                </label>
-                @endforeach
-            </div>
+            <b>Mesin</b>
+            @include('partials.mesin-picker', ['mesinByLine' => $mesinByLine])
         </div>
         <div class="erp-grp">
             <button type="submit" class="erp-btn is-pri"><i class="bi bi-search"></i>Tampilkan</button>
@@ -127,7 +124,7 @@ async function loadData() {
         date_to:   document.getElementById('date_to').value,
         shift_id:  document.getElementById('shift_id').value,
     });
-    document.querySelectorAll('.line-cb:checked').forEach(cb => params.append('line[]', cb.value));
+    document.querySelectorAll('#filterForm input[name="mesin_ids[]"]').forEach(el => params.append('mesin_ids[]', el.value));
     // Tombol export tidak dirender untuk role guest.
     const exportBtn = document.getElementById('exportExcel');
     if (exportBtn) exportBtn.href = `/export/produksi?${params}&group=mesin&format=excel`;
