@@ -41,4 +41,19 @@ class PingTest extends TestCase
         $this->assertStringContainsString('x-data="pingIndicator()"', $html);
         $this->assertStringContainsString('pingOnce()', $html);
     }
+
+    public function test_ambang_warna_ping_sesuai_spec(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $html = $this->actingAs($admin)->get(route('vcb.mesin'))->assertOk()->getContent();
+
+        $this->assertStringContainsString(
+            "if (this.ms < 150) return 'is-good';", $html,
+            'Ambang hijau berubah tanpa update spec.'
+        );
+        $this->assertStringContainsString(
+            "if (this.ms <= 400) return 'is-fair';", $html,
+            'Batas kuning harus INKLUSIF 400 (<=, bukan <) — pernah salah sekali.'
+        );
+    }
 }

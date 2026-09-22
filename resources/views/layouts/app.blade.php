@@ -380,6 +380,7 @@
                tanpa overflow horizontal. */
             .topbar-page,
             .tb-tanggal,
+            .tb-ping,
             .brand-tag,
             .user-info { display: none; }
             .app-brand { padding: 0 10px; }
@@ -1444,6 +1445,7 @@ function pingIndicator() {
     return {
         ms: null,
         offline: false,
+        inflight: false,
         get label() {
             if (this.offline) return 'Offline';
             if (this.ms === null) return '—';
@@ -1457,14 +1459,19 @@ function pingIndicator() {
             return 'is-poor';
         },
         async pingOnce() {
+            if (this.inflight) return;
+            this.inflight = true;
+            if (document.hidden) { this.inflight = false; return; }
             const start = performance.now();
             try {
-                const res = await fetch('/ping', { cache: 'no-store' });
-                if (!res.ok) throw new Error('bad status');
+                const res = await fetch('/ping', { cache: 'no-store', signal: AbortSignal.timeout(10000) });
+                if (res.status !== 204) throw new Error('bad status');
                 this.ms = Math.round(performance.now() - start);
                 this.offline = false;
             } catch (e) {
                 this.offline = true;
+            } finally {
+                this.inflight = false;
             }
         },
         init() {
