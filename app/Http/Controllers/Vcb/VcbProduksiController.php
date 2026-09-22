@@ -20,9 +20,9 @@ class VcbProduksiController extends Controller
         $karyawan = MasterKaryawan::whereRaw('LOWER(departemen) = ?', ['produksi'])
             ->orderBy('nama_karyawan')
             ->get();
-        $lineList = MasterMesin::query()->distinct()->orderBy('line')->pluck('line')->filter(fn ($l) => $l !== null && $l !== '')->values();
+        $mesin = MasterMesin::orderBy('line')->orderBy('id_mesin')->get();
 
-        return view('vcb.produksi', compact('shifts', 'karyawan', 'lineList'));
+        return view('vcb.produksi', compact('shifts', 'karyawan', 'mesin'));
     }
 
     /**
@@ -33,9 +33,9 @@ class VcbProduksiController extends Controller
         $dateFrom = Carbon::parse($request->input('date_from', today()->toDateString()));
         $dateTo = Carbon::parse($request->input('date_to', today()->toDateString()));
         $shiftId = $request->filled('shift_id') ? (int) $request->input('shift_id') : null;
-        $lines = array_values(array_filter((array) $request->input('line', []), 'is_string'));
+        $mesinIds = array_filter(array_map('intval', (array) $request->input('mesin_ids', [])));
 
-        $rows = $this->dashboardService->getVcbProduksi($dateFrom, $dateTo, $shiftId, $lines);
+        $rows = $this->dashboardService->getVcbProduksi($dateFrom, $dateTo, $shiftId, $mesinIds);
 
         $labels = array_column($rows, 'karyawan');
         $achievements = array_column($rows, 'achievement_pct');
@@ -58,13 +58,13 @@ class VcbProduksiController extends Controller
         $dateTo = Carbon::parse($request->input('date_to', today()->toDateString()));
         $karyawanId = (int) $request->input('karyawan_id');
         $shiftId = $request->filled('shift_id') ? (int) $request->input('shift_id') : null;
-        $lines = array_values(array_filter((array) $request->input('line', []), 'is_string'));
+        $mesinIds = array_filter(array_map('intval', (array) $request->input('mesin_ids', [])));
 
         if (! $karyawanId) {
             return response()->json(['error' => 'Pilih operator terlebih dahulu.'], 422);
         }
 
-        $rows = $this->dashboardService->getVcbProduksiByDate($dateFrom, $dateTo, $karyawanId, $shiftId, $lines);
+        $rows = $this->dashboardService->getVcbProduksiByDate($dateFrom, $dateTo, $karyawanId, $shiftId, $mesinIds);
 
         $operator = MasterKaryawan::find($karyawanId)?->nama_karyawan ?? '—';
 

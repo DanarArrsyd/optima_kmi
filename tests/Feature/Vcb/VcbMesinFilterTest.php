@@ -106,4 +106,56 @@ class VcbMesinFilterTest extends TestCase
         $this->assertStringContainsString('Line B', $html);
         $this->assertStringContainsString('Semua Mesin', $html);
     }
+
+    public function test_vcb_produksi_data_disaring_oleh_mesin_id(): void
+    {
+        $m = $this->duaMesin();
+
+        $json = $this->getJson(route('vcb.produksi.data', [
+            'date_from' => '2026-08-20', 'date_to' => '2026-08-20', 'mesin_ids' => [$m['mesinA']->id],
+        ]))->json();
+
+        $this->assertSame(['OPERATOR A'], $json['labels']);
+    }
+
+    public function test_vcb_produksi_data_tanpa_filter_mesin_menampilkan_semua(): void
+    {
+        $this->duaMesin();
+
+        $json = $this->getJson(route('vcb.produksi.data', [
+            'date_from' => '2026-08-20', 'date_to' => '2026-08-20',
+        ]))->json();
+
+        $this->assertCount(2, $json['labels']);
+    }
+
+    public function test_vcb_produksi_operator_data_disaring_oleh_mesin_id(): void
+    {
+        $m = $this->duaMesin();
+
+        // Operator A dapat sesi tambahan di mesin B, tanggal beda.
+        TransaksiProduksi::create([
+            'tanggal_produksi' => '2026-08-21', 'id_shift' => $m['shift']->id, 'id_karyawan' => $m['opA']->id,
+            'id_mesin' => $m['mesinB']->id, 'id_part_proses' => $m['proses']->id,
+            'jam_start' => '08:00', 'jam_finish' => '16:00', 'qty_aktual' => 1000, 'created_by' => $this->admin->id,
+        ]);
+
+        $json = $this->getJson(route('vcb.produksi.operator-data', [
+            'date_from' => '2026-08-20', 'date_to' => '2026-08-21',
+            'karyawan_id' => $m['opA']->id, 'mesin_ids' => [$m['mesinA']->id],
+        ]))->json();
+
+        $this->assertCount(1, $json['table']);
+        $this->assertSame('20/08/26', $json['table'][0]['tanggal']);
+    }
+
+    public function test_vcb_produksi_menampilkan_dropdown_mesin_di_kedua_form(): void
+    {
+        MasterMesin::create(['id_mesin' => 'A-'.uniqid(), 'nama_mesin' => 'MESIN A', 'line' => 'A', 'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100]);
+
+        $html = $this->get(route('vcb.produksi'))->assertOk()->getContent();
+
+        $this->assertSame(2, substr_count($html, 'mesinFilterComp(_mesinForJs, [])'));
+        $this->assertSame(2, substr_count($html, 'input[name="mesin_ids[]"]'));
+    }
 }
