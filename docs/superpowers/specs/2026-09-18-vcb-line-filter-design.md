@@ -2,6 +2,11 @@
 
 **Tanggal:** 2026-09-18
 
+> ⚠️ **SUPERSEDED** oleh [2026-09-22-vcb-mesin-filter-design.md](2026-09-22-vcb-mesin-filter-design.md)
+> (PR #178). Filter LINE (checkbox flat) di dokumen ini diganti dropdown mesin
+> multi-select grouped-by-line — dipertahankan sebagai riwayat desain, bukan
+> deskripsi perilaku yang live sekarang.
+
 ## Latar Belakang
 
 VCB Produksi dan VCB Mesin sudah punya filter Bulan/Tanggal + Shift. User mau
