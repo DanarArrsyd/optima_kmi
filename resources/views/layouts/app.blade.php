@@ -1453,7 +1453,7 @@ function pingIndicator() {
             if (this.offline) return 'is-offline';
             if (this.ms === null) return '';
             if (this.ms < 150) return 'is-good';
-            if (this.ms < 400) return 'is-fair';
+            if (this.ms <= 400) return 'is-fair';
             return 'is-poor';
         },
         async pingOnce() {
