@@ -32,4 +32,13 @@ class PingTest extends TestCase
 
         $this->actingAs($guest)->get(route('ping'))->assertNoContent();
     }
+
+    public function test_widget_ping_muncul_di_layout(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $html = $this->actingAs($admin)->get(route('vcb.mesin'))->assertOk()->getContent();
+
+        $this->assertStringContainsString('x-data="pingIndicator()"', $html);
+        $this->assertStringContainsString('pingOnce()', $html);
+    }
 }
