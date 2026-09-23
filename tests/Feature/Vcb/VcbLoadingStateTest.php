@@ -103,4 +103,35 @@ class VcbLoadingStateTest extends TestCase
         $this->assertStringContainsString("errBox.style.display = ''", $fn);
         $this->assertStringContainsString('finally', $fn);
     }
+
+    public function test_vcb_quality_markup_overlay_dan_banner_ada_di_kedua_mode(): void
+    {
+        $html = $this->html('vcb.quality');
+
+        $this->assertStringContainsString('id="allLoadingOverlay"', $html);
+        $this->assertStringContainsString('id="allLoadError"', $html);
+        $this->assertStringContainsString('id="oneLoadingOverlay"', $html);
+        $this->assertStringContainsString('id="oneLoadError"', $html);
+        $this->assertSame(2, substr_count($html, 'Gagal memuat data — coba lagi.'));
+    }
+
+    public function test_vcb_quality_load_all_inspectors_toggle_overlay_dan_disable_tombol(): void
+    {
+        $fn = $this->fungsiJs($this->html('vcb.quality'), 'loadAllInspectors');
+
+        $this->assertStringContainsString('allLoadingOverlay', $fn);
+        $this->assertStringContainsString('#formAll button[type="submit"]', $fn);
+        $this->assertStringContainsString("errBox.style.display = ''", $fn);
+        $this->assertStringContainsString('finally', $fn);
+    }
+
+    public function test_vcb_quality_load_one_inspector_toggle_overlay_dan_disable_tombol(): void
+    {
+        $fn = $this->fungsiJs($this->html('vcb.quality'), 'loadOneInspector');
+
+        $this->assertStringContainsString('oneLoadingOverlay', $fn);
+        $this->assertStringContainsString('#formOne button[type="submit"]', $fn);
+        $this->assertStringContainsString("errBox.style.display = ''", $fn);
+        $this->assertStringContainsString('finally', $fn);
+    }
 }
