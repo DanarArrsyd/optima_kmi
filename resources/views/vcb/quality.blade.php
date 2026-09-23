@@ -116,7 +116,13 @@
 <div class="erp-ws-main">
 <div class="erp-scroll erp-scroll-pad">
 
-<div id="modeAll">
+<div id="modeAll" style="position:relative">
+    <div class="erp-loading-overlay" id="allLoadingOverlay">
+        <div class="spinner-border" role="status"><span class="visually-hidden">Memuat...</span></div>
+    </div>
+    <div class="text-danger mb-3" id="allLoadError" style="display:none">
+        Gagal memuat data — coba lagi.
+    </div>
 
 
     <div id="allKpi" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px"></div>
@@ -179,7 +185,13 @@
     </div>
 
 </div>{{-- /modeAll --}}
-<div id="modeOne" style="display:none">
+<div id="modeOne" style="display:none;position:relative">
+    <div class="erp-loading-overlay" id="oneLoadingOverlay">
+        <div class="spinner-border" role="status"><span class="visually-hidden">Memuat...</span></div>
+    </div>
+    <div class="text-danger mb-3" id="oneLoadError" style="display:none">
+        Gagal memuat data — coba lagi.
+    </div>
 
 
     <div id="oneEmpty" class="erp-panel" style="text-align:center;padding:40px;color:#9ca3af">
@@ -483,15 +495,21 @@ function renderAllTable(table) {
 }
 
 async function loadAllInspectors() {
-    const params = new URLSearchParams({
-        date_from: document.getElementById('all_date_from').value,
-        date_to:   document.getElementById('all_date_to').value,
-        shift_id:  document.getElementById('all_shift_id').value,
-    });
-    document.getElementById('allPeriodLabel').textContent =
-        document.getElementById('all_date_from').value + ' — ' + document.getElementById('all_date_to').value;
-
+    const overlay = document.getElementById('allLoadingOverlay');
+    const errBox  = document.getElementById('allLoadError');
+    const submitBtn = document.querySelector('#formAll button[type="submit"]');
+    overlay.style.display = 'flex';
+    errBox.style.display = 'none';
+    submitBtn.disabled = true;
     try {
+        const params = new URLSearchParams({
+            date_from: document.getElementById('all_date_from').value,
+            date_to:   document.getElementById('all_date_to').value,
+            shift_id:  document.getElementById('all_shift_id').value,
+        });
+        document.getElementById('allPeriodLabel').textContent =
+            document.getElementById('all_date_from').value + ' — ' + document.getElementById('all_date_to').value;
+
         const res  = await fetch(`{{ route('vcb.quality.data') }}?${params}`);
         const data = await res.json();
         const sorted = [...data.table].sort((a,b) => b.achievement_pct - a.achievement_pct);
@@ -505,7 +523,13 @@ async function loadAllInspectors() {
             document.getElementById('allChartPanel').style.display = 'none';
         }
         renderAllTable(sorted);
-    } catch(err) { console.error('loadAllInspectors error:', err); }
+    } catch(err) {
+        console.error('loadAllInspectors error:', err);
+        errBox.style.display = '';
+    } finally {
+        overlay.style.display = 'none';
+        submitBtn.disabled = false;
+    }
 }
 
 document.getElementById('formAll').addEventListener('submit', e => { e.preventDefault(); loadAllInspectors(); });
@@ -669,17 +693,23 @@ async function loadOneInspector() {
     const karyawanId = document.getElementById('one_karyawan_id').value;
     if (!karyawanId) { alert('Pilih inspector terlebih dahulu.'); return; }
 
-    const params = new URLSearchParams({
-        date_from:   document.getElementById('one_date_from').value,
-        date_to:     document.getElementById('one_date_to').value,
-        karyawan_id: karyawanId,
-        shift_id:    document.getElementById('one_shift_id').value,
-    });
-    // Tombol export tidak dirender untuk role guest.
-    const exportBtn = document.getElementById('oneExportBtn');
-    if (exportBtn) exportBtn.href = `/export/qc?${params}&format=excel`;
-
+    const overlay = document.getElementById('oneLoadingOverlay');
+    const errBox  = document.getElementById('oneLoadError');
+    const submitBtn = document.querySelector('#formOne button[type="submit"]');
+    overlay.style.display = 'flex';
+    errBox.style.display = 'none';
+    submitBtn.disabled = true;
     try {
+        const params = new URLSearchParams({
+            date_from:   document.getElementById('one_date_from').value,
+            date_to:     document.getElementById('one_date_to').value,
+            karyawan_id: karyawanId,
+            shift_id:    document.getElementById('one_shift_id').value,
+        });
+        // Tombol export tidak dirender untuk role guest.
+        const exportBtn = document.getElementById('oneExportBtn');
+        if (exportBtn) exportBtn.href = `/export/qc?${params}&format=excel`;
+
         const res  = await fetch(`{{ route('vcb.quality.operator-data') }}?${params}`);
         const data = await res.json();
         if (data.error) { alert(data.error); return; }
@@ -693,7 +723,13 @@ async function loadOneInspector() {
         buildOneChart(data.labels, data.achievements, data.colors);
         buildOneRows(data.table);
 
-    } catch(err) { console.error('loadOneInspector error:', err); }
+    } catch(err) {
+        console.error('loadOneInspector error:', err);
+        errBox.style.display = '';
+    } finally {
+        overlay.style.display = 'none';
+        submitBtn.disabled = false;
+    }
 }
 
 document.getElementById('formOne').addEventListener('submit', e => { e.preventDefault(); loadOneInspector(); });
