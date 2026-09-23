@@ -501,15 +501,15 @@ async function loadAllInspectors() {
     overlay.style.display = 'flex';
     errBox.style.display = 'none';
     submitBtn.disabled = true;
-    const params = new URLSearchParams({
-        date_from: document.getElementById('all_date_from').value,
-        date_to:   document.getElementById('all_date_to').value,
-        shift_id:  document.getElementById('all_shift_id').value,
-    });
-    document.getElementById('allPeriodLabel').textContent =
-        document.getElementById('all_date_from').value + ' — ' + document.getElementById('all_date_to').value;
-
     try {
+        const params = new URLSearchParams({
+            date_from: document.getElementById('all_date_from').value,
+            date_to:   document.getElementById('all_date_to').value,
+            shift_id:  document.getElementById('all_shift_id').value,
+        });
+        document.getElementById('allPeriodLabel').textContent =
+            document.getElementById('all_date_from').value + ' — ' + document.getElementById('all_date_to').value;
+
         const res  = await fetch(`{{ route('vcb.quality.data') }}?${params}`);
         const data = await res.json();
         const sorted = [...data.table].sort((a,b) => b.achievement_pct - a.achievement_pct);
@@ -699,17 +699,17 @@ async function loadOneInspector() {
     overlay.style.display = 'flex';
     errBox.style.display = 'none';
     submitBtn.disabled = true;
-    const params = new URLSearchParams({
-        date_from:   document.getElementById('one_date_from').value,
-        date_to:     document.getElementById('one_date_to').value,
-        karyawan_id: karyawanId,
-        shift_id:    document.getElementById('one_shift_id').value,
-    });
-    // Tombol export tidak dirender untuk role guest.
-    const exportBtn = document.getElementById('oneExportBtn');
-    if (exportBtn) exportBtn.href = `/export/qc?${params}&format=excel`;
-
     try {
+        const params = new URLSearchParams({
+            date_from:   document.getElementById('one_date_from').value,
+            date_to:     document.getElementById('one_date_to').value,
+            karyawan_id: karyawanId,
+            shift_id:    document.getElementById('one_shift_id').value,
+        });
+        // Tombol export tidak dirender untuk role guest.
+        const exportBtn = document.getElementById('oneExportBtn');
+        if (exportBtn) exportBtn.href = `/export/qc?${params}&format=excel`;
+
         const res  = await fetch(`{{ route('vcb.quality.operator-data') }}?${params}`);
         const data = await res.json();
         if (data.error) { alert(data.error); return; }

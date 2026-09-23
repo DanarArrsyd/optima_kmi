@@ -50,9 +50,7 @@ class VcbLoadingStateTest extends TestCase
     {
         $html = $this->html('vcb.mesin');
 
-        $this->assertStringContainsString('id="mesinLoadingOverlay"', $html);
-        $this->assertStringContainsString('erp-loading-overlay', $html);
-        $this->assertStringContainsString('spinner-border', $html);
+        $this->assertStringContainsString('class="erp-loading-overlay" id="mesinLoadingOverlay"', $html);
         $this->assertStringContainsString('id="mesinLoadError"', $html);
         $this->assertStringContainsString('Gagal memuat data — coba lagi.', $html);
     }
@@ -69,6 +67,10 @@ class VcbLoadingStateTest extends TestCase
         $this->assertStringContainsString('finally', $fn);
         $this->assertStringContainsString("overlay.style.display = 'none'", $fn);
         $this->assertStringContainsString('submitBtn.disabled = false', $fn);
+        $this->assertStringContainsString(
+            "finally { overlay.style.display = 'none'; submitBtn.disabled = false; }",
+            $fn
+        );
     }
 
     public function test_vcb_produksi_markup_overlay_dan_banner_ada_di_kedua_mode(): void
@@ -92,6 +94,10 @@ class VcbLoadingStateTest extends TestCase
         $this->assertStringContainsString('submitBtn.disabled = true', $fn);
         $this->assertStringContainsString("errBox.style.display = ''", $fn);
         $this->assertStringContainsString('finally', $fn);
+        $this->assertStringContainsString(
+            "finally { overlay.style.display = 'none'; submitBtn.disabled = false; }",
+            $fn
+        );
     }
 
     public function test_vcb_produksi_load_one_operator_toggle_overlay_dan_disable_tombol(): void
@@ -99,9 +105,15 @@ class VcbLoadingStateTest extends TestCase
         $fn = $this->fungsiJs($this->html('vcb.produksi'), 'loadOneOperator');
 
         $this->assertStringContainsString('oneLoadingOverlay', $fn);
+        $this->assertStringContainsString("overlay.style.display = 'flex'", $fn);
         $this->assertStringContainsString('#formOne button[type="submit"]', $fn);
+        $this->assertStringContainsString('submitBtn.disabled = true', $fn);
         $this->assertStringContainsString("errBox.style.display = ''", $fn);
         $this->assertStringContainsString('finally', $fn);
+        $this->assertStringContainsString(
+            "finally { overlay.style.display = 'none'; submitBtn.disabled = false; }",
+            $fn
+        );
     }
 
     public function test_vcb_quality_markup_overlay_dan_banner_ada_di_kedua_mode(): void
@@ -120,9 +132,15 @@ class VcbLoadingStateTest extends TestCase
         $fn = $this->fungsiJs($this->html('vcb.quality'), 'loadAllInspectors');
 
         $this->assertStringContainsString('allLoadingOverlay', $fn);
+        $this->assertStringContainsString("overlay.style.display = 'flex'", $fn);
         $this->assertStringContainsString('#formAll button[type="submit"]', $fn);
+        $this->assertStringContainsString('submitBtn.disabled = true', $fn);
         $this->assertStringContainsString("errBox.style.display = ''", $fn);
         $this->assertStringContainsString('finally', $fn);
+        $this->assertStringContainsString(
+            "finally { overlay.style.display = 'none'; submitBtn.disabled = false; }",
+            $fn
+        );
     }
 
     public function test_vcb_quality_load_one_inspector_toggle_overlay_dan_disable_tombol(): void
@@ -130,8 +148,14 @@ class VcbLoadingStateTest extends TestCase
         $fn = $this->fungsiJs($this->html('vcb.quality'), 'loadOneInspector');
 
         $this->assertStringContainsString('oneLoadingOverlay', $fn);
+        $this->assertStringContainsString("overlay.style.display = 'flex'", $fn);
         $this->assertStringContainsString('#formOne button[type="submit"]', $fn);
+        $this->assertStringContainsString('submitBtn.disabled = true', $fn);
         $this->assertStringContainsString("errBox.style.display = ''", $fn);
         $this->assertStringContainsString('finally', $fn);
+        $this->assertStringContainsString(
+            "finally { overlay.style.display = 'none'; submitBtn.disabled = false; }",
+            $fn
+        );
     }
 }

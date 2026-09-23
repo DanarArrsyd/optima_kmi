@@ -534,16 +534,16 @@ async function loadAllOperators() {
     overlay.style.display = 'flex';
     errBox.style.display = 'none';
     submitBtn.disabled = true;
-    const params = new URLSearchParams({
-        date_from: document.getElementById('all_date_from').value,
-        date_to:   document.getElementById('all_date_to').value,
-        shift_id:  document.getElementById('all_shift_id').value,
-    });
-    document.querySelectorAll('#formAll input[name="mesin_ids[]"]').forEach(el => params.append('mesin_ids[]', el.value));
-    document.getElementById('allPeriodLabel').textContent =
-        document.getElementById('all_date_from').value + ' — ' + document.getElementById('all_date_to').value;
-
     try {
+        const params = new URLSearchParams({
+            date_from: document.getElementById('all_date_from').value,
+            date_to:   document.getElementById('all_date_to').value,
+            shift_id:  document.getElementById('all_shift_id').value,
+        });
+        document.querySelectorAll('#formAll input[name="mesin_ids[]"]').forEach(el => params.append('mesin_ids[]', el.value));
+        document.getElementById('allPeriodLabel').textContent =
+            document.getElementById('all_date_from').value + ' — ' + document.getElementById('all_date_to').value;
+
         const res  = await fetch(`{{ route('vcb.produksi.data') }}?${params}`);
         if (!res.ok) throw new Error(`Server error ${res.status}`);
         const data = await res.json();
@@ -755,18 +755,18 @@ async function loadOneOperator() {
     overlay.style.display = 'flex';
     errBox.style.display = 'none';
     submitBtn.disabled = true;
-    const params = new URLSearchParams({
-        date_from:   document.getElementById('one_date_from').value,
-        date_to:     document.getElementById('one_date_to').value,
-        karyawan_id: karyawanId,
-        shift_id:    document.getElementById('one_shift_id').value,
-    });
-    document.querySelectorAll('#formOne input[name="mesin_ids[]"]').forEach(el => params.append('mesin_ids[]', el.value));
-    // Tombol export tidak dirender untuk role guest.
-    const exportBtn = document.getElementById('oneExportBtn');
-    if (exportBtn) exportBtn.href = `/export/produksi?${params}&format=excel`;
-
     try {
+        const params = new URLSearchParams({
+            date_from:   document.getElementById('one_date_from').value,
+            date_to:     document.getElementById('one_date_to').value,
+            karyawan_id: karyawanId,
+            shift_id:    document.getElementById('one_shift_id').value,
+        });
+        document.querySelectorAll('#formOne input[name="mesin_ids[]"]').forEach(el => params.append('mesin_ids[]', el.value));
+        // Tombol export tidak dirender untuk role guest.
+        const exportBtn = document.getElementById('oneExportBtn');
+        if (exportBtn) exportBtn.href = `/export/produksi?${params}&format=excel`;
+
         const res  = await fetch(`{{ route('vcb.produksi.operator-data') }}?${params}`);
         const data = await res.json();
         if (data.error) { alert(data.error); return; }
