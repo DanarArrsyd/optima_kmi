@@ -457,6 +457,20 @@
             min-height: 34px;
         }
         .erp-panel-body { padding: 14px; }
+        .erp-loading-overlay {
+            position: absolute;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, .75);
+            z-index: 5;
+        }
+        .erp-loading-overlay .spinner-border {
+            color: #374151;
+            width: 2.5rem;
+            height: 2.5rem;
+        }
 
         /* ══ Tables — Enterprise Database Style ═════════════════════ */
         .erp-table {
