@@ -36,7 +36,14 @@ class VcbLoadingStateTest extends TestCase
         $awal = strpos($html, 'function '.$nama.'(');
         $this->assertNotFalse($awal, "Fungsi {$nama}() tidak ditemukan di halaman.");
 
-        return substr($html, $awal, strpos($html, 'function ', $awal + 1) - $awal);
+        // Fungsi ini bisa jadi "function " TERAKHIR di halaman (mis. loadOneOperator()
+        // di VCB Produksi) — strpos berikutnya lalu false, jadi ambil sampai akhir string.
+        $akhir = strpos($html, 'function ', $awal + 1);
+        if ($akhir === false) {
+            $akhir = strlen($html);
+        }
+
+        return substr($html, $awal, $akhir - $awal);
     }
 
     public function test_vcb_mesin_markup_overlay_dan_banner_ada(): void
@@ -62,5 +69,38 @@ class VcbLoadingStateTest extends TestCase
         $this->assertStringContainsString('finally', $fn);
         $this->assertStringContainsString("overlay.style.display = 'none'", $fn);
         $this->assertStringContainsString('submitBtn.disabled = false', $fn);
+    }
+
+    public function test_vcb_produksi_markup_overlay_dan_banner_ada_di_kedua_mode(): void
+    {
+        $html = $this->html('vcb.produksi');
+
+        $this->assertStringContainsString('id="allLoadingOverlay"', $html);
+        $this->assertStringContainsString('id="allLoadError"', $html);
+        $this->assertStringContainsString('id="oneLoadingOverlay"', $html);
+        $this->assertStringContainsString('id="oneLoadError"', $html);
+        $this->assertSame(2, substr_count($html, 'Gagal memuat data — coba lagi.'));
+    }
+
+    public function test_vcb_produksi_load_all_operators_toggle_overlay_dan_disable_tombol(): void
+    {
+        $fn = $this->fungsiJs($this->html('vcb.produksi'), 'loadAllOperators');
+
+        $this->assertStringContainsString('allLoadingOverlay', $fn);
+        $this->assertStringContainsString("overlay.style.display = 'flex'", $fn);
+        $this->assertStringContainsString('#formAll button[type="submit"]', $fn);
+        $this->assertStringContainsString('submitBtn.disabled = true', $fn);
+        $this->assertStringContainsString("errBox.style.display = ''", $fn);
+        $this->assertStringContainsString('finally', $fn);
+    }
+
+    public function test_vcb_produksi_load_one_operator_toggle_overlay_dan_disable_tombol(): void
+    {
+        $fn = $this->fungsiJs($this->html('vcb.produksi'), 'loadOneOperator');
+
+        $this->assertStringContainsString('oneLoadingOverlay', $fn);
+        $this->assertStringContainsString('#formOne button[type="submit"]', $fn);
+        $this->assertStringContainsString("errBox.style.display = ''", $fn);
+        $this->assertStringContainsString('finally', $fn);
     }
 }

@@ -129,7 +129,13 @@ $_mesinForJs = $mesin->map(fn ($m) => ['id' => $m->id, 'code' => $m->id_mesin, '
 <div class="erp-ws-main">
 <div class="erp-scroll erp-scroll-pad">
 
-<div id="modeAll">
+<div id="modeAll" style="position:relative">
+    <div class="erp-loading-overlay" id="allLoadingOverlay">
+        <div class="spinner-border" role="status"><span class="visually-hidden">Memuat...</span></div>
+    </div>
+    <div class="text-danger mb-3" id="allLoadError" style="display:none">
+        Gagal memuat data — coba lagi.
+    </div>
 
     {{-- Filter --}}
 
@@ -193,7 +199,13 @@ $_mesinForJs = $mesin->map(fn ($m) => ['id' => $m->id, 'code' => $m->id_mesin, '
     </div>
 
 </div>{{-- /modeAll --}}
-<div id="modeOne" style="display:none">
+<div id="modeOne" style="display:none;position:relative">
+    <div class="erp-loading-overlay" id="oneLoadingOverlay">
+        <div class="spinner-border" role="status"><span class="visually-hidden">Memuat...</span></div>
+    </div>
+    <div class="text-danger mb-3" id="oneLoadError" style="display:none">
+        Gagal memuat data — coba lagi.
+    </div>
 
     {{-- Filter --}}
 
@@ -516,6 +528,12 @@ function renderAllTable(table) {
 }
 
 async function loadAllOperators() {
+    const overlay = document.getElementById('allLoadingOverlay');
+    const errBox  = document.getElementById('allLoadError');
+    const submitBtn = document.querySelector('#formAll button[type="submit"]');
+    overlay.style.display = 'flex';
+    errBox.style.display = 'none';
+    submitBtn.disabled = true;
     const params = new URLSearchParams({
         date_from: document.getElementById('all_date_from').value,
         date_to:   document.getElementById('all_date_to').value,
@@ -547,7 +565,13 @@ async function loadAllOperators() {
         }
         renderAllTable(sorted);
 
-    } catch(err) { console.error('loadAllOperators error:', err); }
+    } catch(err) {
+        console.error('loadAllOperators error:', err);
+        errBox.style.display = '';
+    } finally {
+        overlay.style.display = 'none';
+        submitBtn.disabled = false;
+    }
 }
 
 document.getElementById('formAll').addEventListener('submit', e => { e.preventDefault(); loadAllOperators(); });
@@ -725,6 +749,12 @@ async function loadOneOperator() {
     const karyawanId = document.getElementById('one_karyawan_id').value;
     if (!karyawanId) { alert('Pilih operator terlebih dahulu.'); return; }
 
+    const overlay = document.getElementById('oneLoadingOverlay');
+    const errBox  = document.getElementById('oneLoadError');
+    const submitBtn = document.querySelector('#formOne button[type="submit"]');
+    overlay.style.display = 'flex';
+    errBox.style.display = 'none';
+    submitBtn.disabled = true;
     const params = new URLSearchParams({
         date_from:   document.getElementById('one_date_from').value,
         date_to:     document.getElementById('one_date_to').value,
@@ -751,7 +781,13 @@ async function loadOneOperator() {
         buildOneChart(data.labels, data.achievements, data.colors);
         buildOneRows(data.table);
 
-    } catch(err) { console.error('loadOneOperator error:', err); }
+    } catch(err) {
+        console.error('loadOneOperator error:', err);
+        errBox.style.display = '';
+    } finally {
+        overlay.style.display = 'none';
+        submitBtn.disabled = false;
+    }
 }
 
 document.getElementById('formOne').addEventListener('submit', e => { e.preventDefault(); loadOneOperator(); });
