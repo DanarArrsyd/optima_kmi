@@ -54,9 +54,11 @@ class PingController extends Controller
 }
 ```
 
-Satu method, nol dependency, nol query — waktu respons endpoint ini murni
-overhead framework (auth middleware + routing), itu justru yang mau diukur
-(bukan waktu query DB yang nggak relevan buat "ping").
+Satu method, nol dependency, nol query di dalam controller itu sendiri —
+tapi round-trip yang diukur tetap lewat stack auth/session app ini (session
+driver, resolusi user, middleware cek `is_aktif`), yang memang menyentuh DB.
+Jadi angka yang diukur widget ini merepresentasikan "auth stack + session
+store round-trip", bukan ping murni nol-query dalam arti sepenuhnya.
 
 ## Perubahan Frontend
 

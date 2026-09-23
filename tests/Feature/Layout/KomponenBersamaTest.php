@@ -25,6 +25,7 @@ class KomponenBersamaTest extends TestCase
         'function partGroupComp(',
         'function erpToggleDock(',
         'function saringOrangNonaktif(',
+        'function pingIndicator(',
         'function mesinFilterComp(',
         'function partPicker(',
         'function batchDraft(',

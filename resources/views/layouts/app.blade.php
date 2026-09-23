@@ -226,6 +226,16 @@
             font-size: 14px;
         }
         .topbar-item i { font-size: 15px; color: #9ca3af; }
+        .tb-ping { gap: 6px; }
+        .ping-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: #6b7280;
+            flex-shrink: 0;
+        }
+        .ping-dot.is-good { background: #22c55e; }
+        .ping-dot.is-fair { background: #eab308; }
+        .ping-dot.is-poor,
+        .ping-dot.is-offline { background: #ef4444; }
         .topbar-item.user-block {
             gap: 9px;
         }
@@ -370,6 +380,7 @@
                tanpa overflow horizontal. */
             .topbar-page,
             .tb-tanggal,
+            .tb-ping,
             .brand-tag,
             .user-info { display: none; }
             .app-brand { padding: 0 10px; }
@@ -1332,6 +1343,11 @@
             $initial = strtoupper(substr($u->name ?? 'U', 0, 1));
         @endphp
 
+        <div class="topbar-item tb-ping" x-data="pingIndicator()">
+            <span class="ping-dot" :class="dotClass"></span>
+            <span x-text="label"></span>
+        </div>
+
         <div class="topbar-item tb-tanggal">
             <i class="bi bi-calendar3"></i>
             <span>{{ now()->format('d M Y') }}</span>
@@ -1425,6 +1441,46 @@ const $prog  = document.getElementById('page-progress');
 const isMobile = () => window.innerWidth < 768;
 
 /* ─ Notification Bell ───────────────────────────────────────── */
+function pingIndicator() {
+    return {
+        ms: null,
+        offline: false,
+        inflight: false,
+        get label() {
+            if (this.offline) return 'Offline';
+            if (this.ms === null) return '—';
+            return this.ms + ' ms';
+        },
+        get dotClass() {
+            if (this.offline) return 'is-offline';
+            if (this.ms === null) return '';
+            if (this.ms < 150) return 'is-good';
+            if (this.ms <= 400) return 'is-fair';
+            return 'is-poor';
+        },
+        async pingOnce() {
+            if (this.inflight) return;
+            this.inflight = true;
+            if (document.hidden) { this.inflight = false; return; }
+            const start = performance.now();
+            try {
+                const res = await fetch('/ping', { cache: 'no-store', signal: AbortSignal.timeout(10000) });
+                if (res.status !== 204) throw new Error('bad status');
+                this.ms = Math.round(performance.now() - start);
+                this.offline = false;
+            } catch (e) {
+                this.offline = true;
+            } finally {
+                this.inflight = false;
+            }
+        },
+        init() {
+            this.pingOnce();
+            setInterval(() => this.pingOnce(), 15000);
+        },
+    };
+}
+
 function notifBell() {
     return {
         count: 0,
