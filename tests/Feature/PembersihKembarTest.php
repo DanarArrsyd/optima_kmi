@@ -134,6 +134,19 @@ class PembersihKembarTest extends TestCase
         $this->assertSame(1, TransaksiDandoriRincian::count());
     }
 
+    /** Dua LHP sah (jam beda) di batch yang sama, masing-masing centang Ada Dandori. */
+    public function test_dandori_dari_dua_lhp_jam_berbeda_tidak_dihapus(): void
+    {
+        $this->lhp('2026-09-01 03:00:00');
+        $this->lhp('2026-09-01 03:00:00', ['jam_start' => '09:00', 'jam_finish' => '11:00']);
+        $this->dandori('2026-09-01 03:00:00');
+        $this->dandori('2026-09-01 03:00:00');
+
+        $this->artisan('optima:bersih-kembar --terapkan')->expectsOutputToContain('LHP-nya tidak dobel')->assertSuccessful();
+
+        $this->assertSame(2, TransaksiDandoriRincian::count());
+    }
+
     public function test_dandori_form_sesi_rangkap_utuh_dihapus_dan_beda_waktu_dihapus(): void
     {
         // Form Dandori dikirim dua kali di detik yang sama: dua rincian, masing-masing rangkap.

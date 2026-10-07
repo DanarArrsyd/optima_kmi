@@ -137,16 +137,19 @@ class PembersihKembar
     private function lhpIkutDobel(object $d): bool
     {
         $tanggal = substr((string) $d->tanggal, 0, 10);
+        /* Dua baris LHP sah (jam berbeda, sesi sama, satu batch) masing-masing
+         * bisa membawa dandori identik — itu BUKAN kiriman dobel. Dobel hanya
+         * bila baris LHP-nya sendiri kembar: jam mulai & selesai sama. */
         $lhp = TransaksiProduksi::query()
             ->whereDate('tanggal_produksi', $tanggal)
             ->where('id_shift', $d->id_shift)->where('id_mesin', $d->id_mesin)->where('id_part_proses', $d->id_part_proses)
             ->where('created_at', $d->created_at)
-            ->count();
+            ->get(['jam_start', 'jam_finish']);
 
-        if ($lhp >= 2) {
+        if ($lhp->countBy(fn ($r) => $r->jam_start.'|'.$r->jam_finish)->contains(fn ($n) => $n >= 2)) {
             return true;
         }
-        if ($lhp === 1) {
+        if ($lhp->isNotEmpty()) {
             return false;
         }
 
