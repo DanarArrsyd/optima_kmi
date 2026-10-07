@@ -8,6 +8,7 @@ use App\Models\MasterPart;
 use App\Models\MasterPartProses;
 use App\Models\TransaksiBreakdownDies;
 use App\Services\BreakdownDiesService;
+use App\Services\PenjagaKembar;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
 use Maatwebsite\Excel\Concerns\ToCollection;
@@ -75,6 +76,13 @@ class BreakdownDiesImport implements SkipsEmptyRows, ToCollection, WithHeadingRo
             if (in_array(null, $in, true)) {
                 $this->skipped++;
                 $this->errors[] = "Baris {$line}: tanggal/jam tidak lengkap atau format salah.";
+
+                continue;
+            }
+
+            if ($ada = app(PenjagaKembar::class)->cari('breakdown_dies', ['id_part_proses' => $partProses->id] + $in)) {
+                $this->skipped++;
+                $this->errors[] = "Baris {$line}: dilewati — data identik sudah ada ".app(PenjagaKembar::class)->jejak($ada).'.';
 
                 continue;
             }

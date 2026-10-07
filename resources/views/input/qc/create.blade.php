@@ -98,6 +98,7 @@
                 </ul>
             </div>
         @endif
+        @include('partials.peringatan-kembar')
 
         {{-- ══ FORM SATU BARIS ══
              Satu kolom ke bawah, label kiri, kotak input SATU lebar untuk semua

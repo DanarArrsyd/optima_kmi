@@ -12,6 +12,7 @@ use App\Models\MasterPartProses;
 use App\Models\MasterShift;
 use App\Models\TransaksiProduksi;
 use App\Services\NgDetailService;
+use App\Services\PenjagaKembar;
 use App\Services\ProduksiService;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\ToCollection;
@@ -166,6 +167,17 @@ class ProduksiImport implements ToCollection, WithHeadingRow, WithStartRow
                     $jamFinish.':00',
                     $qtyAktual
                 );
+
+                /* ── Kembar dengan data tersimpan (impor ulang file yang sama) ── */
+                if ($ada = app(PenjagaKembar::class)->cari('produksi', [
+                    'tanggal_produksi' => $tanggal, 'id_shift' => $shift->id, 'id_karyawan' => $karyawan->id,
+                    'id_mesin' => $mesin->id, 'id_part_proses' => $partProses->id,
+                    'jam_start' => $jamStart, 'jam_finish' => $jamFinish,
+                ])) {
+                    $this->errors[] = "Baris {$rowNum}: dilewati — data identik sudah ada ".app(PenjagaKembar::class)->jejak($ada).'.';
+
+                    continue;
+                }
 
                 $produksi = TransaksiProduksi::create([
                     'tanggal_produksi' => $tanggal,

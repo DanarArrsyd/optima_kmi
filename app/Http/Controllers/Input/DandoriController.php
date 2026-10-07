@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Input;
 use App\Exports\DandoriImportTemplate;
 use App\Exports\LhpDandoriExport;
 use App\Http\Controllers\Concerns\BacaFilterMesin;
+use App\Http\Controllers\Concerns\MenjagaKembar;
 use App\Http\Controllers\Concerns\ResolvesStaffNote;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreDandoriBatchRequest;
@@ -25,6 +26,7 @@ use Maatwebsite\Excel\Facades\Excel;
 class DandoriController extends Controller
 {
     use BacaFilterMesin;
+    use MenjagaKembar;
     use ResolvesStaffNote;
 
     public function __construct(
@@ -192,6 +194,16 @@ class DandoriController extends Controller
     public function batch(StoreDandoriBatchRequest $request)
     {
         $rows = $request->validated()['rows'];
+
+        /* Satu sesi = N rincian = N baris tabel; tiap rincian diperiksa. */
+        $rincian = fn (array $r) => array_map(fn (array $d) => [
+            'tanggal' => $r['tanggal'], 'id_shift' => $r['id_shift'], 'id_karyawan' => $r['id_karyawan'],
+            'id_mesin' => $r['id_mesin'], 'id_part_proses' => $r['id_part_proses'], ...$d,
+        ], $r['rincian'] ?? []);
+
+        if ($tolak = $this->tolakKalauKembar($request, $rows, [['dandori', $rincian]])) {
+            return $tolak;
+        }
 
         /* simpan() mengembalikan jumlah BARIS TABEL, bukan jumlah sesi: satu
          * sesi berisi N rincian menulis N baris. Yang dilaporkan ke operator

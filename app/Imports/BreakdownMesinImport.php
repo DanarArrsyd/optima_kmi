@@ -7,6 +7,7 @@ use App\Imports\Concerns\ParsesExcelDateTime;
 use App\Models\MasterMesin;
 use App\Models\TransaksiBreakdownMesin;
 use App\Services\BreakdownMesinService;
+use App\Services\PenjagaKembar;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
 use Maatwebsite\Excel\Concerns\ToCollection;
@@ -64,6 +65,13 @@ class BreakdownMesinImport implements SkipsEmptyRows, ToCollection, WithHeadingR
             if (in_array(null, $in, true)) {
                 $this->skipped++;
                 $this->errors[] = "Baris {$line}: tanggal/jam tidak lengkap atau format salah.";
+
+                continue;
+            }
+
+            if ($ada = app(PenjagaKembar::class)->cari('breakdown_mesin', ['id_mesin' => $mesinId] + $in)) {
+                $this->skipped++;
+                $this->errors[] = "Baris {$line}: dilewati — data identik sudah ada ".app(PenjagaKembar::class)->jejak($ada).'.';
 
                 continue;
             }

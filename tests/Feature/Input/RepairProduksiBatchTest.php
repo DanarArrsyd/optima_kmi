@@ -46,7 +46,7 @@ class RepairProduksiBatchTest extends TestCase
     public function test_batch_menyimpan_banyak_baris_sekaligus(): void
     {
         $response = $this->post(route('input.repair-produksi.batch'), [
-            'rows' => [$this->baris(), $this->baris(['qty_aktual' => 50])],
+            'rows' => [$this->baris(), $this->baris(['qty_aktual' => 50, 'jam_start' => '09:00', 'jam_finish' => '11:00'])],
         ]);
 
         $response->assertRedirect(route('input.repair-produksi.index'));

@@ -69,6 +69,7 @@
                 </ul>
             </div>
         @endif
+        @include('partials.peringatan-kembar')
 
         <form id="formBaris" novalidate @submit.prevent="simpanKeDraft()">
 

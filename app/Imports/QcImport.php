@@ -11,6 +11,7 @@ use App\Models\MasterPartProses;
 use App\Models\MasterShift;
 use App\Models\TransaksiQc;
 use App\Services\NgDetailService;
+use App\Services\PenjagaKembar;
 use App\Services\QcService;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\ToCollection;
@@ -153,6 +154,17 @@ class QcImport implements ToCollection, WithHeadingRow, WithStartRow
                     $qtyOk,
                     $qtyNg
                 );
+
+                /* ── Kembar dengan data tersimpan (impor ulang file yang sama) ── */
+                if ($ada = app(PenjagaKembar::class)->cari('qc', [
+                    'tgl_pengecekan' => $tglCek, 'tgl_produksi_part' => $tglProd, 'id_shift' => $shift->id,
+                    'id_karyawan_qc' => $karyawan->id, 'id_part_proses' => $partProses->id,
+                    'jam_start' => $jamStart, 'jam_finish' => $jamFinish,
+                ])) {
+                    $this->errors[] = "Baris {$rowNum}: dilewati — data identik sudah ada ".app(PenjagaKembar::class)->jejak($ada).'.';
+
+                    continue;
+                }
 
                 $qc = TransaksiQc::create([
                     'tgl_pengecekan' => $tglCek,

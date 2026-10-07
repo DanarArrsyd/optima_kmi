@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Input;
 
 use App\Exports\LhpProduksiExport;
 use App\Exports\ProduksiImportTemplate;
+use App\Http\Controllers\Concerns\MenjagaKembar;
 use App\Http\Controllers\Concerns\ResolvesStaffNote;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreProduksiBatchRequest;
@@ -26,6 +27,7 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class ProduksiController extends Controller
 {
+    use MenjagaKembar;
     use ResolvesStaffNote;
 
     public function __construct(
@@ -178,6 +180,18 @@ class ProduksiController extends Controller
     public function batch(StoreProduksiBatchRequest $request)
     {
         $rows = $request->validated()['rows'];
+
+        /* Baris dandori dari centang "Ada Dandori" ikut diperiksa: bentuknya
+         * sama persis dengan baris form Dandori (lihat ProduksiWriteService). */
+        $dandoriLhp = fn (array $r) => array_map(fn (array $d) => [
+            'tanggal' => $r['tanggal_produksi'], 'id_shift' => $r['id_shift'],
+            'id_karyawan' => $r['dandori_karyawan_id'] ?? $r['id_karyawan'],
+            'id_mesin' => $r['id_mesin'], 'id_part_proses' => $r['id_part_proses'], ...$d,
+        ], $r['dandori'] ?? []);
+
+        if ($tolak = $this->tolakKalauKembar($request, $rows, [['produksi', null], ['dandori', $dandoriLhp]])) {
+            return $tolak;
+        }
 
         DB::transaction(function () use ($rows) {
             foreach ($rows as $row) {

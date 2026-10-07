@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Maintenance;
 
 use App\Exports\BreakdownDiesExport;
+use App\Http\Controllers\Concerns\MenjagaKembar;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreBreakdownDiesBatchRequest;
 use App\Http\Requests\UpdateBreakdownDiesRequest;
@@ -20,6 +21,8 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class BreakdownDiesController extends Controller
 {
+    use MenjagaKembar;
+
     public function __construct(
         private BreakdownDiesService $svc,
         private BreakdownDiesWriteService $writeService,
@@ -147,6 +150,10 @@ class BreakdownDiesController extends Controller
     public function batch(StoreBreakdownDiesBatchRequest $request)
     {
         $rows = $request->validated()['rows'];
+
+        if ($tolak = $this->tolakKalauKembar($request, $rows, [['breakdown_dies', null]])) {
+            return $tolak;
+        }
 
         $jumlah = DB::transaction(function () use ($rows) {
             foreach ($rows as $row) {
