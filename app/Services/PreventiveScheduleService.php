@@ -10,6 +10,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use Random\Randomizer;
 
 class PreventiveScheduleService
 {
@@ -62,10 +63,22 @@ class PreventiveScheduleService
         return null; // tanggal valid (hari kerja + hari diizinkan) tapi entah kenapa nol ketemu bucket — seharusnya nol pernah kejadian kalau validasi endpoint udah benar duluan, tapi nol crash kalau kejadian.
     }
 
+    /**
+     * Pengacak distribusi tanggal PLAN dies overdue. Disuntikkan (bukan
+     * shuffle() global) supaya test bisa memakai seed tetap. Hasil acak
+     * DISIMPAN ke preventive_schedule_items — PDF & halaman membaca baris
+     * tersimpan, jadi acak ulang hanya terjadi lewat generate() (cron tgl 1 /
+     * tombol Generate Ulang), tidak pernah saat dibuka.
+     */
+    private Randomizer $pengacak;
+
     public function __construct(
         private MaintenanceDashboardService $mesinSvc,
         private MaintenanceDiesDashboardService $diesSvc,
-    ) {}
+        ?Randomizer $pengacak = null,
+    ) {
+        $this->pengacak = $pengacak ?? new Randomizer;
+    }
 
     /**
      * Generate (atau regenerate) jadwal preventive satu bulan, satu jenis.
@@ -121,9 +134,44 @@ class PreventiveScheduleService
             $hariKerja = $this->hariKerjaDalamBulan($bulan)
                 ->filter(fn (Carbon $d) => in_array($d->isoWeekday(), self::HARI_DIIZINKAN[$jenis], true))
                 ->values();
+            $kolomId = $jenis === 'mesin' ? 'id_mesin' : 'id_part_proses';
+
+            if ($jenis === 'dies') {
+                // Generate Ulang di tengah bulan: PLAN baru hanya di hari >= hari
+                // ini. Tanggal yang sudah lewat tidak bisa dikerjakan lagi.
+                $hariKerja = $this->hariMulaiHariIni($hariKerja, $bulan);
+
+                // Dies overdue (pct >= 100, SAMA dengan status "SEGERA PREVENTIVE"
+                // di dashboard — sumber computeCurrentCycle() yang sama) SELALU
+                // dapat tanggal PLAN, tidak dibatasi kuota mingguan. Dulu kuota
+                // 5/minggu memotong 51 overdue jadi 22 terjadwal; 29 sisanya jadi
+                // backlog yang tak pernah tampil di PDF.
+                $overdue = $eligible->filter(fn ($row) => $row['pct'] >= 100)->sortByDesc('pct')->values();
+                $eligible = $eligible->reject(fn ($row) => $row['pct'] >= 100)->values();
+
+                $penempatan = $this->sebarOverdue($overdue, $hariKerja);
+                foreach ($penempatan as [$item, $hari]) {
+                    PreventiveScheduleItem::create([
+                        'schedule_id' => $schedule->id,
+                        'id_mesin' => null,
+                        'id_part_proses' => $item['id_part_proses'],
+                        'stroke_snapshot' => $item['current_stroke'],
+                        'pct_snapshot' => $item['pct'],
+                        'threshold_snapshot' => $item['threshold'],
+                        'tanggal_rencana' => $hari->toDateString(),
+                        'minggu_ke' => $this->mingguKeUntuk('dies', $bulan, $hari),
+                        ...$backlogDidukung ? ['backlog_since' => null] : [],
+                    ]);
+                }
+
+                // Overdue yang tidak kebagian hari (bulan ini tak punya hari valid
+                // tersisa) antre PALING DEPAN di jalur kuota/backlog biasa.
+                $tanpaHari = $overdue->slice(count($penempatan))->values();
+                $eligible = $tanpaHari->concat($eligible)->values();
+            }
+
             $mingguBuckets = $this->kelompokkanPerMinggu($hariKerja);
             $kapasitas = self::KAPASITAS[$jenis];
-            $kolomId = $jenis === 'mesin' ? 'id_mesin' : 'id_part_proses';
 
             $idx = 0;
             // Slot diisi urut prioritas (proyeksi paling dekat duluan), TAPI tanggal
@@ -167,7 +215,9 @@ class PreventiveScheduleService
                         'pct_snapshot' => $item['pct'],
                         'threshold_snapshot' => $item['threshold'],
                         'tanggal_rencana' => $hari->toDateString(),
-                        'minggu_ke' => $mingguKe,
+                        // Dies: daftar hari bisa sudah dipotong >= hari ini, jadi
+                        // indeks bucket di sini bukan nomor minggu bulan itu.
+                        'minggu_ke' => $jenis === 'dies' ? $this->mingguKeUntuk('dies', $bulan, $hari) : $mingguKe,
                         ...$backlogDidukung ? ['backlog_since' => null] : [],
                     ]);
                     $idx++;
@@ -201,6 +251,70 @@ class PreventiveScheduleService
 
             return $schedule->fresh('items');
         });
+    }
+
+    /**
+     * Hari valid bulan berjalan yang tanggalnya >= hari ini (WIB). Bulan lain
+     * dikembalikan utuh.
+     *
+     * @param  Collection<int, Carbon>  $hari
+     * @return Collection<int, Carbon>
+     */
+    private function hariMulaiHariIni(Collection $hari, Carbon $bulan): Collection
+    {
+        $hariIni = Carbon::now()->timezone('Asia/Jakarta')->startOfDay();
+        if (! $bulan->isSameMonth($hariIni)) {
+            return $hari;
+        }
+
+        // Bandingkan string Y-m-d: hari kerja dibangun tanpa zona, hari ini WIB.
+        return $hari->filter(fn (Carbon $d) => $d->toDateString() >= $hariIni->toDateString())->values();
+    }
+
+    /**
+     * Sebar dies overdue ke hari valid: SEIMBANG, ACAK, tapi tetap PRIORITAS.
+     *
+     *  1. Jumlah per hari = floor(N/D) atau +1 — hari yang dapat +1 dipilih acak.
+     *     Tidak pernah semuanya di satu tanggal.
+     *  2. Slot disusun kronologis; dies yang sudah diurut pct DESC mengisi slot
+     *     dari depan → yang paling lewat ambang dikerjakan di minggu paling awal.
+     *  3. Di dalam satu minggu ISO, pasangan dies↔hari diacak.
+     *
+     * @param  Collection<int, array>  $overdue  sudah diurut pct DESC
+     * @param  Collection<int, Carbon>  $hari  hari valid, urut tanggal
+     * @return list<array{0: array, 1: Carbon}>
+     */
+    private function sebarOverdue(Collection $overdue, Collection $hari): array
+    {
+        $n = $overdue->count();
+        $d = $hari->count();
+        if ($n === 0 || $d === 0) {
+            return [];
+        }
+
+        $jatah = array_fill(0, $d, intdiv($n, $d));
+        foreach (array_slice($this->pengacak->shuffleArray(range(0, $d - 1)), 0, $n % $d) as $i) {
+            $jatah[$i]++;
+        }
+
+        $slot = [];
+        foreach ($hari->values() as $i => $tgl) {
+            for ($k = 0; $k < $jatah[$i]; $k++) {
+                $slot[] = $tgl;
+            }
+        }
+
+        $penempatan = [];
+        $perMinggu = collect($slot)->keys()->groupBy(fn ($i) => $slot[$i]->format('o-W'));
+        foreach ($perMinggu as $indeksSlot) {
+            $indeksSlot = $indeksSlot->all();
+            $hariAcak = $this->pengacak->shuffleArray(array_map(fn ($i) => $slot[$i], $indeksSlot));
+            foreach ($indeksSlot as $urutan => $i) {
+                $penempatan[] = [$overdue[$i], $hariAcak[$urutan]];
+            }
+        }
+
+        return $penempatan;
     }
 
     /**
