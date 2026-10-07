@@ -149,7 +149,7 @@
             flex-shrink: 0;
         }
         #sb-toggle:hover  { background: var(--sb-hover); color: #fff; }
-        #sb-toggle:focus  { outline: none; }
+        #sb-toggle:focus:not(:focus-visible)  { outline: none; }
         body.sb-pinned #sb-toggle { color: #fff; background: #374151; }
 
         /* Brand */
@@ -374,11 +374,14 @@
             body:not(.sb-mobile-open) #sidebar { width: 0; }
             #main { margin-left: 0 !important; }
 
-            /* Topbar penuh sesak di layar sempit — breadcrumb judul, tanggal,
-               teks nama+role user, dan tag "MES" dibuang, sisa ikon inti
-               (hamburger, brand, notif, ikon user) yang muat di satu baris
-               tanpa overflow horizontal. */
-            .topbar-page,
+            /* Topbar penuh sesak di layar sempit — tanggal, teks nama+role
+               user, tag "MES", dan TEKS brand dibuang (logo tetap). Judul
+               halaman DIPERTAHANKAN (dipotong …): tanpa judul pengguna HP tidak
+               tahu sedang di halaman mana — sidebar tertutup di layar sempit. */
+            .topbar-page { min-width: 0; flex: 1 1 auto; padding: 0 6px; }
+            .topbar-page i { display: none; }
+            .topbar-page strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+            .brand-name,
             .tb-tanggal,
             .tb-ping,
             .brand-tag,
@@ -540,7 +543,18 @@
             border: 1px solid transparent;
             line-height: 1.4;
         }
-        .btn:focus, .btn:active, .btn:focus-visible { outline: none !important; }
+        /* Klik mouse tanpa cincin, papan tik DENGAN cincin. Dulu :focus-visible
+           ikut dimatikan (outline:none !important) — pengguna keyboard tidak
+           tahu sedang berada di tombol mana. */
+        .btn:focus:not(:focus-visible), .btn:active { outline: none !important; }
+        :is(a, button, summary, [role="option"], [tabindex]):focus-visible,
+        :is(.btn, .erp-btn, .erp-tb-btn, .erp-chip, .erp-dock-x, .erp-clr):focus-visible {
+            outline: 2px solid #111827 !important;
+            outline-offset: 2px;
+        }
+        .erp-in:focus-visible { outline: 2px solid #111827; outline-offset: 0; }
+        /* Toolbar & baris tabel rapat: cincin di DALAM, kalau di luar terpotong overflow. */
+        :is(.erp-tb-btn, .erp-table .btn, .erp-chip, .erp-dock-x):focus-visible { outline-offset: -3px; }
 
         .btn-primary,
         .btn-secondary {
@@ -879,6 +893,21 @@
         .tbl-freeze .sc-sep { border-right: none; box-shadow: 2px 0 0 0 #9ca3af !important; }
         .tbl-freeze thead th.sc-sep { box-shadow: 2px 0 0 0 #6b7280 !important; }
 
+        /* Layar sempit (tablet): lima kolom beku memakan ±420px dari 768 dan
+           kolom Aksi tertinggal di ujung tabel 1500px. Di bawah 1100px hanya
+           2 kolom pertama yang beku, dan kolom Aksi (tabel .ada-aksi) menempel
+           di kanan supaya Edit selalu terjangkau tanpa menggulung. */
+        @media (max-width: 1099.98px) {
+            .tbl-freeze .sc-3, .tbl-freeze .sc-4, .tbl-freeze .sc-5 { position: static; box-shadow: none !important; }
+            .tbl-freeze .sc-2 { box-shadow: 2px 0 0 0 #9ca3af !important; }
+            .tbl-freeze.ada-aksi tr > :last-child {
+                position: sticky; right: 0; z-index: 3; background: #fff;
+                box-shadow: -2px 0 0 0 #9ca3af;
+            }
+            .tbl-freeze.ada-aksi thead tr > :last-child { z-index: 12; background: #e5e7eb; }
+            .tbl-freeze.ada-aksi tbody tr:nth-child(even) > :last-child { background: #f9fafb; }
+        }
+
 
         /* ══ ERP Workspace ══════════════════════════════════════════
            Pola halaman bergaya ACCURATE: strip toolbar di atas, dock
@@ -1083,6 +1112,16 @@
         .erp-dd-item.is-act { background: var(--surface-3); }
         .erp-ta { position: relative; }
         .erp-err { color: #b91c1c; font-size: var(--erp-fs-sm); line-height: 1.3; }
+        /* Dialog konfirmasi (pengganti confirm()). Tanpa bayangan — garis tegas. */
+        .dlg-konfirmasi { border: 1px solid #111827; border-radius: 2px; padding: 0; width: min(420px, calc(100vw - 32px)); }
+        .dlg-konfirmasi::backdrop { background: rgba(17, 24, 39, .45); }
+        .dlg-konfirmasi .dk-judul { background: #111827; color: #fff; font-weight: 700; font-size: 13px; padding: 8px 14px; letter-spacing: .02em; }
+        .dlg-konfirmasi .dk-pesan { margin: 0; padding: 16px 14px 8px; white-space: pre-line; line-height: 1.5; }
+        .dlg-konfirmasi .dk-aksi { display: flex; justify-content: flex-end; gap: 8px; padding: 10px 14px 14px; }
+        /* Baris tabel kosong baku (x-tabel-kosong). */
+        .erp-kosong td { text-align: center; color: var(--text-3); padding: 28px 12px !important; line-height: 1.7; }
+        .erp-kosong b { color: var(--text-2, #374151); margin-right: 6px; }
+        .erp-kosong .erp-btn { display: inline-flex; margin-left: 8px; vertical-align: middle; }
         .erp-in[aria-invalid="true"] { border-color: #b91c1c; border-width: 1.5px; }
         .erp-dd-item .sub {
             display: block; font-size: var(--erp-fs-sm, 11px);
@@ -1440,6 +1479,17 @@
 </div>
 @endif
 
+{{-- Dialog konfirmasi bersama — pengganti confirm() bawaan peramban. Dipakai
+     lewat atribut data-konfirmasi="…" (form/tombol) atau await konfirmasi(). --}}
+<dialog id="dlgKonfirmasi" class="dlg-konfirmasi" aria-labelledby="dkJudul" aria-describedby="dkPesan">
+    <div class="dk-judul" id="dkJudul">Konfirmasi</div>
+    <p class="dk-pesan" id="dkPesan"></p>
+    <div class="dk-aksi">
+        <button type="button" class="btn btn-sm btn-outline-secondary dk-batal">Batal</button>
+        <button type="button" class="btn btn-sm dk-ya">Ya, lanjutkan</button>
+    </div>
+</dialog>
+
 <script src="{{ asset('vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
 <script src="{{ asset('vendor/chartjs/chart.umd.js') }}"></script>
 <script src="{{ asset('vendor/chartjs-plugin-datalabels/chartjs-plugin-datalabels.min.js') }}"></script>
@@ -1738,7 +1788,7 @@ function scheduleItemEdit(itemId, tanggalAwal, isLocked, urlPatch, urlReset, val
         },
 
         async reset() {
-            if (! confirm('Reset item ini ke otomatis? Tanggal manual akan hilang, item masuk backlog sampai regenerate berikutnya.')) return;
+            if (! await konfirmasi('Reset item ini ke otomatis? Tanggal manual akan hilang, item masuk backlog sampai regenerate berikutnya.')) return;
             this.saving = true;
             try {
                 const res = await fetch(urlReset, {
@@ -2390,8 +2440,8 @@ function batchDraft(cfg) {
 
         payloadRows() { return this.rows.map(r => cfg.payload(r)); },
 
-        batal() {
-            if (this.rows.length && !confirm(`Buang ${this.rows.length} baris draft yang belum dikirim?`)) return;
+        async batal() {
+            if (this.rows.length && ! await konfirmasi(`Hapus ${this.rows.length} baris draft yang belum dikirim?`)) return;
             localStorage.removeItem(KUNCI);
             window.location = cfg.indexUrl;
         },
@@ -2522,6 +2572,56 @@ document.querySelectorAll('form').forEach(form => {
     });
 });
 
+/* ─ Dialog konfirmasi bersama ───────────────────────────────────
+   konfirmasi(pesan) → Promise<bool>. Fokus awal di "Batal" (pilihan aman),
+   Esc = batal. Pesan yang diawali "Hapus"/"Nonaktifkan"/"Generate ulang"
+   memakai tombol merah.
+
+   Deklaratif: <form data-konfirmasi="…"> atau <button data-konfirmasi="…">.
+   Dulu onsubmit="return confirm('Hapus shift <nama>?')" — nama berisi tanda
+   kutip membuat JS-nya error dan form TERKIRIM TANPA konfirmasi. Atribut
+   di-escape Blade, jadi aman. Penangan memakai fase capture dan berhenti
+   total sampai pengguna memilih; setelah "Ya" aksi diulang dengan penanda
+   dikonfirmasi supaya lolos sekali. */
+function konfirmasi(pesan) {
+    const dlg = document.getElementById('dlgKonfirmasi');
+    if (! dlg || typeof dlg.showModal !== 'function') return Promise.resolve(window.confirm(pesan));
+    return new Promise(selesai => {
+        const teks = String(pesan).trim();
+        const bahaya = /^(hapus|nonaktifkan|generate ulang)/i.test(teks);
+        const ya = dlg.querySelector('.dk-ya');
+        dlg.querySelector('.dk-pesan').textContent = teks;
+        ya.className = 'btn btn-sm dk-ya ' + (bahaya ? 'btn-danger' : 'btn-primary');
+        ya.textContent = /^hapus/i.test(teks) ? 'Hapus' : 'Ya, lanjutkan';
+        const tutup = v => { dlg.close(); selesai(v); };
+        ya.onclick = () => tutup(true);
+        dlg.querySelector('.dk-batal').onclick = () => tutup(false);
+        dlg.oncancel = e => { e.preventDefault(); tutup(false); };
+        dlg.showModal();
+        dlg.querySelector('.dk-batal').focus();
+    });
+}
+document.addEventListener('submit', async e => {
+    const f = e.target;
+    if (! f.dataset || ! f.dataset.konfirmasi) return;
+    if (f.dataset.dikonfirmasi) { delete f.dataset.dikonfirmasi; return; }
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    const pengirim = e.submitter;
+    if (await konfirmasi(f.dataset.konfirmasi)) {
+        f.dataset.dikonfirmasi = '1';
+        f.requestSubmit(pengirim && pengirim.form === f ? pengirim : undefined);
+    }
+}, true);
+document.addEventListener('click', async e => {
+    const el = e.target.closest && e.target.closest('[data-konfirmasi]:not(form)');
+    if (! el) return;
+    if (el.dataset.dikonfirmasi) { delete el.dataset.dikonfirmasi; return; }
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    if (await konfirmasi(el.dataset.konfirmasi)) { el.dataset.dikonfirmasi = '1'; el.click(); }
+}, true);
+
 /* ─ Kunci kirim-ganda (penguncianKirim) ─────────────────────────
    Klik kedua pada form POST yang masih terkirim dulu mengirim ulang
    isinya — di jaringan pabrik yang lambat, batch 50 baris LHP masuk
@@ -2544,7 +2644,8 @@ document.querySelectorAll('form').forEach(form => {
    selamanya. */
 (function () {
     const LEPAS_MS = 30000;
-    const tombolForm = f => [...f.querySelectorAll('button[type=submit], input[type=submit]'),
+    /* <button> tanpa type = submit (bawaan HTML) — banyak tombol Hapus begitu. */
+    const tombolForm = f => [...f.querySelectorAll('button:not([type]), button[type=submit], input[type=submit]'),
         ...(f.id ? document.querySelectorAll(`button[type=submit][form="${f.id}"]`) : [])];
     const lepas = f => {
         delete f.dataset.terkirim;

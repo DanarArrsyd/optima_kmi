@@ -125,6 +125,6 @@ class LogAktivitasTest extends TestCase
 
         $this->get(route('sistem.log-aktivitas.index', ['modul' => 'master_mesin']))
             ->assertOk()
-            ->assertSee('Nol aktivitas');
+            ->assertSee('Tidak ada aktivitas');
     }
 }

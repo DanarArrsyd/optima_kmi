@@ -57,7 +57,7 @@
                     <div class="action-btns" style="flex-wrap:nowrap">
                         <a href="{{ route('master.proses-repair.edit', $pr) }}" class="btn btn-warning btn-sm">Edit</a>
                         <form method="POST" action="{{ route('master.proses-repair.destroy', $pr) }}"
-                              onsubmit="return confirm('Hapus proses repair ini?')">
+                              data-konfirmasi="Hapus proses repair ini?">
                             @csrf @method('DELETE')
                             <button class="btn btn-danger btn-sm">Hapus</button>
                         </form>
@@ -65,7 +65,7 @@
                 </td>
             </tr>
         @empty
-            <tr><td colspan="7" style="text-align:center;color:#888;padding:20px">Belum ada proses repair.</td></tr>
+            <x-tabel-kosong kolom="7" entitas="proses repair" :tambah="route('master.proses-repair.create')" />
         @endforelse
         </tbody>
     </table>

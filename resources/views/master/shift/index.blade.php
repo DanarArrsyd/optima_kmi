@@ -109,7 +109,7 @@
                             {{ substr($s->jam_start,0,5) }} – {{ substr($s->jam_finish,0,5) }}
                         </div>
                         @foreach($iSK as $ist)
-                            <div style="font-size:0.75rem;color:#6b7280">
+                            <div style="font-size:0.75rem;color:var(--text-3)">
                                 <i class="bi bi-cup-hot" style="color:#bbb"></i>
                                 {{ substr($ist->jam_start,0,5) }} – {{ substr($ist->jam_finish,0,5) }}
                             </div>
@@ -123,7 +123,7 @@
                                 {{ substr($s->jam_start_jumat,0,5) }} – {{ substr($s->jam_finish_jumat,0,5) }}
                             </div>
                             @foreach($iJm as $ist)
-                                <div style="font-size:0.75rem;color:#6b7280">
+                                <div style="font-size:0.75rem;color:var(--text-3)">
                                     <i class="bi bi-cup-hot" style="color:#bbb"></i>
                                     {{ substr($ist->jam_start,0,5) }} – {{ substr($ist->jam_finish,0,5) }}
                                 </div>
@@ -140,7 +140,7 @@
                                 {{ substr($s->jam_start_sabtu,0,5) }} – {{ substr($s->jam_finish_sabtu,0,5) }}
                             </div>
                             @foreach($iSb as $ist)
-                                <div style="font-size:0.75rem;color:#6b7280">
+                                <div style="font-size:0.75rem;color:var(--text-3)">
                                     <i class="bi bi-cup-hot" style="color:#bbb"></i>
                                     {{ substr($ist->jam_start,0,5) }} – {{ substr($ist->jam_finish,0,5) }}
                                 </div>
@@ -154,7 +154,7 @@
                         <div class="action-btns">
                             <a href="{{ route('master.shift.edit', $s) }}" class="btn btn-warning btn-sm">Edit</a>
                             <form method="POST" action="{{ route('master.shift.destroy', $s) }}"
-                                  onsubmit="return confirm('Hapus shift {{ $s->nama_shift }}?')">
+                                  data-konfirmasi="Hapus shift {{ $s->nama_shift }}?">
                                 @csrf @method('DELETE')
                                 <button class="btn btn-danger btn-sm">Hapus</button>
                             </form>
@@ -162,11 +162,7 @@
                     </td>
                 </tr>
             @empty
-                <tr>
-                    <td colspan="5" style="text-align:center;color:#888;padding:20px">
-                        Belum ada data shift.
-                    </td>
-                </tr>
+                <x-tabel-kosong kolom="5" entitas="data shift" :tambah="route('master.shift.create')" />
             @endforelse
             </tbody>
         </table>

@@ -50,7 +50,7 @@
     @endif
     @if(auth()->user()->hasRole(['admin', 'staff_maintenance']))
     <form method="POST" action="{{ route('maintenance.control-stroke-mesin.schedule-generate') }}" style="display:contents"
-          onsubmit="return confirm('Generate ulang jadwal preventive bulan ini? Jadwal lama akan ditimpa.');">
+          data-konfirmasi="Generate ulang jadwal preventive bulan ini? Jadwal lama akan ditimpa.">
         @csrf
         <button type="submit" class="erp-tb-btn"><i class="bi bi-arrow-repeat"></i>Generate Ulang</button>
     </form>
@@ -86,17 +86,17 @@
 
 {{-- KPI strip: klik sel = filter status. Klik sel yang sama lagi = balik ke semua. --}}
 <div class="kpi-strip mb-2">
-    <div class="kpi-cell active" data-status="" style="border-left-color:#6b7280" role="button" tabindex="0" aria-pressed="true">
-        <i class="bi bi-cpu-fill" style="color:#6b7280"></i>
+    <div class="kpi-cell active" data-status="" style="border-left-color:var(--text-3)" role="button" tabindex="0" aria-pressed="true">
+        <i class="bi bi-cpu-fill" style="color:var(--text-3)"></i>
         <div><div class="kpi-num" id="kpiTotalMesin">0</div><div class="kpi-lbl">Total mesin</div></div>
     </div>
     <div class="kpi-cell" data-status="warning" style="border-left-color:#b45309" role="button" tabindex="0" aria-pressed="false">
         <i class="bi bi-exclamation-triangle-fill" style="color:#b45309"></i>
         <div><div class="kpi-num" id="kpiWarning" style="color:#b45309">0</div><div class="kpi-lbl">Perlu perhatian (&ge;80%)</div></div>
     </div>
-    <div class="kpi-cell" data-status="overdue" style="border-left-color:#b91c1c" role="button" tabindex="0" aria-pressed="false">
-        <i class="bi bi-exclamation-octagon-fill" style="color:#b91c1c"></i>
-        <div><div class="kpi-num" id="kpiOverdue" style="color:#b91c1c">0</div><div class="kpi-lbl">Segera preventive (&ge;100%)</div></div>
+    <div class="kpi-cell" data-status="overdue" style="border-left-color:var(--c-danger)" role="button" tabindex="0" aria-pressed="false">
+        <i class="bi bi-exclamation-octagon-fill" style="color:var(--c-danger)"></i>
+        <div><div class="kpi-num" id="kpiOverdue" style="color:var(--c-danger)">0</div><div class="kpi-lbl">Segera preventive (&ge;100%)</div></div>
     </div>
 </div>
 
@@ -259,7 +259,7 @@ function render() {
         const sisa    = r.threshold - r.current_stroke;
         const sisaTxt = sisa >= 0
             ? `<span class="text-muted">sisa ${fmt(sisa)} stroke</span>`
-            : `<span style="color:#b91c1c;font-weight:600">lewat ${fmt(-sisa)} stroke</span>`;
+            : `<span style="color:var(--c-danger);font-weight:600">lewat ${fmt(-sisa)} stroke</span>`;
         const rowStyle = st.tint ? `style="background:${st.tint}"` : '';
         const lastPrev = r.last_preventive_date
             ? `${r.last_preventive_date} <span class="text-muted">· ${escHtml(r.last_preventive_pic) || '—'}</span>`
@@ -278,7 +278,7 @@ function render() {
                     <span><strong>${fmt(r.current_stroke)}</strong> <span class="text-muted">/ ${fmt(r.threshold)}</span></span>
                     <strong style="color:${st.color}">${r.pct}%</strong>
                 </div>
-                <div class="progress" style="height:8px;background:#e5e7eb;border-radius:4px">
+                <div class="progress" style="height:8px;background:var(--border-2);border-radius:4px">
                     <div class="progress-bar ${st.bar}" style="width:${barPct}%"></div>
                 </div>
                 <div style="font-size:11px;margin-top:3px">${sisaTxt}</div>

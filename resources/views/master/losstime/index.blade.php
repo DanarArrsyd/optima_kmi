@@ -96,21 +96,21 @@
                     @if($lt->std_menit_default)
                         <span style="font-variant-numeric:tabular-nums">{{ $lt->std_menit_default }} mnt</span>
                     @else
-                        <span style="color:#9ca3af">Full loss</span>
+                        <span style="color:var(--text-4)">Full loss</span>
                     @endif
                 </td>
                 <td style="white-space:nowrap;text-align:center">
                     @if($lt->std_menit_progressive)
                         <span style="font-variant-numeric:tabular-nums">{{ $lt->std_menit_progressive }} mnt</span>
                     @else
-                        <span style="color:#9ca3af">—</span>
+                        <span style="color:var(--text-4)">—</span>
                     @endif
                 </td>
                 <td style="white-space:nowrap">
                     <div class="action-btns" style="flex-wrap:nowrap">
                         <a href="{{ route('master.losstime.edit', $lt) }}" class="btn btn-warning btn-sm">Edit</a>
                         <form method="POST" action="{{ route('master.losstime.destroy', $lt) }}"
-                              onsubmit="return confirm('Hapus loss time ini?')">
+                              data-konfirmasi="Hapus loss time ini?">
                             @csrf @method('DELETE')
                             <button class="btn btn-danger btn-sm">Hapus</button>
                         </form>
@@ -118,7 +118,7 @@
                 </td>
             </tr>
         @empty
-            <tr><td colspan="5" style="text-align:center;color:#888;padding:20px">Belum ada data loss time.</td></tr>
+            <x-tabel-kosong kolom="5" entitas="data loss time" :tambah="route('master.losstime.create')" />
         @endforelse
         </tbody>
     </table>

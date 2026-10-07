@@ -77,7 +77,14 @@
 
 @section('content')
 <div class="erp-panel" x-data="batchDraft(konfigLhp())" x-init="mulai()">
-    <div class="erp-panel-header">Input LHP Produksi</div>
+    <div class="erp-panel-header" style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <span>Input LHP Produksi</span>
+        {{-- Keluar TANPA membuang draft (draft tersimpan di localStorage) —
+             beda dari CANCEL di bawah yang membuang draft. --}}
+        <a href="{{ route('input.produksi.index') }}" class="erp-btn" title="Draft tetap tersimpan">
+            <i class="bi bi-arrow-left" aria-hidden="true"></i>Kembali ke Daftar
+        </a>
+    </div>
     <div class="erp-panel-body">
 
         <template x-if="pesan">

@@ -108,7 +108,7 @@
                     </td>
                     <td style="text-align:right;color:#5d7283">{{ number_format($r->waktu_kerja_jam, 1) }}j</td>
                     <td style="text-align:right">{{ number_format($r->actual_cycle_time, 1) }}s</td>
-                    <td style="text-align:right;font-weight:600;color:{{ $pct === null ? '#9ca3af' : ($pct >= 100 ? '#15803d' : '#b91c1c') }}">
+                    <td style="text-align:right;font-weight:600;color:{{ $pct === null ? 'var(--text-4)' : ($pct >= 100 ? 'var(--c-success)' : 'var(--c-danger)') }}">
                         {{ $pct !== null ? $pct.'%' : '—' }}
                     </td>
                     @if(auth()->user()->hasRole('admin'))
@@ -116,7 +116,7 @@
                         <div class="action-btns" style="flex-wrap:nowrap">
                             <a href="{{ route('input.repair-produksi.edit', $r) }}?back_query={{ urlencode(http_build_query(request()->query())) }}" class="btn btn-warning btn-sm">Edit</a>
                             <form method="POST" action="{{ route('input.repair-produksi.destroy', $r) }}"
-                                  onsubmit="return confirm('Hapus data ini?')">
+                                  data-konfirmasi="Hapus data ini?">
                                 @csrf @method('DELETE')
                                 <button class="btn btn-danger btn-sm">Hapus</button>
                             </form>
@@ -125,7 +125,7 @@
                     @endif
                 </tr>
             @empty
-                <tr><td colspan="{{ auth()->user()->hasRole('admin') ? 15 : 14 }}" style="text-align:center;color:#888;padding:20px">Belum ada data LHR Produksi.</td></tr>
+                <x-tabel-kosong :kolom="auth()->user()->hasRole('admin') ? 15 : 14" entitas="data LHR Produksi" periode />
             @endforelse
             </tbody>
         </table>

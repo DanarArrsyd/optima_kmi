@@ -58,7 +58,7 @@
                         data-nonaktif="{{ ! $k->is_aktif && $k->tanggal_nonaktif ? $k->tanggal_nonaktif->format('Y-m-d') : '' }}">{{ $k->nama_karyawan }}</option>
             @endforeach
         </select>
-        <small id="one_operator_note" style="color:#b91c1c;font-size:10px"></small>
+        <small id="one_operator_note" style="color:var(--c-danger);font-size:10px"></small>
         <x-filter.cari name="shift_id" id="one_shift_id" placeholder="Shift" :items="$shifts->map(fn ($s) => ['v' => $s->id, 't' => $s->nama_shift])" />
     </x-filter.grup>
 
@@ -85,7 +85,7 @@
     <div class="erp-panel mb-3" id="allChartPanel" style="display:none">
         <div class="erp-panel-header">
             <i class="bi bi-graph-up me-1"></i>Achievement % per Inspector
-            <span style="margin-left:auto;font-size:10px;font-weight:400;color:#9ca3af">— — —  = 100% target</span>
+            <span style="margin-left:auto;font-size:10px;font-weight:400;color:var(--text-4)">— — —  = 100% target</span>
         </div>
         {{-- Tinggi dikunci di pembungkus, BUKAN lewat atribut height canvas.
              Dengan maintainAspectRatio bawaan (true), Chart.js menghitung rasio
@@ -123,7 +123,7 @@
                     <tr><td colspan="12" style="text-align:center;color:#888;padding:24px">Klik <strong>Tampilkan</strong> untuk melihat data.</td></tr>
                 </tbody>
                 <tfoot id="allTableFoot" style="display:none">
-                    <tr style="background:#e5e7eb;font-weight:700;font-size:11.5px">
+                    <tr style="background:var(--border-2);font-weight:700;font-size:11.5px">
                         <td colspan="3" style="padding:7px 10px;color:#374151;text-transform:uppercase;letter-spacing:0.4px">Total</td>
                         <td style="text-align:right;padding:7px 10px" id="ftAllDur"></td>
                         <td style="text-align:right;padding:7px 10px" id="ftAllTgt"></td>
@@ -149,15 +149,15 @@
     </div>
 
 
-    <div id="oneEmpty" class="erp-panel" style="text-align:center;padding:40px;color:#9ca3af">
-        <i class="bi bi-person-badge" style="font-size:32px;display:block;margin-bottom:10px;color:#d1d5db"></i>
-        Pilih inspector dan klik <strong style="color:#4b5563">Search</strong> untuk melihat detail achievement harian.
+    <div id="oneEmpty" class="erp-panel" style="text-align:center;padding:40px;color:var(--text-4)">
+        <i class="bi bi-person-badge" style="font-size:32px;display:block;margin-bottom:10px;color:var(--border)"></i>
+        Pilih inspector dan klik <strong style="color:var(--text-2)">Search</strong> untuk melihat detail achievement harian.
     </div>
 
     <div class="erp-panel mb-3" id="oneChartPanel" style="display:none">
         <div class="erp-panel-header" style="justify-content:center;font-size:12px;letter-spacing:1px">
-            ACHIEVEMENT — <span id="oneChartLabel" style="color:#111827">—</span>
-            <span style="margin-left:auto;font-size:10px;font-weight:400;color:#9ca3af">— — —  = 100% target</span>
+            ACHIEVEMENT — <span id="oneChartLabel" style="color:var(--text)">—</span>
+            <span style="margin-left:auto;font-size:10px;font-weight:400;color:var(--text-4)">— — —  = 100% target</span>
         </div>
         <div class="erp-panel-body" style="padding:14px">
             {{-- Alasan pembungkus sama dengan grafik Mode 1 di atas. --}}
@@ -170,8 +170,8 @@
     <div class="erp-panel" id="oneDetailPanel" style="display:none">
         <div class="erp-panel-header">
             <i class="bi bi-table me-1"></i>Detail Harian
-            <span id="oneDetailLabel" style="margin-left:6px;font-weight:400;color:#9ca3af;text-transform:none;letter-spacing:0;font-size:11px"></span>
-            <span style="margin-left:auto;font-size:10px;font-weight:400;color:#9ca3af;text-transform:none;letter-spacing:0">Klik tanggal untuk expand/collapse</span>
+            <span id="oneDetailLabel" style="margin-left:6px;font-weight:400;color:var(--text-4);text-transform:none;letter-spacing:0;font-size:11px"></span>
+            <span style="margin-left:auto;font-size:10px;font-weight:400;color:var(--text-4);text-transform:none;letter-spacing:0">Klik tanggal untuk expand/collapse</span>
         </div>
         <div style="overflow-x:auto">
             <table class="erp-table" style="min-width:1020px">
@@ -249,7 +249,7 @@ function statusLabel(tl) {
 function progressBar(pct) {
     const color = pctColor(pct);
     return `<div style="display:flex;align-items:center;gap:8px">
-        <div style="flex:1;height:7px;background:#e5e7eb;border-radius:1px;overflow:hidden">
+        <div style="flex:1;height:7px;background:var(--border-2);border-radius:1px;overflow:hidden">
             <div style="width:${Math.min(pct,100)}%;height:100%;background:${color}"></div>
         </div>
         <span style="font-size:12px;font-weight:700;color:${color};min-width:44px;text-align:right">${pct}%</span>
@@ -384,12 +384,12 @@ function renderAllKpi(table) {
         { label:'NG Rate',             value: ngRate + '%',          sub: `${n(totalNg)} pcs NG`,                   icon:'bi-exclamation-triangle', color: ngC },
     ];
     document.getElementById('allKpi').innerHTML = cards.map(c => `
-        <div style="background:#fff;border:1px solid #d1d5db;border-radius:2px;padding:12px 14px">
-            <div style="font-size:9.5px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">
+        <div style="background:#fff;border:1px solid var(--border);border-radius:2px;padding:12px 14px">
+            <div style="font-size:9.5px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">
                 <i class="bi ${c.icon} me-1"></i>${c.label}
             </div>
             <div style="font-size:22px;font-weight:700;color:${c.color};line-height:1.1;margin-bottom:3px">${c.value}</div>
-            <div style="font-size:10.5px;color:#9ca3af">${c.sub}</div>
+            <div style="font-size:10.5px;color:var(--text-4)">${c.sub}</div>
         </div>`).join('');
 }
 
@@ -413,18 +413,18 @@ function renderAllTable(table) {
 
         return `<tr style="${rowBg};cursor:pointer" onclick="switchMode('one', ${row.id_karyawan_qc ?? 'null'})"
                     title="Klik untuk detail ${escHtml(row.karyawan)}">
-            <td style="text-align:center;color:#9ca3af;font-size:11px">${i+1}</td>
-            <td style="font-weight:600;color:#111827">
+            <td style="text-align:center;color:var(--text-4);font-size:11px">${i+1}</td>
+            <td style="font-weight:600;color:var(--text)">
                 ${escHtml(row.karyawan)}
-                <i class="bi bi-box-arrow-in-right" style="font-size:10px;color:#9ca3af;margin-left:4px"></i>
+                <i class="bi bi-box-arrow-in-right" style="font-size:10px;color:var(--text-4);margin-left:4px"></i>
             </td>
-            <td style="text-align:center;color:#6b7280">${sessions}</td>
-            <td style="text-align:right;color:#6b7280">${row.total_duration_hours}j</td>
-            <td style="text-align:right;color:#6b7280">${n(Math.round(row.total_target_qty))}</td>
-            <td style="text-align:right;font-weight:600;color:#15803d">${n(row.total_qty_ok)}</td>
-            <td style="text-align:right;font-weight:600;color:#b91c1c">${n(row.total_qty_ng)}</td>
+            <td style="text-align:center;color:var(--text-3)">${sessions}</td>
+            <td style="text-align:right;color:var(--text-3)">${row.total_duration_hours}j</td>
+            <td style="text-align:right;color:var(--text-3)">${n(Math.round(row.total_target_qty))}</td>
+            <td style="text-align:right;font-weight:600;color:var(--c-success)">${n(row.total_qty_ok)}</td>
+            <td style="text-align:right;font-weight:600;color:var(--c-danger)">${n(row.total_qty_ng)}</td>
             <td style="text-align:right;font-weight:700;color:${ngC}">${row.ng_rate ?? 0}%</td>
-            <td style="text-align:right;color:#6b7280">${sphStdAvg}</td>
+            <td style="text-align:right;color:var(--text-3)">${sphStdAvg}</td>
             <td style="text-align:right;font-weight:600;color:${sphActColor}">${n(Math.round(row.avg_actual_sph))}</td>
             <td>${progressBar(row.achievement_pct)}</td>
             <td style="text-align:center">${statusLabel(row.traffic_light)}</td>
@@ -442,8 +442,8 @@ function renderAllTable(table) {
 
     document.getElementById('ftAllDur').textContent    = totalDur.toFixed(1) + 'j';
     document.getElementById('ftAllTgt').textContent    = n(Math.round(totalTgt));
-    document.getElementById('ftAllOk').innerHTML       = `<span style="color:#15803d">${n(totalOk)}</span>`;
-    document.getElementById('ftAllNg').innerHTML       = `<span style="color:#b91c1c">${n(totalNg)}</span>`;
+    document.getElementById('ftAllOk').innerHTML       = `<span style="color:var(--c-success)">${n(totalOk)}</span>`;
+    document.getElementById('ftAllNg').innerHTML       = `<span style="color:var(--c-danger)">${n(totalNg)}</span>`;
     document.getElementById('ftAllNgRate').innerHTML   = `<span style="color:${ngColor(oNgRate)};font-weight:700">${oNgRate}%</span>`;
     document.getElementById('ftAllPct').innerHTML      = progressBar(oPct);
     tfoot.style.display = '';
@@ -556,16 +556,16 @@ function buildOneRows(table) {
 
         // Date header row
         html += `
-        <tr style="background:#f3f4f6;cursor:pointer" onclick="toggleDay(${di})">
-            <td style="font-weight:700;font-size:12px;padding:8px 10px;color:#111827">
+        <tr style="background:var(--surface-3);cursor:pointer" onclick="toggleDay(${di})">
+            <td style="font-weight:700;font-size:12px;padding:8px 10px;color:var(--text)">
                 <i class="bi bi-chevron-right" id="icon-${di}"
-                   style="font-size:10px;color:#6b7280;transition:transform 0.15s;margin-right:5px;${expanded?'transform:rotate(90deg)':''}"></i>${day.tanggal}
+                   style="font-size:10px;color:var(--text-3);transition:transform 0.15s;margin-right:5px;${expanded?'transform:rotate(90deg)':''}"></i>${day.tanggal}
             </td>
-            <td colspan="4" style="padding:8px 10px;color:#6b7280;font-size:11px">${day.sessions.length} sesi pengecekan</td>
-            <td style="padding:8px 10px;text-align:right;color:#15803d;font-weight:600">${n(day.total_qty_ok)}</td>
-            <td style="padding:8px 10px;text-align:right;color:#b91c1c;font-weight:600">${n(day.total_qty_ng)}</td>
+            <td colspan="4" style="padding:8px 10px;color:var(--text-3);font-size:11px">${day.sessions.length} sesi pengecekan</td>
+            <td style="padding:8px 10px;text-align:right;color:var(--c-success);font-weight:600">${n(day.total_qty_ok)}</td>
+            <td style="padding:8px 10px;text-align:right;color:var(--c-danger);font-weight:600">${n(day.total_qty_ng)}</td>
             <td style="padding:8px 10px;text-align:right;font-weight:700;color:${ngC}">${day.ng_rate ?? 0}%</td>
-            <td style="padding:8px 10px;text-align:right;color:#6b7280;font-weight:600">${n(day.avg_sph_std)}</td>
+            <td style="padding:8px 10px;text-align:right;color:var(--text-3);font-weight:600">${n(day.avg_sph_std)}</td>
             <td style="padding:8px 10px;text-align:right;font-weight:700;color:${color}">${n(day.avg_sph_act)}</td>
             <td style="padding:8px 10px;text-align:right;font-weight:700;color:${color}">${day.achievement_pct}%</td>
             <td></td>
@@ -578,17 +578,17 @@ function buildOneRows(table) {
             const bg  = si % 2 === 0 ? '#fff' : '#f9fafb';
             html += `
             <tr class="day-rows-${di}" style="display:${expanded?'table-row':'none'};background:${bg}">
-                <td style="padding:6px 10px;padding-left:22px;color:#9ca3af;font-size:11px">↳</td>
-                <td style="padding:6px 10px;font-size:11px;color:#6b7280">${escHtml(s.customer)}</td>
+                <td style="padding:6px 10px;padding-left:22px;color:var(--text-4);font-size:11px">↳</td>
+                <td style="padding:6px 10px;font-size:11px;color:var(--text-3)">${escHtml(s.customer)}</td>
                 <td style="padding:6px 10px;font-size:11.5px">${escHtml(s.part_no)}</td>
                 <td style="padding:6px 10px;font-size:11.5px">${escHtml(s.part_name)}</td>
                 <td style="padding:6px 10px;text-align:center;font-weight:600">${escHtml(s.id_proses)}</td>
                 <td style="padding:6px 10px;font-size:11.5px">${escHtml(s.nama_proses)}</td>
-                <td style="padding:6px 10px;text-align:right;color:#6b7280">${s.waktu_kerja}j</td>
-                <td style="padding:6px 10px;text-align:right;font-weight:600;color:#15803d">${n(s.qty_ok)}</td>
-                <td style="padding:6px 10px;text-align:right;font-weight:600;color:#b91c1c">${n(s.qty_ng)}</td>
+                <td style="padding:6px 10px;text-align:right;color:var(--text-3)">${s.waktu_kerja}j</td>
+                <td style="padding:6px 10px;text-align:right;font-weight:600;color:var(--c-success)">${n(s.qty_ok)}</td>
+                <td style="padding:6px 10px;text-align:right;font-weight:600;color:var(--c-danger)">${n(s.qty_ng)}</td>
                 <td style="padding:6px 10px;text-align:right;font-weight:700;color:${snc}">${s.ng_rate}%</td>
-                <td style="padding:6px 10px;text-align:right;color:#6b7280">${n(s.sph_std)}</td>
+                <td style="padding:6px 10px;text-align:right;color:var(--text-3)">${n(s.sph_std)}</td>
                 <td style="padding:6px 10px;text-align:right;font-weight:600;color:${sc}">${n(s.sph_act)}</td>
                 <td style="padding:6px 10px;text-align:right;font-weight:700;color:${sc}">${s.pct}%</td>
                 <td></td>
@@ -597,12 +597,12 @@ function buildOneRows(table) {
 
         // Average row
         html += `
-        <tr class="day-rows-${di}" style="display:${expanded?'table-row':'none'};background:#f0f4f8;border-top:1px solid #d1d5db">
+        <tr class="day-rows-${di}" style="display:${expanded?'table-row':'none'};background:#f0f4f8;border-top:1px solid var(--border)">
             <td colspan="5" style="padding:6px 10px 6px 22px;font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:0.5px">
                 Average ${day.tanggal}
             </td>
-            <td style="padding:6px 10px;text-align:right;font-weight:700;color:#15803d">${n(day.total_qty_ok)}</td>
-            <td style="padding:6px 10px;text-align:right;font-weight:700;color:#b91c1c">${n(day.total_qty_ng)}</td>
+            <td style="padding:6px 10px;text-align:right;font-weight:700;color:var(--c-success)">${n(day.total_qty_ok)}</td>
+            <td style="padding:6px 10px;text-align:right;font-weight:700;color:var(--c-danger)">${n(day.total_qty_ng)}</td>
             <td style="padding:6px 10px;text-align:right;font-weight:700;color:${ngC}">${day.ng_rate ?? 0}%</td>
             <td style="padding:6px 10px;text-align:right;font-weight:700;color:#374151">${n(day.avg_sph_std)}</td>
             <td style="padding:6px 10px;text-align:right;font-weight:700;color:${color}">${n(day.avg_sph_act)}</td>

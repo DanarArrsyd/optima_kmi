@@ -253,7 +253,7 @@
             </div>
             <div class="erp-panel-body" style="padding:16px">
                 <div x-show="!loading && !hasData && !galat"
-                     style="text-align:center;color:#9ca3af;padding:60px 0;font-size:0.85rem">
+                     style="text-align:center;color:var(--text-4);padding:60px 0;font-size:0.85rem">
                     <i class="bi bi-bar-chart" style="font-size:3rem;display:block;margin-bottom:10px;opacity:.2"></i>
                     Belum ada data untuk periode ini.
                 </div>
@@ -272,7 +272,7 @@
                 </div>
                 <div class="erp-panel-body" style="padding:16px">
                     <div x-show="!hasData && !loading && !galat"
-                         style="text-align:center;color:#9ca3af;padding:40px 0;font-size:0.82rem">
+                         style="text-align:center;color:var(--text-4);padding:40px 0;font-size:0.82rem">
                         Tidak ada data
                     </div>
                     <div x-show="hasData" style="position:relative;height:240px">
@@ -286,7 +286,7 @@
                 </div>
                 <div class="erp-panel-body" style="padding:16px">
                     <div x-show="!hasData && !loading && !galat"
-                         style="text-align:center;color:#9ca3af;padding:40px 0;font-size:0.82rem">
+                         style="text-align:center;color:var(--text-4);padding:40px 0;font-size:0.82rem">
                         Tidak ada data
                     </div>
                     <div x-show="hasData" style="position:relative;height:240px">
@@ -344,9 +344,9 @@
         </div>
 
         <div class="vcbd-rank-section">
-            <div class="vcbd-rank-label">Jenis Loss Time <span style="font-weight:400;color:#9ca3af">(over standar)</span></div>
+            <div class="vcbd-rank-label">Jenis Loss Time <span style="font-weight:400;color:var(--text-4)">(over standar)</span></div>
             <div x-show="!summary.by_jenis || summary.by_jenis.length === 0"
-                 style="color:#9ca3af;font-size:0.78rem;padding:4px 0">Tidak ada data</div>
+                 style="color:var(--text-4);font-size:0.78rem;padding:4px 0">Tidak ada data</div>
             <table class="vcbd-rank-table" x-show="summary.by_jenis && summary.by_jenis.length > 0">
                 <tbody>
                     <template x-for="item in summary.by_jenis" :key="item.kode">
@@ -368,7 +368,7 @@
         <div class="vcbd-rank-section">
             <div class="vcbd-rank-label">Nama Mesin</div>
             <div x-show="!summary.by_mesin || summary.by_mesin.length === 0"
-                 style="color:#9ca3af;font-size:0.78rem;padding:4px 0">Tidak ada data</div>
+                 style="color:var(--text-4);font-size:0.78rem;padding:4px 0">Tidak ada data</div>
             <table class="vcbd-rank-table" x-show="summary.by_mesin && summary.by_mesin.length > 0">
                 <tbody>
                     <template x-for="item in summary.by_mesin" :key="item.id_mesin">
@@ -633,16 +633,16 @@ function vcbDandori() {
             tbody.innerHTML = data.by_jenis.map((item, i) => {
                 const pct = (item.over / max * 100).toFixed(1);
                 return `<tr>
-                    <td style="text-align:center;color:#6b7280">${i + 1}</td>
+                    <td style="text-align:center;color:var(--text-3)">${i + 1}</td>
                     <td style="font-weight:700;letter-spacing:.3px">${escHtml(item.kode)}</td>
                     <td>${escHtml(item.jenis)}</td>
                     <td style="text-align:right;font-weight:700;color:#1a3a4a">${this.fmt(item.over)}</td>
                     <td style="padding:6px 10px">
                         <div style="display:flex;align-items:center;gap:8px">
-                            <div style="flex:1;height:8px;background:#e5e7eb;border-radius:4px">
+                            <div style="flex:1;height:8px;background:var(--border-2);border-radius:4px">
                                 <div style="width:${pct}%;height:8px;background:#1a5c6e;border-radius:4px"></div>
                             </div>
-                            <span style="font-size:0.77rem;color:#6b7280;min-width:36px;text-align:right">${pct}%</span>
+                            <span style="font-size:0.77rem;color:var(--text-3);min-width:36px;text-align:right">${pct}%</span>
                         </div>
                     </td>
                 </tr>`;

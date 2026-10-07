@@ -84,7 +84,7 @@
 {{-- Status Aktif/Non-Aktif/Semua disaring lewat dropdown "Semua Status" di
      dock Filter, bukan tombol sendiri di sini — satu kontrol per fungsi,
      nggak dobel sama select yang sudah ada. --}}
-<div style="font-size:0.78rem;color:#6b7280;margin-bottom:10px">
+<div style="font-size:0.78rem;color:var(--text-3);margin-bottom:10px">
     {{ $karyawan->total() }} karyawan
     @if($filter==='aktif') aktif
     @elseif($filter==='nonaktif') non-aktif
@@ -117,7 +117,7 @@
         </thead>
         <tbody>
         @forelse($karyawan as $i => $k)
-            <tr style="{{ !$k->is_aktif ? 'opacity:0.55;background:#f9fafb' : '' }}">
+            <tr style="{{ !$k->is_aktif ? 'opacity:0.55;background:var(--surface-2)' : '' }}">
                 <td style="white-space:nowrap">{{ $karyawan->firstItem() + $i }}</td>
                 <td style="font-family:monospace;white-space:nowrap">{{ $k->nik }}</td>
                 {{-- Badge "NON-AKTIF" di sini dulu dobel sama kolom Status di sebelah —
@@ -128,7 +128,7 @@
                     @if($k->is_aktif)
                         <span style="font-size:0.72rem;background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:3px;font-weight:600">Aktif</span>
                     @else
-                        <span style="font-size:0.72rem;background:#e5e7eb;color:#4b5563;padding:2px 8px;border-radius:3px;font-weight:600">Non-Aktif</span>
+                        <span style="font-size:0.72rem;background:var(--border-2);color:var(--text-2);padding:2px 8px;border-radius:3px;font-weight:600">Non-Aktif</span>
                     @endif
                 </td>
                 @if($adaKolomTanggal)
@@ -161,14 +161,14 @@
                                 </span>
                             @else
                                 <button type="submit" class="btn btn-sm btn-success"
-                                        onclick="return confirm('Aktifkan kembali karyawan {{ addslashes($k->nama_karyawan) }}? Tanggal nonaktifnya akan dikosongkan.')">
+                                        data-konfirmasi="Aktifkan kembali karyawan {{ $k->nama_karyawan }}? Tanggal nonaktifnya akan dikosongkan.">
                                     <i class="bi bi-person-check me-1"></i>Aktifkan
                                 </button>
                             @endif
                         </form>
 
                         <form method="POST" action="{{ route('master.karyawan.destroy', $k) }}"
-                              onsubmit="return confirm('Hapus permanen karyawan ini? Data historis LHP yang terkait tidak akan terhapus.')">
+                              data-konfirmasi="Hapus permanen karyawan ini? Data historis LHP yang terkait tidak akan terhapus.">
                             @csrf @method('DELETE')
                             <button class="btn btn-danger btn-sm">Hapus</button>
                         </form>
@@ -176,14 +176,7 @@
                 </td>
             </tr>
         @empty
-            <tr>
-                <td colspan="{{ $adaKolomTanggal ? 7 : 6 }}" style="text-align:center;color:#888;padding:20px">
-                    @if($filter === 'nonaktif') Tidak ada karyawan non-aktif.
-                    @elseif($filter === 'aktif') Belum ada karyawan aktif.
-                    @else Belum ada data karyawan.
-                    @endif
-                </td>
-            </tr>
+            <x-tabel-kosong :kolom="$adaKolomTanggal ? 7 : 6" entitas="data karyawan" :tambah="route('master.karyawan.create')" />
         @endforelse
         </tbody>
     </table>

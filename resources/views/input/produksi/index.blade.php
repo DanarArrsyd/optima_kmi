@@ -189,22 +189,7 @@ $lastUrl = $myLastRecord
 </div>
 @endif
 
-@if(session('import_errors') && count(session('import_errors')) > 0)
-    <div class="alert alert-warning alert-dismissible fade show mb-3">
-        <div class="d-flex align-items-start gap-2">
-            <i class="bi bi-exclamation-triangle-fill fs-5 mt-1 flex-shrink-0"></i>
-            <div style="width:100%">
-                <strong>{{ count(session('import_errors')) }} baris gagal diimport:</strong>
-                <div style="max-height:180px;overflow-y:auto;margin-top:6px">
-                    <ul class="mb-0" >
-                        @foreach(session('import_errors') as $err)<li>{{ $err }}</li>@endforeach
-                    </ul>
-                </div>
-            </div>
-        </div>
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-@endif
+@include('partials.import-errors')
 @if($anomalyCount > 0)
 {{-- Penjelasan singkat arti sorot kuning. Jumlahnya sudah ada di toolbar,
      jadi strip ini cukup satu baris. --}}
@@ -221,7 +206,7 @@ $lastUrl = $myLastRecord
      Penggulungan dipegang .erp-scroll saja; wadah bertumpuk membuat
      kepala tabel yang menempel berhenti bekerja. --}}
 <div class="erp-scroll">
-        <table id="produksiTable" class="erp-table tbl-freeze" style="min-width:1520px">
+        <table id="produksiTable" class="erp-table tbl-freeze ada-aksi" style="min-width:1520px">
             <thead style="position:sticky;top:0;z-index:10">
                 <tr>
                     <th class="sc sc-1" style="width:85px">Tanggal</th>
@@ -290,7 +275,7 @@ $lastUrl = $myLastRecord
                     <td style="white-space:nowrap">{{ $pp?->nama_proses ?? '—' }}</td>
                     <td style="white-space:nowrap">{{ $t->jam_start }} – {{ $t->jam_finish }}</td>
                     <td style="text-align:right;font-weight:600">{{ number_format($t->qty_aktual) }}</td>
-                    <td style="text-align:right;font-weight:600;color:{{ $t->qty_ng ? '#c0392b' : '#9ca3af' }}">
+                    <td style="text-align:right;font-weight:600;color:{{ $t->qty_ng ? '#c0392b' : 'var(--text-4)' }}">
                         {{ $t->qty_ng ? number_format($t->qty_ng) : '—' }}
                     </td>
                     <td style="color:#5d7283">{{ $t->ng_ringkas ?: '—' }}</td>
@@ -300,7 +285,7 @@ $lastUrl = $myLastRecord
                     </td>
                     <td style="text-align:right;color:#5d7283">{{ number_format($t->waktu_kerja_jam, 1) }}j</td>
                     <td style="text-align:right">{{ number_format($t->actual_cycle_time, 1) }}s</td>
-                    <td style="text-align:right;font-weight:600;color:{{ $pct===null?'#9ca3af':($pct>=100?'#15803d':'#b91c1c') }}">
+                    <td style="text-align:right;font-weight:600;color:{{ $pct===null?'var(--text-4)':($pct>=100?'var(--c-success)':'var(--c-danger)') }}">
                         @if($isAnomaly)
                         <span data-bs-toggle="tooltip" data-bs-placement="left"
                               title="{{ $tooltipTxt }}"
@@ -317,7 +302,7 @@ $lastUrl = $myLastRecord
                         <div class="action-btns">
                             <a href="{{ route('input.produksi.edit', $t) }}?back_query={{ urlencode(http_build_query(request()->query())) }}" class="btn btn-warning btn-sm">Edit</a>
                             <form method="POST" action="{{ route('input.produksi.destroy', $t) }}"
-                                  onsubmit="return confirm('Hapus data ini?')">
+                                  data-konfirmasi="Hapus data ini?">
                                 @csrf @method('DELETE')
                                 <button class="btn btn-danger btn-sm">Hapus</button>
                             </form>
@@ -332,7 +317,7 @@ $lastUrl = $myLastRecord
                             <button type="button"
                                     onclick="openNoteDrawer('produksi',{{ $t->id }},{{ \Illuminate\Support\Js::from($note) }},true,'{{ $updatedAt }}','{{ $noteAt }}','{{ $resolvedAt }}',{{ \Illuminate\Support\Js::from($resolvedBy) }})"
                                     class="btn btn-sm"
-                                    style="background:{{ $resolved ? '#f0fdf4' : '#fef9c3' }};border:1px solid {{ $resolved ? '#86efac' : '#fde047' }};color:{{ $resolved ? '#166534' : '#713f12' }};white-space:nowrap">
+                                    style="background:{{ $resolved ? 'var(--c-success-bg)' : '#fef9c3' }};border:1px solid {{ $resolved ? '#86efac' : '#fde047' }};color:{{ $resolved ? '#166534' : '#713f12' }};white-space:nowrap">
                                 <i class="bi bi-{{ $resolved ? 'check2-circle' : 'chat-left-text-fill' }}"></i> Note
                             </button>
                             @endif
@@ -350,11 +335,7 @@ $lastUrl = $myLastRecord
                     </td>
                 </tr>
             @empty
-                <tr>
-                    <td colspan="20" style="text-align:center;color:#888;padding:20px">
-                        Belum ada data LHP Produksi pada rentang tanggal ini.
-                    </td>
-                </tr>
+                <x-tabel-kosong kolom="20" entitas="data LHP Produksi" periode />
             @endforelse
             </tbody>
         </table>
@@ -433,18 +414,18 @@ $lastUrl = $myLastRecord
 
             {{-- ADMIN MODE: baca note, lihat status --}}
             <div x-show="isAdmin">
-                <p style="color:#6b7280;margin-bottom:8px">Catatan dari staff:</p>
+                <p style="color:var(--text-3);margin-bottom:8px">Catatan dari staff:</p>
                 <div x-text="text"
-                     style="background:#fafafa;border:1px solid #e5e7eb;border-radius:4px;
-                            padding:12px;min-height:80px;white-space:pre-wrap;color:#111827"></div>
-                <div x-show="noteAt" class="erp-meta" style="color:#9ca3af;margin-top:6px">
+                     style="background:#fafafa;border:1px solid var(--border-2);border-radius:4px;
+                            padding:12px;min-height:80px;white-space:pre-wrap;color:var(--text)"></div>
+                <div x-show="noteAt" class="erp-meta" style="color:var(--text-4);margin-top:6px">
                     Dikirim: <span x-text="noteAt ? new Date(noteAt).toLocaleString('id-ID',{dateStyle:'medium',timeStyle:'short'}) : ''"></span>
                 </div>
 
                 {{-- Status perubahan data --}}
                 <div style="margin-top:16px">
                     <div x-show="dataChanged === true"
-                         style="padding:10px 14px;background:#f0fdf4;border:1px solid #86efac;border-radius:4px;color:#166534">
+                         style="padding:10px 14px;background:var(--c-success-bg);border:1px solid #86efac;border-radius:4px;color:#166534">
                         <i class="bi bi-check-circle-fill me-1"></i>Data sudah diperbarui setelah note dikirim
                     </div>
                     <div x-show="dataChanged === false"
@@ -455,7 +436,7 @@ $lastUrl = $myLastRecord
 
                 {{-- Status resolved --}}
                 <div x-show="resolvedAt"
-                     style="margin-top:12px;padding:10px 14px;background:#f0fdf4;border:1px solid #86efac;border-radius:4px;color:#166534">
+                     style="margin-top:12px;padding:10px 14px;background:var(--c-success-bg);border:1px solid #86efac;border-radius:4px;color:#166534">
                     <i class="bi bi-check2-circle me-1"></i>
                     Sudah ditandai selesai oleh <strong x-text="resolvedBy"></strong>
                     pada <span x-text="resolvedAt ? new Date(resolvedAt).toLocaleString('id-ID',{dateStyle:'medium',timeStyle:'short'}) : ''"></span>
@@ -466,16 +447,16 @@ $lastUrl = $myLastRecord
             <div x-show="!isAdmin">
                 <template x-if="resolvedAt">
                     <div>
-                        <div style="padding:10px 14px;background:#f0fdf4;border:1px solid #86efac;border-radius:4px;color:#166534;margin-bottom:12px">
+                        <div style="padding:10px 14px;background:var(--c-success-bg);border:1px solid #86efac;border-radius:4px;color:#166534;margin-bottom:12px">
                             <i class="bi bi-lock-fill me-1"></i>
                             Note sudah di-feedback admin. Tidak dapat diubah lagi.
                         </div>
-                        <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:4px;padding:12px 14px;color:#374151;white-space:pre-wrap" x-text="text || '(kosong)'"></div>
+                        <div style="background:var(--surface-2);border:1px solid var(--border-2);border-radius:4px;padding:12px 14px;color:#374151;white-space:pre-wrap" x-text="text || '(kosong)'"></div>
                     </div>
                 </template>
                 <template x-if="!resolvedAt">
                     <div>
-                        <p style="color:#6b7280;margin-bottom:14px;line-height:1.6">
+                        <p style="color:var(--text-3);margin-bottom:14px;line-height:1.6">
                             Tulis catatan untuk admin mengenai kesalahan pada data ini.
                             Admin akan melihat catatan ini dan dapat memperbaiki data.
                         </p>
@@ -483,11 +464,11 @@ $lastUrl = $myLastRecord
                                   class="form-control" style="resize:vertical"
                                   placeholder="Contoh: Qty aktual seharusnya 500, bukan 400. Mohon dikoreksi."
                                   maxlength="1000"></textarea>
-                        <div class="erp-meta" style="color:#9ca3af;text-align:right;margin-top:4px">
+                        <div class="erp-meta" style="color:var(--text-4);text-align:right;margin-top:4px">
                             <span x-text="text.length">0</span>/1000
                         </div>
                         <div x-show="hasNote" style="margin-top:16px;padding:10px 14px;
-                             background:#fefce8;border:1px solid #fde047;border-radius:4px;color:#713f12">
+                             background:var(--c-warn-bg);border:1px solid #fde047;border-radius:4px;color:#713f12">
                             <i class="bi bi-info-circle me-1"></i>
                             Note sebelumnya sudah dikirim. Kamu bisa ubah atau hapus di bawah.
                         </div>
@@ -497,7 +478,7 @@ $lastUrl = $myLastRecord
         </div>
 
         {{-- Footer --}}
-        <div style="flex-shrink:0;padding:16px 20px;border-top:1px solid #e5e7eb;display:flex;gap:8px;justify-content:flex-end">
+        <div style="flex-shrink:0;padding:16px 20px;border-top:1px solid var(--border-2);display:flex;gap:8px;justify-content:flex-end">
 
             {{-- ADMIN FOOTER --}}
             <template x-if="isAdmin">
@@ -508,7 +489,7 @@ $lastUrl = $myLastRecord
                         <input type="hidden" name="record_id" :value="recordId">
                         <input type="hidden" name="staff_note" value="">
                         <button type="submit" class="btn btn-outline-danger btn-sm"
-                                onclick="return confirm('Hapus note ini?')">
+                                data-konfirmasi="Hapus note ini?">
                             <i class="bi bi-trash me-1"></i>Hapus Note
                         </button>
                     </form>
@@ -540,7 +521,7 @@ $lastUrl = $myLastRecord
                                 <input type="hidden" name="record_id" :value="recordId">
                                 <input type="hidden" name="staff_note" value="">
                                 <button type="submit" class="btn btn-outline-danger btn-sm"
-                                        onclick="return confirm('Hapus note ini?')">
+                                        data-konfirmasi="Hapus note ini?">
                                     <i class="bi bi-trash me-1"></i>Hapus Note
                                 </button>
                             </form>

@@ -137,20 +137,12 @@ $filterActive = $mesinIds || $filterPic !== '' || $filterStatus !== '';
 </div>
 @endif
 
-@if(session('import_errors') && count(session('import_errors')) > 0)
-    <div class="alert alert-warning alert-dismissible fade show mb-3">
-        <strong>{{ count(session('import_errors')) }} baris dilewati:</strong>
-        <div style="max-height:180px;overflow-y:auto;margin-top:6px">
-            <ul class="mb-0">@foreach(session('import_errors') as $err)<li>{{ $err }}</li>@endforeach</ul>
-        </div>
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-@endif
+@include('partials.import-errors')
 {{-- Judul sudah ada di topbar dan jumlah data sudah ada di status bar;
      kepala panel hanya memakan tinggi. Penggulungan dipegang .erp-scroll
      saja — wadah gulung bertumpuk mematikan kepala tabel yang menempel. --}}
 <div class="erp-scroll">
-        <table class="erp-table tbl-freeze" style="min-width:1650px">
+        <table class="erp-table tbl-freeze @if($isAdmin) ada-aksi @endif" style="min-width:1650px">
             <thead style="position:sticky;top:0;z-index:10">
                 <tr>
                     <th class="sc sc-1" style="width:90px">Tanggal</th>
@@ -194,7 +186,7 @@ $filterActive = $mesinIds || $filterPic !== '' || $filterStatus !== '';
                     <td style="white-space:nowrap">
                         <a href="{{ route('maintenance.breakdown.edit',$b) }}" class="btn btn-warning btn-sm">Edit</a>
                         <form method="POST" action="{{ route('maintenance.breakdown.destroy',$b) }}" class="d-inline"
-                              onsubmit="return confirm('Hapus breakdown {{ $b->no_lkm }}?')">
+                              data-konfirmasi="Hapus breakdown {{ $b->no_lkm }}?">
                             @csrf @method('DELETE')
                             <button class="btn btn-danger btn-sm">Hapus</button>
                         </form>
@@ -202,7 +194,7 @@ $filterActive = $mesinIds || $filterPic !== '' || $filterStatus !== '';
                     @endif
                 </tr>
             @empty
-                <tr><td colspan="{{ $isAdmin ? 13 : 12 }}" style="text-align:center;color:#9ca3af;padding:30px">Belum ada data breakdown.</td></tr>
+                <x-tabel-kosong :kolom="$isAdmin ? 13 : 12" entitas="data breakdown mesin" periode />
             @endforelse
             </tbody>
         </table>

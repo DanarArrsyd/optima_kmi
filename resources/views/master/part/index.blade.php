@@ -124,14 +124,14 @@
     <table class="erp-table" style="min-width:900px">
         <thead>
             <tr>
-                <th style="position:sticky;top:0;z-index:10;background:#e5e7eb">Customer</th>
-                <th style="position:sticky;top:0;z-index:10;background:#e5e7eb;white-space:nowrap">Part No</th>
-                <th style="position:sticky;top:0;z-index:10;background:#e5e7eb;white-space:nowrap">Part Name</th>
-                <th style="position:sticky;top:0;z-index:10;background:#e5e7eb">ID Proses</th>
-                <th style="position:sticky;top:0;z-index:10;background:#e5e7eb;white-space:nowrap">Nama Proses</th>
-                <th style="position:sticky;top:0;z-index:10;background:#e5e7eb">SPH Produksi<br><span style="font-weight:400;font-size:0.72rem">+ tgl upgrade</span></th>
-                <th style="position:sticky;top:0;z-index:10;background:#e5e7eb">SPH Quality<br><span style="font-weight:400;font-size:0.72rem">+ tgl upgrade</span></th>
-                <th style="position:sticky;top:0;z-index:10;background:#e5e7eb;width:160px">Aksi</th>
+                <th style="position:sticky;top:0;z-index:10;background:var(--border-2)">Customer</th>
+                <th style="position:sticky;top:0;z-index:10;background:var(--border-2);white-space:nowrap">Part No</th>
+                <th style="position:sticky;top:0;z-index:10;background:var(--border-2);white-space:nowrap">Part Name</th>
+                <th style="position:sticky;top:0;z-index:10;background:var(--border-2)">ID Proses</th>
+                <th style="position:sticky;top:0;z-index:10;background:var(--border-2);white-space:nowrap">Nama Proses</th>
+                <th style="position:sticky;top:0;z-index:10;background:var(--border-2)">SPH Produksi<br><span style="font-weight:400;font-size:0.72rem">+ tgl upgrade</span></th>
+                <th style="position:sticky;top:0;z-index:10;background:var(--border-2)">SPH Quality<br><span style="font-weight:400;font-size:0.72rem">+ tgl upgrade</span></th>
+                <th style="position:sticky;top:0;z-index:10;background:var(--border-2);width:160px">Aksi</th>
             </tr>
         </thead>
         <tbody>
@@ -169,7 +169,7 @@
                     <div class="action-btns">
                         <a href="{{ route('master.part.edit', $part) }}" class="btn btn-warning btn-sm">Edit Part</a>
                         <form method="POST" action="{{ route('master.part.proses.destroy', [$part, $proses]) }}"
-                              onsubmit="return confirm('Hapus proses {{ $proses->nama_proses }} dari part {{ $part->part_no }}?')">
+                              data-konfirmasi="Hapus proses {{ $proses->nama_proses }} dari part {{ $part->part_no }}?">
                             @csrf @method('DELETE')
                             <button class="btn btn-danger btn-sm">Hapus Proses</button>
                         </form>
@@ -177,17 +177,7 @@
                 </td>
             </tr>
         @empty
-            <tr>
-                <td colspan="8" style="text-align:center;color:#888;padding:24px">
-                    @if($search !== '')
-                        Tidak ada part yang cocok dengan "<strong>{{ $search }}</strong>".
-                        <a href="{{ route('master.part.index') }}" class="ms-1">Reset pencarian</a>
-                    @else
-                        Belum ada data part &amp; proses.
-                        <a href="{{ route('master.part.create') }}">Tambah Part Baru</a>
-                    @endif
-                </td>
-            </tr>
+            <x-tabel-kosong kolom="8" entitas="part" :tambah="route('master.part.create')" />
         @endforelse
         </tbody>
     </table>
@@ -238,7 +228,7 @@
                     <div class="action-btns">
                         <a href="{{ route('master.part.edit', $p) }}" class="btn btn-warning btn-sm">Tambah Proses</a>
                         <form method="POST" action="{{ route('master.part.destroy', $p) }}"
-                              onsubmit="return confirm('Hapus part {{ $p->part_no }}?')">
+                              data-konfirmasi="Hapus part {{ $p->part_no }}?">
                             @csrf @method('DELETE')
                             <button class="btn btn-danger btn-sm">Hapus Part</button>
                         </form>

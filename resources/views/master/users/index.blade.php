@@ -58,7 +58,7 @@
         </thead>
         <tbody>
         @forelse($users as $u)
-            <tr style="{{ !$u->is_aktif ? 'opacity:0.55;background:#f9fafb' : '' }}">
+            <tr style="{{ !$u->is_aktif ? 'opacity:0.55;background:var(--surface-2)' : '' }}">
                 <td>{{ $u->name }}</td>
                 <td>{{ $u->email }}</td>
                 <td>{{ collect($u->roles ?? [])->map(fn ($r) => strtoupper(str_replace('_', ' ', $r)))->implode(', ') }}</td>
@@ -75,14 +75,14 @@
                         <a href="{{ route('master.users.edit', $u) }}" class="btn btn-warning btn-sm">Edit</a>
                         @if($u->id !== auth()->id())
                         <form method="POST" action="{{ route('master.users.toggle-aktif', $u) }}"
-                              onsubmit="return confirm('{{ $u->is_aktif ? 'Nonaktifkan' : 'Aktifkan kembali' }} user ini?')">
+                              data-konfirmasi="{{ $u->is_aktif ? 'Nonaktifkan' : 'Aktifkan kembali' }} user ini?">
                             @csrf @method('PATCH')
                             <button class="btn btn-sm {{ $u->is_aktif ? 'btn-outline-secondary' : 'btn-outline-success' }}">
                                 {{ $u->is_aktif ? 'Nonaktifkan' : 'Aktifkan' }}
                             </button>
                         </form>
                         <form method="POST" action="{{ route('master.users.destroy', $u) }}"
-                              onsubmit="return confirm('Hapus user ini?')">
+                              data-konfirmasi="Hapus user ini?">
                             @csrf @method('DELETE')
                             <button class="btn btn-danger btn-sm">Hapus</button>
                         </form>
@@ -91,7 +91,7 @@
                 </td>
             </tr>
         @empty
-            <tr><td colspan="6" style="text-align:center;color:#888;padding:20px">Belum ada user.</td></tr>
+            <x-tabel-kosong kolom="6" entitas="user" :tambah="route('master.users.create')" />
         @endforelse
         </tbody>
     </table>

@@ -68,7 +68,7 @@ $initProsesListPhp = $initPart
 
 <div class="erp-panel" style="max-width:750px">
     <div class="erp-panel-header">Form Edit LHP Produksi
-        <span style="font-size:0.75rem;font-weight:400;color:#9ca3af;margin-left:8px">
+        <span style="font-size:0.75rem;font-weight:400;color:var(--text-4);margin-left:8px">
             ID #{{ $produksi->id }} · Dibuat oleh: {{ $produksi->creator?->name ?? '—' }}
         </span>
     </div>

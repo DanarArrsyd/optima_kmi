@@ -93,12 +93,12 @@
             <tr>
                 <td style="font-weight:600;letter-spacing:0.3px">{{ $ng->kode }}</td>
                 <td>{{ $ng->nama_ng }}</td>
-                <td style="color:#6b7280">{{ $ng->deskripsi ?? '—' }}</td>
+                <td style="color:var(--text-3)">{{ $ng->deskripsi ?? '—' }}</td>
                 <td>
                     <div class="action-btns">
                         <a href="{{ route('master.jenis-ng.edit', $ng) }}" class="btn btn-warning btn-sm">Edit</a>
                         <form method="POST" action="{{ route('master.jenis-ng.destroy', $ng) }}"
-                              onsubmit="return confirm('Hapus jenis NG ini?')">
+                              data-konfirmasi="Hapus jenis NG ini?">
                             @csrf @method('DELETE')
                             <button class="btn btn-danger btn-sm">Hapus</button>
                         </form>
@@ -106,7 +106,7 @@
                 </td>
             </tr>
         @empty
-            <tr><td colspan="4" style="text-align:center;color:#888;padding:20px">Belum ada data jenis NG. Tambahkan di atas.</td></tr>
+            <x-tabel-kosong kolom="4" entitas="jenis NG" :tambah="route('master.jenis-ng.create')" />
         @endforelse
         </tbody>
     </table>

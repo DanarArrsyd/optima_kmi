@@ -13,8 +13,8 @@
             <span style="font-size:0.75rem;background:#f0f2f5;border:1px solid #d4dbe3;padding:2px 8px;color:#5d7283">{{ $part->customer }}</span>
             @endif
             <span style="font-size:0.88rem;font-weight:700;color:#374151">{{ $part->part_no }}</span>
-            <span style="color:#9ca3af">·</span>
-            <span style="font-size:0.85rem;color:#6b7280">{{ $part->part_name }}</span>
+            <span style="color:var(--text-4)">·</span>
+            <span style="font-size:0.85rem;color:var(--text-3)">{{ $part->part_name }}</span>
         </div>
     </div>
     <a href="{{ route('master.part.index') }}" class="btn btn-outline-secondary btn-sm">
@@ -64,15 +64,15 @@
                         <i class="bi bi-save me-1"></i>Update Part
                     </button>
                 </form>
-                <div style="margin-top:16px;padding-top:14px;border-top:1px solid #e5e7eb">
-                    <div style="font-size:0.72rem;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Ringkasan</div>
+                <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border-2)">
+                    <div style="font-size:0.72rem;color:var(--text-4);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Ringkasan</div>
                     <div style="display:flex;justify-content:space-between;margin-bottom:6px">
-                        <span style="font-size:0.82rem;color:#6b7280">Total Proses</span>
+                        <span style="font-size:0.82rem;color:var(--text-3)">Total Proses</span>
                         <strong style="font-size:0.82rem">{{ $part->proses->count() }}</strong>
                     </div>
                     @if($recommendations->count() || $recommendationsQc->count())
                     <div style="display:flex;justify-content:space-between">
-                        <span style="font-size:0.82rem;color:#6b7280">Rekomendasi SPH</span>
+                        <span style="font-size:0.82rem;color:var(--text-3)">Rekomendasi SPH</span>
                         <span style="font-size:0.82rem">
                             @if($recommendations->count())<span style="color:var(--c-sph-prod);font-weight:600">{{ $recommendations->count() }} Prod</span>@endif
                             @if($recommendationsQc->count())<span style="color:var(--c-sph-qc);font-weight:600" class="{{ $recommendations->count() ? 'ms-1' : '' }}">{{ $recommendationsQc->count() }} QC</span>@endif
@@ -95,7 +95,7 @@
             </div>
 
             @if($part->proses->isEmpty())
-            <div style="text-align:center;padding:40px;color:#9ca3af">
+            <div style="text-align:center;padding:40px;color:var(--text-4)">
                 <i class="bi bi-inbox" style="font-size:2rem;display:block;margin-bottom:10px"></i>
                 <div style="margin-bottom:12px">Belum ada proses. Tambahkan proses pertama.</div>
                 <a href="{{ route('master.part.proses.create', $part) }}" class="btn btn-success btn-sm">
@@ -140,7 +140,7 @@
                             </td>
                             <td style="text-align:right">
                                 <span style="font-weight:600">{{ number_format($p->sph_standar_produksi) }}</span>
-                                <span style="font-size:0.72rem;color:#9ca3af"> pcs/j</span>
+                                <span style="font-size:0.72rem;color:var(--text-4)"> pcs/j</span>
                                 @if($p->sph_last_upgraded_at)
                                 <br><span style="font-size:0.68rem;color:#2d7a2d">
                                     <i class="bi bi-arrow-up-circle-fill"></i> {{ $p->sph_last_upgraded_at->format('d M Y') }}
@@ -148,14 +148,14 @@
                                 @endif
                                 @if($p->sphLog->isNotEmpty())
                                 <br><button type="button" onclick="toggleEl('sph-log-{{ $p->id }}')"
-                                        style="background:none;border:none;padding:0;font-size:0.65rem;color:#6b7280;cursor:pointer">
+                                        style="background:none;border:none;padding:0;font-size:0.65rem;color:var(--text-3);cursor:pointer">
                                     <i class="bi bi-clock-history"></i> {{ $p->sphLog->count() }}× riwayat
                                 </button>
                                 @endif
                             </td>
                             <td style="text-align:right">
                                 <span style="font-weight:600">{{ number_format($p->sph_standar_qc) }}</span>
-                                <span style="font-size:0.72rem;color:#9ca3af"> pcs/j</span>
+                                <span style="font-size:0.72rem;color:var(--text-4)"> pcs/j</span>
                                 @if($p->sph_qc_last_upgraded_at)
                                 <br><span style="font-size:0.68rem;color:var(--c-sph-qc)">
                                     <i class="bi bi-arrow-up-circle-fill"></i> {{ $p->sph_qc_last_upgraded_at->format('d M Y') }}
@@ -163,16 +163,16 @@
                                 @endif
                                 @if($p->sphQcLog->isNotEmpty())
                                 <br><button type="button" onclick="toggleEl('sph-qc-log-{{ $p->id }}')"
-                                        style="background:none;border:none;padding:0;font-size:0.65rem;color:#6b7280;cursor:pointer">
+                                        style="background:none;border:none;padding:0;font-size:0.65rem;color:var(--text-3);cursor:pointer">
                                     <i class="bi bi-clock-history"></i> {{ $p->sphQcLog->count() }}× riwayat
                                 </button>
                                 @endif
                             </td>
-                            <td style="text-align:right;color:#374151">{{ $p->std_trial_qc_menit }} <span style="font-size:0.72rem;color:#9ca3af">mnt</span></td>
-                            <td style="text-align:right;font-weight:600;color:#374151">{{ $p->std_setting_dies_menit }} <span style="font-size:0.72rem;color:#9ca3af">mnt</span></td>
+                            <td style="text-align:right;color:#374151">{{ $p->std_trial_qc_menit }} <span style="font-size:0.72rem;color:var(--text-4)">mnt</span></td>
+                            <td style="text-align:right;font-weight:600;color:#374151">{{ $p->std_setting_dies_menit }} <span style="font-size:0.72rem;color:var(--text-4)">mnt</span></td>
                             <td>
                                 <form method="POST" action="{{ route('master.part.proses.destroy', [$part, $p]) }}"
-                                      onsubmit="return confirm('Hapus proses {{ addslashes($p->nama_proses) }}?')">
+                                      data-konfirmasi="Hapus proses {{ $p->nama_proses }}?">
                                     @csrf @method('DELETE')
                                     <button class="btn btn-danger btn-sm">Hapus</button>
                                 </form>
@@ -183,7 +183,7 @@
                         @if($p->sphLog->isNotEmpty())
                         <tr id="sph-log-{{ $p->id }}" style="display:none;background:#f8fafc">
                             <td colspan="7" style="padding:0 12px 10px;border-top:none">
-                                <div style="border:1px solid #d1d5db;border-radius:4px;overflow:hidden;margin-top:4px">
+                                <div style="border:1px solid var(--border);border-radius:4px;overflow:hidden;margin-top:4px">
                                     <div style="background:#f1f5f9;padding:5px 10px;font-size:0.72rem;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.04em">
                                         <i class="bi bi-clock-history me-1"></i>Riwayat Upgrade SPH Produksi — {{ $p->nama_proses }}
                                     </div>
@@ -199,9 +199,9 @@
                                         <tbody>
                                         @foreach($p->sphLog as $log)
                                             @php $lp = $log->sph_standar_lama > 0 ? round(($log->sph_standar_baru/$log->sph_standar_lama-1)*100) : 0; @endphp
-                                            <tr style="border-top:1px solid #e5e7eb">
-                                                <td style="padding:4px 10px">{{ $log->upgraded_at->format('d M Y') }} <span style="color:#9ca3af">{{ $log->upgraded_at->format('H:i') }}</span></td>
-                                                <td style="padding:4px 10px;text-align:right;color:#6b7280">{{ number_format($log->sph_standar_lama) }}</td>
+                                            <tr style="border-top:1px solid var(--border-2)">
+                                                <td style="padding:4px 10px">{{ $log->upgraded_at->format('d M Y') }} <span style="color:var(--text-4)">{{ $log->upgraded_at->format('H:i') }}</span></td>
+                                                <td style="padding:4px 10px;text-align:right;color:var(--text-3)">{{ number_format($log->sph_standar_lama) }}</td>
                                                 <td style="padding:4px 10px;text-align:center;color:var(--c-sph-prod)">→</td>
                                                 <td style="padding:4px 10px;text-align:right;font-weight:700;color:#2d7a2d">{{ number_format($log->sph_standar_baru) }}</td>
                                                 <td style="padding:4px 10px;text-align:right;color:#2d7a2d">+{{ $lp }}%</td>
@@ -236,8 +236,8 @@
                                         @foreach($p->sphQcLog as $log)
                                             @php $lp = $log->sph_standar_lama > 0 ? round(($log->sph_standar_baru/$log->sph_standar_lama-1)*100) : 0; @endphp
                                             <tr style="border-top:1px solid #b2d8e4">
-                                                <td style="padding:4px 10px">{{ $log->upgraded_at->format('d M Y') }} <span style="color:#9ca3af">{{ $log->upgraded_at->format('H:i') }}</span></td>
-                                                <td style="padding:4px 10px;text-align:right;color:#6b7280">{{ number_format($log->sph_standar_lama) }}</td>
+                                                <td style="padding:4px 10px">{{ $log->upgraded_at->format('d M Y') }} <span style="color:var(--text-4)">{{ $log->upgraded_at->format('H:i') }}</span></td>
+                                                <td style="padding:4px 10px;text-align:right;color:var(--text-3)">{{ number_format($log->sph_standar_lama) }}</td>
                                                 <td style="padding:4px 10px;text-align:center;color:var(--c-sph-qc)">→</td>
                                                 <td style="padding:4px 10px;text-align:right;font-weight:700;color:var(--c-sph-qc)">{{ number_format($log->sph_standar_baru) }}</td>
                                                 <td style="padding:4px 10px;text-align:right;color:var(--c-sph-qc)">+{{ $lp }}%</td>
@@ -269,14 +269,14 @@
                                             <span style="font-size:1.4rem;font-weight:700;color:#374151">{{ number_format($rec->sph_standar_produksi) }}</span>
                                             <span style="color:var(--c-sph-prod);font-size:1.2rem">→</span>
                                             <span style="font-size:1.4rem;font-weight:800;color:#2d7a2d">{{ number_format($rec->recommended_sph) }}</span>
-                                            <span style="font-size:0.8rem;color:#6b7280">pcs/jam &nbsp;<strong style="color:#2d7a2d">+{{ $rec->increase_pct }}%</strong></span>
+                                            <span style="font-size:0.8rem;color:var(--text-3)">pcs/jam &nbsp;<strong style="color:#2d7a2d">+{{ $rec->increase_pct }}%</strong></span>
                                         </div>
-                                        <div style="font-size:0.75rem;color:#6b7280;flex:1">
+                                        <div style="font-size:0.75rem;color:var(--text-3);flex:1">
                                             <i class="bi bi-bar-chart-line me-1" style="color:var(--c-sph-prod)"></i>Rata-rata semua sesi: <strong>{{ number_format($rec->avg_all_sph) }}</strong>
                                             &nbsp;·&nbsp; Tertinggi: <strong>{{ number_format($rec->max_sph) }}</strong>
                                         </div>
                                         <form method="POST" action="{{ route('master.part.proses.upgrade-sph', [$part, $p]) }}"
-                                              onsubmit="return confirm('Terapkan upgrade SPH Produksi {{ addslashes($p->nama_proses) }}?\n{{ $rec->sph_standar_produksi }} → {{ $rec->recommended_sph }} pcs/jam')">
+                                              data-konfirmasi="Terapkan upgrade SPH Produksi {{ $p->nama_proses }}?&#10;{{ $rec->sph_standar_produksi }} → {{ $rec->recommended_sph }} pcs/jam">
                                             @csrf @method('PATCH')
                                             <input type="hidden" name="recommended_sph" value="{{ $rec->recommended_sph }}">
                                             <button type="submit" class="btn btn-sm" style="background:#2d7a2d;color:#fff;border:none;padding:6px 14px;font-weight:600;font-size:0.8rem">
@@ -307,14 +307,14 @@
                                             <span style="font-size:1.4rem;font-weight:700;color:#374151">{{ number_format($recQc->sph_standar_qc) }}</span>
                                             <span style="color:var(--c-sph-qc);font-size:1.2rem">→</span>
                                             <span style="font-size:1.4rem;font-weight:800;color:var(--c-sph-qc)">{{ number_format($recQc->recommended_sph) }}</span>
-                                            <span style="font-size:0.8rem;color:#6b7280">pcs/jam &nbsp;<strong style="color:var(--c-sph-qc)">+{{ $recQc->increase_pct }}%</strong></span>
+                                            <span style="font-size:0.8rem;color:var(--text-3)">pcs/jam &nbsp;<strong style="color:var(--c-sph-qc)">+{{ $recQc->increase_pct }}%</strong></span>
                                         </div>
-                                        <div style="font-size:0.75rem;color:#6b7280;flex:1">
+                                        <div style="font-size:0.75rem;color:var(--text-3);flex:1">
                                             <i class="bi bi-bar-chart-line me-1" style="color:var(--c-sph-qc)"></i>Rata-rata semua sesi: <strong>{{ number_format($recQc->avg_all_sph) }}</strong>
                                             &nbsp;·&nbsp; Tertinggi: <strong>{{ number_format($recQc->max_sph) }}</strong>
                                         </div>
                                         <form method="POST" action="{{ route('master.part.proses.upgrade-qc-sph', [$part, $p]) }}"
-                                              onsubmit="return confirm('Terapkan upgrade SPH QC {{ addslashes($p->nama_proses) }}?\n{{ $recQc->sph_standar_qc }} → {{ $recQc->recommended_sph }} pcs/jam')">
+                                              data-konfirmasi="Terapkan upgrade SPH QC {{ $p->nama_proses }}?&#10;{{ $recQc->sph_standar_qc }} → {{ $recQc->recommended_sph }} pcs/jam">
                                             @csrf @method('PATCH')
                                             <input type="hidden" name="recommended_sph" value="{{ $recQc->recommended_sph }}">
                                             <button type="submit" class="btn btn-sm" style="background:var(--c-sph-qc);color:#fff;border:none;padding:6px 14px;font-weight:600;font-size:0.8rem">

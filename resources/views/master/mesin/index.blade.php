@@ -104,7 +104,7 @@
                     <div class="action-btns" style="flex-wrap:nowrap">
                         <a href="{{ route('master.mesin.edit', $m) }}" class="btn btn-warning btn-sm">Edit</a>
                         <form method="POST" action="{{ route('master.mesin.destroy', $m) }}"
-                              onsubmit="return confirm('Hapus mesin ini?')">
+                              data-konfirmasi="Hapus mesin ini?">
                             @csrf @method('DELETE')
                             <button class="btn btn-danger btn-sm">Hapus</button>
                         </form>
@@ -112,7 +112,7 @@
                 </td>
             </tr>
         @empty
-            <tr><td colspan="6" style="text-align:center;color:#888;padding:20px">Belum ada data mesin.</td></tr>
+            <x-tabel-kosong kolom="6" entitas="data mesin" :tambah="route('master.mesin.create')" />
         @endforelse
         </tbody>
     </table>

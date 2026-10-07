@@ -65,7 +65,7 @@
                     <tr><th>Mesin</th><th>ID</th><th>Line</th><th>Tipe</th><th>Target QTY</th><th>Actual QTY</th><th>Duration (jam)</th><th>Achievement %</th><th>Avg SPH</th></tr>
                 </thead>
                 <tbody id="vcbTableBody">
-                    <tr><td colspan="9" style="text-align:center;color:#9ca3af;padding:20px">Klik Tampilkan untuk melihat data.</td></tr>
+                    <tr><td colspan="9" style="text-align:center;color:var(--text-4);padding:20px">Klik Tampilkan untuk melihat data.</td></tr>
                 </tbody>
             </table>
         </div>

@@ -39,10 +39,11 @@
 
 @if($logs->isEmpty())
 <div class="erp-panel">
-    <div style="text-align:center;padding:48px 24px;color:#9ca3af">
+    <div style="text-align:center;padding:48px 24px;color:var(--text-4)">
         <i class="bi bi-journal-text" style="font-size:2.5rem;display:block;margin-bottom:12px"></i>
-        <div style="font-weight:700;font-size:1rem;color:#374151;margin-bottom:4px">Nol aktivitas</div>
-        <div style="font-size:0.88rem">Nol aktivitas tercatat pada filter/rentang tanggal ini.</div>
+        <div style="font-weight:700;font-size:1rem;color:#374151;margin-bottom:4px">Tidak ada aktivitas</div>
+        <div style="font-size:0.88rem">Tidak ada aktivitas yang cocok dengan filter dan rentang tanggal ini.</div>
+        <a href="{{ route('sistem.log-aktivitas.index') }}" class="erp-btn" style="display:inline-flex;margin-top:10px">Reset filter</a>
     </div>
 </div>
 @else
@@ -50,12 +51,12 @@
 <table class="erp-table" style="min-width:1100px">
     <thead>
         <tr>
-            <th style="position:sticky;top:0;z-index:10;background:#e5e7eb;white-space:nowrap">Waktu</th>
-            <th style="position:sticky;top:0;z-index:10;background:#e5e7eb;white-space:nowrap">User</th>
-            <th style="position:sticky;top:0;z-index:10;background:#e5e7eb;white-space:nowrap">Modul</th>
-            <th style="position:sticky;top:0;z-index:10;background:#e5e7eb;white-space:nowrap">Aksi</th>
-            <th style="position:sticky;top:0;z-index:10;background:#e5e7eb">Deskripsi</th>
-            <th style="position:sticky;top:0;z-index:10;background:#e5e7eb">Perubahan</th>
+            <th style="position:sticky;top:0;z-index:10;background:var(--border-2);white-space:nowrap">Waktu</th>
+            <th style="position:sticky;top:0;z-index:10;background:var(--border-2);white-space:nowrap">User</th>
+            <th style="position:sticky;top:0;z-index:10;background:var(--border-2);white-space:nowrap">Modul</th>
+            <th style="position:sticky;top:0;z-index:10;background:var(--border-2);white-space:nowrap">Aksi</th>
+            <th style="position:sticky;top:0;z-index:10;background:var(--border-2)">Deskripsi</th>
+            <th style="position:sticky;top:0;z-index:10;background:var(--border-2)">Perubahan</th>
         </tr>
     </thead>
     <tbody>
@@ -75,7 +76,7 @@
             $diffKeys = array_unique(array_merge(array_keys($old), array_keys($baru)));
         @endphp
         <tr>
-            <td style="white-space:nowrap;color:#6b7280">{{ $log->created_at->clone()->timezone('Asia/Jakarta')->format('d/m/Y H:i') }}</td>
+            <td style="white-space:nowrap;color:var(--text-3)">{{ $log->created_at->clone()->timezone('Asia/Jakarta')->format('d/m/Y H:i') }}</td>
             <td style="white-space:nowrap;font-weight:600">{{ $log->causer?->name ?? '—' }}</td>
             <td style="white-space:nowrap">{{ $modulLabels[$log->log_name] ?? ($log->log_name ?? '—') }}</td>
             <td style="white-space:nowrap">
@@ -84,7 +85,7 @@
                 </span>
             </td>
             <td>{{ $log->description }}</td>
-            <td style="font-size:0.82rem;color:#6b7280">
+            <td style="font-size:0.82rem;color:var(--text-3)">
                 @if($diffKeys === [])
                     —
                 @else
