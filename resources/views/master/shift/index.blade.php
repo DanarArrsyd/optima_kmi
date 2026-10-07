@@ -20,6 +20,14 @@
     <button type="button" class="erp-tb-btn" :class="filterOpen ? 'is-on' : ''" @click="filterOpen = !filterOpen">
         <i class="bi bi-funnel"></i>Filter @if($search !== '' || $filterAvail !== '')<span aria-hidden="true">&bull;</span>@endif
     </button>
+    <button type="button" class="erp-tb-btn"
+            onclick="document.getElementById('import-panel').classList.toggle('d-none')">
+        <i class="bi bi-file-earmark-arrow-up"></i>Import Excel
+    </button>
+    {{-- Ekspor membawa filter yang sedang aktif — isi file = isi tabel. --}}
+    <a href="{{ route('master.shift.export', request()->query()) }}" class="erp-tb-btn">
+        <i class="bi bi-file-earmark-excel"></i>Export Excel
+    </a>
     <a href="{{ route('master.shift.index') }}" class="erp-tb-btn"><i class="bi bi-arrow-clockwise"></i>Refresh</a>
     <span class="erp-tb-sp"></span>
 </div>
@@ -39,6 +47,8 @@
 <div class="erp-scroll">
 
 
+
+@include('partials.import-errors')
 
 <div id="import-panel" class="erp-panel mb-3 d-none">
     <div class="erp-panel-header" style="display:flex;justify-content:space-between;align-items:center">

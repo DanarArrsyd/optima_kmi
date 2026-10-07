@@ -13,6 +13,10 @@
     <button type="button" class="erp-tb-btn" :class="filterOpen ? 'is-on' : ''" @click="filterOpen = !filterOpen">
         <i class="bi bi-funnel"></i>Filter
     </button>
+    @if(! auth()->user()->isGuest())
+    {{-- href diisi pemuat data — file selalu sama dengan tabel, termasuk filternya. --}}
+    <a id="exportExcel" href="{{ route('maintenance.mtbf-dies.export') }}" class="erp-tb-btn"><i class="bi bi-file-earmark-excel"></i>Export Excel</a>
+    @endif
     <a href="{{ route('maintenance.mtbf-dies') }}" class="erp-tb-btn"><i class="bi bi-arrow-clockwise"></i>Refresh</a>
     <span class="erp-tb-sp"></span>
 </div>
@@ -102,6 +106,8 @@ let mtbfChart = null;
 
 async function loadData() {
     const params = new URLSearchParams(new FormData(document.getElementById('filterForm')));
+    const exportBtn = document.getElementById('exportExcel');
+    if (exportBtn) exportBtn.href = `{{ route('maintenance.mtbf-dies.export') }}?${params}`;
     const res  = await fetch(`{{ route('maintenance.mtbf-dies.data') }}?${params}`);
     const data = await res.json();
     const rows = data.rows || [];

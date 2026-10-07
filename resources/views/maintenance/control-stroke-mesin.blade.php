@@ -35,6 +35,10 @@
     <button type="button" class="erp-tb-btn" :class="filterOpen ? 'is-on' : ''" @click="filterOpen = !filterOpen">
         <i class="bi bi-funnel"></i>Filter
     </button>
+    @if(! auth()->user()->isGuest())
+    {{-- href diisi pemuat data — file selalu sama dengan tabel, termasuk filternya. --}}
+    <a id="exportExcel" href="{{ route('maintenance.control-stroke-mesin.export') }}" class="erp-tb-btn"><i class="bi bi-file-earmark-excel"></i>Export Excel</a>
+    @endif
     <a href="{{ route('maintenance.control-stroke-mesin') }}" class="erp-tb-btn"><i class="bi bi-arrow-clockwise"></i>Refresh</a>
     @if(auth()->user()->hasRole('admin'))
     <a href="{{ route('maintenance.control-stroke-mesin.schedule-pdf') }}" target="_blank" class="erp-tb-btn">
@@ -224,6 +228,14 @@ function render() {
     });
 
     // badge jumlah filter lanjutan + tombol reset
+
+    // Tombol ekspor membawa state filter klien yang sama (lihat export() di controller).
+    const exportBtn = document.getElementById('exportExcel');
+    if (exportBtn) {
+        const p = new URLSearchParams();
+        ['status', 'q', 'sort', ...['mesin', 'tipe', 'line']].forEach(k => { if (state[k]) p.set(k, state[k]); });
+        exportBtn.href = `{{ route('maintenance.control-stroke-mesin.export') }}?${p}`;
+    }
 
     document.getElementById('csCount').textContent =
         rows.length === allRows.length ? `${allRows.length} mesin` : `${rows.length} dari ${allRows.length} mesin`;

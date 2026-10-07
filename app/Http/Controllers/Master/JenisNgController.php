@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\Master;
 
+use App\Exports\TabelExport;
 use App\Http\Controllers\Controller;
 use App\Imports\JenisNgImport;
 use App\Models\MasterJenisNg;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -17,17 +19,34 @@ class JenisNgController extends Controller
         $search = trim((string) $request->input('q', ''));
         $filterKategori = trim((string) $request->input('filter_kategori', ''));
 
-        $jenisNg = MasterJenisNg::query()
-            ->when($search !== '', fn ($q) => $q->where(fn ($s) => $s
-                ->where('kode', 'like', '%'.$search.'%')
-                ->orWhere('nama_ng', 'like', '%'.$search.'%')))
-            ->when($filterKategori !== '', fn ($q) => $q->where('kategori', $filterKategori))
-            ->orderBy('kode')
+        $jenisNg = $this->queryIndex($request)
             ->paginate(30)->withQueryString();
 
         $kategoriList = MasterJenisNg::distinct()->orderBy('kategori')->pluck('kategori')->filter()->values();
 
         return view('master.jenis-ng.index', compact('jenisNg', 'search', 'filterKategori', 'kategoriList'));
+    }
+
+    /** Query daftar BERSAMA index() dan export() — ekspor selalu memakai filter yang sama dengan tabel. */
+    private function queryIndex(Request $request): Builder
+    {
+        $search = trim((string) $request->input('q', ''));
+        $filterKategori = trim((string) $request->input('filter_kategori', ''));
+
+        return MasterJenisNg::query()
+            ->when($search !== '', fn ($q) => $q->where(fn ($s) => $s
+                ->where('kode', 'like', '%'.$search.'%')
+                ->orWhere('nama_ng', 'like', '%'.$search.'%')))
+            ->when($filterKategori !== '', fn ($q) => $q->where('kategori', $filterKategori))
+            ->orderBy('kode');
+    }
+
+    /** Export Excel isi tabel, termasuk filter yang sedang aktif. */
+    public function export(Request $request)
+    {
+        $baris = $this->queryIndex($request)->get()->map(fn ($n) => [$n->kode, $n->nama_ng, $n->deskripsi])->all();
+
+        return Excel::download(new TabelExport(JenisNgImport::KOLOM, $baris, 'Master Jenis NG'), 'master-jenis-ng-'.now()->format('Ymd').'.xlsx');
     }
 
     public function create()
@@ -87,7 +106,7 @@ class JenisNgController extends Controller
         {
             public function headings(): array
             {
-                return ['Kode', 'Nama NG', 'Deskripsi'];
+                return JenisNgImport::KOLOM;
             }
 
             public function array(): array

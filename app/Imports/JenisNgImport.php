@@ -13,6 +13,10 @@ class JenisNgImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
 {
     use LewatiBarisContoh;
 
+    /** Judul kolom template impor — dibaca juga oleh template & ekspor halaman, supaya
+     *  ekspor → sunting di Excel → impor balik selalu cocok. */
+    public const KOLOM = ['Kode', 'Nama NG', 'Deskripsi'];
+
     /** Baris contoh template — dibaca juga oleh template-nya. Lihat {@see LewatiBarisContoh}. */
     public const CONTOH = [
         ['DIM', 'Dimensi Over/Under', 'Ukuran tidak sesuai spesifikasi'],

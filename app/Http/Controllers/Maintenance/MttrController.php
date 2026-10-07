@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers\Maintenance;
 
+use App\Exports\TabelExport;
 use App\Http\Controllers\Concerns\BacaFilterMesin;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Maintenance\Concerns\ResolvesMaintenanceRange;
 use App\Models\MasterMesin;
 use App\Services\MaintenanceDashboardService;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
 
 class MttrController extends Controller
 {
@@ -21,6 +23,14 @@ class MttrController extends Controller
             'mesinList' => MasterMesin::orderBy('id_mesin')->get(),
             'tipeList' => MasterMesin::TIPE_MESIN,
         ]);
+    }
+
+    /** Export Excel — baris diambil dari data() yang sama dengan tabel layar. */
+    public function export(Request $request)
+    {
+        $baris = array_map(fn ($r) => [$r['kode_mesin'], $r['nama_mesin'], $r['count'], $r['sum_repair'], $r['mttr_jam']], $this->data($request)->getData(true)['rows']);
+
+        return Excel::download(new TabelExport(['Mesin', 'Nama Mesin', 'Breakdown', 'Total Repair (jam)', 'MTTR (jam)'], $baris, 'MTTR Mesin'), 'mttr-mesin-'.now()->format('Ymd').'.xlsx');
     }
 
     public function data(Request $request)

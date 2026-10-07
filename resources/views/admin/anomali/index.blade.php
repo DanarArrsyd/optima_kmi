@@ -16,6 +16,8 @@
         <i class="bi bi-funnel"></i>Filter
         @if($reason !== '')<span aria-hidden="true">&bull;</span>@endif
     </button>
+    {{-- Ekspor membawa filter yang sedang aktif — isi file = isi tabel. --}}
+    <a href="{{ route('admin.anomali.export', request()->query()) }}" class="erp-tb-btn"><i class="bi bi-file-earmark-excel"></i>Export Excel</a>
     <a href="{{ route('admin.anomali') }}" class="erp-tb-btn"><i class="bi bi-arrow-clockwise"></i>Refresh</a>
     <span class="erp-tb-sp"></span>
 </div>

@@ -14,6 +14,8 @@ use App\Models\TransaksiBreakdownMesin;
 use App\Models\TransaksiDandoriRincian;
 use App\Models\TransaksiProduksi;
 use App\Models\TransaksiQc;
+use App\Models\TransaksiRepair;
+use App\Models\TransaksiRepairProduksi;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -54,6 +56,8 @@ class ImportTemplateRoundTripTest extends TestCase
             'lhp produksi' => ['input.produksi', TransaksiProduksi::class],
             'lhp quality' => ['input.qc', TransaksiQc::class],
             'dandori' => ['input.dandori', TransaksiDandoriRincian::class],
+            'lhr repair' => ['input.repair', TransaksiRepair::class],
+            'lhr repair produksi' => ['input.repair-produksi', TransaksiRepairProduksi::class],
         ];
     }
 
@@ -87,6 +91,44 @@ class ImportTemplateRoundTripTest extends TestCase
         $this->post(route('master.mesin.import'), ['file' => UploadedFile::fake()->createWithContent('t.xlsx', file_get_contents($tmp))]);
 
         $this->assertSame(['X-77'], MasterMesin::pluck('id_mesin')->all());
+    }
+
+    /**
+     * Judul template "Jam Start (Senin-Kamis)" di-slug jadi jam_start_senin_kamis,
+     * sedangkan importer dulu membaca $row['jam_start'] dengan default '00:00' —
+     * tiap shift yang diimpor lewat template tersimpan 00:00–00:00 tanpa galat,
+     * dan Availability (penyebutnya baca master_shift LIVE) ikut rusak retroaktif.
+     */
+    public function test_impor_shift_lewat_template_menyimpan_jam_yang_diisi(): void
+    {
+        $buku = IOFactory::load($this->unduhTemplate('master.shift'));
+        $sheet = $buku->getActiveSheet();
+        $sheet->fromArray([['Shift Uji', '08:00', '16:00']], null, 'A'.($sheet->getHighestRow() + 1));
+        $tmp = tempnam(sys_get_temp_dir(), 'tpl').'.xlsx';
+        IOFactory::createWriter($buku, 'Xlsx')->save($tmp);
+
+        $this->post(route('master.shift.import'), ['file' => UploadedFile::fake()->createWithContent('t.xlsx', file_get_contents($tmp))]);
+
+        $shift = MasterShift::where('nama_shift', 'Shift Uji')->firstOrFail();
+        $this->assertSame('08:00', substr((string) $shift->jam_start, 0, 5));
+        $this->assertSame('16:00', substr((string) $shift->jam_finish, 0, 5));
+    }
+
+    public function test_impor_shift_berjam_kosong_tidak_menimpa_jam_lama(): void
+    {
+        MasterShift::create(['nama_shift' => 'Shift 1', 'jam_start' => '07:00', 'jam_finish' => '15:00']);
+
+        $buku = IOFactory::load($this->unduhTemplate('master.shift'));
+        $sheet = $buku->getActiveSheet();
+        $sheet->fromArray([['Shift 1', '', '']], null, 'A'.($sheet->getHighestRow() + 1));
+        $tmp = tempnam(sys_get_temp_dir(), 'tpl').'.xlsx';
+        IOFactory::createWriter($buku, 'Xlsx')->save($tmp);
+
+        $this->post(route('master.shift.import'), ['file' => UploadedFile::fake()->createWithContent('t.xlsx', file_get_contents($tmp))]);
+
+        $this->assertSame('07:00', substr((string) MasterShift::first()->jam_start, 0, 5));
+        $this->assertCount(1, session('import_errors'));
+        $this->get(route('master.shift.index'))->assertSee('1 baris gagal diimpor');
     }
 
     /** Baris contoh yang DITIMPA data asli wajib tetap masuk — bukan dibuang per nomor baris. */

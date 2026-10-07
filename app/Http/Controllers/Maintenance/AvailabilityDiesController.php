@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Maintenance;
 
+use App\Exports\TabelExport;
 use App\Http\Controllers\Controller;
 use App\Models\MasterPart;
 use App\Services\MaintenanceDiesDashboardService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Maatwebsite\Excel\Facades\Excel;
 
 class AvailabilityDiesController extends Controller
 {
@@ -15,6 +17,14 @@ class AvailabilityDiesController extends Controller
     public function index()
     {
         return view('maintenance.availability-dies', ['partList' => MasterPart::orderBy('part_no')->get(), 'customers' => MasterPart::whereNotNull('customer')->where('customer', '!=', '')->distinct()->orderBy('customer')->pluck('customer')]);
+    }
+
+    /** Export Excel — baris diambil dari data() yang sama dengan tabel layar. */
+    public function export(Request $request)
+    {
+        $baris = array_map(fn ($r) => [$r['kode_mesin'], $r['nama_mesin'], $r['nama_proses'], $r['count'], $r['sum_downtime'], $r['availability_pct']], $this->data($request)->getData(true)['rows']);
+
+        return Excel::download(new TabelExport(['Part No', 'Nama Dies', 'Proses', 'Breakdown', 'Total Downtime (jam)', 'Availability %'], $baris, 'Availability Dies'), 'availability-dies-'.now()->format('Ymd').'.xlsx');
     }
 
     public function data(Request $request)

@@ -45,7 +45,7 @@ $filterActive = $partId || $filterProsesId || $filterPic !== '' || $filterStatus
 
     @if($bolehTulis)
     <button type="button" class="erp-tb-btn"
-            onclick="document.getElementById('import-dies-panel').classList.toggle('d-none')">
+            onclick="document.getElementById('import-breakdown-dies-panel').classList.toggle('d-none')">
         <i class="bi bi-file-earmark-arrow-up"></i>Import Excel
     </button>
     @endif

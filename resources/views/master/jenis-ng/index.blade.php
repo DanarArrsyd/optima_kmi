@@ -21,6 +21,14 @@
     <button type="button" class="erp-tb-btn" :class="filterOpen ? 'is-on' : ''" @click="filterOpen = !filterOpen">
         <i class="bi bi-funnel"></i>Filter @if($search !== '' || $filterKategori !== '')<span aria-hidden="true">&bull;</span>@endif
     </button>
+    <button type="button" class="erp-tb-btn"
+            onclick="document.getElementById('import-panel').classList.toggle('d-none')">
+        <i class="bi bi-file-earmark-arrow-up"></i>Import Excel
+    </button>
+    {{-- Ekspor membawa filter yang sedang aktif — isi file = isi tabel. --}}
+    <a href="{{ route('master.jenis-ng.export', request()->query()) }}" class="erp-tb-btn">
+        <i class="bi bi-file-earmark-excel"></i>Export Excel
+    </a>
     <a href="{{ route('master.jenis-ng.index') }}" class="erp-tb-btn"><i class="bi bi-arrow-clockwise"></i>Refresh</a>
     <span class="erp-tb-sp"></span>
 </div>

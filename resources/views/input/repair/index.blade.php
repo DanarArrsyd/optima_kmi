@@ -16,6 +16,10 @@
     </button>
     @if(auth()->user()->hasRole(['admin', 'staff_repair']))
     <button type="button" class="erp-tb-btn"
+            onclick="document.getElementById('import-lhr-panel').classList.toggle('d-none')">
+        <i class="bi bi-file-earmark-arrow-up"></i>Import Excel
+    </button>
+    <button type="button" class="erp-tb-btn"
             onclick="document.getElementById('exportRepairPanel').classList.toggle('d-none')">
         <i class="bi bi-file-earmark-excel"></i>Export Excel
     </button>
@@ -41,6 +45,12 @@
 <div class="erp-ws-main">
 
 @if(auth()->user()->hasRole(['admin', 'staff_repair']))
+@include('partials.import-panel', [
+    'id' => 'import-lhr-panel',
+    'action' => route('input.repair.import'),
+    'template' => route('input.repair.import-template'),
+    'judul' => 'Import LHR Repair dari Excel',
+])
 <x-export-modal
     panelId="exportRepairPanel"
     :exportUrl="route('input.repair.export')"

@@ -12,6 +12,8 @@
         <i class="bi bi-funnel"></i>Filter
         @if($modul !== '' || $event !== '' || $userId !== '' || $search !== '')<span aria-hidden="true">&bull;</span>@endif
     </button>
+    {{-- Ekspor membawa filter yang sedang aktif — isi file = isi tabel. --}}
+    <a href="{{ route('sistem.log-aktivitas.export', request()->query()) }}" class="erp-tb-btn"><i class="bi bi-file-earmark-excel"></i>Export Excel</a>
     <a href="{{ route('sistem.log-aktivitas.index') }}" class="erp-tb-btn"><i class="bi bi-arrow-clockwise"></i>Refresh</a>
     <span class="erp-tb-sp"></span>
 </div>

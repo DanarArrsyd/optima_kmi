@@ -83,6 +83,12 @@
     <button type="button" class="erp-tb-btn" :class="filterOpen ? 'is-on' : ''" @click="filterOpen = !filterOpen">
         <i class="bi bi-funnel"></i>Filter
     </button>
+    @if(! auth()->user()->isGuest())
+    <a :href="`{{ $routeExport }}?${new URLSearchParams({ date_from: tgl.dari, date_to: tgl.sampai })}`"
+       class="erp-tb-btn" title="Rincian NG di balik grafik ini, rentang tanggal yang sama">
+        <i class="bi bi-file-earmark-excel"></i>Export Excel
+    </a>
+    @endif
     <button type="button" class="erp-tb-btn" @click="load()" :disabled="loading">
         <i class="bi bi-arrow-clockwise"></i><span x-show="!loading">Refresh</span><span x-show="loading" x-cloak>Memuat&hellip;</span>
     </button>
@@ -254,6 +260,8 @@ function vcbNg() {
 
     return {
         filterOpen: false,
+        // Rentang yang SEDANG tampil — dibaca tombol Export, diisi load().
+        tgl: { dari: {{ Js::from($defaultFrom) }}, sampai: {{ Js::from($defaultTo) }} },
         loading: false,
         hasData: false,
         loadError: false,
@@ -294,6 +302,7 @@ function vcbNg() {
 
             try {
                 const p = new URLSearchParams(new FormData(document.getElementById('ngFilter')));
+                this.tgl = { dari: p.get('date_from'), sampai: p.get('date_to') };
                 const res = await fetch(`{{ $routeData }}?${p}`, {
                     headers: { 'Accept': 'application/json' },
                 });

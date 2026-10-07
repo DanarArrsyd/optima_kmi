@@ -25,6 +25,8 @@ class VcbNgProsesController extends Controller
             'judul' => 'VCB NG Proses',
             'sumber' => 'produksi',
             'routeData' => route('vcb.ng-proses.data'),
+            // Ekspor grafik = rincian NG di balik grafiknya (Daftar NG), rentang yang sama.
+            'routeExport' => route('vcb.ng-proses.daftar.export'),
             'routeDetail' => route('vcb.ng-proses.detail'),
             'catatanKosong' => 'Belum ada data NG pada rentang ini.',
         ]);

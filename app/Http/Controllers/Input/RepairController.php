@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Input;
 
 use App\Exports\LhpRepairExport;
+use App\Exports\LhrImportTemplate;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreRepairBatchRequest;
 use App\Http\Requests\UpdateRepairRequest;
+use App\Imports\LhrImport;
 use App\Models\MasterKaryawan;
 use App\Models\MasterPart;
 use App\Models\MasterShift;
@@ -138,6 +140,24 @@ class RepairController extends Controller
             'date_from', 'date_to', 'q', 'filter_customer', 'filter_part_id',
             'filter_proses_id', 'filter_karyawan_id', 'pakai_tanggal', 'filter_apply', 'page',
         ])->toArray();
+    }
+
+    /** Impor Excel — aturan & penulisan sama dengan batch(); lihat LhrImport. */
+    public function import(Request $request)
+    {
+        $request->validate(['file' => 'required|file|mimes:xlsx,xls,csv|max:10240']);
+
+        $import = new LhrImport('repair');
+        Excel::import($import, $request->file('file'));
+
+        return redirect()->route('input.repair.index')
+            ->with('import_success', "{$import->importedCount} baris LHR Repair berhasil diimpor.")
+            ->with('import_errors', $import->errors);
+    }
+
+    public function importTemplate()
+    {
+        return Excel::download(new LhrImportTemplate, 'template_lhr_repair.xlsx');
     }
 
     public function export(Request $request)

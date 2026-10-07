@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers\Master;
 
+use App\Exports\TabelExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreMasterShiftRequest;
 use App\Imports\ShiftImport;
 use App\Models\MasterShift;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -18,13 +20,30 @@ class ShiftController extends Controller
         $search = trim((string) $request->input('q', ''));
         $filterAvail = trim((string) $request->input('filter_avail', ''));
 
-        $shifts = MasterShift::with('istirahat')
-            ->when($search !== '', fn ($q) => $q->where('nama_shift', 'like', '%'.$search.'%'))
-            ->when($filterAvail !== '', fn ($q) => $q->where('dihitung_availability', $filterAvail === 'ya'))
-            ->orderBy('jam_start')
+        $shifts = $this->queryIndex($request)
             ->paginate(20)->withQueryString();
 
         return view('master.shift.index', compact('shifts', 'search', 'filterAvail'));
+    }
+
+    /** Query daftar BERSAMA index() dan export() — ekspor selalu memakai filter yang sama dengan tabel. */
+    private function queryIndex(Request $request): Builder
+    {
+        $search = trim((string) $request->input('q', ''));
+        $filterAvail = trim((string) $request->input('filter_avail', ''));
+
+        return MasterShift::with('istirahat')
+            ->when($search !== '', fn ($q) => $q->where('nama_shift', 'like', '%'.$search.'%'))
+            ->when($filterAvail !== '', fn ($q) => $q->where('dihitung_availability', $filterAvail === 'ya'))
+            ->orderBy('jam_start');
+    }
+
+    /** Export Excel isi tabel, termasuk filter yang sedang aktif. */
+    public function export(Request $request)
+    {
+        $baris = $this->queryIndex($request)->get()->map(fn ($s) => [$s->nama_shift, substr((string) $s->jam_start, 0, 5), substr((string) $s->jam_finish, 0, 5)])->all();
+
+        return Excel::download(new TabelExport(ShiftImport::KOLOM, $baris, 'Master Shift'), 'master-shift-'.now()->format('Ymd').'.xlsx');
     }
 
     public function create()
@@ -113,7 +132,8 @@ class ShiftController extends Controller
         Excel::import($import, $request->file('file'));
 
         return redirect()->route('master.shift.index')
-            ->with('success', "Import berhasil: {$import->imported} data diproses, {$import->skipped} baris dilewati.");
+            ->with('success', "Import berhasil: {$import->imported} data diproses, {$import->skipped} baris dilewati.")
+            ->with('import_errors', $import->errors);
     }
 
     public function importTemplate()
@@ -122,7 +142,7 @@ class ShiftController extends Controller
         {
             public function headings(): array
             {
-                return ['Nama Shift', 'Jam Start (Senin-Kamis)', 'Jam Finish (Senin-Kamis)'];
+                return ShiftImport::KOLOM;
             }
 
             public function array(): array
