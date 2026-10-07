@@ -92,13 +92,7 @@ class JenisNgController extends Controller
 
             public function array(): array
             {
-                return [
-                    ['DIM', 'Dimensi Over/Under', 'Ukuran tidak sesuai spesifikasi'],
-                    ['BURR', 'Burr/Flash', 'Sisa material pada tepi produk'],
-                    ['SCRATCH', 'Goresan', 'Permukaan tergores'],
-                    ['DENT', 'Penyok', 'Permukaan penyok/deformasi'],
-                    ['CRACK', 'Retak', 'Material retak/pecah'],
-                ];
+                return JenisNgImport::CONTOH;
             }
         };
 

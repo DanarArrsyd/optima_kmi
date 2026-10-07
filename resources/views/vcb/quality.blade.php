@@ -708,7 +708,7 @@ async function loadOneInspector() {
         });
         // Tombol export tidak dirender untuk role guest.
         const exportBtn = document.getElementById('oneExportBtn');
-        if (exportBtn) exportBtn.href = `/export/qc?${params}&format=excel`;
+        if (exportBtn) exportBtn.href = `{{ route('vcb.quality.export') }}?${params}`;
 
         const res  = await fetch(`{{ route('vcb.quality.operator-data') }}?${params}`);
         const data = await res.json();

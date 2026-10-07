@@ -67,9 +67,7 @@ class BreakdownDiesController extends Controller
 
             public function array(): array
             {
-                return [
-                    [1, 'BT-091A-3', 'OP10', '2026-06-10', '08:00', '2026-06-10', '09:00', '2026-06-10', '11:00', 'Punch patah', 'Material keras', 'Ganti punch', 'Budi'],
-                ];
+                return BreakdownDiesImport::CONTOH;
             }
         };
 

@@ -88,10 +88,7 @@ class MesinController extends Controller
 
             public function array(): array
             {
-                return [
-                    ['M001', 'Press 80T #1', 'Line A', 'Progressive', 800000, '2024-01-15'],
-                    ['M002', 'Press 110T #1', 'Line B', 'Progressive', 1100000, '2023-06-01'],
-                ];
+                return MesinImport::CONTOH;
             }
         };
 

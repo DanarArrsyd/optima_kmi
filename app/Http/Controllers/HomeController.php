@@ -28,6 +28,9 @@ class HomeController extends Controller
             $user->hasRole('staff_maintenance') => '/maintenance/mttr',
             $user->hasRole(['admin', 'staff_produksi', 'manager']) => '/vcb/produksi',
             $user->hasRole('staff_qc') => '/vcb/quality',
+            // staff_repair tidak boleh membuka VCB mana pun — tanpa cabang
+            // ini dia jatuh ke default dan langsung 403 setelah login.
+            $user->hasRole('staff_repair') => '/input/repair',
             $user->hasRole('guest') => '/vcb/produksi',
             default => '/vcb/produksi',
         });

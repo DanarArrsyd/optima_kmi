@@ -320,7 +320,7 @@ $lastUrl = $myLastRecord
                 </div>
             </div>
             <div class="mt-2" style="color:#6c757d">
-                Mulai dari baris ke-4 (baris 1 = header, baris 2 = keterangan, baris 3 = contoh).
+                Isi data mulai baris 3. Baris keterangan dan baris contoh yang belum diubah otomatis dilewati.
             </div>
         </form>
     </div>

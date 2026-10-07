@@ -765,7 +765,7 @@ async function loadOneOperator() {
         document.querySelectorAll('#formOne input[name="mesin_ids[]"]').forEach(el => params.append('mesin_ids[]', el.value));
         // Tombol export tidak dirender untuk role guest.
         const exportBtn = document.getElementById('oneExportBtn');
-        if (exportBtn) exportBtn.href = `/export/produksi?${params}&format=excel`;
+        if (exportBtn) exportBtn.href = `{{ route('vcb.produksi.export') }}?${params}`;
 
         const res  = await fetch(`{{ route('vcb.produksi.operator-data') }}?${params}`);
         const data = await res.json();

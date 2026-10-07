@@ -347,11 +347,7 @@ class PartController extends Controller
 
             public function array(): array
             {
-                return [
-                    ['Toyota', 'BT-091A-3', 'Bracket RH', '2024-03-10', 1, 'PROGRESSIVE', 800, 400, 5, 15],
-                    ['Toyota', 'BT-091A-3', 'Bracket RH', '2024-03-10', 2, 'BENDING',     600, 300, 5, 15],
-                    ['Honda',  'HC-202B',   'Cover LH',   '2023-11-20', 1, 'PROGRESSIVE', 750, 375, 5, 20],
-                ];
+                return PartImport::CONTOH;
             }
         };
 

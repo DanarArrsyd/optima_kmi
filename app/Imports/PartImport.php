@@ -2,6 +2,7 @@
 
 namespace App\Imports;
 
+use App\Imports\Concerns\LewatiBarisContoh;
 use App\Models\MasterPart;
 use App\Models\MasterPartProses;
 use App\Support\SaneDate;
@@ -13,6 +14,15 @@ use PhpOffice\PhpSpreadsheet\Shared\Date;
 
 class PartImport implements SkipsEmptyRows, ToCollection
 {
+    use LewatiBarisContoh;
+
+    /** Baris contoh template — dibaca juga oleh template-nya. Lihat {@see LewatiBarisContoh}. */
+    public const CONTOH = [
+        ['Toyota', 'BT-091A-3', 'Bracket RH', '2024-03-10', 1, 'PROGRESSIVE', 800, 400, 5, 15],
+        ['Toyota', 'BT-091A-3', 'Bracket RH', '2024-03-10', 2, 'BENDING', 600, 300, 5, 15],
+        ['Honda', 'HC-202B', 'Cover LH', '2023-11-20', 1, 'PROGRESSIVE', 750, 375, 5, 20],
+    ];
+
     public int $imported = 0;
 
     public int $skipped = 0;
@@ -71,6 +81,10 @@ class PartImport implements SkipsEmptyRows, ToCollection
         $dataRows = $rows->skip(1);
 
         foreach ($dataRows as $rawRow) {
+            if ($this->barisContoh($rawRow)) {
+                continue;
+            }
+
             // Map kolom by normalized header
             $row = collect(array_combine($headers, $rawRow->toArray()));
 
