@@ -107,6 +107,9 @@ class ProduksiMesinFilterTest extends TestCase
         $html = $this->get(route('input.produksi.index', [...self::RENTANG, 'mesin_ids' => [$m['mesinA']->id]]))
             ->assertOk()->getContent();
 
-        $this->assertStringContainsString('mesinFilterComp(_mesinForJs, _mesinSelected)', $html);
+        // Komponen x-filter.mesin memasang datanya sendiri — halaman tidak bisa
+        // lupa (PR #178). Tepat SEKALI: dua kali = data bisa saling timpa.
+        $this->assertSame(1, substr_count($html, 'window._mesinForJs ='));
+        $this->assertStringContainsString("mesinFilterComp(window._mesinForJs, JSON.parse('[{$m['mesinA']->id}]'))", $html);
     }
 }

@@ -4,17 +4,13 @@
 @section('main_mod', 'erp-flush')
 
 @section('content')
-@php
-$mesinByLine = $mesin->groupBy('line');
-$_mesinForJs = $mesin->map(fn ($m) => ['id' => $m->id, 'code' => $m->id_mesin, 'name' => $m->nama_mesin, 'line' => $m->line])->values();
-@endphp
 
 {{-- ══════════════════════════════════════════════════════════════
      Ruang kerja ERP. Berbeda dari halaman input: isinya KPI + grafik +
      tabel yang memang perlu digulung, jadi .erp-scroll dibiarkan
      menggulung tegak — bukan dikunci satu layar.
 ══════════════════════════════════════════════════════════════ --}}
-<div class="erp-ws">
+<div class="erp-ws" x-data="{ filterOpen: false }">
 
 <div class="erp-tb">
     <button type="button" id="tabAll" class="erp-tb-btn is-on" onclick="switchMode('all')">
@@ -23,9 +19,14 @@ $_mesinForJs = $mesin->map(fn ($m) => ['id' => $m->id, 'code' => $m->id_mesin, '
     <button type="button" id="tabOne" class="erp-tb-btn" onclick="switchMode('one')">
         <i class="bi bi-person"></i>Per Operator
     </button>
-    <button type="button" id="btnDock" class="erp-tb-btn" onclick="erpToggleDock('vcbDock','btnDock')">
+    <button type="button" class="erp-tb-btn" :class="filterOpen ? 'is-on' : ''" @click="filterOpen = !filterOpen">
         <i class="bi bi-funnel"></i>Filter
     </button>
+    @if(! auth()->user()->isGuest())
+    {{-- href diisi pemuat data mode yang sedang tampil — isi file selalu
+         sama dengan layar, termasuk filternya. --}}
+    <a id="exportExcel" href="{{ route('vcb.produksi.export') }}" class="erp-tb-btn"><i class="bi bi-file-earmark-excel"></i>Export Excel</a>
+    @endif
     <span class="erp-tb-sp"></span>
 </div>
 
@@ -33,98 +34,42 @@ $_mesinForJs = $mesin->map(fn ($m) => ['id' => $m->id, 'code' => $m->id_mesin, '
 
 {{-- Dock mulai tertutup; cakupan data yang sedang dilihat tetap
      terbaca di status bar, jadi tidak ada yang tersembunyi diam-diam. --}}
-<aside class="erp-dock" id="vcbDock" style="display:none">
-    <div class="erp-dock-hd">
-        <span>Filter</span>
-        <button type="button" class="erp-dock-x" onclick="erpToggleDock('vcbDock','btnDock')" title="Tutup filter">&times;</button>
-    </div>
-    <div class="erp-dock-body">
-        <div id="dockAll">
-    <form id="formAll" class="erp-dock-form" x-data="mesinFilterComp(_mesinForJs, [])">
-            <div class="erp-grp">
-                <b>Dari Tanggal</b>
-                <input type="date" id="all_date_from" class="erp-in" value="{{ now('Asia/Jakarta')->startOfMonth()->toDateString() }}">
-            </div>
-            <div class="erp-grp">
-                <b>Sampai Tanggal</b>
-                <input type="date" id="all_date_to" class="erp-in" value="{{ now('Asia/Jakarta')->toDateString() }}">
-            </div>
-            <div class="erp-grp">
-                <b>Bulan</b>
-                <input type="month" id="all_bulan_filter" class="erp-in">
-            </div>
-            <div class="erp-grp">
-                <b>Shift</b>
-                <select id="all_shift_id" class="erp-in">
-                    <option value="">Semua Shift</option>
-                    @foreach($shifts as $s)
-                        <option value="{{ $s->id }}">{{ $s->nama_shift }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="erp-grp">
-                <b>Mesin</b>
-                @include('partials.mesin-picker', ['mesinByLine' => $mesinByLine])
-            </div>
-            <div class="erp-grp">
-                <button type="submit" class="erp-btn is-pri">
-                    <i class="bi bi-funnel me-1"></i>Tampilkan
-                </button>
-            </div>
-        </form>
-        </div>
-        <div id="dockOne" style="display:none">
-    <form id="formOne" class="erp-dock-form" x-data="mesinFilterComp(_mesinForJs, [])">
-            <div class="erp-grp">
-                <b>Dari Tanggal</b>
-                <input type="date" id="one_date_from" class="erp-in" value="{{ now('Asia/Jakarta')->startOfMonth()->toDateString() }}">
-            </div>
-            <div class="erp-grp">
-                <b>Sampai Tanggal</b>
-                <input type="date" id="one_date_to" class="erp-in" value="{{ now('Asia/Jakarta')->toDateString() }}">
-            </div>
-            <div class="erp-grp">
-                <b>Bulan</b>
-                <input type="month" id="one_bulan_filter" class="erp-in">
-            </div>
-            <div class="erp-grp">
-                <b>Operator <span class="text-danger">*</span></b>
-                <select id="one_karyawan_id" class="erp-in">
-                    <option value="">— Pilih Operator —</option>
-                    @foreach($karyawan as $k)
-                        <option value="{{ $k->id }}"
-                                data-nonaktif="{{ ! $k->is_aktif && $k->tanggal_nonaktif ? $k->tanggal_nonaktif->format('Y-m-d') : '' }}">{{ $k->nama_karyawan }}</option>
-                    @endforeach
-                </select>
-                <small id="one_operator_note" style="color:#b91c1c;font-size:10px"></small>
-            </div>
-            <div class="erp-grp">
-                <b>Shift</b>
-                <select id="one_shift_id" class="erp-in">
-                    <option value="">Semua Shift</option>
-                    @foreach($shifts as $s)
-                        <option value="{{ $s->id }}">{{ $s->nama_shift }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="erp-grp">
-                <b>Mesin</b>
-                @include('partials.mesin-picker', ['mesinByLine' => $mesinByLine])
-            </div>
-            <div class="erp-grp">
-                <button type="submit" class="erp-btn is-pri">
-                    <i class="bi bi-search me-1"></i>Search
-                </button>
-                @if(! auth()->user()->isGuest())
-                <a id="oneExportBtn" href="#" class="erp-btn">
-                    <i class="bi bi-file-earmark-excel me-1"></i>Export
-                </a>
-                @endif
-            </div>
-        </form>
-        </div>
-    </div>
-</aside>
+{{-- Dua dock, satu per mode — dibungkus display:contents supaya aside tetap
+     anak flex .erp-ws-body. switchMode() menukar keduanya. --}}
+<div id="dockAll" style="display:contents">
+<x-filter.dock form-id="formAll">
+    <x-filter.grup judul="Find">
+        <x-filter.cari name="shift_id" id="all_shift_id" placeholder="Shift" :items="$shifts->map(fn ($s) => ['v' => $s->id, 't' => $s->nama_shift])" />
+        <x-filter.mesin />
+    </x-filter.grup>
+
+    <x-filter.tanggal id-from="all_date_from" id-to="all_date_to"
+                      :from="now('Asia/Jakarta')->startOfMonth()->toDateString()" :to="now('Asia/Jakarta')->toDateString()" />
+</x-filter.dock>
+</div>
+
+<div id="dockOne" style="display:none">
+<x-filter.dock form-id="formOne">
+    <x-filter.grup judul="Find">
+        {{-- Tetap <select>: saringOrangNonaktif() membangun ulang opsinya per
+             tanggal (orang nonaktif disembunyikan, PR #97). --}}
+        <select id="one_karyawan_id" name="karyawan_id" class="erp-in" aria-label="Operator">
+            <option value="">— Pilih Operator —</option>
+            @foreach($karyawan as $k)
+                <option value="{{ $k->id }}"
+                        data-nonaktif="{{ ! $k->is_aktif && $k->tanggal_nonaktif ? $k->tanggal_nonaktif->format('Y-m-d') : '' }}">{{ $k->nama_karyawan }}</option>
+            @endforeach
+        </select>
+        <small id="one_operator_note" style="color:#b91c1c;font-size:10px"></small>
+        <x-filter.cari name="shift_id" id="one_shift_id" placeholder="Shift" :items="$shifts->map(fn ($s) => ['v' => $s->id, 't' => $s->nama_shift])" />
+        <x-filter.mesin />
+    </x-filter.grup>
+
+    {{-- kirim=false: pintasan Bulan tidak boleh memuat tanpa operator terpilih. --}}
+    <x-filter.tanggal id-from="one_date_from" id-to="one_date_to" :kirim="false"
+                      :from="now('Asia/Jakarta')->startOfMonth()->toDateString()" :to="now('Asia/Jakarta')->toDateString()" />
+</x-filter.dock>
+</div>
 
 <div class="erp-ws-main">
 <div class="erp-scroll erp-scroll-pad">
@@ -281,7 +226,6 @@ $_mesinForJs = $mesin->map(fn ($m) => ['id' => $m->id, 'code' => $m->id_mesin, '
 
 @push('scripts')
 <script>
-const _mesinForJs = @json($_mesinForJs);
 /* Cegah stored XSS: data master (nama mesin, part, proses, karyawan) bisa memuat markup. */
 function escHtml(str) {
     if (str === null || str === undefined) return "";
@@ -326,19 +270,19 @@ function switchMode(mode, karyawanId = null) {
        kelas .is-on milik toolbar yang mengurusnya. */
     document.getElementById('tabAll').classList.toggle('is-on', isAll);
     document.getElementById('tabOne').classList.toggle('is-on', !isAll);
-    document.getElementById('dockAll').style.display = isAll ? '' : 'none';
-    document.getElementById('dockOne').style.display = isAll ? 'none' : '';
+    document.getElementById('dockAll').style.display = isAll ? 'contents' : 'none';
+    document.getElementById('dockOne').style.display = isAll ? 'none' : 'contents';
     document.getElementById('allPeriodLabel').style.display = isAll ? '' : 'none';
     document.getElementById('onePeriodLabel').style.display = isAll ? 'none' : '';
 
     if (!isAll && karyawanId) {
         // Tanggal dulu, baru saring, baru pilih operator — kalau operator
         // dipilih sebelum disaring, daftarnya masih daftar lama.
-        document.getElementById('one_date_from').value    = document.getElementById('all_date_from').value;
-        document.getElementById('one_date_to').value      = document.getElementById('all_date_to').value;
+        isiFilterTanggal('one_date_from', document.getElementById('all_date_from').value,
+                                          document.getElementById('all_date_to').value);
         saringOperator(karyawanId);
         document.getElementById('one_karyawan_id').value  = karyawanId;
-        document.getElementById('one_shift_id').value     = document.getElementById('all_shift_id').value;
+        isiFilterCari('one_shift_id', document.getElementById('all_shift_id').value);
         loadOneOperator();
     }
 }
@@ -535,12 +479,10 @@ async function loadAllOperators() {
     errBox.style.display = 'none';
     submitBtn.disabled = true;
     try {
-        const params = new URLSearchParams({
-            date_from: document.getElementById('all_date_from').value,
-            date_to:   document.getElementById('all_date_to').value,
-            shift_id:  document.getElementById('all_shift_id').value,
-        });
-        document.querySelectorAll('#formAll input[name="mesin_ids[]"]').forEach(el => params.append('mesin_ids[]', el.value));
+        const params = new URLSearchParams(new FormData(document.getElementById('formAll')));
+        // Tombol export tidak dirender untuk role guest.
+        const exportBtn = document.getElementById('exportExcel');
+        if (exportBtn) exportBtn.href = `{{ route('vcb.produksi.export') }}?${params}`;
         document.getElementById('allPeriodLabel').textContent =
             document.getElementById('all_date_from').value + ' — ' + document.getElementById('all_date_to').value;
 
@@ -576,22 +518,6 @@ async function loadAllOperators() {
 
 document.getElementById('formAll').addEventListener('submit', e => { e.preventDefault(); loadAllOperators(); });
 
-function applyBulanFilter(bulanId, fromId, toId, reloadFn) {
-    const v = document.getElementById(bulanId).value;
-    if (!v) return;
-    const [y, m] = v.split('-').map(Number);
-    const lastDay = new Date(y, m, 0).getDate();
-    // Waktu lokal peramban (WIB di pabrik). toISOString() memaksa UTC dan
-    // memundurkan batasnya sehari selama 00:00–07:00 WIB.
-    const kini = new Date();
-    const today = `${kini.getFullYear()}-${String(kini.getMonth() + 1).padStart(2, '0')}-${String(kini.getDate()).padStart(2, '0')}`;
-    const to = `${v}-${String(lastDay).padStart(2, '0')}`;
-    document.getElementById(fromId).value = `${v}-01`;
-    document.getElementById(toId).value   = to > today ? today : to;
-    reloadFn();
-}
-document.getElementById('all_bulan_filter').addEventListener('change', () =>
-    applyBulanFilter('all_bulan_filter', 'all_date_from', 'all_date_to', loadAllOperators));
 
 /* ═══════════════════════════════════════════════════════════
    MODE 2 — PER OPERATOR (DRILL-DOWN)
@@ -756,15 +682,9 @@ async function loadOneOperator() {
     errBox.style.display = 'none';
     submitBtn.disabled = true;
     try {
-        const params = new URLSearchParams({
-            date_from:   document.getElementById('one_date_from').value,
-            date_to:     document.getElementById('one_date_to').value,
-            karyawan_id: karyawanId,
-            shift_id:    document.getElementById('one_shift_id').value,
-        });
-        document.querySelectorAll('#formOne input[name="mesin_ids[]"]').forEach(el => params.append('mesin_ids[]', el.value));
+        const params = new URLSearchParams(new FormData(document.getElementById('formOne')));
         // Tombol export tidak dirender untuk role guest.
-        const exportBtn = document.getElementById('oneExportBtn');
+        const exportBtn = document.getElementById('exportExcel');
         if (exportBtn) exportBtn.href = `{{ route('vcb.produksi.export') }}?${params}`;
 
         const res  = await fetch(`{{ route('vcb.produksi.operator-data') }}?${params}`);
@@ -791,14 +711,6 @@ async function loadOneOperator() {
 }
 
 document.getElementById('formOne').addEventListener('submit', e => { e.preventDefault(); loadOneOperator(); });
-document.getElementById('one_bulan_filter').addEventListener('change', () =>
-    applyBulanFilter('one_bulan_filter', 'one_date_from', 'one_date_to', () => {
-        saringOperator();
-        // Penyaring bisa mengosongkan pilihan karena orangnya di luar rentang;
-        // memanggil pemuat sesudahnya memunculkan alert yang menyalahkan pengguna
-        // atas sesuatu yang dilakukan halaman sendiri. Pesannya sudah di catatan.
-        if (document.getElementById('one_karyawan_id').value) loadOneOperator();
-    }));
 
 /* ── Init ──────────────────────────────────────────────── */
 loadAllOperators();

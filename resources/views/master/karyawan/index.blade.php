@@ -30,35 +30,15 @@
 
 <div class="erp-ws-body">
 
-<aside class="erp-dock" x-show="filterOpen" x-cloak>
-    <div class="erp-dock-hd">
-        <span>Filter</span>
-        <button type="button" class="erp-dock-x" @click="filterOpen = false" title="Tutup filter">&times;</button>
-    </div>
-    <form method="GET" action="{{ route('master.karyawan.index') }}" class="erp-dock-body">
-        <div class="erp-grp">
-            <b>Find</b>
-            <input type="text" name="q" value="{{ $search }}" class="erp-in @if($search !== '') is-set @endif"
-                   placeholder="NIK atau Nama Karyawan">
-            <select name="filter_dept" class="erp-in @if($filterDept !== '') is-set @endif">
-                <option value="">Semua Departemen</option>
-                @foreach($deptList as $o)
-                <option value="{{ $o }}" @selected($filterDept === $o)>{{ $o }}</option>
-                @endforeach
-            </select>
-            <select name="filter" class="erp-in @if($filter !== 'semua') is-set @endif">
-                <option value="semua" @selected($filter === 'semua')>Semua Status</option>
-                <option value="aktif" @selected($filter === 'aktif')>Aktif</option>
-                <option value="nonaktif" @selected($filter === 'nonaktif')>Nonaktif</option>
-            </select>
-        </div>
-
-        <div class="erp-grp">
-            <button type="submit" class="erp-btn is-pri"><i class="bi bi-funnel"></i>Tampilkan</button>
-            <a href="{{ route('master.karyawan.index') }}" class="erp-btn">Reset</a>
-        </div>
-    </form>
-</aside>
+<x-filter.dock :action="route('master.karyawan.index')">
+    <x-filter.grup judul="Find">
+        <x-filter.teks :value="$search" placeholder="NIK atau Nama Karyawan" />
+        <x-filter.cari name="filter_dept" placeholder="Departemen" :value="$filterDept"
+                       :items="collect($deptList)->map(fn ($o) => ['v' => $o, 't' => $o])" />
+        <x-filter.cari name="filter" placeholder="Status" :value="$filter === 'semua' ? null : $filter"
+                       :items="[['v' => 'aktif', 't' => 'Aktif'], ['v' => 'nonaktif', 't' => 'Nonaktif']]" />
+    </x-filter.grup>
+</x-filter.dock>
 
 <div class="erp-ws-main">
 {{-- Judul sudah ada di topbar; penggulungan dipegang .erp-scroll saja. --}}

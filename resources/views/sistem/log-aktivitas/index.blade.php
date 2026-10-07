@@ -18,66 +18,19 @@
 
 <div class="erp-ws-body">
 
-<aside class="erp-dock" x-show="filterOpen" x-cloak>
-    <div class="erp-dock-hd">
-        <span>Filter</span>
-        <button type="button" class="erp-dock-x" @click="filterOpen = false" title="Tutup filter">&times;</button>
-    </div>
-    <form method="GET" action="{{ route('sistem.log-aktivitas.index') }}" class="erp-dock-body">
+<x-filter.dock :action="route('sistem.log-aktivitas.index')">
+    <x-filter.grup judul="Find">
+        <x-filter.teks name="search" :value="$search" placeholder="Cari deskripsi..." />
+        <x-filter.cari name="modul" placeholder="Modul" :value="$modul"
+                       :items="collect($modulLabels)->map(fn ($label, $key) => ['v' => $key, 't' => $label])" />
+        <x-filter.cari name="event" placeholder="Aksi" :value="$event"
+                       :items="collect($eventLabels)->map(fn ($label, $key) => ['v' => $key, 't' => $label])" />
+        <x-filter.cari name="user_id" placeholder="User" :value="$userId"
+                       :items="$userList->map(fn ($u) => ['v' => $u->id, 't' => $u->name])" />
+    </x-filter.grup>
 
-        <div class="erp-grp">
-            <b>Find</b>
-            <input type="text" name="search" value="{{ $search }}" class="erp-in @if($search !== '') is-set @endif" placeholder="Cari deskripsi...">
-        </div>
-
-        <div class="erp-grp">
-            <b>Modul</b>
-            <select name="modul" class="erp-in @if($modul !== '') is-set @endif">
-                <option value="" @selected($modul === '')>Semua Modul</option>
-                @foreach($modulLabels as $key => $label)
-                <option value="{{ $key }}" @selected($modul === $key)>{{ $label }}</option>
-                @endforeach
-            </select>
-        </div>
-
-        <div class="erp-grp">
-            <b>Aksi</b>
-            <select name="event" class="erp-in @if($event !== '') is-set @endif">
-                <option value="" @selected($event === '')>Semua Aksi</option>
-                @foreach($eventLabels as $key => $label)
-                <option value="{{ $key }}" @selected($event === $key)>{{ $label }}</option>
-                @endforeach
-            </select>
-        </div>
-
-        <div class="erp-grp">
-            <b>User</b>
-            <select name="user_id" class="erp-in @if($userId !== '') is-set @endif">
-                <option value="" @selected($userId === '')>Semua User</option>
-                @foreach($userList as $u)
-                <option value="{{ $u->id }}" @selected((string) $userId === (string) $u->id)>{{ $u->name }}</option>
-                @endforeach
-            </select>
-        </div>
-
-        <div class="erp-grp">
-            <b>Filter by Date</b>
-            <div class="erp-dock-row">
-                <span>From</span>
-                <input type="date" name="date_from" value="{{ $dateFrom }}" class="erp-in">
-            </div>
-            <div class="erp-dock-row">
-                <span>To</span>
-                <input type="date" name="date_to" value="{{ $dateTo }}" class="erp-in">
-            </div>
-        </div>
-
-        <div class="erp-grp">
-            <button type="submit" class="erp-btn is-pri"><i class="bi bi-funnel"></i>Tampilkan</button>
-            <a href="{{ route('sistem.log-aktivitas.index') }}" class="erp-btn">Reset</a>
-        </div>
-    </form>
-</aside>
+    <x-filter.tanggal :from="$dateFrom" :to="$dateTo" :pakai="$pakaiTanggal" />
+</x-filter.dock>
 
 <div class="erp-ws-main">
 <div class="erp-scroll erp-scroll-pad">

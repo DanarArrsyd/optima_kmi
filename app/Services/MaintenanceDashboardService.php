@@ -28,12 +28,17 @@ class MaintenanceDashboardService
         return $this->durasiKolomAda ??= Schema::hasColumn('transaksi_produksi', 'durasi_menit');
     }
 
-    public function compute(Carbon $from, Carbon $to, ?int $mesinId = null, ?string $tipeMesin = null): array
+    /**
+     * @param  int|list<int>|null  $mesinId  satu id (pemanggil lama: chatbot, overview)
+     *                                       atau daftar id dari filter mesin jamak di dock.
+     */
+    public function compute(Carbon $from, Carbon $to, int|array|null $mesinId = null, ?string $tipeMesin = null): array
     {
+        $mesinIds = array_values(array_filter(array_map('intval', (array) $mesinId)));
         $hasInstalasi = Schema::hasColumn('master_mesin', 'tanggal_instalasi');
         $hasTipe = Schema::hasColumn('master_mesin', 'tipe_mesin');
 
-        $mesins = MasterMesin::when($mesinId, fn ($q) => $q->where('id', $mesinId))
+        $mesins = MasterMesin::when($mesinIds, fn ($q) => $q->whereIn('id', $mesinIds))
             ->when($tipeMesin && $hasTipe, fn ($q) => $q->where('tipe_mesin', $tipeMesin))
             ->orderBy('id_mesin')->get();
 
@@ -61,7 +66,7 @@ class MaintenanceDashboardService
         $stats = TransaksiBreakdownMesin::query()
             ->where('tanggal_breakdown', '>=', $from->toDateString())
             ->where('tanggal_breakdown', '<', $to->copy()->addDay()->toDateString())
-            ->when($mesinId, fn ($q) => $q->where('id_mesin', $mesinId))
+            ->when($mesinIds, fn ($q) => $q->whereIn('id_mesin', $mesinIds))
             ->get(['id_mesin', 'repair_time', 'total_downtime'])
             ->groupBy('id_mesin');
 
@@ -84,7 +89,7 @@ class MaintenanceDashboardService
         $dandori = TransaksiDandoriRincian::query()
             ->where('tanggal', '>=', $from->toDateString())
             ->where('tanggal', '<', $to->copy()->addDay()->toDateString())
-            ->when($mesinId, fn ($q) => $q->where('id_mesin', $mesinId))
+            ->when($mesinIds, fn ($q) => $q->whereIn('id_mesin', $mesinIds))
             ->groupBy('id_mesin')
             ->selectRaw('id_mesin, SUM(actual_menit) as menit')
             ->pluck('menit', 'id_mesin');

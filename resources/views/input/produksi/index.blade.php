@@ -12,27 +12,10 @@
 
 {{-- ══ KONTEN HALAMAN ══════════════════════════════════════════ --}}
 @php
-$mesinByLine  = $mesin->groupBy('line');
-$_mesinForJs  = $mesin->map(fn($m) => ['id' => $m->id, 'code' => $m->id_mesin, 'name' => $m->nama_mesin, 'line' => $m->line])->values();
-$_partsForFilter = $parts->map(fn($p) => ['id' => $p->id, 'part_no' => $p->part_no, 'part_name' => $p->part_name, 'customer' => $p->customer, 'proses' => $p->proses->map(fn($pr) => ['id' => $pr->id, 'label' => $pr->id_proses.' – '.$pr->nama_proses])->values()])->values();
-$_karForFilter = $karyawan->map(fn($k) => ['id' => $k->id, 'nama' => $k->nama_karyawan])->values();
-$_allProsesForFilter = $parts->flatMap(fn($p) => $p->proses)->unique('id')->map(fn($pr) => ['id' => $pr->id, 'label' => $pr->id_proses.' – '.$pr->nama_proses])->values();
-$_customersTA = $customers->map(fn($c) => ['v' => $c, 't' => $c])->values();
-$_partsTA     = $_partsForFilter->map(fn($p) => ['v' => $p['id'], 't' => $p['part_name'], 'sub' => $p['part_no'], 'pno' => $p['part_no']])->values();
-$_prosesTA    = $_allProsesForFilter->map(fn($pr) => ['v' => $pr['id'], 't' => $pr['label']])->values();
-$_operatorTA  = $_karForFilter->map(fn($k) => ['v' => $k['id'], 't' => $k['nama']])->values();
-$_jenisNgTA   = $jenisNg->map(fn($n) => ['v' => $n->id, 't' => $n->kode.' – '.$n->nama_ng])->values();
-$_ngObjF      = $filterJenisNgId ? $jenisNg->firstWhere('id', $filterJenisNgId) : null;
-$_ngLabel     = $_ngObjF ? $_ngObjF->kode.' – '.$_ngObjF->nama_ng : '';
 $hasAdvFilter = $filterCustomer || $filterPartId || $filterKarId || $filterProsesId || $filterJenisNgId;
 $filterActive = !empty($mesinIds) || ($search ?? '') !== '' || $hasAdvFilter;
 $advCount = array_sum([$filterCustomer?1:0, $filterPartId?1:0, $filterKarId?1:0, $filterProsesId?1:0]);
 
-// Label aktif untuk display
-$filterPartLabel = $filterPartId ? ($parts->firstWhere('id', $filterPartId)?->part_name ?? '') : '';
-$filterKarLabel  = $filterKarId  ? ($karyawan->firstWhere('id', $filterKarId)?->nama_karyawan ?? '') : '';
-$_fpObj = $filterProsesId ? $parts->flatMap(fn($p) => $p->proses)->firstWhere('id', $filterProsesId) : null;
-$filterProsesLabel = $_fpObj ? ($_fpObj->id_proses.' – '.$_fpObj->nama_proses) : '';
 
 /* ── Hitung anomali pada halaman ini ──
    Ambang dibaca dari config/anomali_lhp.php, BUKAN ditulis ulang di sini.
@@ -150,140 +133,19 @@ $lastUrl = $myLastRecord
 <div class="erp-ws-body">
 
 {{-- ── Dock filter (kiri) ────────────────────────────────────── --}}
-<aside class="erp-dock" x-show="filterOpen" x-cloak>
-    <div class="erp-dock-hd">
-        <span>Filter</span>
-        <button type="button" class="erp-dock-x" @click="filterOpen = false" title="Tutup filter">&times;</button>
-    </div>
+<x-filter.dock :action="route('input.produksi.index')">
+    <x-filter.grup judul="Find">
+        <x-filter.cari name="filter_karyawan_id" placeholder="Nama Operator" :value="$filterKarId"
+                       :items="$karyawan->map(fn ($k) => ['v' => $k->id, 't' => $k->nama_karyawan])" />
+        <x-filter.mesin :selected="$mesinIds" />
+        <x-filter.cari name="filter_jenis_ng_id" placeholder="Jenis NG" :value="$filterJenisNgId"
+                       :items="$jenisNg->map(fn ($n) => ['v' => $n->id, 't' => $n->kode.' – '.$n->nama_ng])" />
+    </x-filter.grup>
 
-    <form method="GET" action="{{ route('input.produksi.index') }}" id="filterForm"
-          x-data="mesinFilterComp(_mesinForJs, _mesinSelected)" class="erp-dock-body">
+    <x-filter.part-group :customer="$filterCustomer" :part-id="$filterPartId" :proses-id="$filterProsesId" />
 
-        {{-- ══ Find ══ --}}
-        <div class="erp-grp">
-            <b>Find</b>
-
-            <div x-data="filterSearchComp(_operatorTA,{{ $filterKarId ?: 0 }},'{{ addslashes($filterKarLabel) }}')"
-                 @click.outside="open=false" style="position:relative">
-                <input type="hidden" name="filter_karyawan_id" :value="val">
-                <input type="text" x-model="query" @focus="open=true" @input="open=true"
-                       @keydown.escape="open=false" placeholder="Nama Operator"
-                       class="erp-in" :class="val ? 'is-set' : ''">
-                <button type="button" x-show="val" @mousedown.prevent="clear()" class="erp-clr">&times;</button>
-                <div x-show="open && filtered.length > 0" x-cloak class="erp-dd">
-                    <template x-for="item in filtered" :key="item.v">
-                        <div @mousedown.prevent="pick(item)" class="erp-dd-item" x-text="item.t"></div>
-                    </template>
-                </div>
-            </div>
-
-            @include('partials.mesin-picker', ['mesinByLine' => $mesinByLine])
-
-            <div x-data="filterSearchComp(_jenisNgTA, {{ $filterJenisNgId ?: 0 }}, '{{ addslashes($_ngLabel) }}')"
-                 @click.outside="open=false" style="position:relative">
-                <input type="hidden" name="filter_jenis_ng_id" :value="val">
-                <input type="text" x-model="query" @focus="open=true" @input="open=true"
-                       @keydown.escape="open=false" placeholder="Jenis NG"
-                       class="erp-in" :class="val ? 'is-set' : ''">
-                <button type="button" x-show="val" @mousedown.prevent="clear()" class="erp-clr">&times;</button>
-                <div x-show="open && filtered.length > 0" x-cloak class="erp-dd">
-                    <template x-for="item in filtered" :key="item.v">
-                        <div @mousedown.prevent="pick(item)" class="erp-dd-item" x-text="item.t"></div>
-                    </template>
-                </div>
-            </div>
-        </div>
-
-        {{-- ══ Part & Customer ══ --}}
-        <div class="erp-grp">
-            <b>Part &amp; Customer</b>
-
-            <div x-data="filterSearchComp(_customersTA,'{{ $filterCustomer }}','{{ $filterCustomer }}')"
-                 @click.outside="open=false" style="position:relative">
-                <input type="hidden" name="filter_customer" :value="val">
-                <input type="text" x-model="query" @focus="open=true" @input="open=true"
-                       @keydown.escape="open=false" placeholder="Nama Customer"
-                       class="erp-in" :class="val ? 'is-set' : ''">
-                <button type="button" x-show="val" @mousedown.prevent="clear()" class="erp-clr">&times;</button>
-                <div x-show="open && filtered.length > 0" x-cloak class="erp-dd">
-                    <template x-for="item in filtered" :key="item.v">
-                        <div @mousedown.prevent="pick(item)" class="erp-dd-item" x-text="item.t"></div>
-                    </template>
-                </div>
-            </div>
-
-            <div x-data="partGroupComp({{ $filterPartId ?: 0 }},'{{ addslashes($filterPartLabel) }}',{{ $filterProsesId ?: 0 }},'{{ addslashes($filterProsesLabel) }}')"
-                 style="display:flex;flex-direction:column;gap:4px">
-
-                <div @click.outside="partOpen=false" style="position:relative">
-                    <input type="hidden" name="filter_part_id" :value="partVal">
-                    <input type="text" x-model="partQuery" @focus="partOpen=true"
-                           @input="partOpen=true;partVal='';prosesVal='';prosesQuery=''"
-                           @keydown.escape="partOpen=false" placeholder="Nama Part"
-                           class="erp-in" :class="partVal ? 'is-set' : ''">
-                    <button type="button" x-show="partVal"
-                            @mousedown.prevent="partVal='';partQuery='';prosesVal='';prosesQuery=''"
-                            class="erp-clr">&times;</button>
-                    <div x-show="partOpen && filteredParts.length > 0" x-cloak class="erp-dd">
-                        <template x-for="item in filteredParts" :key="item.v">
-                            <div @mousedown.prevent="pickPart(item)" class="erp-dd-item" :title="item.t">
-                                <span style="font-weight:700" x-text="item.t"></span>
-                                <span class="sub" x-text="item.sub"></span>
-                            </div>
-                        </template>
-                    </div>
-                </div>
-
-                <div @click.outside="prosesOpen=false" style="position:relative">
-                    <input type="hidden" name="filter_proses_id" :value="prosesVal">
-                    <input type="text" x-model="prosesQuery" @focus="prosesOpen=true"
-                           @input="prosesOpen=true;prosesVal=''" @keydown.escape="prosesOpen=false"
-                           placeholder="Proses" class="erp-in" :class="prosesVal ? 'is-set' : ''">
-                    <button type="button" x-show="prosesVal" @mousedown.prevent="prosesVal='';prosesQuery=''" class="erp-clr">&times;</button>
-                    <div x-show="prosesOpen && filteredProses.length > 0" x-cloak class="erp-dd">
-                        <template x-for="item in filteredProses" :key="item.v">
-                            <div @mousedown.prevent="prosesVal=item.v;prosesQuery=item.t;prosesOpen=false"
-                                 class="erp-dd-item" x-text="item.t"></div>
-                        </template>
-                    </div>
-                </div>
-
-                {{-- Nomor part tidak diketik: dia turunan dari Nama Part.
-                     Dua isian terpisah pernah bisa tidak sinkron. --}}
-                <input type="text" class="erp-in" readonly tabindex="-1"
-                       :value="partNo || 'Nomor Part'" :title="partNo">
-            </div>
-        </div>
-
-        {{-- ══ Filter by Date ══
-             Centangnya mematikan rentang tanggal sama sekali, bukan sekadar
-             menyembunyikan isian — tanpa itu tidak ada cara mencari lintas
-             seluruh riwayat. --}}
-        <div class="erp-grp" x-data="{ pakaiTgl: {{ $pakaiTanggal ? 'true' : 'false' }} }">
-            <label class="erp-chk">
-                <input type="checkbox" name="pakai_tanggal" value="1" x-model="pakaiTgl">
-                <b>Filter by Date</b>
-            </label>
-            <div class="erp-dock-row">
-                <span>From</span>
-                <input type="date" name="date_from" value="{{ $dateFrom }}" class="erp-in" :disabled="!pakaiTgl">
-            </div>
-            <div class="erp-dock-row">
-                <span>To</span>
-                <input type="date" name="date_to" value="{{ $dateTo }}" class="erp-in" :disabled="!pakaiTgl">
-            </div>
-        </div>
-
-        <div class="erp-grp">
-            {{-- Penanda form dikirim: tanpa ini, centang yang dilepas tidak
-                 terkirim sama sekali dan server tidak bisa membedakan
-                 "dimatikan" dari "halaman baru dibuka". --}}
-            <input type="hidden" name="filter_apply" value="1">
-            <button type="submit" class="erp-btn is-pri"><i class="bi bi-funnel"></i>Tampilkan</button>
-            <a href="{{ route('input.produksi.index') }}" class="erp-btn">Reset</a>
-        </div>
-    </form>
-</aside>
+    <x-filter.tanggal :from="$dateFrom" :to="$dateTo" :pakai="$pakaiTanggal" />
+</x-filter.dock>
 
 <div class="erp-ws-main">
 
@@ -746,17 +608,6 @@ function openNoteDrawer(type, id, existingNote, isAdmin, updatedAt, noteAt, reso
 
 @push('scripts')
 <script>
-const _mesinForJs    = @json($_mesinForJs);
-const _mesinSelected = @json(array_values($mesinIds));
-
-/* ── Filter Lanjutan typeahead ── */
-const _customersTA   = @json($_customersTA);
-const _partsTA       = @json($_partsTA);
-const _partsFullData = @json($_partsForFilter);
-const _prosesTA      = @json($_prosesTA);
-const _operatorTA    = @json($_operatorTA);
-const _jenisNgTA     = @json($_jenisNgTA);
-
 /* Bootstrap tooltips */
 document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
     new bootstrap.Tooltip(el, { trigger: 'hover' });

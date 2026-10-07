@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Maintenance;
 
 use App\Exports\BreakdownMesinExport;
+use App\Http\Controllers\Concerns\BacaFilterMesin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreBreakdownMesinBatchRequest;
 use App\Http\Requests\UpdateBreakdownMesinRequest;
@@ -20,6 +21,8 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class BreakdownMesinController extends Controller
 {
+    use BacaFilterMesin;
+
     public function __construct(
         private BreakdownMesinService $svc,
         private BreakdownMesinWriteService $writeService,
@@ -30,7 +33,7 @@ class BreakdownMesinController extends Controller
         return Excel::download(new BreakdownMesinExport(
             $request->input('date_from'),
             $request->input('date_to'),
-            (int) $request->input('mesin_id', 0) ?: null,
+            $this->mesinIds($request, 'mesin_id'),
         ), 'breakdown_mesin.xlsx');
     }
 
@@ -78,7 +81,7 @@ class BreakdownMesinController extends Controller
     {
         $dateFrom = $request->input('date_from', date('Y-m-01'));
         $dateTo = $request->input('date_to', date('Y-m-d'));
-        $mesinId = (int) $request->input('mesin_id', 0);
+        $mesinIds = $this->mesinIds($request, 'mesin_id');
 
         /* Rentang tanggal bisa dimatikan lewat centang di dock; bawaannya
          * nyala supaya halaman tidak membuka seluruh riwayat tanpa diminta. */
@@ -100,7 +103,7 @@ class BreakdownMesinController extends Controller
             ->when($pakaiTanggal, fn ($q) => $q
                 ->whereDate('tanggal_breakdown', '>=', $dateFrom)
                 ->whereDate('tanggal_breakdown', '<=', $dateTo))
-            ->when($mesinId, fn ($q) => $q->where('id_mesin', $mesinId))
+            ->when($mesinIds, fn ($q) => $q->whereIn('id_mesin', $mesinIds))
             ->when($filterPic !== '', fn ($q) => $q->where('pic_maintenance', $filterPic))
             ->when($filterStatus !== '', fn ($q) => $q->where('status_breakdown', $filterStatus))
             ->orderByDesc('tanggal_breakdown')->orderByDesc('id')
@@ -115,7 +118,7 @@ class BreakdownMesinController extends Controller
             'filterStatus' => $filterStatus,
             'dateFrom' => $dateFrom,
             'dateTo' => $dateTo,
-            'mesinId' => $mesinId,
+            'mesinIds' => $mesinIds,
         ]);
     }
 

@@ -26,24 +26,11 @@
 
 <div class="erp-ws-body">
 
-<aside class="erp-dock" x-show="filterOpen" x-cloak>
-    <div class="erp-dock-hd">
-        <span>Filter</span>
-        <button type="button" class="erp-dock-x" @click="filterOpen = false" title="Tutup filter">&times;</button>
-    </div>
-    <form method="GET" action="{{ route('master.losstime.index') }}" class="erp-dock-body">
-        <div class="erp-grp">
-            <b>Find</b>
-            <input type="text" name="q" value="{{ $search }}" class="erp-in @if($search !== '') is-set @endif"
-                   placeholder="Kode atau Jenis Loss Time">
-        </div>
-
-        <div class="erp-grp">
-            <button type="submit" class="erp-btn is-pri"><i class="bi bi-funnel"></i>Tampilkan</button>
-            <a href="{{ route('master.losstime.index') }}" class="erp-btn">Reset</a>
-        </div>
-    </form>
-</aside>
+<x-filter.dock :action="route('master.losstime.index')">
+    <x-filter.grup judul="Find">
+        <x-filter.teks :value="$search" placeholder="Kode atau Jenis Loss Time" />
+    </x-filter.grup>
+</x-filter.dock>
 
 <div class="erp-ws-main">
 {{-- Judul sudah ada di topbar; penggulungan dipegang .erp-scroll saja. --}}

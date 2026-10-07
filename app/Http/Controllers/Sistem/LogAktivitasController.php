@@ -49,6 +49,11 @@ class LogAktivitasController extends Controller
         $userId = $request->input('user_id', '');
         $search = trim((string) $request->input('search', ''));
 
+        /* Centang Filter by Date di dock — pola sama dengan LHP Produksi:
+         * bawaannya nyala, dan filter_apply membedakan "dimatikan" dari
+         * "halaman baru dibuka". */
+        $pakaiTanggal = $request->boolean('pakai_tanggal', ! $request->has('filter_apply'));
+
         /* created_at tersimpan UTC, filter tanggal dari user itu WIB (UTC+7) —
          * whereDate polos di kolom UTC menggeser batas hari sampai 7 jam.
          * Konversi rentang WIB ke UTC dulu di sini. */
@@ -57,7 +62,7 @@ class LogAktivitasController extends Controller
 
         $query = Activity::query()
             ->with('causer')
-            ->whereBetween('created_at', [$rentangUtcFrom, $rentangUtcTo])
+            ->when($pakaiTanggal, fn ($q) => $q->whereBetween('created_at', [$rentangUtcFrom, $rentangUtcTo]))
             ->when($modul !== '', fn ($q) => $q->where('log_name', $modul))
             ->when($event !== '', fn ($q) => $q->where('event', $event))
             ->when($userId !== '', fn ($q) => $q->where('causer_id', $userId)->where('causer_type', User::class))
@@ -70,6 +75,7 @@ class LogAktivitasController extends Controller
             'logs' => $logs,
             'dateFrom' => $dateFrom,
             'dateTo' => $dateTo,
+            'pakaiTanggal' => $pakaiTanggal,
             'modul' => $modul,
             'event' => $event,
             'userId' => $userId,

@@ -7,11 +7,10 @@
 {{-- ══ RUANG KERJA ERP ══════════════════════════════════════════
      Isinya KPI + grafik + tabel yang memang perlu digulung, jadi
      .erp-scroll dibiarkan menggulung tegak — bukan dikunci satu layar. --}}
-<div class="erp-ws">
+<div class="erp-ws" x-data="{ filterOpen: false }">
 
 <div class="erp-tb">
-    <button type="button" id="btnDock" class="erp-tb-btn is-on"
-            onclick="erpToggleDock('anDock','btnDock')">
+    <button type="button" class="erp-tb-btn" :class="filterOpen ? 'is-on' : ''" @click="filterOpen = !filterOpen">
         <i class="bi bi-funnel"></i>Filter
     </button>
     <a href="{{ route('maintenance.availability') }}" class="erp-tb-btn"><i class="bi bi-arrow-clockwise"></i>Refresh</a>
@@ -20,61 +19,15 @@
 
 <div class="erp-ws-body">
 
-<aside class="erp-dock" id="anDock" style="display:none">
-    <div class="erp-dock-hd">
-        <span>Filter</span>
-        <button type="button" class="erp-dock-x" onclick="erpToggleDock('anDock','btnDock')" title="Tutup filter">&times;</button>
-    </div>
-    <form id="filterForm" class="erp-dock-body">
-            <div class="erp-grp">
-                <b>Tanggal Dari</b>
-                <input type="date" id="date_from" name="date_from" class="erp-in" value="{{ date('Y-01-01') }}">
-            </div>
-            <div class="erp-grp">
-                <b>Tanggal Sampai</b>
-                <input type="date" id="date_to" name="date_to" class="erp-in" value="{{ date('Y-m-d') }}">
-            </div>
-            <div class="erp-grp">
-                <b>Bulan</b>
-                <select id="bulan" name="bulan" class="erp-in">
-                    <option value="">Semua Bulan</option>
-                    @php $namaBulan = [1=>'Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember']; $thn = date('Y'); @endphp
-                    @foreach($namaBulan as $no => $nm)
-                        <option value="{{ $thn }}-{{ sprintf('%02d', $no) }}">{{ $nm }} {{ $thn }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="erp-grp">
-                <b>Tipe Mesin</b>
-                <select id="tipe_mesin" name="tipe_mesin" class="erp-in">
-                    <option value="">Semua Tipe</option>
-                    @foreach($tipeList as $tipe)
-                        <option value="{{ $tipe }}">{{ $tipe }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="erp-grp">
-                <b>Mesin</b>
-                <div x-data="taField(taMesin)">
-                    <div class="ta-wrap">
-                        <input type="text" class="erp-in ta-input"
-                               x-model="query" @focus="openDd()" @blur="closeDd()" @keydown="onKey($event)" @input="onInput()"
-                               placeholder="Semua Mesin...">
-                        <input type="hidden" id="mesin_id" name="mesin_id" :value="val ?? ''">
-                        <div class="ta-dropdown" x-show="open" x-cloak>
-                            <template x-if="filtered.length===0"><div class="ta-empty">Tidak ditemukan</div></template>
-                            <template x-for="(item,i) in filtered" :key="item.v">
-                                <div class="ta-item" :class="{'ta-active':i===idx}" @mousedown.prevent="pick(item)" x-text="item.t"></div>
-                            </template>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="erp-grp">
-                <button type="submit" class="erp-btn is-pri"><i class="bi bi-search me-1"></i>Tampilkan</button>
-            </div>
-        </form>
-</aside>
+<x-filter.dock>
+    <x-filter.grup judul="Find">
+        <x-filter.cari name="tipe_mesin" id="tipe_mesin" placeholder="Tipe Mesin"
+                       :items="collect($tipeList)->map(fn ($t) => ['v' => $t, 't' => $t])" />
+        <x-filter.mesin />
+    </x-filter.grup>
+
+    <x-filter.tanggal :from="date('Y-01-01')" :to="date('Y-m-d')" />
+</x-filter.dock>
 
 <div class="erp-ws-main">
 <div class="erp-scroll erp-scroll-pad">
@@ -140,9 +93,6 @@ function escHtml(str) {
     if (str === null || str === undefined) return "";
     return String(str).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c]));
 }
-const taMesin = @json($mesinList->map(fn($m) => ['v' => $m->id, 't' => $m->id_mesin.' – '.$m->nama_mesin]));
-
-/* taField() kini satu definisi di layouts/app.blade.php. */
 
 let availChart = null;
 
@@ -161,13 +111,7 @@ function availColor(pct) {
 }
 
 async function loadData() {
-    const params = new URLSearchParams({
-        date_from:  document.getElementById('date_from').value,
-        date_to:    document.getElementById('date_to').value,
-        bulan:      document.getElementById('bulan').value,
-        tipe_mesin: document.getElementById('tipe_mesin').value,
-        mesin_id:   document.getElementById('mesin_id').value,
-    });
+    const params = new URLSearchParams(new FormData(document.getElementById('filterForm')));
     const res  = await fetch(`{{ route('maintenance.availability.data') }}?${params}`);
     const data = await res.json();
     const rows = data.rows || [];

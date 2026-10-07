@@ -26,29 +26,13 @@
 
 <div class="erp-ws-body">
 
-<aside class="erp-dock" x-show="filterOpen" x-cloak>
-    <div class="erp-dock-hd">
-        <span>Filter</span>
-        <button type="button" class="erp-dock-x" @click="filterOpen = false" title="Tutup filter">&times;</button>
-    </div>
-    <form method="GET" action="{{ route('master.shift.index') }}" class="erp-dock-body">
-        <div class="erp-grp">
-            <b>Find</b>
-            <input type="text" name="q" value="{{ $search }}" class="erp-in @if($search !== '') is-set @endif"
-                   placeholder="Nama Shift">
-            <select name="filter_avail" class="erp-in @if($filterAvail !== '') is-set @endif">
-                <option value="">Semua Shift</option>
-                <option value="ya" @selected($filterAvail === 'ya')>Dihitung Availability</option>
-                <option value="tidak" @selected($filterAvail === 'tidak')>Tidak Dihitung</option>
-            </select>
-        </div>
-
-        <div class="erp-grp">
-            <button type="submit" class="erp-btn is-pri"><i class="bi bi-funnel"></i>Tampilkan</button>
-            <a href="{{ route('master.shift.index') }}" class="erp-btn">Reset</a>
-        </div>
-    </form>
-</aside>
+<x-filter.dock :action="route('master.shift.index')">
+    <x-filter.grup judul="Find">
+        <x-filter.teks :value="$search" placeholder="Nama Shift" />
+        <x-filter.cari name="filter_avail" placeholder="Dihitung Availability" :value="$filterAvail"
+                       :items="[['v' => 'ya', 't' => 'Dihitung Availability'], ['v' => 'tidak', 't' => 'Tidak Dihitung']]" />
+    </x-filter.grup>
+</x-filter.dock>
 
 <div class="erp-ws-main">
 {{-- Judul sudah ada di topbar; penggulungan dipegang .erp-scroll saja. --}}

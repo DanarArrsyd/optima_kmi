@@ -22,9 +22,6 @@
     .kpi-cell .kpi-lbl  { font-size:11px; color:#6b7280; line-height:1.2; }
     .kpi-cell i         { font-size:1.3rem; }
 
-    .cs-toolbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
-    .cs-toolbar .cs-search { flex:1 1 220px; min-width:180px; }
-    .filter-badge { font-size:10px; }
 
 </style>
 
@@ -32,11 +29,10 @@
      Toolbar pencarian, urutan, dan filter lanjutan dipindah UTUH ke dalam
      dock — id dan kelasnya tidak diubah sedikit pun supaya JS halaman ini
      tetap bekerja apa adanya. --}}
-<div class="erp-ws">
+<div class="erp-ws" x-data="{ filterOpen: false }">
 
 <div class="erp-tb">
-    <button type="button" id="btnDock" class="erp-tb-btn"
-            onclick="erpToggleDock('csDock','btnDock')">
+    <button type="button" class="erp-tb-btn" :class="filterOpen ? 'is-on' : ''" @click="filterOpen = !filterOpen">
         <i class="bi bi-funnel"></i>Filter
     </button>
     <a href="{{ route('maintenance.control-stroke-mesin') }}" class="erp-tb-btn"><i class="bi bi-arrow-clockwise"></i>Refresh</a>
@@ -60,56 +56,25 @@
 
 <div class="erp-ws-body">
 
-<aside class="erp-dock" id="csDock" style="display:none">
-    <div class="erp-dock-hd">
-        <span>Filter</span>
-        <button type="button" class="erp-dock-x" onclick="erpToggleDock('csDock','btnDock')" title="Tutup filter">&times;</button>
-    </div>
-    <div class="erp-dock-body">
-{{-- Toolbar: search + sort selalu terlihat; filter lanjutan dilipat. --}}
-<div class="cs-toolbar">
-    <div class="cs-search">
-        <div class="input-group input-group-sm">
-            <span class="input-group-text"><i class="bi bi-search"></i></span>
-            <input type="text" id="csSearch" class="form-control" placeholder="Cari kode / nama mesin...">
-        </div>
-    </div>
-    <select id="csSort" class="form-select form-select-sm" >
-        <option value="pct_desc">Stroke tertinggi &darr;</option>
-        <option value="pct_asc">Stroke terendah &uarr;</option>
-        <option value="kode_asc">Kode mesin A–Z</option>
-        <option value="nama_asc">Nama mesin A–Z</option>
-    </select>
-    <button type="button" id="csFilterToggle" class="btn btn-outline-secondary btn-sm" aria-expanded="false">
-        <i class="bi bi-sliders me-1"></i>Filter <span id="csFilterCount" class="badge bg-secondary filter-badge d-none">0</span>
-    </button>
-    <button type="button" id="csReset" class="btn btn-outline-secondary btn-sm d-none"><i class="bi bi-x-lg me-1"></i>Reset</button>
-</div>
+{{-- Menyaring di sisi klien atas data yang sudah dimuat. Opsi Find diisi
+     initFilters() dari data itu sendiri — tak ada opsi yang hasilnya kosong. --}}
+<x-filter.dock form-id="csForm" x-on:submit.prevent="bacaFilterCs()">
+    <x-filter.grup judul="Find">
+        <x-filter.teks id="csSearch" placeholder="Cari kode / nama mesin..." />
+        <x-filter.cari name="mesin" id="cs_mesin" placeholder="Mesin" />
+        <x-filter.cari name="tipe" id="cs_tipe" placeholder="Tipe Mesin" />
+        <x-filter.cari name="line" id="cs_line" placeholder="Line" />
+    </x-filter.grup>
 
-{{-- Panel filter lanjutan — tersembunyi sampai tombol Filter ditekan. Tiap filter typeahead
-     (bisa diketik): opsinya diisi dari data yang dimuat, jadi tak ada opsi kosong. --}}
-<div id="csFilterPanel" class="d-none">
-    <div style="padding:6px">
-        <div class="cs-adv">
-            <div class="erp-grp">
-                <b>Mesin</b>
-                <div class="cs-ta" data-key="mesin"><input type="text" class="form-control form-control-sm cs-ta-input" placeholder="Semua Mesin..." autocomplete="off"><div class="cs-ta-dd d-none"></div></div>
-            </div>
-            <div class="erp-grp">
-                <b>Tipe Mesin</b>
-                <div class="cs-ta" data-key="tipe"><input type="text" class="form-control form-control-sm cs-ta-input" placeholder="Semua Tipe..." autocomplete="off"><div class="cs-ta-dd d-none"></div></div>
-            </div>
-            <div class="erp-grp">
-                <b>Line</b>
-                <div class="cs-ta" data-key="line"><input type="text" class="form-control form-control-sm cs-ta-input" placeholder="Semua Line..." autocomplete="off"><div class="cs-ta-dd d-none"></div></div>
-            </div>
-        </div>
-    </div>
-</div>
-
-
-    </div>
-</aside>
+    <x-filter.grup judul="Urutkan">
+        <select id="csSort" name="sort" class="erp-in" aria-label="Urutkan">
+            <option value="pct_desc">Stroke tertinggi ↓</option>
+            <option value="pct_asc">Stroke terendah ↑</option>
+            <option value="kode_asc">Kode mesin A–Z</option>
+            <option value="nama_asc">Nama mesin A–Z</option>
+        </select>
+    </x-filter.grup>
+</x-filter.dock>
 
 <div class="erp-ws-main">
 <div class="erp-scroll erp-scroll-pad">
@@ -174,7 +139,6 @@
 @endsection
 
 @push('scripts')
-@include('maintenance.partials.typeahead')
 <script>
 const canInputPreventive = {{ auth()->user()->hasRole(['admin', 'staff_maintenance']) ? 'true' : 'false' }};
 const baseUrl = `{{ url('maintenance/availability/control-stroke-mesin') }}`;
@@ -201,7 +165,6 @@ const STATUS = {
 
 let allRows = [];
 const state = { status: '', q: '', mesin: '', tipe: '', line: '', sort: 'pct_desc' };
-const ta = {};   // combobox instance per key
 
 // bangun daftar opsi unik dari data yang dimuat → tak ada opsi kosong
 function uniqueOpts(rows, valFn, labelFn) {
@@ -211,15 +174,9 @@ function uniqueOpts(rows, valFn, labelFn) {
 }
 
 function initFilters() {
-    ta.mesin = csCombobox(document.querySelector('.cs-ta[data-key="mesin"]'),
-        uniqueOpts(allRows, r => r.kode_mesin, r => `${r.kode_mesin} – ${r.nama_mesin}`),
-        v => { state.mesin = v; render(); });
-    ta.tipe = csCombobox(document.querySelector('.cs-ta[data-key="tipe"]'),
-        uniqueOpts(allRows, r => r.tipe_mesin, r => r.tipe_mesin),
-        v => { state.tipe = v; render(); });
-    ta.line = csCombobox(document.querySelector('.cs-ta[data-key="line"]'),
-        uniqueOpts(allRows, r => r.line, r => r.line),
-        v => { state.line = v; render(); });
+    Alpine.$data(document.getElementById('cs_mesin')).items = uniqueOpts(allRows, r => r.kode_mesin, r => `${r.kode_mesin} – ${r.nama_mesin}`);
+    Alpine.$data(document.getElementById('cs_tipe')).items = uniqueOpts(allRows, r => r.tipe_mesin, r => r.tipe_mesin);
+    Alpine.$data(document.getElementById('cs_line')).items = uniqueOpts(allRows, r => r.line, r => r.line);
 }
 
 async function loadData() {
@@ -267,12 +224,6 @@ function render() {
     });
 
     // badge jumlah filter lanjutan + tombol reset
-    const advCount = (state.mesin ? 1 : 0) + (state.tipe ? 1 : 0) + (state.line ? 1 : 0);
-    const badge = document.getElementById('csFilterCount');
-    badge.textContent = advCount;
-    badge.classList.toggle('d-none', advCount === 0);
-    const anyFilter = state.status || state.q || state.mesin || state.tipe || state.line;
-    document.getElementById('csReset').classList.toggle('d-none', !anyFilter);
 
     document.getElementById('csCount').textContent =
         rows.length === allRows.length ? `${allRows.length} mesin` : `${rows.length} dari ${allRows.length} mesin`;
@@ -340,23 +291,17 @@ document.querySelectorAll('.kpi-cell').forEach(cell => {
     cell.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
 });
 
-document.getElementById('csSearch').addEventListener('input', e => { state.q = e.target.value; render(); });
-document.getElementById('csSort').addEventListener('change', e => { state.sort = e.target.value; render(); });
-// Filter mesin/tipe/line = combobox typeahead (di-wire lewat onSelect di initFilters()).
-
-document.getElementById('csFilterToggle').addEventListener('click', () => {
-    const panel = document.getElementById('csFilterPanel');
-    const btn = document.getElementById('csFilterToggle');
-    const hidden = panel.classList.toggle('d-none');
-    btn.setAttribute('aria-expanded', hidden ? 'false' : 'true');
-});
-
-document.getElementById('csReset').addEventListener('click', () => {
-    state.status = ''; state.q = ''; state.mesin = ''; state.tipe = ''; state.line = '';
-    document.getElementById('csSearch').value = '';
-    ta.mesin?.reset(); ta.tipe?.reset(); ta.line?.reset();
+/* Dock baku: semua kontrol dibaca dari form. Ketik-cari langsung menyaring;
+   pilihan typeahead memancarkan 'change' dari input hidden-nya. */
+function bacaFilterCs() {
+    const fd = new FormData(document.getElementById('csForm'));
+    state.q = fd.get('q') || '';
+    state.sort = fd.get('sort') || 'pct_desc';
+    ['mesin', 'tipe', 'line'].forEach(k => { state[k] = fd.get(k) || ''; });
     render();
-});
+}
+document.getElementById('csForm').addEventListener('input', bacaFilterCs);
+document.getElementById('csForm').addEventListener('change', bacaFilterCs);
 
 document.addEventListener('DOMContentLoaded', loadData);
 </script>

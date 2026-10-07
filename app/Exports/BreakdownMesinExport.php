@@ -12,7 +12,7 @@ class BreakdownMesinExport implements FromCollection, WithHeadings
     public function __construct(
         private ?string $dateFrom = null,
         private ?string $dateTo = null,
-        private ?int $mesinId = null,
+        private array $mesinIds = [],
     ) {}
 
     public function headings(): array
@@ -36,8 +36,8 @@ class BreakdownMesinExport implements FromCollection, WithHeadings
         if ($this->dateTo) {
             $q->whereDate('tanggal_breakdown', '<=', $this->dateTo);
         }
-        if ($this->mesinId) {
-            $q->where('id_mesin', $this->mesinId);
+        if ($this->mesinIds) {
+            $q->whereIn('id_mesin', $this->mesinIds);
         }
 
         return $q->orderBy('tanggal_breakdown')->orderBy('id')->get()->map(fn ($b) => [

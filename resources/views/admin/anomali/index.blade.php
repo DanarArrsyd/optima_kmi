@@ -22,41 +22,18 @@
 
 <div class="erp-ws-body">
 
-<aside class="erp-dock" x-show="filterOpen" x-cloak>
-    <div class="erp-dock-hd">
-        <span>Filter</span>
-        <button type="button" class="erp-dock-x" @click="filterOpen = false" title="Tutup filter">&times;</button>
-    </div>
-    <form method="GET" action="{{ route('admin.anomali') }}" class="erp-dock-body">
+<x-filter.dock :action="route('admin.anomali')">
+    <x-filter.grup judul="Find">
+        <x-filter.cari name="reason" placeholder="Jenis Anomali" :value="$reason"
+                       :items="[['v' => 'high_pct', 't' => 'Achievement >'.config('anomali_lhp.pct_maks').'%'],
+                                ['v' => 'short_wkj', 't' => 'Waktu kerja <'.round(config('anomali_lhp.wkj_min') * 60).' menit'],
+                                ['v' => 'no_std', 't' => 'SPH standar belum diset']]" />
+    </x-filter.grup>
 
-        <div class="erp-grp">
-            <b>Jenis Anomali</b>
-            <select name="reason" class="erp-in @if($reason !== '') is-set @endif">
-                <option value="" @selected($reason === '')>Semua Jenis</option>
-                <option value="high_pct" @selected($reason === 'high_pct')>Achievement &gt;150%</option>
-                <option value="short_wkj" @selected($reason === 'short_wkj')>Waktu kerja &lt;5 menit</option>
-                <option value="no_std" @selected($reason === 'no_std')>SPH standar belum diset</option>
-            </select>
-        </div>
-
-        <div class="erp-grp">
-            <b>Filter by Date</b>
-            <div class="erp-dock-row">
-                <span>From</span>
-                <input type="date" name="date_from" value="{{ $dateFrom }}" class="erp-in">
-            </div>
-            <div class="erp-dock-row">
-                <span>To</span>
-                <input type="date" name="date_to" value="{{ $dateTo }}" class="erp-in">
-            </div>
-        </div>
-
-        <div class="erp-grp">
-            <button type="submit" class="erp-btn is-pri"><i class="bi bi-funnel"></i>Tampilkan</button>
-            <a href="{{ route('admin.anomali') }}" class="erp-btn">Reset</a>
-        </div>
-    </form>
-</aside>
+    {{-- Tanpa centang: halaman ini memuat SEMUA baris rentang ke memori untuk
+         dihitung — mematikan tanggal = memuat seluruh riwayat produksi. --}}
+    <x-filter.tanggal :from="$dateFrom" :to="$dateTo" />
+</x-filter.dock>
 
 <div class="erp-ws-main">
 {{-- Judul sudah ada di topbar; jumlah record sudah di status bar. --}}

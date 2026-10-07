@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Maintenance;
 
+use App\Http\Controllers\Concerns\BacaFilterMesin;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Maintenance\Concerns\ResolvesMaintenanceRange;
 use App\Models\MasterMesin;
@@ -10,7 +11,7 @@ use Illuminate\Http\Request;
 
 class AvailabilityController extends Controller
 {
-    use ResolvesMaintenanceRange;
+    use BacaFilterMesin, ResolvesMaintenanceRange;
 
     public function __construct(private MaintenanceDashboardService $svc) {}
 
@@ -25,7 +26,7 @@ class AvailabilityController extends Controller
     public function data(Request $request)
     {
         [$from, $to] = $this->resolveRange($request);
-        $mesinId = (int) $request->input('mesin_id', 0) ?: null;
+        $mesinId = $this->mesinIds($request, 'mesin_id');
         $tipeMesin = $request->input('tipe_mesin') ?: null;
         $rows = $this->svc->compute($from, $to, $mesinId, $tipeMesin);
 

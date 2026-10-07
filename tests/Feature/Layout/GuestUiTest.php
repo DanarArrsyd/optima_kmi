@@ -76,9 +76,9 @@ class GuestUiTest extends TestCase
     {
         $guest = $this->guest();
 
-        $this->actingAs($guest)->get(route('vcb.produksi'))->assertOk()->assertDontSee('id="oneExportBtn"', false);
+        $this->actingAs($guest)->get(route('vcb.produksi'))->assertOk()->assertDontSee('id="exportExcel"', false);
         $this->actingAs($guest)->get(route('vcb.mesin'))->assertOk()->assertDontSee('id="exportExcel"', false);
-        $this->actingAs($guest)->get(route('vcb.quality'))->assertOk()->assertDontSee('id="oneExportBtn"', false);
+        $this->actingAs($guest)->get(route('vcb.quality'))->assertOk()->assertDontSee('id="exportExcel"', false);
         $this->actingAs($guest)->get(route('vcb.dandori'))->assertOk()->assertDontSee(':href="exportUrl"', false);
     }
 
@@ -87,9 +87,9 @@ class GuestUiTest extends TestCase
     {
         $manager = User::factory()->create(['role' => 'manager']);
 
-        $this->actingAs($manager)->get(route('vcb.produksi'))->assertOk()->assertSee('id="oneExportBtn"', false);
+        $this->actingAs($manager)->get(route('vcb.produksi'))->assertOk()->assertSee('id="exportExcel"', false);
         $this->actingAs($manager)->get(route('vcb.mesin'))->assertOk()->assertSee('id="exportExcel"', false);
-        $this->actingAs($manager)->get(route('vcb.quality'))->assertOk()->assertSee('id="oneExportBtn"', false);
+        $this->actingAs($manager)->get(route('vcb.quality'))->assertOk()->assertSee('id="exportExcel"', false);
         $this->actingAs($manager)->get(route('vcb.dandori'))->assertOk()->assertSee(':href="exportUrl"', false);
     }
 

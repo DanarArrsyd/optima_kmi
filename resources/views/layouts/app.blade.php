@@ -1073,6 +1073,9 @@
         }
         .erp-dd-item:last-child { border-bottom: none; }
         .erp-dd-item:hover { background: var(--surface-3); }
+        .erp-dd-item.is-act { background: var(--surface-3); }
+        .erp-ta { position: relative; }
+        .erp-err { color: #b91c1c; font-size: var(--erp-fs-sm); line-height: 1.3; }
         .erp-dd-item .sub {
             display: block; font-size: var(--erp-fs-sm, 11px);
             color: var(--text-4); margin-top: 1px;
@@ -1757,17 +1760,44 @@ function filterSearchComp(items, initVal, initLabel, onPick) {
         query: initLabel || '',
         val:   (initVal !== undefined && initVal !== null && initVal !== 0 && initVal !== '0') ? initVal : '',
         open:  false,
+        idx:   -1,
         get filtered() {
             if (!this.query.trim()) return this.items.slice(0, 40);
             const q = this.query.toLowerCase();
             return this.items.filter(i => i.t.toLowerCase().includes(q)).slice(0, 40);
         },
-        pick(item) {
-            this.val = item.v; this.query = item.t; this.open = false;
-            if (typeof onPick === 'function') onPick(item);
+        /* Input hidden pembawa nilai ikut memancarkan 'change' supaya halaman
+           AJAX yang mendengarkan perubahan filter tetap terpicu — dulu
+           kontrolnya <select> yang memancarkan 'change' sendiri. */
+        _kabari() {
+            this.$nextTick(() => {
+                const h = this.$root.querySelector('input[type=hidden]');
+                if (h) h.dispatchEvent(new Event('change', { bubbles: true }));
+            });
         },
-        clear()   { this.val = ''; this.query = ''; },
-        onInput() { this.val = ''; this.open = true; },
+        pick(item) {
+            this.val = item.v; this.query = item.t; this.open = false; this.idx = -1;
+            if (typeof onPick === 'function') onPick(item);
+            this._kabari();
+        },
+        clear()   { this.val = ''; this.query = ''; this.idx = -1; this._kabari(); },
+        onInput() { this.val = ''; this.open = true; this.idx = -1; },
+        onKey(e) {
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                this.open = true;
+                this.idx = Math.min(this.idx + 1, this.filtered.length - 1);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                this.idx = Math.max(this.idx - 1, 0);
+            } else if (e.key === 'Enter' && this.open && this.idx >= 0 && this.filtered[this.idx]) {
+                /* Enter saat ada sorotan = pilih; tanpa sorotan = kirim form seperti biasa. */
+                e.preventDefault();
+                this.pick(this.filtered[this.idx]);
+            } else if (e.key === 'Escape') {
+                this.open = false;
+            }
+        },
     };
 }
 
@@ -1832,6 +1862,31 @@ function partGroupComp(initPartId, initPartLabel, initProsesId, initProsesLabel)
             this.prosesQuery = '';
         },
     };
+}
+
+/* Mengisi kontrol dock filter dari JS (mis. drill-down VCB Mode 1 → Mode 2)
+   LEWAT state Alpine-nya. Menulis .value langsung membuat teks yang tampil
+   dan nilai yang terkirim tidak sinkron. */
+function isiFilterCari(hiddenId, nilai) {
+    const h = document.getElementById(hiddenId);
+    if (!h) return;
+    const d = Alpine.$data(h);
+    const item = (d.items || []).find(i => String(i.v) === String(nilai));
+    item ? d.pick(item) : d.clear();
+    h.value = item ? item.v : '';   // sama seperti tanggal: dibaca sebelum Alpine merender
+}
+function isiFilterTanggal(idFrom, dari, sampai) {
+    const el = document.getElementById(idFrom);
+    if (!el) return;
+    const d = Alpine.$data(el);
+    d.dari = dari;
+    d.sampai = sampai;
+    /* Nilai DOM ikut disetel sekarang: pemanggil biasanya langsung membaca
+       form lewat FormData, sebelum Alpine sempat merender ulang. */
+    el.value = dari;
+    const to = el.closest('.erp-grp').querySelectorAll('input[type=date]')[1];
+    if (to) to.value = sampai;
+    el.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
 function erpToggleDock(dockId, btnId) {

@@ -30,36 +30,15 @@
 
 <div class="erp-ws-body">
 
-<aside class="erp-dock" x-show="filterOpen" x-cloak>
-    <div class="erp-dock-hd">
-        <span>Filter</span>
-        <button type="button" class="erp-dock-x" @click="filterOpen = false" title="Tutup filter">&times;</button>
-    </div>
-    <form method="GET" action="{{ route('master.mesin.index') }}" class="erp-dock-body">
-        <div class="erp-grp">
-            <b>Find</b>
-            <input type="text" name="q" value="{{ $search }}" class="erp-in @if($search !== '') is-set @endif"
-                   placeholder="ID atau Nama Mesin">
-            <select name="filter_line" class="erp-in @if($filterLine !== '') is-set @endif">
-                <option value="">Semua Line</option>
-                @foreach($lineList as $o)
-                <option value="{{ $o }}" @selected($filterLine === $o)>{{ $o }}</option>
-                @endforeach
-            </select>
-            <select name="filter_tipe" class="erp-in @if($filterTipe !== '') is-set @endif">
-                <option value="">Semua Tipe</option>
-                @foreach($tipeList as $o)
-                <option value="{{ $o }}" @selected($filterTipe === $o)>{{ $o }}</option>
-                @endforeach
-            </select>
-        </div>
-
-        <div class="erp-grp">
-            <button type="submit" class="erp-btn is-pri"><i class="bi bi-funnel"></i>Tampilkan</button>
-            <a href="{{ route('master.mesin.index') }}" class="erp-btn">Reset</a>
-        </div>
-    </form>
-</aside>
+<x-filter.dock :action="route('master.mesin.index')">
+    <x-filter.grup judul="Find">
+        <x-filter.teks :value="$search" placeholder="ID atau Nama Mesin" />
+        <x-filter.cari name="filter_line" placeholder="Line" :value="$filterLine"
+                       :items="collect($lineList)->map(fn ($o) => ['v' => $o, 't' => $o])" />
+        <x-filter.cari name="filter_tipe" placeholder="Tipe Mesin" :value="$filterTipe"
+                       :items="collect($tipeList)->map(fn ($o) => ['v' => $o, 't' => $o])" />
+    </x-filter.grup>
+</x-filter.dock>
 
 <div class="erp-ws-main">
 {{-- Judul sudah ada di topbar; penggulungan dipegang .erp-scroll saja. --}}

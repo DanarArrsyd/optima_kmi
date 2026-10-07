@@ -20,23 +20,11 @@
 
 <div class="erp-ws-body">
 
-<aside class="erp-dock" x-show="filterOpen" x-cloak>
-    <div class="erp-dock-hd">
-        <span>Filter</span>
-        <button type="button" class="erp-dock-x" @click="filterOpen = false" title="Tutup filter">&times;</button>
-    </div>
-    <form method="GET" action="{{ route('master.proses-repair-produksi.index') }}" class="erp-dock-body">
-        <div class="erp-grp">
-            <b>Find</b>
-            <input type="text" name="q" value="{{ $search }}" class="erp-in @if($search !== '') is-set @endif"
-                   placeholder="Part atau Nama Proses">
-        </div>
-        <div class="erp-grp">
-            <button type="submit" class="erp-btn is-pri"><i class="bi bi-funnel"></i>Tampilkan</button>
-            <a href="{{ route('master.proses-repair-produksi.index') }}" class="erp-btn">Reset</a>
-        </div>
-    </form>
-</aside>
+<x-filter.dock :action="route('master.proses-repair-produksi.index')">
+    <x-filter.grup judul="Find">
+        <x-filter.teks :value="$search" placeholder="Part atau Nama Proses" />
+    </x-filter.grup>
+</x-filter.dock>
 
 <div class="erp-ws-main">
 <div class="erp-scroll">

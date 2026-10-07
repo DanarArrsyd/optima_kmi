@@ -80,8 +80,7 @@
 <div x-data="vcbNg()" x-init="load()" class="erp-ws">
 
 <div class="erp-tb">
-    <button type="button" id="btnDock" class="erp-tb-btn"
-            onclick="erpToggleDock('ngDock','btnDock')">
+    <button type="button" class="erp-tb-btn" :class="filterOpen ? 'is-on' : ''" @click="filterOpen = !filterOpen">
         <i class="bi bi-funnel"></i>Filter
     </button>
     <button type="button" class="erp-tb-btn" @click="load()" :disabled="loading">
@@ -94,25 +93,9 @@
 
 {{-- Dock mulai tertutup; cakupan data yang sedang dilihat tetap
      terbaca di status bar, jadi tidak ada yang tersembunyi diam-diam. --}}
-<aside class="erp-dock" id="ngDock" style="display:none">
-    <div class="erp-dock-hd">
-        <span>Filter</span>
-        <button type="button" class="erp-dock-x" onclick="erpToggleDock('ngDock','btnDock')" title="Tutup filter">&times;</button>
-    </div>
-    <div class="erp-dock-body">
-        <div class="erp-grp">
-            <b>Filter by Date</b>
-            <div class="erp-dock-row"><span>From</span><input type="date" class="erp-in" x-model="dateFrom"></div>
-            <div class="erp-dock-row"><span>To</span><input type="date" class="erp-in" x-model="dateTo"></div>
-        </div>
-        <div class="erp-grp">
-            <button type="button" class="erp-btn is-pri" @click="load()" :disabled="loading">
-                <span x-show="!loading">Tampilkan</span>
-                <span x-show="loading" x-cloak>Memuat&hellip;</span>
-            </button>
-        </div>
-    </div>
-</aside>
+<x-filter.dock form-id="ngFilter" x-on:submit.prevent="load()">
+    <x-filter.tanggal id-from="ng_date_from" id-to="ng_date_to" :from="$defaultFrom" :to="$defaultTo" />
+</x-filter.dock>
 
 <div class="erp-ws-main">
 <div class="erp-scroll erp-scroll-pad">
@@ -270,8 +253,7 @@ function vcbNg() {
     let chartPcs = null;
 
     return {
-        dateFrom: '{{ $defaultFrom }}',
-        dateTo: '{{ $defaultTo }}',
+        filterOpen: false,
         loading: false,
         hasData: false,
         loadError: false,
@@ -311,7 +293,7 @@ function vcbNg() {
             this.detailError = false;
 
             try {
-                const p = new URLSearchParams({ date_from: this.dateFrom, date_to: this.dateTo });
+                const p = new URLSearchParams(new FormData(document.getElementById('ngFilter')));
                 const res = await fetch(`{{ $routeData }}?${p}`, {
                     headers: { 'Accept': 'application/json' },
                 });
