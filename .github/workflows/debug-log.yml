@@ -34,6 +34,7 @@ on:
           - dandoribaru    # sesi yatim & ambigu KHUSUS era aplikasi (Juni 2026 ke atas)
           - shiftcek       # master_shift + riwayat perubahan (cek korban impor 00:00)
           - kembar         # baris transaksi kembar per modul (7 modul input)
+          - kembarrinci    # rincian per baris kembar: kandidat hapus vs disimpan (untuk review)
           - markran        # ⚠️ MENULIS ke tabel migrations
 
 env:
@@ -460,6 +461,15 @@ jobs:
           ssh -p "${{ secrets.SSH_PORT }}" -i ~/.ssh/deploy_key \
             "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" \
             'cd ${{ env.REMOTE_PATH }} && ${{ env.REMOTE_PHP }}' < scripts/probe/kembar.php
+
+      # Rincian per baris sebelum pembersihan data kembar: mana yang disimpan
+      # (id terkecil), mana kandidat hapus, dan apakah angkanya identik.
+      - name: Rincian baris kembar (read-only)
+        if: ${{ github.event.inputs.mode == 'kembarrinci' }}
+        run: |
+          ssh -p "${{ secrets.SSH_PORT }}" -i ~/.ssh/deploy_key \
+            "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" \
+            'cd ${{ env.REMOTE_PATH }} && ${{ env.REMOTE_PHP }}' < scripts/probe/kembar-rinci.php
 
       # Daftar LENGKAP status migrasi di prod (mode `migstatus` sengaja di-grep sempit).
       # Read-only. Dipakai buat menyusun baseline gerbang CI cakupan migrasi.
