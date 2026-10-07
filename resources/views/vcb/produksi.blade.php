@@ -4,17 +4,13 @@
 @section('main_mod', 'erp-flush')
 
 @section('content')
-@php
-$mesinByLine = $mesin->groupBy('line');
-$_mesinForJs = $mesin->map(fn ($m) => ['id' => $m->id, 'code' => $m->id_mesin, 'name' => $m->nama_mesin, 'line' => $m->line])->values();
-@endphp
 
 {{-- ══════════════════════════════════════════════════════════════
      Ruang kerja ERP. Berbeda dari halaman input: isinya KPI + grafik +
      tabel yang memang perlu digulung, jadi .erp-scroll dibiarkan
      menggulung tegak — bukan dikunci satu layar.
 ══════════════════════════════════════════════════════════════ --}}
-<div class="erp-ws">
+<div class="erp-ws" x-data="{ filterOpen: false }">
 
 <div class="erp-tb">
     <button type="button" id="tabAll" class="erp-tb-btn is-on" onclick="switchMode('all')">
@@ -23,9 +19,14 @@ $_mesinForJs = $mesin->map(fn ($m) => ['id' => $m->id, 'code' => $m->id_mesin, '
     <button type="button" id="tabOne" class="erp-tb-btn" onclick="switchMode('one')">
         <i class="bi bi-person"></i>Per Operator
     </button>
-    <button type="button" id="btnDock" class="erp-tb-btn" onclick="erpToggleDock('vcbDock','btnDock')">
+    <button type="button" class="erp-tb-btn" :class="filterOpen ? 'is-on' : ''" @click="filterOpen = !filterOpen">
         <i class="bi bi-funnel"></i>Filter
     </button>
+    @if(! auth()->user()->isGuest())
+    {{-- href diisi pemuat data mode yang sedang tampil — isi file selalu
+         sama dengan layar, termasuk filternya. --}}
+    <a id="exportExcel" href="{{ route('vcb.produksi.export') }}" class="erp-tb-btn"><i class="bi bi-file-earmark-excel"></i>Export Excel</a>
+    @endif
     <span class="erp-tb-sp"></span>
 </div>
 
@@ -33,98 +34,42 @@ $_mesinForJs = $mesin->map(fn ($m) => ['id' => $m->id, 'code' => $m->id_mesin, '
 
 {{-- Dock mulai tertutup; cakupan data yang sedang dilihat tetap
      terbaca di status bar, jadi tidak ada yang tersembunyi diam-diam. --}}
-<aside class="erp-dock" id="vcbDock" style="display:none">
-    <div class="erp-dock-hd">
-        <span>Filter</span>
-        <button type="button" class="erp-dock-x" onclick="erpToggleDock('vcbDock','btnDock')" title="Tutup filter">&times;</button>
-    </div>
-    <div class="erp-dock-body">
-        <div id="dockAll">
-    <form id="formAll" class="erp-dock-form" x-data="mesinFilterComp(_mesinForJs, [])">
-            <div class="erp-grp">
-                <b>Dari Tanggal</b>
-                <input type="date" id="all_date_from" class="erp-in" value="{{ now('Asia/Jakarta')->startOfMonth()->toDateString() }}">
-            </div>
-            <div class="erp-grp">
-                <b>Sampai Tanggal</b>
-                <input type="date" id="all_date_to" class="erp-in" value="{{ now('Asia/Jakarta')->toDateString() }}">
-            </div>
-            <div class="erp-grp">
-                <b>Bulan</b>
-                <input type="month" id="all_bulan_filter" class="erp-in">
-            </div>
-            <div class="erp-grp">
-                <b>Shift</b>
-                <select id="all_shift_id" class="erp-in">
-                    <option value="">Semua Shift</option>
-                    @foreach($shifts as $s)
-                        <option value="{{ $s->id }}">{{ $s->nama_shift }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="erp-grp">
-                <b>Mesin</b>
-                @include('partials.mesin-picker', ['mesinByLine' => $mesinByLine])
-            </div>
-            <div class="erp-grp">
-                <button type="submit" class="erp-btn is-pri">
-                    <i class="bi bi-funnel me-1"></i>Tampilkan
-                </button>
-            </div>
-        </form>
-        </div>
-        <div id="dockOne" style="display:none">
-    <form id="formOne" class="erp-dock-form" x-data="mesinFilterComp(_mesinForJs, [])">
-            <div class="erp-grp">
-                <b>Dari Tanggal</b>
-                <input type="date" id="one_date_from" class="erp-in" value="{{ now('Asia/Jakarta')->startOfMonth()->toDateString() }}">
-            </div>
-            <div class="erp-grp">
-                <b>Sampai Tanggal</b>
-                <input type="date" id="one_date_to" class="erp-in" value="{{ now('Asia/Jakarta')->toDateString() }}">
-            </div>
-            <div class="erp-grp">
-                <b>Bulan</b>
-                <input type="month" id="one_bulan_filter" class="erp-in">
-            </div>
-            <div class="erp-grp">
-                <b>Operator <span class="text-danger">*</span></b>
-                <select id="one_karyawan_id" class="erp-in">
-                    <option value="">— Pilih Operator —</option>
-                    @foreach($karyawan as $k)
-                        <option value="{{ $k->id }}"
-                                data-nonaktif="{{ ! $k->is_aktif && $k->tanggal_nonaktif ? $k->tanggal_nonaktif->format('Y-m-d') : '' }}">{{ $k->nama_karyawan }}</option>
-                    @endforeach
-                </select>
-                <small id="one_operator_note" style="color:#b91c1c;font-size:10px"></small>
-            </div>
-            <div class="erp-grp">
-                <b>Shift</b>
-                <select id="one_shift_id" class="erp-in">
-                    <option value="">Semua Shift</option>
-                    @foreach($shifts as $s)
-                        <option value="{{ $s->id }}">{{ $s->nama_shift }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="erp-grp">
-                <b>Mesin</b>
-                @include('partials.mesin-picker', ['mesinByLine' => $mesinByLine])
-            </div>
-            <div class="erp-grp">
-                <button type="submit" class="erp-btn is-pri">
-                    <i class="bi bi-search me-1"></i>Search
-                </button>
-                @if(! auth()->user()->isGuest())
-                <a id="oneExportBtn" href="#" class="erp-btn">
-                    <i class="bi bi-file-earmark-excel me-1"></i>Export
-                </a>
-                @endif
-            </div>
-        </form>
-        </div>
-    </div>
-</aside>
+{{-- Dua dock, satu per mode — dibungkus display:contents supaya aside tetap
+     anak flex .erp-ws-body. switchMode() menukar keduanya. --}}
+<div id="dockAll" style="display:contents">
+<x-filter.dock form-id="formAll">
+    <x-filter.grup judul="Find">
+        <x-filter.cari name="shift_id" id="all_shift_id" placeholder="Shift" :items="$shifts->map(fn ($s) => ['v' => $s->id, 't' => $s->nama_shift])" />
+        <x-filter.mesin />
+    </x-filter.grup>
+
+    <x-filter.tanggal id-from="all_date_from" id-to="all_date_to"
+                      :from="now('Asia/Jakarta')->startOfMonth()->toDateString()" :to="now('Asia/Jakarta')->toDateString()" />
+</x-filter.dock>
+</div>
+
+<div id="dockOne" style="display:none">
+<x-filter.dock form-id="formOne">
+    <x-filter.grup judul="Find">
+        {{-- Tetap <select>: saringOrangNonaktif() membangun ulang opsinya per
+             tanggal (orang nonaktif disembunyikan, PR #97). --}}
+        <select id="one_karyawan_id" name="karyawan_id" class="erp-in" aria-label="Operator">
+            <option value="">— Pilih Operator —</option>
+            @foreach($karyawan as $k)
+                <option value="{{ $k->id }}"
+                        data-nonaktif="{{ ! $k->is_aktif && $k->tanggal_nonaktif ? $k->tanggal_nonaktif->format('Y-m-d') : '' }}">{{ $k->nama_karyawan }}</option>
+            @endforeach
+        </select>
+        <small id="one_operator_note" style="color:var(--c-danger);font-size:10px"></small>
+        <x-filter.cari name="shift_id" id="one_shift_id" placeholder="Shift" :items="$shifts->map(fn ($s) => ['v' => $s->id, 't' => $s->nama_shift])" />
+        <x-filter.mesin />
+    </x-filter.grup>
+
+    {{-- kirim=false: pintasan Bulan tidak boleh memuat tanpa operator terpilih. --}}
+    <x-filter.tanggal id-from="one_date_from" id-to="one_date_to" :kirim="false"
+                      :from="now('Asia/Jakarta')->startOfMonth()->toDateString()" :to="now('Asia/Jakarta')->toDateString()" />
+</x-filter.dock>
+</div>
 
 <div class="erp-ws-main">
 <div class="erp-scroll erp-scroll-pad">
@@ -146,7 +91,7 @@ $_mesinForJs = $mesin->map(fn ($m) => ['id' => $m->id, 'code' => $m->id_mesin, '
     <div class="erp-panel mb-3" id="allChartPanel" style="display:none">
         <div class="erp-panel-header">
             <i class="bi bi-graph-up me-1"></i>Achievement % per Operator
-            <span style="margin-left:auto;font-size:10px;font-weight:400;color:#9ca3af">— — —  = 100% target</span>
+            <span style="margin-left:auto;font-size:10px;font-weight:400;color:var(--text-4)">— — —  = 100% target</span>
         </div>
         {{-- Tinggi dikunci di pembungkus, BUKAN lewat atribut height canvas.
              Dengan maintainAspectRatio bawaan (true), Chart.js menghitung rasio
@@ -184,7 +129,7 @@ $_mesinForJs = $mesin->map(fn ($m) => ['id' => $m->id, 'code' => $m->id_mesin, '
                     <tr><td colspan="10" style="text-align:center;color:#888;padding:24px">Klik <strong>Tampilkan</strong> untuk melihat data.</td></tr>
                 </tbody>
                 <tfoot id="allTableFoot" style="display:none">
-                    <tr style="background:#e5e7eb;font-weight:700;font-size:11.5px">
+                    <tr style="background:var(--border-2);font-weight:700;font-size:11.5px">
                         <td colspan="3" style="padding:7px 10px;color:#374151;text-transform:uppercase;letter-spacing:0.4px">Total</td>
                         <td style="text-align:right;padding:7px 10px" id="ftAllDur"></td>
                         <td style="text-align:right;padding:7px 10px" id="ftAllTgt"></td>
@@ -210,16 +155,16 @@ $_mesinForJs = $mesin->map(fn ($m) => ['id' => $m->id, 'code' => $m->id_mesin, '
     {{-- Filter --}}
 
     {{-- Prompt state --}}
-    <div id="oneEmpty" class="erp-panel" style="text-align:center;padding:40px;color:#9ca3af">
-        <i class="bi bi-person-lines-fill" style="font-size:32px;display:block;margin-bottom:10px;color:#d1d5db"></i>
-        Pilih operator dan klik <strong style="color:#4b5563">Search</strong> untuk melihat detail achievement harian.
+    <div id="oneEmpty" class="erp-panel" style="text-align:center;padding:40px;color:var(--text-4)">
+        <i class="bi bi-person-lines-fill" style="font-size:32px;display:block;margin-bottom:10px;color:var(--border)"></i>
+        Pilih operator dan klik <strong style="color:var(--text-2)">Search</strong> untuk melihat detail achievement harian.
     </div>
 
     {{-- Chart --}}
     <div class="erp-panel mb-3" id="oneChartPanel" style="display:none">
         <div class="erp-panel-header" style="justify-content:center;font-size:12px;letter-spacing:1px">
-            ACHIEVEMENT — <span id="oneChartLabel" style="color:#111827">—</span>
-            <span style="margin-left:auto;font-size:10px;font-weight:400;color:#9ca3af">— — —  = 100% target</span>
+            ACHIEVEMENT — <span id="oneChartLabel" style="color:var(--text)">—</span>
+            <span style="margin-left:auto;font-size:10px;font-weight:400;color:var(--text-4)">— — —  = 100% target</span>
         </div>
         {{-- Tinggi dikunci di pembungkus, alasan sama dengan grafik Mode 1
              di atas: atribut height canvas + maintainAspectRatio bawaan
@@ -235,8 +180,8 @@ $_mesinForJs = $mesin->map(fn ($m) => ['id' => $m->id, 'code' => $m->id_mesin, '
     <div class="erp-panel" id="oneDetailPanel" style="display:none">
         <div class="erp-panel-header">
             <i class="bi bi-table me-1"></i>Detail Harian
-            <span id="oneDetailLabel" style="margin-left:6px;font-weight:400;color:#9ca3af;text-transform:none;letter-spacing:0;font-size:11px"></span>
-            <span style="margin-left:auto;font-size:10px;font-weight:400;color:#9ca3af;text-transform:none;letter-spacing:0">Klik tanggal untuk expand/collapse</span>
+            <span id="oneDetailLabel" style="margin-left:6px;font-weight:400;color:var(--text-4);text-transform:none;letter-spacing:0;font-size:11px"></span>
+            <span style="margin-left:auto;font-size:10px;font-weight:400;color:var(--text-4);text-transform:none;letter-spacing:0">Klik tanggal untuk expand/collapse</span>
         </div>
         <div style="overflow-x:auto">
             <table class="erp-table" style="min-width:1150px">
@@ -281,7 +226,6 @@ $_mesinForJs = $mesin->map(fn ($m) => ['id' => $m->id, 'code' => $m->id_mesin, '
 
 @push('scripts')
 <script>
-const _mesinForJs = @json($_mesinForJs);
 /* Cegah stored XSS: data master (nama mesin, part, proses, karyawan) bisa memuat markup. */
 function escHtml(str) {
     if (str === null || str === undefined) return "";
@@ -309,7 +253,7 @@ function statusLabel(tl) {
 function progressBar(pct) {
     const color = pctColor(pct);
     return `<div style="display:flex;align-items:center;gap:8px">
-        <div style="flex:1;height:7px;background:#e5e7eb;border-radius:1px;overflow:hidden">
+        <div style="flex:1;height:7px;background:var(--border-2);border-radius:1px;overflow:hidden">
             <div style="width:${Math.min(pct,100)}%;height:100%;background:${color}"></div>
         </div>
         <span style="font-size:12px;font-weight:700;color:${color};min-width:44px;text-align:right">${pct}%</span>
@@ -326,19 +270,19 @@ function switchMode(mode, karyawanId = null) {
        kelas .is-on milik toolbar yang mengurusnya. */
     document.getElementById('tabAll').classList.toggle('is-on', isAll);
     document.getElementById('tabOne').classList.toggle('is-on', !isAll);
-    document.getElementById('dockAll').style.display = isAll ? '' : 'none';
-    document.getElementById('dockOne').style.display = isAll ? 'none' : '';
+    document.getElementById('dockAll').style.display = isAll ? 'contents' : 'none';
+    document.getElementById('dockOne').style.display = isAll ? 'none' : 'contents';
     document.getElementById('allPeriodLabel').style.display = isAll ? '' : 'none';
     document.getElementById('onePeriodLabel').style.display = isAll ? 'none' : '';
 
     if (!isAll && karyawanId) {
         // Tanggal dulu, baru saring, baru pilih operator — kalau operator
         // dipilih sebelum disaring, daftarnya masih daftar lama.
-        document.getElementById('one_date_from').value    = document.getElementById('all_date_from').value;
-        document.getElementById('one_date_to').value      = document.getElementById('all_date_to').value;
+        isiFilterTanggal('one_date_from', document.getElementById('all_date_from').value,
+                                          document.getElementById('all_date_to').value);
         saringOperator(karyawanId);
         document.getElementById('one_karyawan_id').value  = karyawanId;
-        document.getElementById('one_shift_id').value     = document.getElementById('all_shift_id').value;
+        isiFilterCari('one_shift_id', document.getElementById('all_shift_id').value);
         loadOneOperator();
     }
 }
@@ -468,12 +412,12 @@ function renderAllKpi(table) {
         { label:'Total Waktu Kerja',   value: totalHours.toFixed(1), sub: 'jam',                                    icon:'bi-clock-history', color:'#111827' },
     ];
     document.getElementById('allKpi').innerHTML = cards.map(c => `
-        <div style="background:#fff;border:1px solid #d1d5db;border-radius:2px;padding:12px 14px">
-            <div style="font-size:9.5px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">
+        <div style="background:#fff;border:1px solid var(--border);border-radius:2px;padding:12px 14px">
+            <div style="font-size:9.5px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">
                 <i class="bi ${c.icon} me-1"></i>${c.label}
             </div>
             <div style="font-size:22px;font-weight:700;color:${c.color};line-height:1.1;margin-bottom:3px">${c.value}</div>
-            <div style="font-size:10.5px;color:#9ca3af">${c.sub}</div>
+            <div style="font-size:10.5px;color:var(--text-4)">${c.sub}</div>
         </div>`).join('');
 }
 
@@ -495,16 +439,16 @@ function renderAllTable(table) {
 
         return `<tr style="${rowBg};cursor:pointer" onclick="switchMode('one', ${row.id_karyawan ?? 'null'})"
                     title="Klik untuk lihat detail ${escHtml(row.karyawan)}">
-            <td style="text-align:center;color:#9ca3af;font-size:11px">${i+1}</td>
-            <td style="font-weight:600;color:#111827">
+            <td style="text-align:center;color:var(--text-4);font-size:11px">${i+1}</td>
+            <td style="font-weight:600;color:var(--text)">
                 ${escHtml(row.karyawan)}
-                <i class="bi bi-box-arrow-in-right" style="font-size:10px;color:#9ca3af;margin-left:4px"></i>
+                <i class="bi bi-box-arrow-in-right" style="font-size:10px;color:var(--text-4);margin-left:4px"></i>
             </td>
-            <td style="text-align:center;color:#6b7280">${sessions}</td>
-            <td style="text-align:right;color:#6b7280">${row.total_duration_hours}j</td>
-            <td style="text-align:right;color:#6b7280">${n(Math.round(row.total_target_qty))}</td>
+            <td style="text-align:center;color:var(--text-3)">${sessions}</td>
+            <td style="text-align:right;color:var(--text-3)">${row.total_duration_hours}j</td>
+            <td style="text-align:right;color:var(--text-3)">${n(Math.round(row.total_target_qty))}</td>
             <td style="text-align:right;font-weight:600">${n(row.total_qty_aktual)}</td>
-            <td style="text-align:right;color:#6b7280">${n(sphStdAvg)}</td>
+            <td style="text-align:right;color:var(--text-3)">${n(sphStdAvg)}</td>
             <td style="text-align:right;font-weight:600;color:${sphActColor}">${n(row.avg_actual_sph)}</td>
             <td>${progressBar(row.achievement_pct)}</td>
             <td style="text-align:center">${statusLabel(row.traffic_light)}</td>
@@ -535,12 +479,10 @@ async function loadAllOperators() {
     errBox.style.display = 'none';
     submitBtn.disabled = true;
     try {
-        const params = new URLSearchParams({
-            date_from: document.getElementById('all_date_from').value,
-            date_to:   document.getElementById('all_date_to').value,
-            shift_id:  document.getElementById('all_shift_id').value,
-        });
-        document.querySelectorAll('#formAll input[name="mesin_ids[]"]').forEach(el => params.append('mesin_ids[]', el.value));
+        const params = new URLSearchParams(new FormData(document.getElementById('formAll')));
+        // Tombol export tidak dirender untuk role guest.
+        const exportBtn = document.getElementById('exportExcel');
+        if (exportBtn) exportBtn.href = `{{ route('vcb.produksi.export') }}?${params}`;
         document.getElementById('allPeriodLabel').textContent =
             document.getElementById('all_date_from').value + ' — ' + document.getElementById('all_date_to').value;
 
@@ -576,22 +518,6 @@ async function loadAllOperators() {
 
 document.getElementById('formAll').addEventListener('submit', e => { e.preventDefault(); loadAllOperators(); });
 
-function applyBulanFilter(bulanId, fromId, toId, reloadFn) {
-    const v = document.getElementById(bulanId).value;
-    if (!v) return;
-    const [y, m] = v.split('-').map(Number);
-    const lastDay = new Date(y, m, 0).getDate();
-    // Waktu lokal peramban (WIB di pabrik). toISOString() memaksa UTC dan
-    // memundurkan batasnya sehari selama 00:00–07:00 WIB.
-    const kini = new Date();
-    const today = `${kini.getFullYear()}-${String(kini.getMonth() + 1).padStart(2, '0')}-${String(kini.getDate()).padStart(2, '0')}`;
-    const to = `${v}-${String(lastDay).padStart(2, '0')}`;
-    document.getElementById(fromId).value = `${v}-01`;
-    document.getElementById(toId).value   = to > today ? today : to;
-    reloadFn();
-}
-document.getElementById('all_bulan_filter').addEventListener('change', () =>
-    applyBulanFilter('all_bulan_filter', 'all_date_from', 'all_date_to', loadAllOperators));
 
 /* ═══════════════════════════════════════════════════════════
    MODE 2 — PER OPERATOR (DRILL-DOWN)
@@ -679,14 +605,14 @@ function buildOneRows(table) {
 
         // Date header row
         html += `
-        <tr style="background:#f3f4f6;cursor:pointer" onclick="toggleDay(${di})">
-            <td style="font-weight:700;font-size:12px;padding:8px 10px;color:#111827">
+        <tr style="background:var(--surface-3);cursor:pointer" onclick="toggleDay(${di})">
+            <td style="font-weight:700;font-size:12px;padding:8px 10px;color:var(--text)">
                 <i class="bi bi-chevron-right" id="icon-${di}"
-                   style="font-size:10px;color:#6b7280;transition:transform 0.15s;margin-right:5px;${expanded?'transform:rotate(90deg)':''}"></i>${day.tanggal}
+                   style="font-size:10px;color:var(--text-3);transition:transform 0.15s;margin-right:5px;${expanded?'transform:rotate(90deg)':''}"></i>${day.tanggal}
             </td>
-            <td colspan="8" style="padding:8px 10px;color:#6b7280;font-size:11px">${day.sessions.length} sesi</td>
-            <td style="text-align:right;padding:8px 10px;color:#6b7280">—</td>
-            <td style="text-align:right;padding:8px 10px;font-weight:600;color:#6b7280">${n(day.avg_sph_std)}</td>
+            <td colspan="8" style="padding:8px 10px;color:var(--text-3);font-size:11px">${day.sessions.length} sesi</td>
+            <td style="text-align:right;padding:8px 10px;color:var(--text-3)">—</td>
+            <td style="text-align:right;padding:8px 10px;font-weight:600;color:var(--text-3)">${n(day.avg_sph_std)}</td>
             <td style="text-align:right;padding:8px 10px;font-weight:700;color:${color}">${n(day.avg_sph_act)}</td>
             <td style="text-align:right;padding:8px 10px;font-weight:700;color:${color}">${day.achievement_pct}%</td>
             <td></td>
@@ -698,17 +624,17 @@ function buildOneRows(table) {
             const bg  = si % 2 === 0 ? '#fff' : '#f9fafb';
             html += `
             <tr class="day-rows-${di}" style="display:${expanded?'table-row':'none'};background:${bg}">
-                <td style="padding:6px 10px;padding-left:22px;color:#9ca3af;font-size:11px">↳</td>
+                <td style="padding:6px 10px;padding-left:22px;color:var(--text-4);font-size:11px">↳</td>
                 <td style="padding:6px 10px">${escHtml(s.mesin)}</td>
                 <td style="padding:6px 10px;font-size:11.5px;color:#374151">${escHtml(s.nama_mesin)}</td>
-                <td style="padding:6px 10px;font-size:11px;color:#6b7280">${escHtml(s.customer)}</td>
+                <td style="padding:6px 10px;font-size:11px;color:var(--text-3)">${escHtml(s.customer)}</td>
                 <td style="padding:6px 10px;font-size:11.5px;white-space:nowrap">${escHtml(s.part_no)}</td>
                 <td style="padding:6px 10px;font-size:11.5px;white-space:nowrap">${escHtml(s.part_name)}</td>
                 <td style="padding:6px 10px;text-align:center;font-weight:600">${escHtml(s.id_proses)}</td>
                 <td style="padding:6px 10px;font-size:11.5px;white-space:nowrap">${escHtml(s.nama_proses)}</td>
-                <td style="padding:6px 10px;text-align:center;font-size:11px;color:#6b7280;white-space:nowrap">${escHtml(s.jam)}</td>
-                <td style="padding:6px 10px;text-align:right;color:#6b7280">${s.waktu_kerja}j</td>
-                <td style="padding:6px 10px;text-align:right;color:#6b7280">${n(s.sph_std)}</td>
+                <td style="padding:6px 10px;text-align:center;font-size:11px;color:var(--text-3);white-space:nowrap">${escHtml(s.jam)}</td>
+                <td style="padding:6px 10px;text-align:right;color:var(--text-3)">${s.waktu_kerja}j</td>
+                <td style="padding:6px 10px;text-align:right;color:var(--text-3)">${n(s.sph_std)}</td>
                 <td style="padding:6px 10px;text-align:right;font-weight:600;color:${sc}">${n(s.sph_act)}</td>
                 <td style="padding:6px 10px;text-align:right;font-weight:700;color:${sc}">${s.pct}%</td>
                 <td></td>
@@ -717,11 +643,11 @@ function buildOneRows(table) {
 
         // Average row
         html += `
-        <tr class="day-rows-${di}" style="display:${expanded?'table-row':'none'};background:#f0f4f8;border-top:1px solid #d1d5db">
+        <tr class="day-rows-${di}" style="display:${expanded?'table-row':'none'};background:#f0f4f8;border-top:1px solid var(--border)">
             <td colspan="9" style="padding:6px 10px 6px 22px;font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:0.5px">
                 Average ${day.tanggal}
             </td>
-            <td style="padding:6px 10px;text-align:right;color:#6b7280">—</td>
+            <td style="padding:6px 10px;text-align:right;color:var(--text-3)">—</td>
             <td style="padding:6px 10px;text-align:right;font-weight:700;color:#374151">${n(day.avg_sph_std)}</td>
             <td style="padding:6px 10px;text-align:right;font-weight:700;color:${color}">${n(day.avg_sph_act)}</td>
             <td style="padding:6px 10px;text-align:right;font-weight:700;color:${color}">${day.achievement_pct}%</td>
@@ -740,6 +666,18 @@ function toggleDay(di) {
     icon.style.transform = isOpen ? '' : 'rotate(90deg)';
 }
 
+/* Pesan inline, bukan alert(): dock dibuka, pesan di bawah pilihan orang,
+   fokus pindah ke sana — pengguna langsung tahu apa yang harus diisi. */
+function mintaPilihOrang(pesan) {
+    const ws = document.querySelector('.erp-ws');
+    if (ws && window.Alpine) Alpine.$data(ws).filterOpen = true;
+    document.getElementById('one_operator_note').textContent = pesan;
+    const sel = document.getElementById('one_karyawan_id');
+    sel.setAttribute('aria-invalid', 'true');
+    setTimeout(() => sel.focus(), 50);
+}
+document.getElementById('one_karyawan_id').addEventListener('change', e => e.target.removeAttribute('aria-invalid'));
+
 const saringOperator = saringOrangNonaktif('one_karyawan_id', 'one_date_from', 'one_operator_note');
 
 document.getElementById('one_date_from').addEventListener('change', () => saringOperator());
@@ -747,7 +685,7 @@ saringOperator();   // tampilan pertama harus sudah bersih, bukan setelah tangga
 
 async function loadOneOperator() {
     const karyawanId = document.getElementById('one_karyawan_id').value;
-    if (!karyawanId) { alert('Pilih operator terlebih dahulu.'); return; }
+    if (!karyawanId) { mintaPilihOrang('Pilih operator terlebih dahulu.'); return; }
 
     const overlay = document.getElementById('oneLoadingOverlay');
     const errBox  = document.getElementById('oneLoadError');
@@ -756,20 +694,14 @@ async function loadOneOperator() {
     errBox.style.display = 'none';
     submitBtn.disabled = true;
     try {
-        const params = new URLSearchParams({
-            date_from:   document.getElementById('one_date_from').value,
-            date_to:     document.getElementById('one_date_to').value,
-            karyawan_id: karyawanId,
-            shift_id:    document.getElementById('one_shift_id').value,
-        });
-        document.querySelectorAll('#formOne input[name="mesin_ids[]"]').forEach(el => params.append('mesin_ids[]', el.value));
+        const params = new URLSearchParams(new FormData(document.getElementById('formOne')));
         // Tombol export tidak dirender untuk role guest.
-        const exportBtn = document.getElementById('oneExportBtn');
+        const exportBtn = document.getElementById('exportExcel');
         if (exportBtn) exportBtn.href = `{{ route('vcb.produksi.export') }}?${params}`;
 
         const res  = await fetch(`{{ route('vcb.produksi.operator-data') }}?${params}`);
         const data = await res.json();
-        if (data.error) { alert(data.error); return; }
+        if (data.error) { mintaPilihOrang(data.error); return; }
 
         document.getElementById('oneEmpty').style.display       = 'none';
         document.getElementById('oneChartPanel').style.display  = '';
@@ -791,14 +723,6 @@ async function loadOneOperator() {
 }
 
 document.getElementById('formOne').addEventListener('submit', e => { e.preventDefault(); loadOneOperator(); });
-document.getElementById('one_bulan_filter').addEventListener('change', () =>
-    applyBulanFilter('one_bulan_filter', 'one_date_from', 'one_date_to', () => {
-        saringOperator();
-        // Penyaring bisa mengosongkan pilihan karena orangnya di luar rentang;
-        // memanggil pemuat sesudahnya memunculkan alert yang menyalahkan pengguna
-        // atas sesuatu yang dilakukan halaman sendiri. Pesannya sudah di catatan.
-        if (document.getElementById('one_karyawan_id').value) loadOneOperator();
-    }));
 
 /* ── Init ──────────────────────────────────────────────── */
 loadAllOperators();

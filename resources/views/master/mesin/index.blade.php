@@ -24,42 +24,25 @@
             onclick="document.getElementById('import-panel').classList.toggle('d-none')">
         <i class="bi bi-file-earmark-arrow-up"></i>Import Excel
     </button>
+    {{-- Ekspor membawa filter yang sedang aktif — isi file = isi tabel. --}}
+    <a href="{{ route('master.mesin.export', request()->query()) }}" class="erp-tb-btn">
+        <i class="bi bi-file-earmark-excel"></i>Export Excel
+    </a>
     <a href="{{ route('master.mesin.index') }}" class="erp-tb-btn"><i class="bi bi-arrow-clockwise"></i>Refresh</a>
     <span class="erp-tb-sp"></span>
 </div>
 
 <div class="erp-ws-body">
 
-<aside class="erp-dock" x-show="filterOpen" x-cloak>
-    <div class="erp-dock-hd">
-        <span>Filter</span>
-        <button type="button" class="erp-dock-x" @click="filterOpen = false" title="Tutup filter">&times;</button>
-    </div>
-    <form method="GET" action="{{ route('master.mesin.index') }}" class="erp-dock-body">
-        <div class="erp-grp">
-            <b>Find</b>
-            <input type="text" name="q" value="{{ $search }}" class="erp-in @if($search !== '') is-set @endif"
-                   placeholder="ID atau Nama Mesin">
-            <select name="filter_line" class="erp-in @if($filterLine !== '') is-set @endif">
-                <option value="">Semua Line</option>
-                @foreach($lineList as $o)
-                <option value="{{ $o }}" @selected($filterLine === $o)>{{ $o }}</option>
-                @endforeach
-            </select>
-            <select name="filter_tipe" class="erp-in @if($filterTipe !== '') is-set @endif">
-                <option value="">Semua Tipe</option>
-                @foreach($tipeList as $o)
-                <option value="{{ $o }}" @selected($filterTipe === $o)>{{ $o }}</option>
-                @endforeach
-            </select>
-        </div>
-
-        <div class="erp-grp">
-            <button type="submit" class="erp-btn is-pri"><i class="bi bi-funnel"></i>Tampilkan</button>
-            <a href="{{ route('master.mesin.index') }}" class="erp-btn">Reset</a>
-        </div>
-    </form>
-</aside>
+<x-filter.dock :action="route('master.mesin.index')">
+    <x-filter.grup judul="Find">
+        <x-filter.teks :value="$search" placeholder="ID atau Nama Mesin" />
+        <x-filter.cari name="filter_line" placeholder="Line" :value="$filterLine"
+                       :items="collect($lineList)->map(fn ($o) => ['v' => $o, 't' => $o])" />
+        <x-filter.cari name="filter_tipe" placeholder="Tipe Mesin" :value="$filterTipe"
+                       :items="collect($tipeList)->map(fn ($o) => ['v' => $o, 't' => $o])" />
+    </x-filter.grup>
+</x-filter.dock>
 
 <div class="erp-ws-main">
 {{-- Judul sudah ada di topbar; penggulungan dipegang .erp-scroll saja. --}}
@@ -121,7 +104,7 @@
                     <div class="action-btns" style="flex-wrap:nowrap">
                         <a href="{{ route('master.mesin.edit', $m) }}" class="btn btn-warning btn-sm">Edit</a>
                         <form method="POST" action="{{ route('master.mesin.destroy', $m) }}"
-                              onsubmit="return confirm('Hapus mesin ini?')">
+                              data-konfirmasi="Hapus mesin ini?">
                             @csrf @method('DELETE')
                             <button class="btn btn-danger btn-sm">Hapus</button>
                         </form>
@@ -129,7 +112,7 @@
                 </td>
             </tr>
         @empty
-            <tr><td colspan="6" style="text-align:center;color:#888;padding:20px">Belum ada data mesin.</td></tr>
+            <x-tabel-kosong kolom="6" entitas="data mesin" :tambah="route('master.mesin.create')" />
         @endforelse
         </tbody>
     </table>

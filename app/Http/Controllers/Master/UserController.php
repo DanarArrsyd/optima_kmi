@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers\Master;
 
+use App\Exports\TabelExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreMasterUserRequest;
 use App\Models\MasterKaryawan;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
 
 class UserController extends Controller
 {
@@ -16,14 +19,7 @@ class UserController extends Controller
         $search = trim((string) $request->input('q', ''));
         $filterRole = trim((string) $request->input('filter_role', ''));
 
-        $users = User::with('karyawan')
-            ->when($search !== '', fn ($q) => $q->where(fn ($s) => $s
-                ->where('name', 'like', '%'.$search.'%')
-                ->orWhere('email', 'like', '%'.$search.'%')))
-            /* whereJsonContains, bukan where('roles', ...) — roles sekarang
-             * array, dan filter mencari SALAH SATU pemilik role itu. */
-            ->when($filterRole !== '', fn ($q) => $q->whereJsonContains('roles', $filterRole))
-            ->orderBy('name')
+        $users = $this->queryIndex($request)
             ->paginate(20)->withQueryString();
 
         $karyawan = MasterKaryawan::orderBy('nama_karyawan')->get();
@@ -36,6 +32,30 @@ class UserController extends Controller
         $roleList = collect(User::ROLES);
 
         return view('master.users.index', compact('users', 'karyawan', 'search', 'filterRole', 'roleList'));
+    }
+
+    /** Query daftar BERSAMA index() dan export() — ekspor selalu memakai filter yang sama dengan tabel. */
+    private function queryIndex(Request $request): Builder
+    {
+        $search = trim((string) $request->input('q', ''));
+        $filterRole = trim((string) $request->input('filter_role', ''));
+
+        return User::with('karyawan')
+            ->when($search !== '', fn ($q) => $q->where(fn ($s) => $s
+                ->where('name', 'like', '%'.$search.'%')
+                ->orWhere('email', 'like', '%'.$search.'%')))
+            /* whereJsonContains, bukan where('roles', ...) — roles sekarang
+             * array, dan filter mencari SALAH SATU pemilik role itu. */
+            ->when($filterRole !== '', fn ($q) => $q->whereJsonContains('roles', $filterRole))
+            ->orderBy('name');
+    }
+
+    /** Export Excel isi tabel, termasuk filter yang sedang aktif. */
+    public function export(Request $request)
+    {
+        $baris = $this->queryIndex($request)->get()->map(fn ($u) => [$u->name, $u->email, collect($u->roles ?? [])->map(fn ($r) => User::ROLES[$r] ?? $r)->implode(', '), $u->karyawan?->nama_karyawan, $u->is_aktif === false ? 'Nonaktif' : 'Aktif'])->all();
+
+        return Excel::download(new TabelExport(['Nama', 'Email', 'Role', 'Karyawan', 'Status'], $baris, 'Master Users'), 'master-users-'.now()->format('Ymd').'.xlsx');
     }
 
     public function create()

@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers\Master;
 
+use App\Exports\TabelExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreMasterKaryawanRequest;
 use App\Imports\KaryawanImport;
 use App\Models\MasterKaryawan;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
@@ -16,6 +18,31 @@ use Maatwebsite\Excel\Facades\Excel;
 class KaryawanController extends Controller
 {
     public function index(Request $request)
+    {
+        $filter = $request->input('filter', 'semua');
+        $search = trim((string) $request->input('q', ''));
+        $filterDept = trim((string) $request->input('filter_dept', ''));
+
+        $q = $this->queryIndex($request);
+
+        try {
+            $karyawan = $q->paginate(20)->withQueryString();
+        } catch (QueryException) {
+            // Kolom is_aktif belum ada — fallback tanpa filter
+            $filter = 'semua';
+            $karyawan = MasterKaryawan::orderBy('nama_karyawan')->paginate(20)->withQueryString();
+        }
+
+        $deptList = MasterKaryawan::distinct()->orderBy('departemen')->pluck('departemen')->filter()->values();
+
+        // Kode bisa live sebelum migrasi menyusul — halaman tetap harus hidup.
+        $adaKolomTanggal = Schema::hasColumn('master_karyawan', 'tanggal_nonaktif');
+
+        return view('master.karyawan.index', compact('karyawan', 'filter', 'search', 'filterDept', 'deptList', 'adaKolomTanggal'));
+    }
+
+    /** Query daftar BERSAMA index() dan export() — ekspor selalu memakai filter yang sama dengan tabel. */
+    private function queryIndex(Request $request): Builder
     {
         $filter = $request->input('filter', 'semua');
         $search = trim((string) $request->input('q', ''));
@@ -33,20 +60,16 @@ class KaryawanController extends Controller
             $q->where('is_aktif', false);
         }
 
-        try {
-            $karyawan = $q->paginate(20)->withQueryString();
-        } catch (QueryException) {
-            // Kolom is_aktif belum ada — fallback tanpa filter
-            $filter = 'semua';
-            $karyawan = MasterKaryawan::orderBy('nama_karyawan')->paginate(20)->withQueryString();
-        }
+        return $q;
+    }
 
-        $deptList = MasterKaryawan::distinct()->orderBy('departemen')->pluck('departemen')->filter()->values();
+    /** Export Excel isi tabel (filter aktif ikut); kolom = template impor. */
+    public function export(Request $request)
+    {
+        $baris = $this->queryIndex($request)->get()
+            ->map(fn ($k) => [$k->nik, $k->nama_karyawan, $k->departemen])->all();
 
-        // Kode bisa live sebelum migrasi menyusul — halaman tetap harus hidup.
-        $adaKolomTanggal = Schema::hasColumn('master_karyawan', 'tanggal_nonaktif');
-
-        return view('master.karyawan.index', compact('karyawan', 'filter', 'search', 'filterDept', 'deptList', 'adaKolomTanggal'));
+        return Excel::download(new TabelExport(KaryawanImport::KOLOM, $baris, 'Master Karyawan'), 'master-karyawan-'.now()->format('Ymd').'.xlsx');
     }
 
     public function toggleAktif(Request $request, MasterKaryawan $karyawan)
@@ -130,7 +153,7 @@ class KaryawanController extends Controller
         {
             public function headings(): array
             {
-                return ['NIK', 'Nama Karyawan', 'Departemen'];
+                return KaryawanImport::KOLOM;
             }
 
             public function array(): array

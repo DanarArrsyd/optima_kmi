@@ -13,6 +13,10 @@ class LosstimeImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
 {
     use LewatiBarisContoh;
 
+    /** Judul kolom template impor — dibaca juga oleh template & ekspor halaman, supaya
+     *  ekspor → sunting di Excel → impor balik selalu cocok. */
+    public const KOLOM = ['Kode', 'Jenis Losstime', 'Std Menit Default', 'Std Menit Progressive'];
+
     /** Baris contoh template — dibaca juga oleh template-nya. Lihat {@see LewatiBarisContoh}. */
     public const CONTOH = [
         ['BK', 'Breakdown Mesin', 30, 15],

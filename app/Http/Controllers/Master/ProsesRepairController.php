@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers\Master;
 
+use App\Exports\TabelExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreMasterPartProsesRepairRequest;
 use App\Models\MasterPart;
 use App\Models\MasterPartProsesRepair;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ProsesRepairController extends Controller
 {
@@ -14,7 +17,18 @@ class ProsesRepairController extends Controller
     {
         $search = trim((string) $request->input('q', ''));
 
-        $prosesRepair = MasterPartProsesRepair::with('part')
+        $prosesRepair = $this->queryIndex($request)
+            ->paginate(20)->withQueryString();
+
+        return view('master.proses-repair.index', compact('prosesRepair', 'search'));
+    }
+
+    /** Query daftar BERSAMA index() dan export() — ekspor selalu memakai filter yang sama dengan tabel. */
+    private function queryIndex(Request $request): Builder
+    {
+        $search = trim((string) $request->input('q', ''));
+
+        return MasterPartProsesRepair::with('part')
             ->when($search !== '', fn ($q) => $q->where(function ($sub) use ($search) {
                 $like = '%'.$search.'%';
                 $sub->where('nama_proses', 'like', $like)
@@ -22,10 +36,15 @@ class ProsesRepairController extends Controller
                     ->orWhereHas('part', fn ($p) => $p->where('part_name', 'like', $like)
                         ->orWhere('part_no', 'like', $like));
             }))
-            ->orderBy('id_proses')
-            ->paginate(20)->withQueryString();
+            ->orderBy('id_proses');
+    }
 
-        return view('master.proses-repair.index', compact('prosesRepair', 'search'));
+    /** Export Excel isi tabel, termasuk filter yang sedang aktif. */
+    public function export(Request $request)
+    {
+        $baris = $this->queryIndex($request)->get()->map(fn ($p) => [$p->part?->part_no, $p->part?->part_name, $p->id_proses, $p->nama_proses, $p->sph_standar_repair])->all();
+
+        return Excel::download(new TabelExport(['Part No', 'Part Name', 'ID Proses', 'Nama Proses', 'SPH Standar Repair'], $baris, 'Proses Repair'), 'master-proses-repair-'.now()->format('Ymd').'.xlsx');
     }
 
     public function create()

@@ -4,15 +4,10 @@
 @section('main_mod', 'erp-flush')
 
 @section('content')
-@php
-$mesinByLine = $mesin->groupBy('line');
-$_mesinForJs = $mesin->map(fn ($m) => ['id' => $m->id, 'code' => $m->id_mesin, 'name' => $m->nama_mesin, 'line' => $m->line])->values();
-@endphp
-<div class="erp-ws">
+<div class="erp-ws" x-data="{ filterOpen: false }">
 
 <div class="erp-tb">
-    <button type="button" id="btnDock" class="erp-tb-btn"
-            onclick="erpToggleDock('mesinDock','btnDock')">
+    <button type="button" class="erp-tb-btn" :class="filterOpen ? 'is-on' : ''" @click="filterOpen = !filterOpen">
         <i class="bi bi-funnel"></i>Filter
     </button>
     @if(! auth()->user()->isGuest())
@@ -25,42 +20,15 @@ $_mesinForJs = $mesin->map(fn ($m) => ['id' => $m->id, 'code' => $m->id_mesin, '
 
 {{-- Dock mulai tertutup; cakupan data yang sedang dilihat tetap
      terbaca di status bar, jadi tidak ada yang tersembunyi diam-diam. --}}
-<aside class="erp-dock" id="mesinDock" style="display:none">
-    <div class="erp-dock-hd">
-        <span>Filter</span>
-        <button type="button" class="erp-dock-x" onclick="erpToggleDock('mesinDock','btnDock')" title="Tutup filter">&times;</button>
-    </div>
-    <form id="filterForm" class="erp-dock-body" x-data="mesinFilterComp(_mesinForJs, [])">
-        <div class="erp-grp">
-            <b>Tanggal Dari</b>
-            <input type="date" id="date_from" name="date_from" class="erp-in" value="{{ date('Y-m-01') }}">
-        </div>
-        <div class="erp-grp">
-            <b>Tanggal Sampai</b>
-            <input type="date" id="date_to" name="date_to" class="erp-in" value="{{ date('Y-m-d') }}">
-        </div>
-        <div class="erp-grp">
-            <b>Bulan</b>
-            <input type="month" id="bulan_filter" class="erp-in">
-        </div>
-        <div class="erp-grp">
-            <b>Shift</b>
-            <select id="shift_id" name="shift_id" class="erp-in">
-                <option value="">Semua Shift</option>
-                @foreach($shifts as $shift)
-                    <option value="{{ $shift->id }}">{{ $shift->nama_shift }}</option>
-                @endforeach
-            </select>
-        </div>
-        <div class="erp-grp">
-            <b>Mesin</b>
-            @include('partials.mesin-picker', ['mesinByLine' => $mesinByLine])
-        </div>
-        <div class="erp-grp">
-            <button type="submit" class="erp-btn is-pri"><i class="bi bi-search"></i>Tampilkan</button>
-        </div>
-    </form>
-</aside>
+<x-filter.dock>
+    <x-filter.grup judul="Find">
+        <x-filter.cari name="shift_id" id="shift_id" placeholder="Shift"
+                       :items="$shifts->map(fn ($s) => ['v' => $s->id, 't' => $s->nama_shift])" />
+        <x-filter.mesin />
+    </x-filter.grup>
+
+    <x-filter.tanggal :from="date('Y-m-01')" :to="date('Y-m-d')" />
+</x-filter.dock>
 
 <div class="erp-ws-main">
 <div class="erp-scroll erp-scroll-pad">
@@ -97,7 +65,7 @@ $_mesinForJs = $mesin->map(fn ($m) => ['id' => $m->id, 'code' => $m->id_mesin, '
                     <tr><th>Mesin</th><th>ID</th><th>Line</th><th>Tipe</th><th>Target QTY</th><th>Actual QTY</th><th>Duration (jam)</th><th>Achievement %</th><th>Avg SPH</th></tr>
                 </thead>
                 <tbody id="vcbTableBody">
-                    <tr><td colspan="9" style="text-align:center;color:#9ca3af;padding:20px">Klik Tampilkan untuk melihat data.</td></tr>
+                    <tr><td colspan="9" style="text-align:center;color:var(--text-4);padding:20px">Klik Tampilkan untuk melihat data.</td></tr>
                 </tbody>
             </table>
         </div>
@@ -120,7 +88,6 @@ $_mesinForJs = $mesin->map(fn ($m) => ['id' => $m->id, 'code' => $m->id_mesin, '
 
 @push('scripts')
 <script>
-const _mesinForJs = @json($_mesinForJs);
 /* Cegah stored XSS: data master (nama mesin, part, proses, karyawan) bisa memuat markup. */
 function escHtml(str) {
     if (str === null || str === undefined) return "";
@@ -136,12 +103,7 @@ async function loadData() {
     errBox.style.display = 'none';
     submitBtn.disabled = true;
     try {
-        const params = new URLSearchParams({
-            date_from: document.getElementById('date_from').value,
-            date_to:   document.getElementById('date_to').value,
-            shift_id:  document.getElementById('shift_id').value,
-        });
-        document.querySelectorAll('#filterForm input[name="mesin_ids[]"]').forEach(el => params.append('mesin_ids[]', el.value));
+        const params = new URLSearchParams(new FormData(document.getElementById('filterForm')));
         // Tombol export tidak dirender untuk role guest.
         const exportBtn = document.getElementById('exportExcel');
         if (exportBtn) exportBtn.href = `{{ route('vcb.mesin.export') }}?${params}`;
@@ -246,16 +208,6 @@ async function loadData() {
 }
 
 document.getElementById('filterForm').addEventListener('submit', e => { e.preventDefault(); loadData(); });
-document.getElementById('bulan_filter').addEventListener('change', function () {
-    if (!this.value) return;
-    const [y, m] = this.value.split('-').map(Number);
-    const lastDay = new Date(y, m, 0).getDate();
-    const today = new Date().toISOString().slice(0, 10);
-    const to = `${this.value}-${String(lastDay).padStart(2, '0')}`;
-    document.getElementById('date_from').value = `${this.value}-01`;
-    document.getElementById('date_to').value   = to > today ? today : to;
-    loadData();
-});
 loadData();
 </script>
 @endpush

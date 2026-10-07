@@ -39,7 +39,7 @@ $_prosesLabelInit = $dandori->partProses
 <div class="erp-panel" style="max-width:700px">
     <div class="erp-panel-header">
         Form Edit Dandori
-        <span style="font-size:0.75rem;font-weight:400;color:#9ca3af;margin-left:8px">
+        <span style="font-size:0.75rem;font-weight:400;color:var(--text-4);margin-left:8px">
             ID #{{ $dandori->id }}
         </span>
     </div>
@@ -128,7 +128,7 @@ $_prosesLabelInit = $dandori->partProses
                             </template>
                         </div>
                     </div>
-                    <div style="font-size:0.78rem;color:#6b7280;margin-top:4px" x-show="partNo" x-text="'Part No: ' + partNo"></div>
+                    <div style="font-size:0.78rem;color:var(--text-3);margin-top:4px" x-show="partNo" x-text="'Part No: ' + partNo"></div>
                 </div>
 
                 <div class="col-6">
@@ -174,7 +174,7 @@ $_prosesLabelInit = $dandori->partProses
                        value="{{ old('actual_menit', $dandori->actual_menit) }}" required>
                 @error('actual_menit')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 @if($dandori->std_menit > 0)
-                <div style="font-size:0.78rem;color:#6b7280;margin-top:4px">
+                <div style="font-size:0.78rem;color:var(--text-3);margin-top:4px">
                     Std: {{ number_format($dandori->std_menit, 1) }} mnt ·
                     Over sekarang: {{ number_format($dandori->over_menit, 1) }} mnt
                 </div>

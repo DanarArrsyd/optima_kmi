@@ -14,6 +14,10 @@ class KaryawanImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
 {
     use LewatiBarisContoh;
 
+    /** Judul kolom template impor — dibaca juga oleh template & ekspor halaman, supaya
+     *  ekspor → sunting di Excel → impor balik selalu cocok. */
+    public const KOLOM = ['NIK', 'Nama Karyawan', 'Departemen'];
+
     /** Baris contoh template — dibaca juga oleh template-nya. Lihat {@see LewatiBarisContoh}. */
     public const CONTOH = [
         ['K001', 'Ahmad Fauzi', 'Produksi'],

@@ -25,6 +25,8 @@ class VcbNgTotalController extends Controller
             'judul' => 'VCB NG Total',
             'sumber' => 'qc',
             'routeData' => route('vcb.ng-total.data'),
+            // Ekspor grafik = rincian NG di balik grafiknya (Daftar NG), rentang yang sama.
+            'routeExport' => route('vcb.ng-total.daftar.export'),
             'routeDetail' => route('vcb.ng-total.detail'),
             'catatanKosong' => 'Belum ada data NG pada rentang ini. '
                 .'NG dari sisi Quality memang belum pernah tercatat sejak sistem berjalan — '

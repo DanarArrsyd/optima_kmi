@@ -7,75 +7,31 @@
 {{-- ══ RUANG KERJA ERP ══════════════════════════════════════════
      Isinya KPI + grafik + tabel yang memang perlu digulung, jadi
      .erp-scroll dibiarkan menggulung tegak — bukan dikunci satu layar. --}}
-<div class="erp-ws">
+<div class="erp-ws" x-data="{ filterOpen: false }">
 
 <div class="erp-tb">
-    <button type="button" id="btnDock" class="erp-tb-btn is-on"
-            onclick="erpToggleDock('anDock','btnDock')">
+    <button type="button" class="erp-tb-btn" :class="filterOpen ? 'is-on' : ''" @click="filterOpen = !filterOpen">
         <i class="bi bi-funnel"></i>Filter
     </button>
+    @if(! auth()->user()->isGuest())
+    {{-- href diisi pemuat data — file selalu sama dengan tabel, termasuk filternya. --}}
+    <a id="exportExcel" href="{{ route('maintenance.mtbf-dies.export') }}" class="erp-tb-btn"><i class="bi bi-file-earmark-excel"></i>Export Excel</a>
+    @endif
     <a href="{{ route('maintenance.mtbf-dies') }}" class="erp-tb-btn"><i class="bi bi-arrow-clockwise"></i>Refresh</a>
     <span class="erp-tb-sp"></span>
 </div>
 
 <div class="erp-ws-body">
 
-<aside class="erp-dock" id="anDock" style="display:none">
-    <div class="erp-dock-hd">
-        <span>Filter</span>
-        <button type="button" class="erp-dock-x" onclick="erpToggleDock('anDock','btnDock')" title="Tutup filter">&times;</button>
-    </div>
-    <form id="filterForm" class="erp-dock-body">
-            <div class="erp-grp">
-                <b>Tanggal Dari</b>
-                <input type="date" id="date_from" name="date_from" class="erp-in" value="{{ date('Y-01-01') }}">
-            </div>
-            <div class="erp-grp">
-                <b>Tanggal Sampai</b>
-                <input type="date" id="date_to" name="date_to" class="erp-in" value="{{ date('Y-m-d') }}">
-            </div>
-            <div class="erp-grp">
-                <b>Customer</b>
-                <div x-data="taField(taCustomer)">
-                    <div class="ta-wrap">
-                        <input type="text" class="erp-in ta-input"
-                               x-model="query" @focus="openDd()" @blur="closeDd()" @keydown="onKey($event)" @input="onInput()"
-                               placeholder="Semua Customer...">
-                        <input type="hidden" id="customer" name="customer" :value="val ?? ''">
-                        <div class="ta-dropdown" x-show="open" x-cloak>
-                            <template x-if="filtered.length===0"><div class="ta-empty">Tidak ditemukan</div></template>
-                            <template x-for="(item,i) in filtered" :key="item.v">
-                                <div class="ta-item" :class="{'ta-active':i===idx}" @mousedown.prevent="pick(item)" x-text="item.t"></div>
-                            </template>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="erp-grp">
-                <b>Part No</b>
-                <div x-data="taField(taPart)">
-                    <div class="ta-wrap">
-                        <input type="text" class="erp-in ta-input"
-                               x-model="query" @focus="openDd()" @blur="closeDd()" @keydown="onKey($event)" @input="onInput()"
-                               placeholder="Semua Dies...">
-                        <input type="hidden" id="part_id" name="part_id" :value="val ?? ''">
-                        <div class="ta-dropdown" x-show="open" x-cloak>
-                            <template x-if="filtered.length===0"><div class="ta-empty">Tidak ditemukan</div></template>
-                            <template x-for="(item,i) in filtered" :key="item.v">
-                                <div class="ta-item" :class="{'ta-active':i===idx}" @mousedown.prevent="pick(item)" x-text="item.t"></div>
-                            </template>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="erp-grp">
-                <button type="submit" class="erp-btn is-pri"><i class="bi bi-search me-1"></i>Tampilkan</button>
-            </div>
-        </form>
-</aside>
+<x-filter.dock>
+    <x-filter.part-group customer-name="customer" part-name="part_id" :dengan-proses="false" />
+
+    <x-filter.tanggal :from="date('Y-01-01')" :to="date('Y-m-d')" />
+</x-filter.dock>
 
 <div class="erp-ws-main">
 <div class="erp-scroll erp-scroll-pad">
+@include('partials.status-muat', ['id' => 'an'])
 <div class="row g-3 mb-4">
     <div class="col-md-6">
         <div class="erp-panel h-100"><div class="erp-panel-body" style="padding:10px">
@@ -146,21 +102,18 @@ function escHtml(str) {
     if (str === null || str === undefined) return "";
     return String(str).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c]));
 }
-const taCustomer = @json($customers->map(fn($c) => ['v' => $c, 't' => $c]));
-const taPart = @json($partList->map(fn($m) => ['v' => $m->id, 't' => $m->part_no.' – '.$m->part_name]));
-
-/* taField() kini satu definisi di layouts/app.blade.php. */
 
 let mtbfChart = null;
 
-async function loadData() {
-    const params = new URLSearchParams({
-        date_from: document.getElementById('date_from').value,
-        date_to:   document.getElementById('date_to').value,
-        part_id:  document.getElementById('part_id').value,
-        customer:  document.getElementById('customer').value,
-    });
+/* Pemuat dibungkus muatDenganStatus (layout): overlay, galat, Coba lagi. */
+function loadData() { return muatDenganStatus('an', loadDataInti); }
+
+async function loadDataInti() {
+    const params = new URLSearchParams(new FormData(document.getElementById('filterForm')));
+    const exportBtn = document.getElementById('exportExcel');
+    if (exportBtn) exportBtn.href = `{{ route('maintenance.mtbf-dies.export') }}?${params}`;
     const res  = await fetch(`{{ route('maintenance.mtbf-dies.data') }}?${params}`);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
     const rows = data.rows || [];
 

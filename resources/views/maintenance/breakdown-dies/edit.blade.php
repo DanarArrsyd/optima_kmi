@@ -40,7 +40,7 @@
                 </div>
                 <div class="col-md-8">
                     <label class="form-label" style="font-size:0.92rem">No. LKD (otomatis)</label>
-                    <div class="form-control" style="background:#f3f4f6;font-family:monospace;color:#111827" x-text="noLkd"></div>
+                    <div class="form-control" style="background:var(--surface-3);font-family:monospace;color:var(--text)" x-text="noLkd"></div>
                 </div>
 
                 @php
@@ -122,7 +122,7 @@
                 </div>
             </div>
 
-            <div style="margin-top:20px;padding-top:16px;border-top:1px solid #e5e7eb;display:flex;gap:8px">
+            <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border-2);display:flex;gap:8px">
                 <button class="btn btn-primary" type="submit"><i class="bi bi-save me-1"></i>Update Breakdown</button>
                 <a href="{{ route('maintenance.breakdown-dies.index') }}" class="btn btn-outline-secondary">Batal</a>
             </div>

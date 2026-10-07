@@ -14,29 +14,21 @@
     <button type="button" class="erp-tb-btn" :class="filterOpen ? 'is-on' : ''" @click="filterOpen = !filterOpen">
         <i class="bi bi-funnel"></i>Filter @if($search !== '')<span aria-hidden="true">&bull;</span>@endif
     </button>
+    {{-- Ekspor membawa filter yang sedang aktif — isi file = isi tabel. --}}
+    <a href="{{ route('master.proses-repair.export', request()->query()) }}" class="erp-tb-btn">
+        <i class="bi bi-file-earmark-excel"></i>Export Excel
+    </a>
     <a href="{{ route('master.proses-repair.index') }}" class="erp-tb-btn"><i class="bi bi-arrow-clockwise"></i>Refresh</a>
     <span class="erp-tb-sp"></span>
 </div>
 
 <div class="erp-ws-body">
 
-<aside class="erp-dock" x-show="filterOpen" x-cloak>
-    <div class="erp-dock-hd">
-        <span>Filter</span>
-        <button type="button" class="erp-dock-x" @click="filterOpen = false" title="Tutup filter">&times;</button>
-    </div>
-    <form method="GET" action="{{ route('master.proses-repair.index') }}" class="erp-dock-body">
-        <div class="erp-grp">
-            <b>Find</b>
-            <input type="text" name="q" value="{{ $search }}" class="erp-in @if($search !== '') is-set @endif"
-                   placeholder="Part atau Nama Proses">
-        </div>
-        <div class="erp-grp">
-            <button type="submit" class="erp-btn is-pri"><i class="bi bi-funnel"></i>Tampilkan</button>
-            <a href="{{ route('master.proses-repair.index') }}" class="erp-btn">Reset</a>
-        </div>
-    </form>
-</aside>
+<x-filter.dock :action="route('master.proses-repair.index')">
+    <x-filter.grup judul="Find">
+        <x-filter.teks :value="$search" placeholder="Part atau Nama Proses" />
+    </x-filter.grup>
+</x-filter.dock>
 
 <div class="erp-ws-main">
 <div class="erp-scroll">
@@ -65,7 +57,7 @@
                     <div class="action-btns" style="flex-wrap:nowrap">
                         <a href="{{ route('master.proses-repair.edit', $pr) }}" class="btn btn-warning btn-sm">Edit</a>
                         <form method="POST" action="{{ route('master.proses-repair.destroy', $pr) }}"
-                              onsubmit="return confirm('Hapus proses repair ini?')">
+                              data-konfirmasi="Hapus proses repair ini?">
                             @csrf @method('DELETE')
                             <button class="btn btn-danger btn-sm">Hapus</button>
                         </form>
@@ -73,7 +65,7 @@
                 </td>
             </tr>
         @empty
-            <tr><td colspan="7" style="text-align:center;color:#888;padding:20px">Belum ada proses repair.</td></tr>
+            <x-tabel-kosong kolom="7" entitas="proses repair" :tambah="route('master.proses-repair.create')" />
         @endforelse
         </tbody>
     </table>

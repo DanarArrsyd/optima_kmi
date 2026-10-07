@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Maintenance;
 
+use App\Exports\TabelExport;
 use App\Http\Controllers\Controller;
 use App\Models\MasterKaryawan;
 use App\Models\MasterMesin;
@@ -15,6 +16,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Schema;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ControlStrokeMesinController extends Controller
 {
@@ -46,6 +48,36 @@ class ControlStrokeMesinController extends Controller
             'bulan' => $bulan,
             'bolehEdit' => auth()->user()->hasRole('admin'),
         ]);
+    }
+
+    /**
+     * Export Excel. Halaman ini menyaring & mengurutkan DI KLIEN (render() di
+     * view), jadi tombolnya mengirim state filter itu dan saringan yang sama
+     * diterapkan di sini: cocok-persis per kolom, q = substring tanpa huruf besar.
+     */
+    public function export(Request $request)
+    {
+        $rows = collect($this->data($request)->getData(true)['rows']);
+
+        foreach ([['status', 'status'], ['mesin', 'kode_mesin'], ['tipe', 'tipe_mesin'], ['line', 'line']] as [$param, $kolom]) {
+            if ($request->filled($param)) {
+                $rows = $rows->filter(fn ($r) => (string) ($r[$kolom] ?? '') === (string) $request->input($param));
+            }
+        }
+        if ($request->filled('q')) {
+            $q = mb_strtolower(trim((string) $request->input('q')));
+            $rows = $rows->filter(fn ($r) => str_contains(mb_strtolower(implode(' ', array_map(fn ($k) => (string) ($r[$k] ?? ''), ['kode_mesin', 'nama_mesin']))), $q));
+        }
+        $rows = match ($request->input('sort', 'pct_desc')) {
+            'pct_asc' => $rows->sortBy('pct'),
+            'kode_asc' => $rows->sortBy('kode_mesin', SORT_NATURAL | SORT_FLAG_CASE),
+            'nama_asc' => $rows->sortBy('nama_mesin', SORT_NATURAL | SORT_FLAG_CASE),
+            default => $rows->sortByDesc('pct'),
+        };
+
+        $baris = $rows->values()->map(fn ($r) => [$r['kode_mesin'], $r['nama_mesin'], $r['tipe_mesin'], $r['line'], $r['current_stroke'], $r['threshold'], $r['pct'], $r['running_time_menit'], $r['status'], $r['last_preventive_date'], $r['last_preventive_pic']])->all();
+
+        return Excel::download(new TabelExport(['Mesin', 'Nama Mesin', 'Tipe', 'Line', 'Stroke Saat Ini', 'Batas Stroke', '% Stroke', 'Running Time (menit)', 'Status', 'Preventive Terakhir', 'PIC Preventive'], $baris, 'Control Stroke Mesin'), 'control-stroke-mesin-'.now()->format('Ymd').'.xlsx');
     }
 
     public function data(Request $request)

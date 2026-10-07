@@ -16,6 +16,10 @@ class MesinImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
 {
     use LewatiBarisContoh;
 
+    /** Judul kolom template impor — dibaca juga oleh template & ekspor halaman, supaya
+     *  ekspor → sunting di Excel → impor balik selalu cocok. */
+    public const KOLOM = ['ID Mesin', 'Nama Mesin', 'Line', 'Tipe Mesin', 'Kapasitas Max Stroke', 'Tanggal Instalasi'];
+
     /** Baris contoh template — dibaca juga oleh template-nya. Lihat {@see LewatiBarisContoh}. */
     public const CONTOH = [
         ['M001', 'Press 80T #1', 'Line A', 'Progressive', 800000, '2024-01-15'],

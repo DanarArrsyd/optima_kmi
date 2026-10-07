@@ -12,82 +12,38 @@
         <i class="bi bi-funnel"></i>Filter
         @if($modul !== '' || $event !== '' || $userId !== '' || $search !== '')<span aria-hidden="true">&bull;</span>@endif
     </button>
+    {{-- Ekspor membawa filter yang sedang aktif — isi file = isi tabel. --}}
+    <a href="{{ route('sistem.log-aktivitas.export', request()->query()) }}" class="erp-tb-btn"><i class="bi bi-file-earmark-excel"></i>Export Excel</a>
     <a href="{{ route('sistem.log-aktivitas.index') }}" class="erp-tb-btn"><i class="bi bi-arrow-clockwise"></i>Refresh</a>
     <span class="erp-tb-sp"></span>
 </div>
 
 <div class="erp-ws-body">
 
-<aside class="erp-dock" x-show="filterOpen" x-cloak>
-    <div class="erp-dock-hd">
-        <span>Filter</span>
-        <button type="button" class="erp-dock-x" @click="filterOpen = false" title="Tutup filter">&times;</button>
-    </div>
-    <form method="GET" action="{{ route('sistem.log-aktivitas.index') }}" class="erp-dock-body">
+<x-filter.dock :action="route('sistem.log-aktivitas.index')">
+    <x-filter.grup judul="Find">
+        <x-filter.teks name="search" :value="$search" placeholder="Cari deskripsi..." />
+        <x-filter.cari name="modul" placeholder="Modul" :value="$modul"
+                       :items="collect($modulLabels)->map(fn ($label, $key) => ['v' => $key, 't' => $label])" />
+        <x-filter.cari name="event" placeholder="Aksi" :value="$event"
+                       :items="collect($eventLabels)->map(fn ($label, $key) => ['v' => $key, 't' => $label])" />
+        <x-filter.cari name="user_id" placeholder="User" :value="$userId"
+                       :items="$userList->map(fn ($u) => ['v' => $u->id, 't' => $u->name])" />
+    </x-filter.grup>
 
-        <div class="erp-grp">
-            <b>Find</b>
-            <input type="text" name="search" value="{{ $search }}" class="erp-in @if($search !== '') is-set @endif" placeholder="Cari deskripsi...">
-        </div>
-
-        <div class="erp-grp">
-            <b>Modul</b>
-            <select name="modul" class="erp-in @if($modul !== '') is-set @endif">
-                <option value="" @selected($modul === '')>Semua Modul</option>
-                @foreach($modulLabels as $key => $label)
-                <option value="{{ $key }}" @selected($modul === $key)>{{ $label }}</option>
-                @endforeach
-            </select>
-        </div>
-
-        <div class="erp-grp">
-            <b>Aksi</b>
-            <select name="event" class="erp-in @if($event !== '') is-set @endif">
-                <option value="" @selected($event === '')>Semua Aksi</option>
-                @foreach($eventLabels as $key => $label)
-                <option value="{{ $key }}" @selected($event === $key)>{{ $label }}</option>
-                @endforeach
-            </select>
-        </div>
-
-        <div class="erp-grp">
-            <b>User</b>
-            <select name="user_id" class="erp-in @if($userId !== '') is-set @endif">
-                <option value="" @selected($userId === '')>Semua User</option>
-                @foreach($userList as $u)
-                <option value="{{ $u->id }}" @selected((string) $userId === (string) $u->id)>{{ $u->name }}</option>
-                @endforeach
-            </select>
-        </div>
-
-        <div class="erp-grp">
-            <b>Filter by Date</b>
-            <div class="erp-dock-row">
-                <span>From</span>
-                <input type="date" name="date_from" value="{{ $dateFrom }}" class="erp-in">
-            </div>
-            <div class="erp-dock-row">
-                <span>To</span>
-                <input type="date" name="date_to" value="{{ $dateTo }}" class="erp-in">
-            </div>
-        </div>
-
-        <div class="erp-grp">
-            <button type="submit" class="erp-btn is-pri"><i class="bi bi-funnel"></i>Tampilkan</button>
-            <a href="{{ route('sistem.log-aktivitas.index') }}" class="erp-btn">Reset</a>
-        </div>
-    </form>
-</aside>
+    <x-filter.tanggal :from="$dateFrom" :to="$dateTo" :pakai="$pakaiTanggal" />
+</x-filter.dock>
 
 <div class="erp-ws-main">
 <div class="erp-scroll erp-scroll-pad">
 
 @if($logs->isEmpty())
 <div class="erp-panel">
-    <div style="text-align:center;padding:48px 24px;color:#9ca3af">
+    <div style="text-align:center;padding:48px 24px;color:var(--text-4)">
         <i class="bi bi-journal-text" style="font-size:2.5rem;display:block;margin-bottom:12px"></i>
-        <div style="font-weight:700;font-size:1rem;color:#374151;margin-bottom:4px">Nol aktivitas</div>
-        <div style="font-size:0.88rem">Nol aktivitas tercatat pada filter/rentang tanggal ini.</div>
+        <div style="font-weight:700;font-size:1rem;color:#374151;margin-bottom:4px">Tidak ada aktivitas</div>
+        <div style="font-size:0.88rem">Tidak ada aktivitas yang cocok dengan filter dan rentang tanggal ini.</div>
+        <a href="{{ route('sistem.log-aktivitas.index') }}" class="erp-btn" style="display:inline-flex;margin-top:10px">Reset filter</a>
     </div>
 </div>
 @else
@@ -95,12 +51,12 @@
 <table class="erp-table" style="min-width:1100px">
     <thead>
         <tr>
-            <th style="position:sticky;top:0;z-index:10;background:#e5e7eb;white-space:nowrap">Waktu</th>
-            <th style="position:sticky;top:0;z-index:10;background:#e5e7eb;white-space:nowrap">User</th>
-            <th style="position:sticky;top:0;z-index:10;background:#e5e7eb;white-space:nowrap">Modul</th>
-            <th style="position:sticky;top:0;z-index:10;background:#e5e7eb;white-space:nowrap">Aksi</th>
-            <th style="position:sticky;top:0;z-index:10;background:#e5e7eb">Deskripsi</th>
-            <th style="position:sticky;top:0;z-index:10;background:#e5e7eb">Perubahan</th>
+            <th style="position:sticky;top:0;z-index:10;background:var(--border-2);white-space:nowrap">Waktu</th>
+            <th style="position:sticky;top:0;z-index:10;background:var(--border-2);white-space:nowrap">User</th>
+            <th style="position:sticky;top:0;z-index:10;background:var(--border-2);white-space:nowrap">Modul</th>
+            <th style="position:sticky;top:0;z-index:10;background:var(--border-2);white-space:nowrap">Aksi</th>
+            <th style="position:sticky;top:0;z-index:10;background:var(--border-2)">Deskripsi</th>
+            <th style="position:sticky;top:0;z-index:10;background:var(--border-2)">Perubahan</th>
         </tr>
     </thead>
     <tbody>
@@ -120,7 +76,7 @@
             $diffKeys = array_unique(array_merge(array_keys($old), array_keys($baru)));
         @endphp
         <tr>
-            <td style="white-space:nowrap;color:#6b7280">{{ $log->created_at->clone()->timezone('Asia/Jakarta')->format('d/m/Y H:i') }}</td>
+            <td style="white-space:nowrap;color:var(--text-3)">{{ $log->created_at->clone()->timezone('Asia/Jakarta')->format('d/m/Y H:i') }}</td>
             <td style="white-space:nowrap;font-weight:600">{{ $log->causer?->name ?? '—' }}</td>
             <td style="white-space:nowrap">{{ $modulLabels[$log->log_name] ?? ($log->log_name ?? '—') }}</td>
             <td style="white-space:nowrap">
@@ -129,7 +85,7 @@
                 </span>
             </td>
             <td>{{ $log->description }}</td>
-            <td style="font-size:0.82rem;color:#6b7280">
+            <td style="font-size:0.82rem;color:var(--text-3)">
                 @if($diffKeys === [])
                     —
                 @else
