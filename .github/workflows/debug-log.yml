@@ -32,6 +32,7 @@ on:
           - dandoripartno  # part_name kembar dgn part_no beda; cocokkan per NAMA part
           - dandoridup     # duplikat baris dandori + sebaran bulan & tanggal import
           - dandoribaru    # sesi yatim & ambigu KHUSUS era aplikasi (Juni 2026 ke atas)
+          - shiftcek       # master_shift + riwayat perubahan (cek korban impor 00:00)
           - markran        # ⚠️ MENULIS ke tabel migrations
 
 env:
@@ -419,6 +420,35 @@ jobs:
                 echo sprintf(\"#%-4s %-24s %-34s %-18s %s\", \$r->id, \$r->name, \$r->email, \$r->role, \$r->created_at) . PHP_EOL;
               }
             "'
+
+      # Impor Master Shift lewat template dulu menyimpan jam 00:00 dan MENIMPA jam
+      # shift yang sudah ada (slug judul jam_start_senin_kamis vs jam_start yang
+      # dibaca importer — diperbaiki di PR #183). Availability membaca master_shift
+      # LIVE, jadi baris rusak menggeser seluruh Availability historis. Read-only.
+      - name: Cek master_shift & riwayat perubahan (read-only)
+        if: ${{ github.event.inputs.mode == 'shiftcek' }}
+        run: |
+          ssh -p "${{ secrets.SSH_PORT }}" -i ~/.ssh/deploy_key \
+            "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" \
+            'cd ${{ env.REMOTE_PATH }} && ${{ env.REMOTE_PHP }} artisan tinker --execute="
+              \$q = fn(\$sql) => Illuminate\\Support\\Facades\\DB::select(\$sql);
+              echo \"=== 1. Semua baris master_shift (termasuk soft-deleted) ===\", PHP_EOL;
+              foreach (\$q(\"SELECT * FROM master_shift ORDER BY id\") as \$r) {
+                \$r = (array) \$r;
+                \$rusak = (\$r[\"jam_start\"] ?? null) === (\$r[\"jam_finish\"] ?? null) ? \"  <== JAM SAMA\" : \"\";
+                echo \"  #\", \$r[\"id\"], \" \", str_pad((string) \$r[\"nama_shift\"], 18), \" \", \$r[\"jam_start\"], \"-\", \$r[\"jam_finish\"],
+                  \"  jumat=\", \$r[\"jam_start_jumat\"] ?? \"-\", \"-\", \$r[\"jam_finish_jumat\"] ?? \"-\",
+                  \"  sabtu=\", \$r[\"jam_start_sabtu\"] ?? \"-\", \"-\", \$r[\"jam_finish_sabtu\"] ?? \"-\",
+                  \"  avail=\", \$r[\"dihitung_availability\"] ?? \"-\", \"  hapus=\", \$r[\"deleted_at\"] ?? \"-\",
+                  \"  diubah=\", \$r[\"updated_at\"], \$rusak, PHP_EOL;
+              }
+              echo PHP_EOL, \"=== 2. Baris jam_start = jam_finish ===\", PHP_EOL;
+              echo \"  jumlah: \", \$q(\"SELECT COUNT(*) n FROM master_shift WHERE jam_start = jam_finish\")[0]->n, PHP_EOL, PHP_EOL;
+              echo \"=== 3. 30 perubahan master_shift terakhir di activity_log ===\", PHP_EOL;
+              foreach (\$q(\"SELECT a.created_at, a.event, a.subject_id, u.name, a.properties FROM activity_log a LEFT JOIN users u ON u.id = a.causer_id WHERE a.log_name = 0x6d61737465725f7368696674 ORDER BY a.id DESC LIMIT 30\") as \$x) {
+                echo \"  \", \$x->created_at, \" UTC  \", str_pad((string) \$x->event, 8), \" shift#\", \$x->subject_id, \"  oleh=\", \$x->name ?? \"(sistem/impor)\", \"  \", substr((string) \$x->properties, 0, 220), PHP_EOL;
+              }
+            " < /dev/null'
 
       # Daftar LENGKAP status migrasi di prod (mode `migstatus` sengaja di-grep sempit).
       # Read-only. Dipakai buat menyusun baseline gerbang CI cakupan migrasi.
