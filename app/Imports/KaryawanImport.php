@@ -2,6 +2,7 @@
 
 namespace App\Imports;
 
+use App\Imports\Concerns\LewatiBarisContoh;
 use App\Models\MasterKaryawan;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
@@ -11,6 +12,18 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
 class KaryawanImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
 {
+    use LewatiBarisContoh;
+
+    /** Judul kolom template impor — dibaca juga oleh template & ekspor halaman, supaya
+     *  ekspor → sunting di Excel → impor balik selalu cocok. */
+    public const KOLOM = ['NIK', 'Nama Karyawan', 'Departemen'];
+
+    /** Baris contoh template — dibaca juga oleh template-nya. Lihat {@see LewatiBarisContoh}. */
+    public const CONTOH = [
+        ['K001', 'Ahmad Fauzi', 'Produksi'],
+        ['K002', 'Siti Rahayu', 'QC'],
+    ];
+
     public int $imported = 0;
 
     public int $skipped = 0;
@@ -22,6 +35,10 @@ class KaryawanImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
         $adaKolomTanggal = Schema::hasColumn('master_karyawan', 'tanggal_nonaktif');
 
         foreach ($rows as $row) {
+            if ($this->barisContoh($row)) {
+                continue;
+            }
+
             $nik = trim((string) ($row['nik'] ?? ''));
             $nama = trim((string) ($row['nama_karyawan'] ?? ''));
             if ($nik === '' || $nama === '') {

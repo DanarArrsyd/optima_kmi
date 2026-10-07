@@ -21,36 +21,27 @@
     <button type="button" class="erp-tb-btn" :class="filterOpen ? 'is-on' : ''" @click="filterOpen = !filterOpen">
         <i class="bi bi-funnel"></i>Filter @if($search !== '' || $filterKategori !== '')<span aria-hidden="true">&bull;</span>@endif
     </button>
+    <button type="button" class="erp-tb-btn"
+            onclick="document.getElementById('import-panel').classList.toggle('d-none')">
+        <i class="bi bi-file-earmark-arrow-up"></i>Import Excel
+    </button>
+    {{-- Ekspor membawa filter yang sedang aktif — isi file = isi tabel. --}}
+    <a href="{{ route('master.jenis-ng.export', request()->query()) }}" class="erp-tb-btn">
+        <i class="bi bi-file-earmark-excel"></i>Export Excel
+    </a>
     <a href="{{ route('master.jenis-ng.index') }}" class="erp-tb-btn"><i class="bi bi-arrow-clockwise"></i>Refresh</a>
     <span class="erp-tb-sp"></span>
 </div>
 
 <div class="erp-ws-body">
 
-<aside class="erp-dock" x-show="filterOpen" x-cloak>
-    <div class="erp-dock-hd">
-        <span>Filter</span>
-        <button type="button" class="erp-dock-x" @click="filterOpen = false" title="Tutup filter">&times;</button>
-    </div>
-    <form method="GET" action="{{ route('master.jenis-ng.index') }}" class="erp-dock-body">
-        <div class="erp-grp">
-            <b>Find</b>
-            <input type="text" name="q" value="{{ $search }}" class="erp-in @if($search !== '') is-set @endif"
-                   placeholder="Kode atau Nama NG">
-            <select name="filter_kategori" class="erp-in @if($filterKategori !== '') is-set @endif">
-                <option value="">Semua Kategori</option>
-                @foreach($kategoriList as $o)
-                <option value="{{ $o }}" @selected($filterKategori === $o)>{{ $o }}</option>
-                @endforeach
-            </select>
-        </div>
-
-        <div class="erp-grp">
-            <button type="submit" class="erp-btn is-pri"><i class="bi bi-funnel"></i>Tampilkan</button>
-            <a href="{{ route('master.jenis-ng.index') }}" class="erp-btn">Reset</a>
-        </div>
-    </form>
-</aside>
+<x-filter.dock :action="route('master.jenis-ng.index')">
+    <x-filter.grup judul="Find">
+        <x-filter.teks :value="$search" placeholder="Kode atau Nama NG" />
+        <x-filter.cari name="filter_kategori" placeholder="Kategori" :value="$filterKategori"
+                       :items="collect($kategoriList)->map(fn ($o) => ['v' => $o, 't' => $o])" />
+    </x-filter.grup>
+</x-filter.dock>
 
 <div class="erp-ws-main">
 {{-- Judul sudah ada di topbar; penggulungan dipegang .erp-scroll saja. --}}
@@ -102,12 +93,12 @@
             <tr>
                 <td style="font-weight:600;letter-spacing:0.3px">{{ $ng->kode }}</td>
                 <td>{{ $ng->nama_ng }}</td>
-                <td style="color:#6b7280">{{ $ng->deskripsi ?? '—' }}</td>
+                <td style="color:var(--text-3)">{{ $ng->deskripsi ?? '—' }}</td>
                 <td>
                     <div class="action-btns">
                         <a href="{{ route('master.jenis-ng.edit', $ng) }}" class="btn btn-warning btn-sm">Edit</a>
                         <form method="POST" action="{{ route('master.jenis-ng.destroy', $ng) }}"
-                              onsubmit="return confirm('Hapus jenis NG ini?')">
+                              data-konfirmasi="Hapus jenis NG ini?">
                             @csrf @method('DELETE')
                             <button class="btn btn-danger btn-sm">Hapus</button>
                         </form>
@@ -115,7 +106,7 @@
                 </td>
             </tr>
         @empty
-            <tr><td colspan="4" style="text-align:center;color:#888;padding:20px">Belum ada data jenis NG. Tambahkan di atas.</td></tr>
+            <x-tabel-kosong kolom="4" entitas="jenis NG" :tambah="route('master.jenis-ng.create')" />
         @endforelse
         </tbody>
     </table>

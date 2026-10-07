@@ -34,6 +34,8 @@ class KomponenBersamaTest extends TestCase
         'function majukanNomorUrut(',
         'const ROMAN_BULAN =',
         'function scheduleItemEdit(',
+        'function isiFilterCari(',
+        'function isiFilterTanggal(',
     ];
 
     public static function komponen(): array

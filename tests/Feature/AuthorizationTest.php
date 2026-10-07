@@ -385,6 +385,28 @@ class AuthorizationTest extends TestCase
         $this->actingAs($guest)->delete(route('input.produksi.destroy', ['produksi' => $produksi->id]))->assertForbidden();
     }
 
+    /**
+     * Tiap role di User::ROLES wajib mendarat di halaman yang BISA dibukanya.
+     * staff_repair dulu jatuh ke default '/vcb/produksi' yang menolaknya —
+     * login sukses lalu langsung 403. Diambil dari ROLES supaya role baru
+     * yang lupa diberi tujuan ikut merah di sini.
+     */
+    public function test_dashboard_tiap_role_mendarat_di_halaman_yang_bisa_dibuka(): void
+    {
+        foreach (array_keys(User::ROLES) as $role) {
+            $user = $this->user($role);
+            $tujuan = $this->actingAs($user)->get('/dashboard')->assertRedirect()->headers->get('Location');
+
+            $this->actingAs($user)->get($tujuan)->assertOk();
+        }
+    }
+
+    public function test_dashboard_redirects_staff_repair_to_daftar_lhr(): void
+    {
+        $this->actingAs($this->user('staff_repair'))->get('/dashboard')
+            ->assertRedirect(route('input.repair.index', absolute: false));
+    }
+
     public function test_dashboard_redirects_guest_to_vcb_produksi(): void
     {
         $this->actingAs($this->user('guest'))->get('/dashboard')->assertRedirect('/vcb/produksi');

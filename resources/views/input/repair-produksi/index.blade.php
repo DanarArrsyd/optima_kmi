@@ -3,25 +3,6 @@
 @section('suppress_layout_flash', 'yes')
 @section('main_mod', 'erp-flush')
 
-@php
-$_partsForFilter = $parts->map(fn ($p) => [
-    'id' => $p->id, 'part_no' => $p->part_no, 'part_name' => $p->part_name, 'customer' => $p->customer,
-    'proses' => $p->prosesRepairProduksi->map(fn ($pr) => ['id' => $pr->id, 'label' => $pr->id_proses.' – '.$pr->nama_proses])->values(),
-])->values();
-$_allProsesForFilter = $parts->flatMap(fn ($p) => $p->prosesRepairProduksi)->unique('id')
-    ->map(fn ($pr) => ['id' => $pr->id, 'label' => $pr->id_proses.' – '.$pr->nama_proses])->values();
-
-$_customersTA = $customers->map(fn ($c) => ['v' => $c, 't' => $c])->values();
-$_partsTA     = $_partsForFilter->map(fn ($p) => ['v' => $p['id'], 't' => $p['part_name'], 'sub' => $p['part_no'], 'pno' => $p['part_no']])->values();
-$_prosesTA    = $_allProsesForFilter->map(fn ($pr) => ['v' => $pr['id'], 't' => $pr['label']])->values();
-$_karyawanTA  = $karyawan->map(fn ($k) => ['v' => $k->id, 't' => $k->nama_karyawan])->values();
-
-$_karLabel    = $filterKarId ? ($karyawan->firstWhere('id', $filterKarId)?->nama_karyawan ?? '') : '';
-$_partLabel   = $filterPartId ? ($parts->firstWhere('id', $filterPartId)?->part_name ?? '') : '';
-$_prosesObjF  = $filterProsesId ? $parts->flatMap(fn ($p) => $p->prosesRepairProduksi)->firstWhere('id', $filterProsesId) : null;
-$_prosesLabel = $_prosesObjF ? $_prosesObjF->id_proses.' – '.$_prosesObjF->nama_proses : '';
-@endphp
-
 @section('content')
 <div x-data="{ filterOpen: false }">
 <div class="erp-ws">
@@ -35,6 +16,10 @@ $_prosesLabel = $_prosesObjF ? $_prosesObjF->id_proses.' – '.$_prosesObjF->nam
     </button>
     @if(auth()->user()->hasRole(['admin', 'staff_repair', 'staff_produksi']))
     <button type="button" class="erp-tb-btn"
+            onclick="document.getElementById('import-lhr-panel').classList.toggle('d-none')">
+        <i class="bi bi-file-earmark-arrow-up"></i>Import Excel
+    </button>
+    <button type="button" class="erp-tb-btn"
             onclick="document.getElementById('exportRepairProduksiPanel').classList.toggle('d-none')">
         <i class="bi bi-file-earmark-excel"></i>Export Excel
     </button>
@@ -45,112 +30,27 @@ $_prosesLabel = $_prosesObjF ? $_prosesObjF->id_proses.' – '.$_prosesObjF->nam
 
 <div class="erp-ws-body">
 
-<aside class="erp-dock" x-show="filterOpen" x-cloak>
-    <div class="erp-dock-hd">
-        <span>Filter</span>
-        <button type="button" class="erp-dock-x" @click="filterOpen = false" title="Tutup filter">&times;</button>
-    </div>
-    <form method="GET" action="{{ route('input.repair-produksi.index') }}" class="erp-dock-body">
+<x-filter.dock :action="route('input.repair-produksi.index')">
+    <x-filter.grup judul="Find">
+        <x-filter.cari name="filter_karyawan_id" placeholder="Nama Operator" :value="$filterKarId"
+                       :items="$karyawan->map(fn ($k) => ['v' => $k->id, 't' => $k->nama_karyawan])" />
+    </x-filter.grup>
 
-        <div class="erp-grp">
-            <b>Find</b>
-            <div x-data="filterSearchComp(_karyawanTA, {{ $filterKarId ?: 0 }}, '{{ addslashes($_karLabel) }}')"
-                 @click.outside="open=false" style="position:relative">
-                <input type="hidden" name="filter_karyawan_id" :value="val">
-                <input type="text" x-model="query" @focus="open=true" @input="open=true"
-                       @keydown.escape="open=false" placeholder="Nama Operator"
-                       class="erp-in" :class="val ? 'is-set' : ''">
-                <button type="button" x-show="val" @mousedown.prevent="clear()" class="erp-clr">&times;</button>
-                <div x-show="open && filtered.length > 0" x-cloak class="erp-dd">
-                    <template x-for="item in filtered" :key="item.v">
-                        <div @mousedown.prevent="pick(item)" class="erp-dd-item" x-text="item.t"></div>
-                    </template>
-                </div>
-            </div>
-        </div>
+    <x-filter.part-group :customer="$filterCustomer" :part-id="$filterPartId" :proses-id="$filterProsesId"
+                         relasi-proses="prosesRepairProduksi" label-proses="Proses Repair Produksi" />
 
-        <div class="erp-grp">
-            <b>Part &amp; Customer</b>
-            <div x-data="filterSearchComp(_customersTA, '{{ $filterCustomer }}', '{{ addslashes($filterCustomer) }}')"
-                 @click.outside="open=false" style="position:relative">
-                <input type="hidden" name="filter_customer" :value="val">
-                <input type="text" x-model="query" @focus="open=true" @input="open=true"
-                       @keydown.escape="open=false" placeholder="Nama Customer"
-                       class="erp-in" :class="val ? 'is-set' : ''">
-                <button type="button" x-show="val" @mousedown.prevent="clear()" class="erp-clr">&times;</button>
-                <div x-show="open && filtered.length > 0" x-cloak class="erp-dd">
-                    <template x-for="item in filtered" :key="item.v">
-                        <div @mousedown.prevent="pick(item)" class="erp-dd-item" x-text="item.t"></div>
-                    </template>
-                </div>
-            </div>
-
-            <div x-data="partGroupComp({{ $filterPartId ?: 0 }}, '{{ addslashes($_partLabel) }}', {{ $filterProsesId ?: 0 }}, '{{ addslashes($_prosesLabel) }}')"
-                 style="display:flex;flex-direction:column;gap:4px">
-                <div @click.outside="partOpen=false" style="position:relative">
-                    <input type="hidden" name="filter_part_id" :value="partVal">
-                    <input type="text" x-model="partQuery" @focus="partOpen=true"
-                           @input="partOpen=true;partVal='';prosesVal='';prosesQuery=''"
-                           @keydown.escape="partOpen=false" placeholder="Nama Part"
-                           class="erp-in" :class="partVal ? 'is-set' : ''">
-                    <button type="button" x-show="partVal"
-                            @mousedown.prevent="partVal='';partQuery='';prosesVal='';prosesQuery=''"
-                            class="erp-clr">&times;</button>
-                    <div x-show="partOpen && filteredParts.length > 0" x-cloak class="erp-dd">
-                        <template x-for="item in filteredParts" :key="item.v">
-                            <div @mousedown.prevent="pickPart(item)" class="erp-dd-item" :title="item.t">
-                                <span style="font-weight:700" x-text="item.t"></span>
-                                <span class="sub" x-text="item.sub"></span>
-                            </div>
-                        </template>
-                    </div>
-                </div>
-
-                <div @click.outside="prosesOpen=false" style="position:relative">
-                    <input type="hidden" name="filter_proses_id" :value="prosesVal">
-                    <input type="text" x-model="prosesQuery" @focus="prosesOpen=true"
-                           @input="prosesOpen=true;prosesVal=''" @keydown.escape="prosesOpen=false"
-                           placeholder="Proses Repair Produksi" class="erp-in" :class="prosesVal ? 'is-set' : ''">
-                    <button type="button" x-show="prosesVal" @mousedown.prevent="prosesVal='';prosesQuery=''" class="erp-clr">&times;</button>
-                    <div x-show="prosesOpen && filteredProses.length > 0" x-cloak class="erp-dd">
-                        <template x-for="item in filteredProses" :key="item.v">
-                            <div @mousedown.prevent="prosesVal=item.v;prosesQuery=item.t;prosesOpen=false"
-                                 class="erp-dd-item" x-text="item.t"></div>
-                        </template>
-                    </div>
-                </div>
-
-                <input type="text" class="erp-in" readonly tabindex="-1"
-                       :value="partNo || 'Nomor Part'" :title="partNo">
-            </div>
-        </div>
-
-        <div class="erp-grp" x-data="{ pakaiTgl: {{ $pakaiTanggal ? 'true' : 'false' }} }">
-            <label class="erp-chk">
-                <input type="checkbox" name="pakai_tanggal" value="1" x-model="pakaiTgl">
-                <b>Filter by Date</b>
-            </label>
-            <div class="erp-dock-row">
-                <span>From</span>
-                <input type="date" name="date_from" value="{{ $dateFrom }}" class="erp-in" :disabled="!pakaiTgl">
-            </div>
-            <div class="erp-dock-row">
-                <span>To</span>
-                <input type="date" name="date_to" value="{{ $dateTo }}" class="erp-in" :disabled="!pakaiTgl">
-            </div>
-        </div>
-
-        <div class="erp-grp">
-            <input type="hidden" name="filter_apply" value="1">
-            <button type="submit" class="erp-btn is-pri"><i class="bi bi-funnel"></i>Tampilkan</button>
-            <a href="{{ route('input.repair-produksi.index') }}" class="erp-btn">Reset</a>
-        </div>
-    </form>
-</aside>
+    <x-filter.tanggal :from="$dateFrom" :to="$dateTo" :pakai="$pakaiTanggal" />
+</x-filter.dock>
 
 <div class="erp-ws-main">
 
 @if(auth()->user()->hasRole(['admin', 'staff_repair', 'staff_produksi']))
+@include('partials.import-panel', [
+    'id' => 'import-lhr-panel',
+    'action' => route('input.repair-produksi.import'),
+    'template' => route('input.repair-produksi.import-template'),
+    'judul' => 'Import LHR Repair Produksi dari Excel',
+])
 <x-export-modal
     panelId="exportRepairProduksiPanel"
     :exportUrl="route('input.repair-produksi.export')"
@@ -208,7 +108,7 @@ $_prosesLabel = $_prosesObjF ? $_prosesObjF->id_proses.' – '.$_prosesObjF->nam
                     </td>
                     <td style="text-align:right;color:#5d7283">{{ number_format($r->waktu_kerja_jam, 1) }}j</td>
                     <td style="text-align:right">{{ number_format($r->actual_cycle_time, 1) }}s</td>
-                    <td style="text-align:right;font-weight:600;color:{{ $pct === null ? '#9ca3af' : ($pct >= 100 ? '#15803d' : '#b91c1c') }}">
+                    <td style="text-align:right;font-weight:600;color:{{ $pct === null ? 'var(--text-4)' : ($pct >= 100 ? 'var(--c-success)' : 'var(--c-danger)') }}">
                         {{ $pct !== null ? $pct.'%' : '—' }}
                     </td>
                     @if(auth()->user()->hasRole('admin'))
@@ -216,7 +116,7 @@ $_prosesLabel = $_prosesObjF ? $_prosesObjF->id_proses.' – '.$_prosesObjF->nam
                         <div class="action-btns" style="flex-wrap:nowrap">
                             <a href="{{ route('input.repair-produksi.edit', $r) }}?back_query={{ urlencode(http_build_query(request()->query())) }}" class="btn btn-warning btn-sm">Edit</a>
                             <form method="POST" action="{{ route('input.repair-produksi.destroy', $r) }}"
-                                  onsubmit="return confirm('Hapus data ini?')">
+                                  data-konfirmasi="Hapus data ini?">
                                 @csrf @method('DELETE')
                                 <button class="btn btn-danger btn-sm">Hapus</button>
                             </form>
@@ -225,7 +125,7 @@ $_prosesLabel = $_prosesObjF ? $_prosesObjF->id_proses.' – '.$_prosesObjF->nam
                     @endif
                 </tr>
             @empty
-                <tr><td colspan="{{ auth()->user()->hasRole('admin') ? 15 : 14 }}" style="text-align:center;color:#888;padding:20px">Belum ada data LHR Produksi.</td></tr>
+                <x-tabel-kosong :kolom="auth()->user()->hasRole('admin') ? 15 : 14" entitas="data LHR Produksi" periode />
             @endforelse
             </tbody>
         </table>
@@ -261,12 +161,3 @@ $_prosesLabel = $_prosesObjF ? $_prosesObjF->id_proses.' – '.$_prosesObjF->nam
 </div>
 @endsection
 
-@push('scripts')
-<script>
-const _customersTA   = @json($_customersTA);
-const _partsTA       = @json($_partsTA);
-const _partsFullData = @json($_partsForFilter);
-const _prosesTA      = @json($_prosesTA);
-const _karyawanTA    = @json($_karyawanTA);
-</script>
-@endpush

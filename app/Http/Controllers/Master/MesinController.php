@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers\Master;
 
+use App\Exports\TabelExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreMasterMesinRequest;
 use App\Imports\MesinImport;
 use App\Models\MasterMesin;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -19,13 +21,7 @@ class MesinController extends Controller
         $filterLine = trim((string) $request->input('filter_line', ''));
         $filterTipe = trim((string) $request->input('filter_tipe', ''));
 
-        $mesin = MasterMesin::query()
-            ->when($search !== '', fn ($q) => $q->where(fn ($s) => $s
-                ->where('id_mesin', 'like', '%'.$search.'%')
-                ->orWhere('nama_mesin', 'like', '%'.$search.'%')))
-            ->when($filterLine !== '', fn ($q) => $q->where('line', $filterLine))
-            ->when($filterTipe !== '', fn ($q) => $q->where('tipe_mesin', $filterTipe))
-            ->orderBy('line')->orderBy('id_mesin')
+        $mesin = $this->queryIndex($request)
             ->paginate(20)->withQueryString();
 
         /* Pilihan diambil dari isi tabel, bukan daftar tertulis: line dan tipe
@@ -34,6 +30,30 @@ class MesinController extends Controller
         $tipeList = MasterMesin::distinct()->orderBy('tipe_mesin')->pluck('tipe_mesin')->filter()->values();
 
         return view('master.mesin.index', compact('mesin', 'search', 'filterLine', 'filterTipe', 'lineList', 'tipeList'));
+    }
+
+    /** Query daftar BERSAMA index() dan export() — ekspor selalu memakai filter yang sama dengan tabel. */
+    private function queryIndex(Request $request): Builder
+    {
+        $search = trim((string) $request->input('q', ''));
+        $filterLine = trim((string) $request->input('filter_line', ''));
+        $filterTipe = trim((string) $request->input('filter_tipe', ''));
+
+        return MasterMesin::query()
+            ->when($search !== '', fn ($q) => $q->where(fn ($s) => $s
+                ->where('id_mesin', 'like', '%'.$search.'%')
+                ->orWhere('nama_mesin', 'like', '%'.$search.'%')))
+            ->when($filterLine !== '', fn ($q) => $q->where('line', $filterLine))
+            ->when($filterTipe !== '', fn ($q) => $q->where('tipe_mesin', $filterTipe))
+            ->orderBy('line')->orderBy('id_mesin');
+    }
+
+    /** Export Excel isi tabel, termasuk filter yang sedang aktif. */
+    public function export(Request $request)
+    {
+        $baris = $this->queryIndex($request)->get()->map(fn ($m) => [$m->id_mesin, $m->nama_mesin, $m->line, $m->tipe_mesin, $m->kapasitas_max_stroke, $m->tanggal_instalasi?->format('Y-m-d')])->all();
+
+        return Excel::download(new TabelExport(MesinImport::KOLOM, $baris, 'Master Mesin'), 'master-mesin-'.now()->format('Ymd').'.xlsx');
     }
 
     public function create()
@@ -83,15 +103,12 @@ class MesinController extends Controller
         {
             public function headings(): array
             {
-                return ['ID Mesin', 'Nama Mesin', 'Line', 'Tipe Mesin', 'Kapasitas Max Stroke', 'Tanggal Instalasi'];
+                return MesinImport::KOLOM;
             }
 
             public function array(): array
             {
-                return [
-                    ['M001', 'Press 80T #1', 'Line A', 'Progressive', 800000, '2024-01-15'],
-                    ['M002', 'Press 110T #1', 'Line B', 'Progressive', 1100000, '2023-06-01'],
-                ];
+                return MesinImport::CONTOH;
             }
         };
 

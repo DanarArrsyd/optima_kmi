@@ -2,6 +2,7 @@
 
 namespace App\Imports;
 
+use App\Imports\Concerns\LewatiBarisContoh;
 use App\Imports\Concerns\ParsesStrictImportDateTime;
 use App\Models\MasterKaryawan;
 use App\Models\MasterLosstime;
@@ -18,6 +19,15 @@ use Maatwebsite\Excel\Concerns\WithStartRow;
 
 class DandoriImport implements ToCollection, WithHeadingRow, WithStartRow
 {
+    use LewatiBarisContoh;
+
+    /** Baris contoh template — dibaca juga oleh template-nya. Lihat {@see LewatiBarisContoh}. */
+    public const CONTOH = [
+        ['2026-01-15', 'Shift 1', 'Contoh Operator', 'A1', 'BT-001', '1', 'SD', 15],
+        ['2026-01-15', 'Shift 1', 'Contoh Operator', 'A1', 'BT-001', '1', 'GB', 8],
+        ['2026-01-16', 'Shift 2', 'Operator Lain', 'B2', 'BT-002', '2', 'SD', 12],
+    ];
+
     use ParsesStrictImportDateTime;
 
     public int $importedCount = 0;
@@ -34,6 +44,10 @@ class DandoriImport implements ToCollection, WithHeadingRow, WithStartRow
     {
         foreach ($rows as $i => $row) {
             $rowNum = $i + 3; // row 3 = first data row
+
+            if ($this->barisContoh($row)) {
+                continue;
+            }
 
             /* Skip completely empty rows */
             $tanggalRaw = trim((string) ($row['tanggal'] ?? ''));

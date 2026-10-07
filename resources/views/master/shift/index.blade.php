@@ -20,41 +20,35 @@
     <button type="button" class="erp-tb-btn" :class="filterOpen ? 'is-on' : ''" @click="filterOpen = !filterOpen">
         <i class="bi bi-funnel"></i>Filter @if($search !== '' || $filterAvail !== '')<span aria-hidden="true">&bull;</span>@endif
     </button>
+    <button type="button" class="erp-tb-btn"
+            onclick="document.getElementById('import-panel').classList.toggle('d-none')">
+        <i class="bi bi-file-earmark-arrow-up"></i>Import Excel
+    </button>
+    {{-- Ekspor membawa filter yang sedang aktif — isi file = isi tabel. --}}
+    <a href="{{ route('master.shift.export', request()->query()) }}" class="erp-tb-btn">
+        <i class="bi bi-file-earmark-excel"></i>Export Excel
+    </a>
     <a href="{{ route('master.shift.index') }}" class="erp-tb-btn"><i class="bi bi-arrow-clockwise"></i>Refresh</a>
     <span class="erp-tb-sp"></span>
 </div>
 
 <div class="erp-ws-body">
 
-<aside class="erp-dock" x-show="filterOpen" x-cloak>
-    <div class="erp-dock-hd">
-        <span>Filter</span>
-        <button type="button" class="erp-dock-x" @click="filterOpen = false" title="Tutup filter">&times;</button>
-    </div>
-    <form method="GET" action="{{ route('master.shift.index') }}" class="erp-dock-body">
-        <div class="erp-grp">
-            <b>Find</b>
-            <input type="text" name="q" value="{{ $search }}" class="erp-in @if($search !== '') is-set @endif"
-                   placeholder="Nama Shift">
-            <select name="filter_avail" class="erp-in @if($filterAvail !== '') is-set @endif">
-                <option value="">Semua Shift</option>
-                <option value="ya" @selected($filterAvail === 'ya')>Dihitung Availability</option>
-                <option value="tidak" @selected($filterAvail === 'tidak')>Tidak Dihitung</option>
-            </select>
-        </div>
-
-        <div class="erp-grp">
-            <button type="submit" class="erp-btn is-pri"><i class="bi bi-funnel"></i>Tampilkan</button>
-            <a href="{{ route('master.shift.index') }}" class="erp-btn">Reset</a>
-        </div>
-    </form>
-</aside>
+<x-filter.dock :action="route('master.shift.index')">
+    <x-filter.grup judul="Find">
+        <x-filter.teks :value="$search" placeholder="Nama Shift" />
+        <x-filter.cari name="filter_avail" placeholder="Dihitung Availability" :value="$filterAvail"
+                       :items="[['v' => 'ya', 't' => 'Dihitung Availability'], ['v' => 'tidak', 't' => 'Tidak Dihitung']]" />
+    </x-filter.grup>
+</x-filter.dock>
 
 <div class="erp-ws-main">
 {{-- Judul sudah ada di topbar; penggulungan dipegang .erp-scroll saja. --}}
 <div class="erp-scroll">
 
 
+
+@include('partials.import-errors')
 
 <div id="import-panel" class="erp-panel mb-3 d-none">
     <div class="erp-panel-header" style="display:flex;justify-content:space-between;align-items:center">
@@ -115,7 +109,7 @@
                             {{ substr($s->jam_start,0,5) }} – {{ substr($s->jam_finish,0,5) }}
                         </div>
                         @foreach($iSK as $ist)
-                            <div style="font-size:0.75rem;color:#6b7280">
+                            <div style="font-size:0.75rem;color:var(--text-3)">
                                 <i class="bi bi-cup-hot" style="color:#bbb"></i>
                                 {{ substr($ist->jam_start,0,5) }} – {{ substr($ist->jam_finish,0,5) }}
                             </div>
@@ -129,7 +123,7 @@
                                 {{ substr($s->jam_start_jumat,0,5) }} – {{ substr($s->jam_finish_jumat,0,5) }}
                             </div>
                             @foreach($iJm as $ist)
-                                <div style="font-size:0.75rem;color:#6b7280">
+                                <div style="font-size:0.75rem;color:var(--text-3)">
                                     <i class="bi bi-cup-hot" style="color:#bbb"></i>
                                     {{ substr($ist->jam_start,0,5) }} – {{ substr($ist->jam_finish,0,5) }}
                                 </div>
@@ -146,7 +140,7 @@
                                 {{ substr($s->jam_start_sabtu,0,5) }} – {{ substr($s->jam_finish_sabtu,0,5) }}
                             </div>
                             @foreach($iSb as $ist)
-                                <div style="font-size:0.75rem;color:#6b7280">
+                                <div style="font-size:0.75rem;color:var(--text-3)">
                                     <i class="bi bi-cup-hot" style="color:#bbb"></i>
                                     {{ substr($ist->jam_start,0,5) }} – {{ substr($ist->jam_finish,0,5) }}
                                 </div>
@@ -160,7 +154,7 @@
                         <div class="action-btns">
                             <a href="{{ route('master.shift.edit', $s) }}" class="btn btn-warning btn-sm">Edit</a>
                             <form method="POST" action="{{ route('master.shift.destroy', $s) }}"
-                                  onsubmit="return confirm('Hapus shift {{ $s->nama_shift }}?')">
+                                  data-konfirmasi="Hapus shift {{ $s->nama_shift }}?">
                                 @csrf @method('DELETE')
                                 <button class="btn btn-danger btn-sm">Hapus</button>
                             </form>
@@ -168,11 +162,7 @@
                     </td>
                 </tr>
             @empty
-                <tr>
-                    <td colspan="5" style="text-align:center;color:#888;padding:20px">
-                        Belum ada data shift.
-                    </td>
-                </tr>
+                <x-tabel-kosong kolom="5" entitas="data shift" :tambah="route('master.shift.create')" />
             @endforelse
             </tbody>
         </table>

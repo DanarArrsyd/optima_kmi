@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use App\Imports\DandoriImport;
 use App\Models\MasterKaryawan;
 use App\Models\MasterLosstime;
 use App\Models\MasterMesin;
@@ -59,11 +60,8 @@ class DandoriTemplateDataSheet implements FromArray, WithColumnWidths, WithHeadi
                 '* Wajib — Lihat sheet Referensi',
                 '* Wajib — Desimal diizinkan, contoh: 15.5',
             ],
-            /* Row 3: contoh sesi (2 loss time, 1 sesi) */
-            ['2026-01-15', 'Shift 1', 'Contoh Operator', 'A1', 'BT-001', '1', 'SD', 15],
-            ['2026-01-15', 'Shift 1', 'Contoh Operator', 'A1', 'BT-001', '1', 'GB', 8],
-            /* Row 5: contoh sesi lain */
-            ['2026-01-16', 'Shift 2', 'Operator Lain',   'B2', 'BT-002', '2', 'SD', 12],
+            // Baris contoh: sumbernya DandoriImport::CONTOH, supaya importer bisa mengenali dan melewatinya.
+            ...DandoriImport::CONTOH,
         ];
     }
 

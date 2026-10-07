@@ -21,9 +21,6 @@
     .kpi-cell .kpi-lbl  { font-size:11px; color:#6b7280; line-height:1.2; }
     .kpi-cell i         { font-size:1.3rem; }
 
-    .cs-toolbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
-    .cs-toolbar .cs-search { flex:1 1 220px; min-width:180px; }
-    .filter-badge { font-size:10px; }
 
 </style>
 
@@ -31,13 +28,16 @@
      Toolbar pencarian, urutan, dan filter lanjutan dipindah UTUH ke dalam
      dock — id dan kelasnya tidak diubah sedikit pun supaya JS halaman ini
      tetap bekerja apa adanya. --}}
-<div class="erp-ws">
+<div class="erp-ws" x-data="{ filterOpen: false }">
 
 <div class="erp-tb">
-    <button type="button" id="btnDock" class="erp-tb-btn"
-            onclick="erpToggleDock('csDock','btnDock')">
+    <button type="button" class="erp-tb-btn" :class="filterOpen ? 'is-on' : ''" @click="filterOpen = !filterOpen">
         <i class="bi bi-funnel"></i>Filter
     </button>
+    @if(! auth()->user()->isGuest())
+    {{-- href diisi pemuat data — file selalu sama dengan tabel, termasuk filternya. --}}
+    <a id="exportExcel" href="{{ route('maintenance.control-stroke-dies.export') }}" class="erp-tb-btn"><i class="bi bi-file-earmark-excel"></i>Export Excel</a>
+    @endif
     <a href="{{ route('maintenance.control-stroke-dies') }}" class="erp-tb-btn"><i class="bi bi-arrow-clockwise"></i>Refresh</a>
     @if(auth()->user()->hasRole('admin'))
     <a href="{{ route('maintenance.control-stroke-dies.schedule-pdf') }}" target="_blank" class="erp-tb-btn">
@@ -49,7 +49,7 @@
     @endif
     @if(auth()->user()->hasRole(['admin', 'staff_maintenance']))
     <form method="POST" action="{{ route('maintenance.control-stroke-dies.schedule-generate') }}" style="display:contents"
-          onsubmit="return confirm('Generate ulang jadwal preventive bulan ini? Jadwal lama akan ditimpa.');">
+          data-konfirmasi="Generate ulang jadwal preventive bulan ini? Jadwal lama akan ditimpa.">
         @csrf
         <button type="submit" class="erp-tb-btn"><i class="bi bi-arrow-repeat"></i>Generate Ulang</button>
     </form>
@@ -59,69 +59,42 @@
 
 <div class="erp-ws-body">
 
-<aside class="erp-dock" id="csDock" style="display:none">
-    <div class="erp-dock-hd">
-        <span>Filter</span>
-        <button type="button" class="erp-dock-x" onclick="erpToggleDock('csDock','btnDock')" title="Tutup filter">&times;</button>
-    </div>
-    <div class="erp-dock-body">
-<div class="cs-toolbar">
-    <div class="cs-search">
-        <div class="input-group input-group-sm">
-            <span class="input-group-text"><i class="bi bi-search"></i></span>
-            <input type="text" id="csSearch" class="form-control" placeholder="Cari part no / nama dies / proses...">
-        </div>
-    </div>
-    <select id="csSort" class="form-select form-select-sm" >
-        <option value="pct_desc">Stroke tertinggi &darr;</option>
-        <option value="pct_asc">Stroke terendah &uarr;</option>
-        <option value="kode_asc">Part No A–Z</option>
-        <option value="nama_asc">Nama dies A–Z</option>
-    </select>
-    <button type="button" id="csFilterToggle" class="btn btn-outline-secondary btn-sm" aria-expanded="false">
-        <i class="bi bi-sliders me-1"></i>Filter <span id="csFilterCount" class="badge bg-secondary filter-badge d-none">0</span>
-    </button>
-    <button type="button" id="csReset" class="btn btn-outline-secondary btn-sm d-none"><i class="bi bi-x-lg me-1"></i>Reset</button>
-</div>
+{{-- Menyaring di sisi klien atas data yang sudah dimuat. Opsi Find diisi
+     initFilters() dari data itu sendiri — tak ada opsi yang hasilnya kosong. --}}
+<x-filter.dock form-id="csForm" x-on:submit.prevent="bacaFilterCs()">
+    <x-filter.grup judul="Find">
+        <x-filter.teks id="csSearch" placeholder="Cari part no / nama dies / proses..." />
+        <x-filter.cari name="part" id="cs_part" placeholder="Part" />
+        <x-filter.cari name="customer" id="cs_customer" placeholder="Customer" />
+        <x-filter.cari name="proses" id="cs_proses" placeholder="Proses" />
+    </x-filter.grup>
 
-<div id="csFilterPanel" class="d-none">
-    <div style="padding:6px">
-        <div class="cs-adv">
-            <div class="erp-grp">
-                <b>Part</b>
-                <div class="cs-ta" data-key="part"><input type="text" class="form-control form-control-sm cs-ta-input" placeholder="Semua Part..." autocomplete="off"><div class="cs-ta-dd d-none"></div></div>
-            </div>
-            <div class="erp-grp">
-                <b>Customer</b>
-                <div class="cs-ta" data-key="customer"><input type="text" class="form-control form-control-sm cs-ta-input" placeholder="Semua Customer..." autocomplete="off"><div class="cs-ta-dd d-none"></div></div>
-            </div>
-            <div class="erp-grp">
-                <b>Proses</b>
-                <div class="cs-ta" data-key="proses"><input type="text" class="form-control form-control-sm cs-ta-input" placeholder="Semua Proses..." autocomplete="off"><div class="cs-ta-dd d-none"></div></div>
-            </div>
-        </div>
-    </div>
-</div>
-
-
-    </div>
-</aside>
+    <x-filter.grup judul="Urutkan">
+        <select id="csSort" name="sort" class="erp-in" aria-label="Urutkan">
+            <option value="pct_desc">Stroke tertinggi ↓</option>
+            <option value="pct_asc">Stroke terendah ↑</option>
+            <option value="kode_asc">Part No A–Z</option>
+            <option value="nama_asc">Nama dies A–Z</option>
+        </select>
+    </x-filter.grup>
+</x-filter.dock>
 
 <div class="erp-ws-main">
 <div class="erp-scroll erp-scroll-pad">
+@include('partials.status-muat', ['id' => 'an'])
 
 <div class="kpi-strip mb-2">
-    <div class="kpi-cell active" data-status="" style="border-left-color:#6b7280" role="button" tabindex="0" aria-pressed="true">
-        <i class="bi bi-grid-3x3-gap-fill" style="color:#6b7280"></i>
+    <div class="kpi-cell active" data-status="" style="border-left-color:var(--text-3)" role="button" tabindex="0" aria-pressed="true">
+        <i class="bi bi-grid-3x3-gap-fill" style="color:var(--text-3)"></i>
         <div><div class="kpi-num" id="kpiTotalDies">0</div><div class="kpi-lbl">Total dies (punya produksi)</div></div>
     </div>
     <div class="kpi-cell" data-status="warning" style="border-left-color:#b45309" role="button" tabindex="0" aria-pressed="false">
         <i class="bi bi-exclamation-triangle-fill" style="color:#b45309"></i>
         <div><div class="kpi-num" id="kpiWarning" style="color:#b45309">0</div><div class="kpi-lbl">Perlu perhatian (&ge;80%)</div></div>
     </div>
-    <div class="kpi-cell" data-status="overdue" style="border-left-color:#b91c1c" role="button" tabindex="0" aria-pressed="false">
-        <i class="bi bi-exclamation-octagon-fill" style="color:#b91c1c"></i>
-        <div><div class="kpi-num" id="kpiOverdue" style="color:#b91c1c">0</div><div class="kpi-lbl">Segera preventive (&ge;100%)</div></div>
+    <div class="kpi-cell" data-status="overdue" style="border-left-color:var(--c-danger)" role="button" tabindex="0" aria-pressed="false">
+        <i class="bi bi-exclamation-octagon-fill" style="color:var(--c-danger)"></i>
+        <div><div class="kpi-num" id="kpiOverdue" style="color:var(--c-danger)">0</div><div class="kpi-lbl">Segera preventive (&ge;100%)</div></div>
     </div>
 </div>
 
@@ -168,7 +141,6 @@
 @endsection
 
 @push('scripts')
-@include('maintenance.partials.typeahead')
 <script>
 const canInputPreventive = {{ auth()->user()->hasRole(['admin', 'staff_maintenance']) ? 'true' : 'false' }};
 const baseUrl = `{{ url('maintenance/availability/control-stroke-dies') }}`;
@@ -195,7 +167,6 @@ const STATUS = {
 
 let allRows = [];
 const state = { status: '', q: '', part: '', customer: '', proses: '', sort: 'pct_desc' };
-const ta = {};
 
 function uniqueOpts(rows, valFn, labelFn) {
     const seen = new Map();
@@ -204,18 +175,15 @@ function uniqueOpts(rows, valFn, labelFn) {
 }
 
 function initFilters() {
-    ta.part = csCombobox(document.querySelector('.cs-ta[data-key="part"]'),
-        uniqueOpts(allRows, r => r.kode_mesin, r => `${r.kode_mesin} – ${r.nama_mesin}`),
-        v => { state.part = v; render(); });
-    ta.customer = csCombobox(document.querySelector('.cs-ta[data-key="customer"]'),
-        uniqueOpts(allRows, r => r.customer, r => r.customer),
-        v => { state.customer = v; render(); });
-    ta.proses = csCombobox(document.querySelector('.cs-ta[data-key="proses"]'),
-        uniqueOpts(allRows, r => r.nama_proses, r => r.nama_proses),
-        v => { state.proses = v; render(); });
+    Alpine.$data(document.getElementById('cs_part')).items = uniqueOpts(allRows, r => r.kode_mesin, r => `${r.kode_mesin} – ${r.nama_mesin}`);
+    Alpine.$data(document.getElementById('cs_customer')).items = uniqueOpts(allRows, r => r.customer, r => r.customer);
+    Alpine.$data(document.getElementById('cs_proses')).items = uniqueOpts(allRows, r => r.nama_proses, r => r.nama_proses);
 }
 
-async function loadData() {
+/* Pemuat dibungkus muatDenganStatus (layout): overlay, galat, Coba lagi. */
+function loadData() { return muatDenganStatus('an', loadDataInti); }
+
+async function loadDataInti() {
     const tbody = document.getElementById('strokeTableBody');
     try {
         const res = await fetch(dataUrl);
@@ -257,12 +225,14 @@ function render() {
         c.setAttribute('aria-pressed', on ? 'true' : 'false');
     });
 
-    const advCount = (state.part ? 1 : 0) + (state.customer ? 1 : 0) + (state.proses ? 1 : 0);
-    const badge = document.getElementById('csFilterCount');
-    badge.textContent = advCount;
-    badge.classList.toggle('d-none', advCount === 0);
-    const anyFilter = state.status || state.q || state.part || state.customer || state.proses;
-    document.getElementById('csReset').classList.toggle('d-none', !anyFilter);
+
+    // Tombol ekspor membawa state filter klien yang sama (lihat export() di controller).
+    const exportBtn = document.getElementById('exportExcel');
+    if (exportBtn) {
+        const p = new URLSearchParams();
+        ['status', 'q', 'sort', ...['part', 'customer', 'proses']].forEach(k => { if (state[k]) p.set(k, state[k]); });
+        exportBtn.href = `{{ route('maintenance.control-stroke-dies.export') }}?${p}`;
+    }
 
     document.getElementById('csCount').textContent =
         rows.length === allRows.length ? `${allRows.length} dies` : `${rows.length} dari ${allRows.length} dies`;
@@ -282,7 +252,7 @@ function render() {
         const sisa    = r.threshold - r.current_stroke;
         const sisaTxt = sisa >= 0
             ? `<span class="text-muted">sisa ${fmt(sisa)} stroke</span>`
-            : `<span style="color:#b91c1c;font-weight:600">lewat ${fmt(-sisa)} stroke</span>`;
+            : `<span style="color:var(--c-danger);font-weight:600">lewat ${fmt(-sisa)} stroke</span>`;
         const rowStyle = st.tint ? `style="background:${st.tint}"` : '';
         const lastPrev = r.last_preventive_date
             ? `${r.last_preventive_date} <span class="text-muted">· ${escHtml(r.last_preventive_pic) || '—'}</span>`
@@ -301,7 +271,7 @@ function render() {
                     <span><strong>${fmt(r.current_stroke)}</strong> <span class="text-muted">/ ${fmt(r.threshold)}</span></span>
                     <strong style="color:${st.color}">${r.pct}%</strong>
                 </div>
-                <div class="progress" style="height:8px;background:#e5e7eb;border-radius:4px">
+                <div class="progress" style="height:8px;background:var(--border-2);border-radius:4px">
                     <div class="progress-bar ${st.bar}" style="width:${barPct}%"></div>
                 </div>
                 <div style="font-size:11px;margin-top:3px">${sisaTxt}</div>
@@ -330,23 +300,17 @@ document.querySelectorAll('.kpi-cell').forEach(cell => {
     cell.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
 });
 
-document.getElementById('csSearch').addEventListener('input', e => { state.q = e.target.value; render(); });
-document.getElementById('csSort').addEventListener('change', e => { state.sort = e.target.value; render(); });
-// Filter part/customer/proses = combobox typeahead (di-wire lewat onSelect di initFilters()).
-
-document.getElementById('csFilterToggle').addEventListener('click', () => {
-    const panel = document.getElementById('csFilterPanel');
-    const btn = document.getElementById('csFilterToggle');
-    const hidden = panel.classList.toggle('d-none');
-    btn.setAttribute('aria-expanded', hidden ? 'false' : 'true');
-});
-
-document.getElementById('csReset').addEventListener('click', () => {
-    state.status = ''; state.q = ''; state.part = ''; state.customer = ''; state.proses = '';
-    document.getElementById('csSearch').value = '';
-    ta.part?.reset(); ta.customer?.reset(); ta.proses?.reset();
+/* Dock baku: semua kontrol dibaca dari form. Ketik-cari langsung menyaring;
+   pilihan typeahead memancarkan 'change' dari input hidden-nya. */
+function bacaFilterCs() {
+    const fd = new FormData(document.getElementById('csForm'));
+    state.q = fd.get('q') || '';
+    state.sort = fd.get('sort') || 'pct_desc';
+    ['part', 'customer', 'proses'].forEach(k => { state[k] = fd.get(k) || ''; });
     render();
-});
+}
+document.getElementById('csForm').addEventListener('input', bacaFilterCs);
+document.getElementById('csForm').addEventListener('change', bacaFilterCs);
 
 document.addEventListener('DOMContentLoaded', loadData);
 </script>

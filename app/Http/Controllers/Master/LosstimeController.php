@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers\Master;
 
+use App\Exports\TabelExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreMasterLosstimeRequest;
 use App\Imports\LosstimeImport;
 use App\Models\MasterLosstime;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -17,14 +19,30 @@ class LosstimeController extends Controller
     {
         $search = trim((string) $request->input('q', ''));
 
-        $losstimes = MasterLosstime::query()
-            ->when($search !== '', fn ($q) => $q->where(fn ($s) => $s
-                ->where('kode', 'like', '%'.$search.'%')
-                ->orWhere('jenis_losstime', 'like', '%'.$search.'%')))
-            ->orderBy('kode')
+        $losstimes = $this->queryIndex($request)
             ->paginate(20)->withQueryString();
 
         return view('master.losstime.index', compact('losstimes', 'search'));
+    }
+
+    /** Query daftar BERSAMA index() dan export() — ekspor selalu memakai filter yang sama dengan tabel. */
+    private function queryIndex(Request $request): Builder
+    {
+        $search = trim((string) $request->input('q', ''));
+
+        return MasterLosstime::query()
+            ->when($search !== '', fn ($q) => $q->where(fn ($s) => $s
+                ->where('kode', 'like', '%'.$search.'%')
+                ->orWhere('jenis_losstime', 'like', '%'.$search.'%')))
+            ->orderBy('kode');
+    }
+
+    /** Export Excel isi tabel, termasuk filter yang sedang aktif. */
+    public function export(Request $request)
+    {
+        $baris = $this->queryIndex($request)->get()->map(fn ($l) => [$l->kode, $l->jenis_losstime, $l->std_menit_default, $l->std_menit_progressive])->all();
+
+        return Excel::download(new TabelExport(LosstimeImport::KOLOM, $baris, 'Master Loss Time'), 'master-losstime-'.now()->format('Ymd').'.xlsx');
     }
 
     public function create()
@@ -74,16 +92,12 @@ class LosstimeController extends Controller
         {
             public function headings(): array
             {
-                return ['Kode', 'Jenis Losstime', 'Std Menit Default', 'Std Menit Progressive'];
+                return LosstimeImport::KOLOM;
             }
 
             public function array(): array
             {
-                return [
-                    ['BK', 'Breakdown Mesin', 30, 15],
-                    ['MT', 'Maintenance', 60, 30],
-                    ['ST', 'Setup / Dandori', 15, 10],
-                ];
+                return LosstimeImport::CONTOH;
             }
         };
 

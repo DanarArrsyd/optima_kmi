@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Input;
 
 use App\Exports\DandoriImportTemplate;
 use App\Exports\LhpDandoriExport;
+use App\Http\Controllers\Concerns\BacaFilterMesin;
 use App\Http\Controllers\Concerns\ResolvesStaffNote;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreDandoriBatchRequest;
@@ -23,6 +24,7 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class DandoriController extends Controller
 {
+    use BacaFilterMesin;
     use ResolvesStaffNote;
 
     public function __construct(
@@ -41,7 +43,7 @@ class DandoriController extends Controller
          * dan jenis loss time — pertanyaan paling sering di halaman ini adalah
          * "loss time jenis apa yang paling sering di mesin mana". */
         $filterKarId = (int) $request->input('filter_karyawan_id', 0);
-        $filterMesinId = (int) $request->input('filter_mesin_id', 0);
+        $mesinIds = $this->mesinIds($request, 'filter_mesin_id');
         $filterLosstimeId = (int) $request->input('filter_losstime_id', 0);
         $filterCustomer = trim((string) $request->input('filter_customer', ''));
         $filterPartId = (int) $request->input('filter_part_id', 0);
@@ -65,8 +67,8 @@ class DandoriController extends Controller
         if ($filterKarId > 0) {
             $q->where('id_karyawan', $filterKarId);
         }
-        if ($filterMesinId > 0) {
-            $q->where('id_mesin', $filterMesinId);
+        if ($mesinIds) {
+            $q->whereIn('id_mesin', $mesinIds);
         }
         if ($filterLosstimeId > 0) {
             $q->where('id_losstime', $filterLosstimeId);
@@ -169,7 +171,7 @@ class DandoriController extends Controller
         return view('input.dandori.index', compact(
             'rincian', 'dateFrom', 'dateTo', 'search',
             'karyawan', 'mesin', 'parts', 'losstimes', 'customers',
-            'filterKarId', 'filterMesinId', 'filterLosstimeId',
+            'filterKarId', 'mesinIds', 'filterLosstimeId',
             'filterCustomer', 'filterPartId', 'filterProsesId', 'pakaiTanggal',
             'myLastRecord', 'myLastOnPage',
             'onlyOpenNotes', 'openNotesCount'
@@ -287,7 +289,7 @@ class DandoriController extends Controller
 
         return collect($params)->only([
             'date_from', 'date_to', 'q',
-            'filter_karyawan_id', 'filter_mesin_id', 'filter_losstime_id',
+            'filter_karyawan_id', 'filter_mesin_id', 'mesin_ids', 'filter_losstime_id',
             'filter_customer', 'filter_part_id', 'filter_proses_id',
             'pakai_tanggal', 'filter_apply', 'only_open_notes', 'page',
         ])->toArray();

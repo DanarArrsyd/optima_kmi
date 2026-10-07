@@ -2,6 +2,7 @@
 
 namespace App\Imports;
 
+use App\Imports\Concerns\LewatiBarisContoh;
 use App\Models\MasterMesin;
 use App\Support\SaneDate;
 use Illuminate\Support\Carbon;
@@ -13,6 +14,18 @@ use PhpOffice\PhpSpreadsheet\Shared\Date;
 
 class MesinImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
 {
+    use LewatiBarisContoh;
+
+    /** Judul kolom template impor — dibaca juga oleh template & ekspor halaman, supaya
+     *  ekspor → sunting di Excel → impor balik selalu cocok. */
+    public const KOLOM = ['ID Mesin', 'Nama Mesin', 'Line', 'Tipe Mesin', 'Kapasitas Max Stroke', 'Tanggal Instalasi'];
+
+    /** Baris contoh template — dibaca juga oleh template-nya. Lihat {@see LewatiBarisContoh}. */
+    public const CONTOH = [
+        ['M001', 'Press 80T #1', 'Line A', 'Progressive', 800000, '2024-01-15'],
+        ['M002', 'Press 110T #1', 'Line B', 'Progressive', 1100000, '2023-06-01'],
+    ];
+
     public int $imported = 0;
 
     public int $skipped = 0;
@@ -20,6 +33,10 @@ class MesinImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
     public function collection(Collection $rows): void
     {
         foreach ($rows as $row) {
+            if ($this->barisContoh($row)) {
+                continue;
+            }
+
             $idMesin = trim((string) ($row['id_mesin'] ?? ''));
             $nama = trim((string) ($row['nama_mesin'] ?? ''));
             if ($idMesin === '' || $nama === '') {

@@ -21,36 +21,23 @@
     <button type="button" class="erp-tb-btn" :class="filterOpen ? 'is-on' : ''" @click="filterOpen = !filterOpen">
         <i class="bi bi-funnel"></i>Filter @if($search !== '' || $filterRole !== '')<span aria-hidden="true">&bull;</span>@endif
     </button>
+    {{-- Ekspor membawa filter yang sedang aktif — isi file = isi tabel. --}}
+    <a href="{{ route('master.users.export', request()->query()) }}" class="erp-tb-btn">
+        <i class="bi bi-file-earmark-excel"></i>Export Excel
+    </a>
     <a href="{{ route('master.users.index') }}" class="erp-tb-btn"><i class="bi bi-arrow-clockwise"></i>Refresh</a>
     <span class="erp-tb-sp"></span>
 </div>
 
 <div class="erp-ws-body">
 
-<aside class="erp-dock" x-show="filterOpen" x-cloak>
-    <div class="erp-dock-hd">
-        <span>Filter</span>
-        <button type="button" class="erp-dock-x" @click="filterOpen = false" title="Tutup filter">&times;</button>
-    </div>
-    <form method="GET" action="{{ route('master.users.index') }}" class="erp-dock-body">
-        <div class="erp-grp">
-            <b>Find</b>
-            <input type="text" name="q" value="{{ $search }}" class="erp-in @if($search !== '') is-set @endif"
-                   placeholder="Nama atau Email">
-            <select name="filter_role" class="erp-in @if($filterRole !== '') is-set @endif">
-                <option value="">Semua Role</option>
-                @foreach($roleList as $kode => $label)
-                <option value="{{ $kode }}" @selected($filterRole === $kode)>{{ $label }}</option>
-                @endforeach
-            </select>
-        </div>
-
-        <div class="erp-grp">
-            <button type="submit" class="erp-btn is-pri"><i class="bi bi-funnel"></i>Tampilkan</button>
-            <a href="{{ route('master.users.index') }}" class="erp-btn">Reset</a>
-        </div>
-    </form>
-</aside>
+<x-filter.dock :action="route('master.users.index')">
+    <x-filter.grup judul="Find">
+        <x-filter.teks :value="$search" placeholder="Nama atau Email" />
+        <x-filter.cari name="filter_role" placeholder="Role" :value="$filterRole"
+                       :items="collect($roleList)->map(fn ($label, $kode) => ['v' => $kode, 't' => $label])" />
+    </x-filter.grup>
+</x-filter.dock>
 
 <div class="erp-ws-main">
 {{-- Judul sudah ada di topbar; penggulungan dipegang .erp-scroll saja. --}}
@@ -71,7 +58,7 @@
         </thead>
         <tbody>
         @forelse($users as $u)
-            <tr style="{{ !$u->is_aktif ? 'opacity:0.55;background:#f9fafb' : '' }}">
+            <tr style="{{ !$u->is_aktif ? 'opacity:0.55;background:var(--surface-2)' : '' }}">
                 <td>{{ $u->name }}</td>
                 <td>{{ $u->email }}</td>
                 <td>{{ collect($u->roles ?? [])->map(fn ($r) => strtoupper(str_replace('_', ' ', $r)))->implode(', ') }}</td>
@@ -88,14 +75,14 @@
                         <a href="{{ route('master.users.edit', $u) }}" class="btn btn-warning btn-sm">Edit</a>
                         @if($u->id !== auth()->id())
                         <form method="POST" action="{{ route('master.users.toggle-aktif', $u) }}"
-                              onsubmit="return confirm('{{ $u->is_aktif ? 'Nonaktifkan' : 'Aktifkan kembali' }} user ini?')">
+                              data-konfirmasi="{{ $u->is_aktif ? 'Nonaktifkan' : 'Aktifkan kembali' }} user ini?">
                             @csrf @method('PATCH')
                             <button class="btn btn-sm {{ $u->is_aktif ? 'btn-outline-secondary' : 'btn-outline-success' }}">
                                 {{ $u->is_aktif ? 'Nonaktifkan' : 'Aktifkan' }}
                             </button>
                         </form>
                         <form method="POST" action="{{ route('master.users.destroy', $u) }}"
-                              onsubmit="return confirm('Hapus user ini?')">
+                              data-konfirmasi="Hapus user ini?">
                             @csrf @method('DELETE')
                             <button class="btn btn-danger btn-sm">Hapus</button>
                         </form>
@@ -104,7 +91,7 @@
                 </td>
             </tr>
         @empty
-            <tr><td colspan="6" style="text-align:center;color:#888;padding:20px">Belum ada user.</td></tr>
+            <x-tabel-kosong kolom="6" entitas="user" :tambah="route('master.users.create')" />
         @endforelse
         </tbody>
     </table>

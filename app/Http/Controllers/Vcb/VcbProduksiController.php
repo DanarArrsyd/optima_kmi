@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Vcb;
 
+use App\Exports\TabelExport;
 use App\Http\Controllers\Controller;
 use App\Models\MasterKaryawan;
 use App\Models\MasterMesin;
@@ -9,6 +10,7 @@ use App\Models\MasterShift;
 use App\Services\DashboardService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Maatwebsite\Excel\Facades\Excel;
 
 class VcbProduksiController extends Controller
 {
@@ -75,6 +77,46 @@ class VcbProduksiController extends Controller
             'colors' => array_map(fn ($r) => $this->trafficHex($r['traffic_light']), $rows),
             'table' => $rows,
         ]);
+    }
+
+    /**
+     * Export Excel: tanpa karyawan_id = ringkasan semua operator (Mode 1),
+     * dengan karyawan_id = satu baris per sesi operator itu (Mode 2).
+     * Baris diambil dari method service yang sama dengan endpoint JSON layar.
+     */
+    public function export(Request $request)
+    {
+        $dateFrom = Carbon::parse($request->input('date_from', today()->toDateString()));
+        $dateTo = Carbon::parse($request->input('date_to', today()->toDateString()));
+        $shiftId = $request->filled('shift_id') ? (int) $request->input('shift_id') : null;
+        $mesinIds = array_filter(array_map('intval', (array) $request->input('mesin_ids', [])));
+        $karyawanId = (int) $request->input('karyawan_id');
+        $svc = $this->dashboardService;
+
+        if ($karyawanId) {
+            $baris = [];
+            foreach ($svc->getVcbProduksiByDate($dateFrom, $dateTo, $karyawanId, $shiftId, $mesinIds) as $hari) {
+                foreach ($hari['sessions'] as $s) {
+                    $baris[] = [$hari['tanggal_raw'], $s['mesin'], $s['nama_mesin'], $s['customer'], $s['part_no'],
+                        $s['part_name'], $s['nama_proses'], $s['jam'], $s['waktu_kerja'], $s['sph_std'], $s['sph_act'], $s['pct']];
+                }
+            }
+            $nama = MasterKaryawan::find($karyawanId)?->nama_karyawan ?? 'operator';
+
+            return Excel::download(new TabelExport(
+                ['Tanggal', 'ID Mesin', 'Nama Mesin', 'Customer', 'Part No', 'Part Name', 'Proses', 'Jam', 'Waktu Kerja (jam)', 'SPH Std', 'SPH Aktual', 'Achievement %'],
+                $baris, 'VCB '.$nama,
+            ), 'vcb-produksi-'.str($nama)->slug().'-'.$dateFrom->format('Ymd').'-'.$dateTo->format('Ymd').'.xlsx');
+        }
+
+        $baris = array_map(fn ($r) => [$r['karyawan'], $r['total_qty_aktual'], $r['total_target_qty'], $r['total_duration_hours'],
+            $r['avg_actual_sph'], $r['avg_sph_std'], $r['achievement_pct'], $svc->labelStatus($r['traffic_light'])],
+            $svc->getVcbProduksi($dateFrom, $dateTo, $shiftId, $mesinIds));
+
+        return Excel::download(new TabelExport(
+            ['Operator', 'Qty Aktual', 'Target Qty', 'Jam Kerja', 'SPH Aktual', 'SPH Std', 'Achievement %', 'Status'],
+            $baris, 'VCB Produksi',
+        ), 'vcb-produksi-'.$dateFrom->format('Ymd').'-'.$dateTo->format('Ymd').'.xlsx');
     }
 
     private function trafficColor(string $light): string

@@ -25,7 +25,7 @@
     </div>
 
     @if($recommendations->isEmpty())
-    <div style="text-align:center;padding:32px;color:#9ca3af">
+    <div style="text-align:center;padding:32px;color:var(--text-4)">
         <i class="bi bi-check2-circle" style="font-size:1.6rem;display:block;margin-bottom:8px"></i>
         Nol rekomendasi Produksi tersisa.
     </div>
@@ -50,7 +50,7 @@
                     <td style="font-weight:600;white-space:nowrap">{{ $rec->part_no }}</td>
                     <td style="white-space:nowrap">{{ $rec->part_name }}</td>
                     <td style="white-space:nowrap">
-                        <span style="font-size:0.78rem;color:#6b7280">{{ $rec->id_proses }}</span>
+                        <span style="font-size:0.78rem;color:var(--text-3)">{{ $rec->id_proses }}</span>
                         {{ $rec->nama_proses }}
                     </td>
                     <td style="text-align:right;color:#374151">
@@ -69,7 +69,7 @@
                         <strong style="color:#2d7a2d;font-size:1rem">
                             {{ number_format($rec->recommended_sph) }}
                         </strong>
-                        <span style="color:#6b7280;font-size:0.75rem">
+                        <span style="color:var(--text-3);font-size:0.75rem">
                             (+{{ $rec->increase_pct }}%)
                         </span>
                     </td>
@@ -131,7 +131,7 @@
     </div>
 
     @if($recommendationsQc->isEmpty())
-    <div style="text-align:center;padding:32px;color:#9ca3af">
+    <div style="text-align:center;padding:32px;color:var(--text-4)">
         <i class="bi bi-check2-circle" style="font-size:1.6rem;display:block;margin-bottom:8px"></i>
         Nol rekomendasi QC tersisa.
     </div>
@@ -156,7 +156,7 @@
                     <td style="font-weight:600;white-space:nowrap">{{ $rec->part_no }}</td>
                     <td style="white-space:nowrap">{{ $rec->part_name }}</td>
                     <td style="white-space:nowrap">
-                        <span style="font-size:0.78rem;color:#6b7280">{{ $rec->id_proses }}</span>
+                        <span style="font-size:0.78rem;color:var(--text-3)">{{ $rec->id_proses }}</span>
                         {{ $rec->nama_proses }}
                     </td>
                     <td style="text-align:right;color:#374151">
@@ -175,7 +175,7 @@
                         <strong style="color:#2d7a2d;font-size:1rem">
                             {{ number_format($rec->recommended_sph) }}
                         </strong>
-                        <span style="color:#6b7280;font-size:0.75rem">
+                        <span style="color:var(--text-3);font-size:0.75rem">
                             (+{{ $rec->increase_pct }}%)
                         </span>
                     </td>

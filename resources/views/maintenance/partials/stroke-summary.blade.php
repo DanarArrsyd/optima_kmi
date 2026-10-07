@@ -20,11 +20,11 @@
             @if($sSisa >= 0)
                 <span class="text-muted">sisa {{ number_format($sSisa, 0, ',', '.') }} stroke</span>
             @else
-                <span style="color:#b91c1c;font-weight:600">lewat {{ number_format(-$sSisa, 0, ',', '.') }} stroke</span>
+                <span style="color:var(--c-danger);font-weight:600">lewat {{ number_format(-$sSisa, 0, ',', '.') }} stroke</span>
             @endif
         </span>
     </div>
-    <div class="progress" style="height:9px;background:#e5e7eb;border-radius:4px">
+    <div class="progress" style="height:9px;background:var(--border-2);border-radius:4px">
         <div class="progress-bar {{ $sBarCls }}" style="width:{{ $sBarPct }}%"></div>
     </div>
 </div>

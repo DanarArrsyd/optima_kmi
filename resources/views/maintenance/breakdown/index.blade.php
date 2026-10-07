@@ -7,18 +7,12 @@
 @section('main_mod', 'erp-flush')
 
 @php
-/* ── Data dock filter ── */
-$_mesinTA    = $mesinList->map(fn ($m) => ['v' => $m->id, 't' => $m->id_mesin.' – '.$m->nama_mesin])->values();
-$_picTA      = $picList->map(fn ($k) => ['v' => $k->nama_karyawan, 't' => $k->nama_karyawan])->values();
-$_mesinObjF  = $mesinId ? $mesinList->firstWhere('id', $mesinId) : null;
-$_mesinLabel = $_mesinObjF ? $_mesinObjF->id_mesin.' – '.$_mesinObjF->nama_mesin : '';
-$filterActive = $mesinId || $filterPic !== '' || $filterStatus !== '';
+$filterActive = $mesinIds || $filterPic !== '' || $filterStatus !== '';
 @endphp
 
 @section('content')
 
 @php
-    $filterActive = $mesinId > 0 || $dateFrom !== date('Y-m-01') || $dateTo !== date('Y-m-d');
     $isAdmin      = auth()->user()->hasRole('admin');
     $bolehTulis   = auth()->user()->hasRole(['admin', 'staff_maintenance']);
 @endphp
@@ -69,80 +63,16 @@ $filterActive = $mesinId || $filterPic !== '' || $filterStatus !== '';
 <div class="erp-ws-body">
 
 {{-- ── Dock filter (kiri) ────────────────────────────────────── --}}
-<aside class="erp-dock" x-show="filterOpen" x-cloak>
-    <div class="erp-dock-hd">
-        <span>Filter</span>
-        <button type="button" class="erp-dock-x" @click="filterOpen = false" title="Tutup filter">&times;</button>
-    </div>
-    <form method="GET" action="{{ route('maintenance.breakdown.index') }}" class="erp-dock-body">
+<x-filter.dock :action="route('maintenance.breakdown.index')">
+    <x-filter.grup judul="Find">
+        <x-filter.mesin :selected="$mesinIds" />
+        <x-filter.cari name="filter_pic" placeholder="PIC Maintenance" :value="$filterPic"
+                       :items="$picList->map(fn ($k) => ['v' => $k->nama_karyawan, 't' => $k->nama_karyawan])" />
+        <x-filter.cari name="filter_status" placeholder="Status" :value="$filterStatus" :items="[['v' => 'Ringan', 't' => 'Ringan'], ['v' => 'Sedang', 't' => 'Sedang'], ['v' => 'Berat', 't' => 'Berat']]" />
+    </x-filter.grup>
 
-        {{-- ══ Find ══
-             Tanpa Part & Customer: breakdown mesin tidak terikat part mana pun. --}}
-        <div class="erp-grp">
-            <b>Find</b>
-            <div x-data="filterSearchComp(_mesinTA, {{ $mesinId ?: 0 }}, '{{ addslashes($_mesinLabel) }}')"
-                 @click.outside="open=false" style="position:relative">
-                <input type="hidden" name="mesin_id" :value="val">
-                <input type="text" x-model="query" @focus="open=true" @input="open=true"
-                       @keydown.escape="open=false" placeholder="Nama Mesin"
-                       class="erp-in" :class="val ? 'is-set' : ''">
-                <button type="button" x-show="val" @mousedown.prevent="clear()" class="erp-clr">&times;</button>
-                <div x-show="open && filtered.length > 0" x-cloak class="erp-dd">
-                    <template x-for="item in filtered" :key="item.v">
-                        <div @mousedown.prevent="pick(item)" class="erp-dd-item" x-text="item.t"></div>
-                    </template>
-                </div>
-            </div>
-            <div x-data="filterSearchComp(_picTA, '{{ $filterPic }}', '{{ addslashes($filterPic) }}')"
-                 @click.outside="open=false" style="position:relative">
-                <input type="hidden" name="filter_pic" :value="val">
-                <input type="text" x-model="query" @focus="open=true" @input="open=true"
-                       @keydown.escape="open=false" placeholder="PIC Maintenance"
-                       class="erp-in" :class="val ? 'is-set' : ''">
-                <button type="button" x-show="val" @mousedown.prevent="clear()" class="erp-clr">&times;</button>
-                <div x-show="open && filtered.length > 0" x-cloak class="erp-dd">
-                    <template x-for="item in filtered" :key="item.v">
-                        <div @mousedown.prevent="pick(item)" class="erp-dd-item" x-text="item.t"></div>
-                    </template>
-                </div>
-            </div>
-            <select name="filter_status" class="erp-in @if($filterStatus !== '') is-set @endif">
-                <option value="">Semua Status</option>
-                @foreach(['Ringan', 'Sedang', 'Berat'] as $st)
-                <option value="{{ $st }}" @selected($filterStatus === $st)>{{ $st }}</option>
-                @endforeach
-            </select>
-        </div>
-
-        {{-- ══ Filter by Date ══
-             Centangnya mematikan rentang tanggal sama sekali, bukan sekadar
-             menyembunyikan isian — tanpa itu tidak ada cara mencari lintas
-             seluruh riwayat. --}}
-        <div class="erp-grp" x-data="{ pakaiTgl: {{ $pakaiTanggal ? 'true' : 'false' }} }">
-            <label class="erp-chk">
-                <input type="checkbox" name="pakai_tanggal" value="1" x-model="pakaiTgl">
-                <b>Filter by Date</b>
-            </label>
-            <div class="erp-dock-row">
-                <span>From</span>
-                <input type="date" name="date_from" value="{{ $dateFrom }}" class="erp-in" :disabled="!pakaiTgl">
-            </div>
-            <div class="erp-dock-row">
-                <span>To</span>
-                <input type="date" name="date_to" value="{{ $dateTo }}" class="erp-in" :disabled="!pakaiTgl">
-            </div>
-        </div>
-
-        <div class="erp-grp">
-            {{-- Penanda form dikirim: tanpa ini, centang yang dilepas tidak
-                 terkirim sama sekali dan server tidak bisa membedakan
-                 "dimatikan" dari "halaman baru dibuka". --}}
-            <input type="hidden" name="filter_apply" value="1">
-            <button type="submit" class="erp-btn is-pri"><i class="bi bi-funnel"></i>Terapkan</button>
-            <a href="{{ route('maintenance.breakdown.index') }}" class="erp-btn">Reset</a>
-        </div>
-    </form>
-</aside>
+    <x-filter.tanggal :from="$dateFrom" :to="$dateTo" :pakai="$pakaiTanggal" />
+</x-filter.dock>
 
 <div class="erp-ws-main">
 
@@ -207,20 +137,12 @@ $filterActive = $mesinId || $filterPic !== '' || $filterStatus !== '';
 </div>
 @endif
 
-@if(session('import_errors') && count(session('import_errors')) > 0)
-    <div class="alert alert-warning alert-dismissible fade show mb-3">
-        <strong>{{ count(session('import_errors')) }} baris dilewati:</strong>
-        <div style="max-height:180px;overflow-y:auto;margin-top:6px">
-            <ul class="mb-0">@foreach(session('import_errors') as $err)<li>{{ $err }}</li>@endforeach</ul>
-        </div>
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-@endif
+@include('partials.import-errors')
 {{-- Judul sudah ada di topbar dan jumlah data sudah ada di status bar;
      kepala panel hanya memakan tinggi. Penggulungan dipegang .erp-scroll
      saja — wadah gulung bertumpuk mematikan kepala tabel yang menempel. --}}
 <div class="erp-scroll">
-        <table class="erp-table tbl-freeze" style="min-width:1650px">
+        <table class="erp-table tbl-freeze @if($isAdmin) ada-aksi @endif" style="min-width:1650px">
             <thead style="position:sticky;top:0;z-index:10">
                 <tr>
                     <th class="sc sc-1" style="width:90px">Tanggal</th>
@@ -264,7 +186,7 @@ $filterActive = $mesinId || $filterPic !== '' || $filterStatus !== '';
                     <td style="white-space:nowrap">
                         <a href="{{ route('maintenance.breakdown.edit',$b) }}" class="btn btn-warning btn-sm">Edit</a>
                         <form method="POST" action="{{ route('maintenance.breakdown.destroy',$b) }}" class="d-inline"
-                              onsubmit="return confirm('Hapus breakdown {{ $b->no_lkm }}?')">
+                              data-konfirmasi="Hapus breakdown {{ $b->no_lkm }}?">
                             @csrf @method('DELETE')
                             <button class="btn btn-danger btn-sm">Hapus</button>
                         </form>
@@ -272,7 +194,7 @@ $filterActive = $mesinId || $filterPic !== '' || $filterStatus !== '';
                     @endif
                 </tr>
             @empty
-                <tr><td colspan="{{ $isAdmin ? 13 : 12 }}" style="text-align:center;color:#9ca3af;padding:30px">Belum ada data breakdown.</td></tr>
+                <x-tabel-kosong :kolom="$isAdmin ? 13 : 12" entitas="data breakdown mesin" periode />
             @endforelse
             </tbody>
         </table>
@@ -304,10 +226,6 @@ $filterActive = $mesinId || $filterPic !== '' || $filterStatus !== '';
 
 @push('scripts')
 <script>
-/* ── Data dock filter (komponen bersama di layout) ── */
-const _mesinTA = @json($_mesinTA);
-const _picTA   = @json($_picTA);
-
 /* taField() kini satu definisi di layouts/app.blade.php. */
 
 @if (session('batch_tersimpan'))

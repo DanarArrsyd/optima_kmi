@@ -20,30 +20,25 @@
     <button type="button" class="erp-tb-btn" :class="filterOpen ? 'is-on' : ''" @click="filterOpen = !filterOpen">
         <i class="bi bi-funnel"></i>Filter @if($search !== '')<span aria-hidden="true">&bull;</span>@endif
     </button>
+    <button type="button" class="erp-tb-btn"
+            onclick="document.getElementById('import-panel').classList.toggle('d-none')">
+        <i class="bi bi-file-earmark-arrow-up"></i>Import Excel
+    </button>
+    {{-- Ekspor membawa filter yang sedang aktif — isi file = isi tabel. --}}
+    <a href="{{ route('master.losstime.export', request()->query()) }}" class="erp-tb-btn">
+        <i class="bi bi-file-earmark-excel"></i>Export Excel
+    </a>
     <a href="{{ route('master.losstime.index') }}" class="erp-tb-btn"><i class="bi bi-arrow-clockwise"></i>Refresh</a>
     <span class="erp-tb-sp"></span>
 </div>
 
 <div class="erp-ws-body">
 
-<aside class="erp-dock" x-show="filterOpen" x-cloak>
-    <div class="erp-dock-hd">
-        <span>Filter</span>
-        <button type="button" class="erp-dock-x" @click="filterOpen = false" title="Tutup filter">&times;</button>
-    </div>
-    <form method="GET" action="{{ route('master.losstime.index') }}" class="erp-dock-body">
-        <div class="erp-grp">
-            <b>Find</b>
-            <input type="text" name="q" value="{{ $search }}" class="erp-in @if($search !== '') is-set @endif"
-                   placeholder="Kode atau Jenis Loss Time">
-        </div>
-
-        <div class="erp-grp">
-            <button type="submit" class="erp-btn is-pri"><i class="bi bi-funnel"></i>Tampilkan</button>
-            <a href="{{ route('master.losstime.index') }}" class="erp-btn">Reset</a>
-        </div>
-    </form>
-</aside>
+<x-filter.dock :action="route('master.losstime.index')">
+    <x-filter.grup judul="Find">
+        <x-filter.teks :value="$search" placeholder="Kode atau Jenis Loss Time" />
+    </x-filter.grup>
+</x-filter.dock>
 
 <div class="erp-ws-main">
 {{-- Judul sudah ada di topbar; penggulungan dipegang .erp-scroll saja. --}}
@@ -101,21 +96,21 @@
                     @if($lt->std_menit_default)
                         <span style="font-variant-numeric:tabular-nums">{{ $lt->std_menit_default }} mnt</span>
                     @else
-                        <span style="color:#9ca3af">Full loss</span>
+                        <span style="color:var(--text-4)">Full loss</span>
                     @endif
                 </td>
                 <td style="white-space:nowrap;text-align:center">
                     @if($lt->std_menit_progressive)
                         <span style="font-variant-numeric:tabular-nums">{{ $lt->std_menit_progressive }} mnt</span>
                     @else
-                        <span style="color:#9ca3af">—</span>
+                        <span style="color:var(--text-4)">—</span>
                     @endif
                 </td>
                 <td style="white-space:nowrap">
                     <div class="action-btns" style="flex-wrap:nowrap">
                         <a href="{{ route('master.losstime.edit', $lt) }}" class="btn btn-warning btn-sm">Edit</a>
                         <form method="POST" action="{{ route('master.losstime.destroy', $lt) }}"
-                              onsubmit="return confirm('Hapus loss time ini?')">
+                              data-konfirmasi="Hapus loss time ini?">
                             @csrf @method('DELETE')
                             <button class="btn btn-danger btn-sm">Hapus</button>
                         </form>
@@ -123,7 +118,7 @@
                 </td>
             </tr>
         @empty
-            <tr><td colspan="5" style="text-align:center;color:#888;padding:20px">Belum ada data loss time.</td></tr>
+            <x-tabel-kosong kolom="5" entitas="data loss time" :tambah="route('master.losstime.create')" />
         @endforelse
         </tbody>
     </table>

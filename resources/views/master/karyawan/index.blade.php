@@ -24,41 +24,25 @@
             onclick="document.getElementById('import-panel').classList.toggle('d-none')">
         <i class="bi bi-file-earmark-arrow-up"></i>Import Excel
     </button>
+    {{-- Ekspor membawa filter yang sedang aktif — isi file = isi tabel. --}}
+    <a href="{{ route('master.karyawan.export', request()->query()) }}" class="erp-tb-btn">
+        <i class="bi bi-file-earmark-excel"></i>Export Excel
+    </a>
     <a href="{{ route('master.karyawan.index') }}" class="erp-tb-btn"><i class="bi bi-arrow-clockwise"></i>Refresh</a>
     <span class="erp-tb-sp"></span>
 </div>
 
 <div class="erp-ws-body">
 
-<aside class="erp-dock" x-show="filterOpen" x-cloak>
-    <div class="erp-dock-hd">
-        <span>Filter</span>
-        <button type="button" class="erp-dock-x" @click="filterOpen = false" title="Tutup filter">&times;</button>
-    </div>
-    <form method="GET" action="{{ route('master.karyawan.index') }}" class="erp-dock-body">
-        <div class="erp-grp">
-            <b>Find</b>
-            <input type="text" name="q" value="{{ $search }}" class="erp-in @if($search !== '') is-set @endif"
-                   placeholder="NIK atau Nama Karyawan">
-            <select name="filter_dept" class="erp-in @if($filterDept !== '') is-set @endif">
-                <option value="">Semua Departemen</option>
-                @foreach($deptList as $o)
-                <option value="{{ $o }}" @selected($filterDept === $o)>{{ $o }}</option>
-                @endforeach
-            </select>
-            <select name="filter" class="erp-in @if($filter !== 'semua') is-set @endif">
-                <option value="semua" @selected($filter === 'semua')>Semua Status</option>
-                <option value="aktif" @selected($filter === 'aktif')>Aktif</option>
-                <option value="nonaktif" @selected($filter === 'nonaktif')>Nonaktif</option>
-            </select>
-        </div>
-
-        <div class="erp-grp">
-            <button type="submit" class="erp-btn is-pri"><i class="bi bi-funnel"></i>Tampilkan</button>
-            <a href="{{ route('master.karyawan.index') }}" class="erp-btn">Reset</a>
-        </div>
-    </form>
-</aside>
+<x-filter.dock :action="route('master.karyawan.index')">
+    <x-filter.grup judul="Find">
+        <x-filter.teks :value="$search" placeholder="NIK atau Nama Karyawan" />
+        <x-filter.cari name="filter_dept" placeholder="Departemen" :value="$filterDept"
+                       :items="collect($deptList)->map(fn ($o) => ['v' => $o, 't' => $o])" />
+        <x-filter.cari name="filter" placeholder="Status" :value="$filter === 'semua' ? null : $filter"
+                       :items="[['v' => 'aktif', 't' => 'Aktif'], ['v' => 'nonaktif', 't' => 'Nonaktif']]" />
+    </x-filter.grup>
+</x-filter.dock>
 
 <div class="erp-ws-main">
 {{-- Judul sudah ada di topbar; penggulungan dipegang .erp-scroll saja. --}}
@@ -100,7 +84,7 @@
 {{-- Status Aktif/Non-Aktif/Semua disaring lewat dropdown "Semua Status" di
      dock Filter, bukan tombol sendiri di sini — satu kontrol per fungsi,
      nggak dobel sama select yang sudah ada. --}}
-<div style="font-size:0.78rem;color:#6b7280;margin-bottom:10px">
+<div style="font-size:0.78rem;color:var(--text-3);margin-bottom:10px">
     {{ $karyawan->total() }} karyawan
     @if($filter==='aktif') aktif
     @elseif($filter==='nonaktif') non-aktif
@@ -133,7 +117,7 @@
         </thead>
         <tbody>
         @forelse($karyawan as $i => $k)
-            <tr style="{{ !$k->is_aktif ? 'opacity:0.55;background:#f9fafb' : '' }}">
+            <tr style="{{ !$k->is_aktif ? 'opacity:0.55;background:var(--surface-2)' : '' }}">
                 <td style="white-space:nowrap">{{ $karyawan->firstItem() + $i }}</td>
                 <td style="font-family:monospace;white-space:nowrap">{{ $k->nik }}</td>
                 {{-- Badge "NON-AKTIF" di sini dulu dobel sama kolom Status di sebelah —
@@ -144,7 +128,7 @@
                     @if($k->is_aktif)
                         <span style="font-size:0.72rem;background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:3px;font-weight:600">Aktif</span>
                     @else
-                        <span style="font-size:0.72rem;background:#e5e7eb;color:#4b5563;padding:2px 8px;border-radius:3px;font-weight:600">Non-Aktif</span>
+                        <span style="font-size:0.72rem;background:var(--border-2);color:var(--text-2);padding:2px 8px;border-radius:3px;font-weight:600">Non-Aktif</span>
                     @endif
                 </td>
                 @if($adaKolomTanggal)
@@ -177,14 +161,14 @@
                                 </span>
                             @else
                                 <button type="submit" class="btn btn-sm btn-success"
-                                        onclick="return confirm('Aktifkan kembali karyawan {{ addslashes($k->nama_karyawan) }}? Tanggal nonaktifnya akan dikosongkan.')">
+                                        data-konfirmasi="Aktifkan kembali karyawan {{ $k->nama_karyawan }}? Tanggal nonaktifnya akan dikosongkan.">
                                     <i class="bi bi-person-check me-1"></i>Aktifkan
                                 </button>
                             @endif
                         </form>
 
                         <form method="POST" action="{{ route('master.karyawan.destroy', $k) }}"
-                              onsubmit="return confirm('Hapus permanen karyawan ini? Data historis LHP yang terkait tidak akan terhapus.')">
+                              data-konfirmasi="Hapus permanen karyawan ini? Data historis LHP yang terkait tidak akan terhapus.">
                             @csrf @method('DELETE')
                             <button class="btn btn-danger btn-sm">Hapus</button>
                         </form>
@@ -192,14 +176,7 @@
                 </td>
             </tr>
         @empty
-            <tr>
-                <td colspan="{{ $adaKolomTanggal ? 7 : 6 }}" style="text-align:center;color:#888;padding:20px">
-                    @if($filter === 'nonaktif') Tidak ada karyawan non-aktif.
-                    @elseif($filter === 'aktif') Belum ada karyawan aktif.
-                    @else Belum ada data karyawan.
-                    @endif
-                </td>
-            </tr>
+            <x-tabel-kosong :kolom="$adaKolomTanggal ? 7 : 6" entitas="data karyawan" :tambah="route('master.karyawan.create')" />
         @endforelse
         </tbody>
     </table>

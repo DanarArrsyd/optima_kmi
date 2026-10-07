@@ -67,9 +67,15 @@ class VcbTanggalDanDrilldownTest extends TestCase
         // Menyaring bisa mengosongkan pilihan (orangnya di luar rentang). Memanggil
         // pemuat sesudahnya memunculkan alert "Pilih operator terlebih dahulu" —
         // menyalahkan pengguna atas sesuatu yang dilakukan halaman sendiri.
-        $this->assertStringContainsString(
-            "if (document.getElementById('one_karyawan_id').value)",
-            $this->html($route)
-        );
+        // Pintasan Bulan di form Mode 2 dipasang :kirim="false" — mengisi
+        // tanggal tanpa memuat. Form Mode 1 (tanpa isian wajib) memuat langsung.
+        $html = $this->html($route);
+        $formOne = substr($html, strpos($html, 'id="formOne"'));
+        $formOne = substr($formOne, 0, strpos($formOne, '</form>'));
+        $formAll = substr($html, strpos($html, 'id="formAll"'));
+        $formAll = substr($formAll, 0, strpos($formAll, '</form>'));
+
+        $this->assertStringContainsString('if (false) this.$root.closest', $formOne);
+        $this->assertStringContainsString('if (true) this.$root.closest', $formAll);
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use App\Imports\ProduksiImport;
 use App\Models\MasterJenisNg;
 use App\Models\MasterKaryawan;
 use App\Models\MasterMesin;
@@ -65,20 +66,8 @@ class ProduksiTemplateDataSheet implements FromArray, WithColumnWidths, WithHead
                 'Opsional — Kosongkan jika tidak ada NG',
                 'Opsional — Lihat sheet Referensi',
             ],
-            // Row 3: contoh data
-            [
-                '2026-01-15',
-                'Shift 1',
-                'Contoh Operator',
-                'A1',
-                'BT-001',
-                '1',
-                '08:00',
-                '16:00',
-                500,
-                '',
-                '',
-            ],
+            // Baris contoh: sumbernya ProduksiImport::CONTOH, supaya importer bisa mengenali dan melewatinya.
+            ...ProduksiImport::CONTOH,
         ];
     }
 

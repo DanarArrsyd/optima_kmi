@@ -4,21 +4,6 @@
 {{-- Ruang kerja ERP mengelola tingginya sendiri sampai tepi layar. --}}
 @section('main_mod', 'erp-flush')
 
-@php
-/* ── Data dock filter ── */
-$_partsForFilter = $partsForFilter->map(fn ($pp) => [
-    'id' => $pp->id, 'part_no' => $pp->part_no, 'part_name' => $pp->part_name, 'customer' => $pp->customer,
-    'proses' => $pp->proses->map(fn ($pr) => ['id' => $pr->id, 'label' => $pr->id_proses.' – '.$pr->nama_proses])->values(),
-])->values();
-$_partsTA  = $_partsForFilter->map(fn ($x) => ['v' => $x['id'], 't' => $x['part_name'], 'sub' => $x['part_no'], 'pno' => $x['part_no']])->values();
-$_prosesTA = $partsForFilter->flatMap(fn ($pp) => $pp->proses)->unique('id')
-    ->map(fn ($pr) => ['v' => $pr->id, 't' => $pr->id_proses.' – '.$pr->nama_proses])->values();
-
-$_partLabel   = $filterPartId ? ($partsForFilter->firstWhere('id', $filterPartId)?->part_name ?? '') : '';
-$_prosesObjF  = $filterProsesId ? $partsForFilter->flatMap(fn ($pp) => $pp->proses)->firstWhere('id', $filterProsesId) : null;
-$_prosesLabel = $_prosesObjF ? $_prosesObjF->id_proses.' – '.$_prosesObjF->nama_proses : '';
-@endphp
-
 @section('content')
 
 {{-- ══ ALPINE SCOPE ══ --}}
@@ -56,76 +41,13 @@ $_prosesLabel = $_prosesObjF ? $_prosesObjF->id_proses.' – '.$_prosesObjF->nam
 
 <div class="erp-ws-body">
 
-<aside class="erp-dock" x-show="filterOpen" x-cloak>
-    <div class="erp-dock-hd">
-        <span>Filter</span>
-        <button type="button" class="erp-dock-x" @click="filterOpen = false" title="Tutup filter">&times;</button>
-    </div>
-    <form method="GET" action="{{ route('master.part.index') }}" class="erp-dock-body">
+<x-filter.dock :action="route('master.part.index')">
+    <x-filter.grup judul="Find">
+        <x-filter.teks :value="$search" placeholder="Part No, Part Name, Customer, Proses" />
+    </x-filter.grup>
 
-        <div class="erp-grp">
-            <b>Find</b>
-            <input type="text" name="q" value="{{ $search }}" class="erp-in @if($search !== '') is-set @endif"
-                   placeholder="Part No, Part Name, Customer, Proses">
-        </div>
-
-        <div class="erp-grp">
-            <b>Part &amp; Customer</b>
-            <select name="filter_customer" class="erp-in @if($filterCustomer !== '') is-set @endif">
-                <option value="">Semua Customer</option>
-                @foreach($customerList as $c)
-                <option value="{{ $c }}" @selected($filterCustomer === $c)>{{ $c }}</option>
-                @endforeach
-            </select>
-
-            <div x-data="partGroupComp({{ $filterPartId ?: 0 }}, '{{ addslashes($_partLabel) }}', {{ $filterProsesId ?: 0 }}, '{{ addslashes($_prosesLabel) }}')"
-                 style="display:flex;flex-direction:column;gap:4px">
-
-                <div @click.outside="partOpen=false" style="position:relative">
-                    <input type="hidden" name="filter_part_id" :value="partVal">
-                    <input type="text" x-model="partQuery" @focus="partOpen=true"
-                           @input="partOpen=true;partVal='';prosesVal='';prosesQuery=''"
-                           @keydown.escape="partOpen=false" placeholder="Nama Part"
-                           class="erp-in" :class="partVal ? 'is-set' : ''">
-                    <button type="button" x-show="partVal"
-                            @mousedown.prevent="partVal='';partQuery='';prosesVal='';prosesQuery=''"
-                            class="erp-clr">&times;</button>
-                    <div x-show="partOpen && filteredParts.length > 0" x-cloak class="erp-dd">
-                        <template x-for="item in filteredParts" :key="item.v">
-                            <div @mousedown.prevent="pickPart(item)" class="erp-dd-item" :title="item.t">
-                                <span style="font-weight:700" x-text="item.t"></span>
-                                <span class="sub" x-text="item.sub"></span>
-                            </div>
-                        </template>
-                    </div>
-                </div>
-
-                <div @click.outside="prosesOpen=false" style="position:relative">
-                    <input type="hidden" name="filter_proses_id" :value="prosesVal">
-                    <input type="text" x-model="prosesQuery" @focus="prosesOpen=true"
-                           @input="prosesOpen=true;prosesVal=''" @keydown.escape="prosesOpen=false"
-                           placeholder="Proses" class="erp-in" :class="prosesVal ? 'is-set' : ''">
-                    <button type="button" x-show="prosesVal" @mousedown.prevent="prosesVal='';prosesQuery=''" class="erp-clr">&times;</button>
-                    <div x-show="prosesOpen && filteredProses.length > 0" x-cloak class="erp-dd">
-                        <template x-for="item in filteredProses" :key="item.v">
-                            <div @mousedown.prevent="prosesVal=item.v;prosesQuery=item.t;prosesOpen=false"
-                                 class="erp-dd-item" x-text="item.t"></div>
-                        </template>
-                    </div>
-                </div>
-
-                {{-- Nomor part tidak diketik: dia turunan dari Nama Part. --}}
-                <input type="text" class="erp-in" readonly tabindex="-1"
-                       :value="partNo || 'Nomor Part'" :title="partNo">
-            </div>
-        </div>
-
-        <div class="erp-grp">
-            <button type="submit" class="erp-btn is-pri"><i class="bi bi-funnel"></i>Tampilkan</button>
-            <a href="{{ route('master.part.index') }}" class="erp-btn">Reset</a>
-        </div>
-    </form>
-</aside>
+    <x-filter.part-group :customer="$filterCustomer" :part-id="$filterPartId" :proses-id="$filterProsesId" />
+</x-filter.dock>
 
 <div class="erp-ws-main">
 {{-- Judul sudah ada di topbar; penggulungan dipegang .erp-scroll saja.
@@ -202,14 +124,14 @@ $_prosesLabel = $_prosesObjF ? $_prosesObjF->id_proses.' – '.$_prosesObjF->nam
     <table class="erp-table" style="min-width:900px">
         <thead>
             <tr>
-                <th style="position:sticky;top:0;z-index:10;background:#e5e7eb">Customer</th>
-                <th style="position:sticky;top:0;z-index:10;background:#e5e7eb;white-space:nowrap">Part No</th>
-                <th style="position:sticky;top:0;z-index:10;background:#e5e7eb;white-space:nowrap">Part Name</th>
-                <th style="position:sticky;top:0;z-index:10;background:#e5e7eb">ID Proses</th>
-                <th style="position:sticky;top:0;z-index:10;background:#e5e7eb;white-space:nowrap">Nama Proses</th>
-                <th style="position:sticky;top:0;z-index:10;background:#e5e7eb">SPH Produksi<br><span style="font-weight:400;font-size:0.72rem">+ tgl upgrade</span></th>
-                <th style="position:sticky;top:0;z-index:10;background:#e5e7eb">SPH Quality<br><span style="font-weight:400;font-size:0.72rem">+ tgl upgrade</span></th>
-                <th style="position:sticky;top:0;z-index:10;background:#e5e7eb;width:160px">Aksi</th>
+                <th style="position:sticky;top:0;z-index:10;background:var(--border-2)">Customer</th>
+                <th style="position:sticky;top:0;z-index:10;background:var(--border-2);white-space:nowrap">Part No</th>
+                <th style="position:sticky;top:0;z-index:10;background:var(--border-2);white-space:nowrap">Part Name</th>
+                <th style="position:sticky;top:0;z-index:10;background:var(--border-2)">ID Proses</th>
+                <th style="position:sticky;top:0;z-index:10;background:var(--border-2);white-space:nowrap">Nama Proses</th>
+                <th style="position:sticky;top:0;z-index:10;background:var(--border-2)">SPH Produksi<br><span style="font-weight:400;font-size:0.72rem">+ tgl upgrade</span></th>
+                <th style="position:sticky;top:0;z-index:10;background:var(--border-2)">SPH Quality<br><span style="font-weight:400;font-size:0.72rem">+ tgl upgrade</span></th>
+                <th style="position:sticky;top:0;z-index:10;background:var(--border-2);width:160px">Aksi</th>
             </tr>
         </thead>
         <tbody>
@@ -247,7 +169,7 @@ $_prosesLabel = $_prosesObjF ? $_prosesObjF->id_proses.' – '.$_prosesObjF->nam
                     <div class="action-btns">
                         <a href="{{ route('master.part.edit', $part) }}" class="btn btn-warning btn-sm">Edit Part</a>
                         <form method="POST" action="{{ route('master.part.proses.destroy', [$part, $proses]) }}"
-                              onsubmit="return confirm('Hapus proses {{ $proses->nama_proses }} dari part {{ $part->part_no }}?')">
+                              data-konfirmasi="Hapus proses {{ $proses->nama_proses }} dari part {{ $part->part_no }}?">
                             @csrf @method('DELETE')
                             <button class="btn btn-danger btn-sm">Hapus Proses</button>
                         </form>
@@ -255,17 +177,7 @@ $_prosesLabel = $_prosesObjF ? $_prosesObjF->id_proses.' – '.$_prosesObjF->nam
                 </td>
             </tr>
         @empty
-            <tr>
-                <td colspan="8" style="text-align:center;color:#888;padding:24px">
-                    @if($search !== '')
-                        Tidak ada part yang cocok dengan "<strong>{{ $search }}</strong>".
-                        <a href="{{ route('master.part.index') }}" class="ms-1">Reset pencarian</a>
-                    @else
-                        Belum ada data part &amp; proses.
-                        <a href="{{ route('master.part.create') }}">Tambah Part Baru</a>
-                    @endif
-                </td>
-            </tr>
+            <x-tabel-kosong kolom="8" entitas="part" :tambah="route('master.part.create')" />
         @endforelse
         </tbody>
     </table>
@@ -316,7 +228,7 @@ $_prosesLabel = $_prosesObjF ? $_prosesObjF->id_proses.' – '.$_prosesObjF->nam
                     <div class="action-btns">
                         <a href="{{ route('master.part.edit', $p) }}" class="btn btn-warning btn-sm">Tambah Proses</a>
                         <form method="POST" action="{{ route('master.part.destroy', $p) }}"
-                              onsubmit="return confirm('Hapus part {{ $p->part_no }}?')">
+                              data-konfirmasi="Hapus part {{ $p->part_no }}?">
                             @csrf @method('DELETE')
                             <button class="btn btn-danger btn-sm">Hapus Part</button>
                         </form>
@@ -332,11 +244,3 @@ $_prosesLabel = $_prosesObjF ? $_prosesObjF->id_proses.' – '.$_prosesObjF->nam
 </div>{{-- /alpine outer scope --}}
 @endsection
 
-@push('scripts')
-<script>
-/* ── Data dock filter (komponen bersama di layout) ── */
-const _partsTA       = @json($_partsTA);
-const _partsFullData = @json($_partsForFilter);
-const _prosesTA      = @json($_prosesTA);
-</script>
-@endpush

@@ -2,6 +2,7 @@
 
 namespace App\Imports;
 
+use App\Imports\Concerns\LewatiBarisContoh;
 use App\Imports\Concerns\ParsesStrictImportDateTime;
 use App\Models\MasterJenisNg;
 use App\Models\MasterKaryawan;
@@ -15,9 +16,17 @@ use App\Services\ProduksiService;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
+use Maatwebsite\Excel\Concerns\WithStartRow;
 
-class ProduksiImport implements ToCollection, WithHeadingRow
+class ProduksiImport implements ToCollection, WithHeadingRow, WithStartRow
 {
+    use LewatiBarisContoh;
+
+    /** Baris contoh template — dibaca juga oleh template-nya. Lihat {@see LewatiBarisContoh}. */
+    public const CONTOH = [
+        ['2026-01-15', 'Shift 1', 'Contoh Operator', 'A1', 'BT-001', '1', '08:00', '16:00', 500, '', ''],
+    ];
+
     use ParsesStrictImportDateTime;
 
     public int $importedCount = 0;
@@ -31,10 +40,20 @@ class ProduksiImport implements ToCollection, WithHeadingRow
         $this->service = app(ProduksiService::class);
     }
 
+    /** Baris 2 = keterangan pengisian template, bukan data. */
+    public function startRow(): int
+    {
+        return 3;
+    }
+
     public function collection(Collection $rows): void
     {
         foreach ($rows as $i => $row) {
-            $rowNum = $i + 2; // row 2 = first data row (row 1 = header)
+            $rowNum = $i + 3; // baris 1 = judul, 2 = keterangan, data mulai baris 3
+
+            if ($this->barisContoh($row)) {
+                continue;
+            }
 
             /* Skip completely empty rows */
             $tanggalRaw = trim((string) ($row['tanggal_produksi'] ?? ''));

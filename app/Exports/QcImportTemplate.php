@@ -2,6 +2,7 @@
 
 namespace App\Exports;
 
+use App\Imports\QcImport;
 use App\Models\MasterJenisNg;
 use App\Models\MasterKaryawan;
 use App\Models\MasterPart;
@@ -62,19 +63,8 @@ class QcTemplateDataSheet implements FromArray, WithColumnWidths, WithHeadings, 
                 '* Wajib — Min 0',
                 'Opsional — Lihat sheet Referensi',
             ],
-            // Row 3: sample
-            [
-                '2026-01-15',
-                '2026-01-14',
-                'Shift 1',
-                'Contoh Inspector',
-                'BT-001',
-                '08:00',
-                '16:00',
-                490,
-                10,
-                '',
-            ],
+            // Baris contoh: sumbernya QcImport::CONTOH, supaya importer bisa mengenali dan melewatinya.
+            ...QcImport::CONTOH,
         ];
     }
 

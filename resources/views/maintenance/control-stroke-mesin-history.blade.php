@@ -90,7 +90,7 @@
                 @empty
                     <tr>
                         <td colspan="5" class="text-center text-muted py-4">
-                            <i class="bi bi-clock-history d-block mb-2" style="font-size:1.6rem;color:#9ca3af"></i>
+                            <i class="bi bi-clock-history d-block mb-2" style="font-size:1.6rem;color:var(--text-4)"></i>
                             Belum ada riwayat preventive untuk mesin ini.
                         </td>
                     </tr>

@@ -2,6 +2,7 @@
 
 namespace App\Imports;
 
+use App\Imports\Concerns\LewatiBarisContoh;
 use App\Imports\Concerns\ParsesStrictImportDateTime;
 use App\Models\MasterJenisNg;
 use App\Models\MasterKaryawan;
@@ -14,9 +15,17 @@ use App\Services\QcService;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
+use Maatwebsite\Excel\Concerns\WithStartRow;
 
-class QcImport implements ToCollection, WithHeadingRow
+class QcImport implements ToCollection, WithHeadingRow, WithStartRow
 {
+    use LewatiBarisContoh;
+
+    /** Baris contoh template — dibaca juga oleh template-nya. Lihat {@see LewatiBarisContoh}. */
+    public const CONTOH = [
+        ['2026-01-15', '2026-01-14', 'Shift 1', 'Contoh Inspector', 'BT-001', '08:00', '16:00', 490, 10, ''],
+    ];
+
     use ParsesStrictImportDateTime;
 
     public int $importedCount = 0;
@@ -30,10 +39,20 @@ class QcImport implements ToCollection, WithHeadingRow
         $this->service = app(QcService::class);
     }
 
+    /** Baris 2 = keterangan pengisian template, bukan data. */
+    public function startRow(): int
+    {
+        return 3;
+    }
+
     public function collection(Collection $rows): void
     {
         foreach ($rows as $i => $row) {
-            $rowNum = $i + 2;
+            $rowNum = $i + 3; // baris 1 = judul, 2 = keterangan, data mulai baris 3
+
+            if ($this->barisContoh($row)) {
+                continue;
+            }
 
             $tanggalRaw = trim((string) ($row['tgl_pengecekan'] ?? ''));
             if ($tanggalRaw === '') {

@@ -27,7 +27,7 @@
         <div style="font-size:12.5px;color:var(--text-3)">
             Salinan seluruh basis data OPTIMA, termasuk data karyawan dan akun pengguna.
         </div>
-        <div style="font-size:12.5px;margin-top:6px;color:{{ $bahaya ? '#b91c1c' : 'var(--text-3)' }};font-weight:{{ $bahaya ? '700' : '400' }}">
+        <div style="font-size:12.5px;margin-top:6px;color:{{ $bahaya ? 'var(--c-danger)' : 'var(--text-3)' }};font-weight:{{ $bahaya ? '700' : '400' }}">
             <i class="bi bi-clock-history me-1"></i>Backup terakhir:
             @if($umurJam === null)
                 Belum pernah
@@ -38,7 +38,7 @@
     </div>
 
     <form method="POST" action="{{ route('sistem.backup.jalankan') }}" style="margin:0"
-          onsubmit="return confirm('Jalankan backup sekarang?')">
+          data-konfirmasi="Jalankan backup sekarang?">
         @csrf
         <button type="submit" class="btn btn-primary">
             <i class="bi bi-download me-1"></i>Buat backup sekarang
@@ -55,8 +55,8 @@
     mencatatnya. Menulisnya di layar akan jadi klaim palsu yang justru
     membuat orang lebih berani.
 --}}
-<div style="background:var(--surface);border:1px solid var(--border);border-left:4px solid #b91c1c;padding:14px 16px;margin-bottom:18px">
-    <h2 style="font-size:13px;font-weight:700;color:#b91c1c;margin:0">Satu berkas ini memuat seluruh database</h2>
+<div style="background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--c-danger);padding:14px 16px;margin-bottom:18px">
+    <h2 style="font-size:13px;font-weight:700;color:var(--c-danger);margin:0">Satu berkas ini memuat seluruh database</h2>
     <ul style="margin:8px 0 0;padding-left:18px;font-size:12px;color:var(--text-3);line-height:1.7">
         <li>Seluruh data karyawan, seluruh LHP, dan tabel <code>users</code> berikut hash kata sandinya.</li>
         <li>Disimpan di disk privat; berkasnya tidak pernah punya URL publik.</li>
@@ -93,7 +93,7 @@
                     <div class="action-btns" style="flex-wrap:nowrap;justify-content:flex-end">
                         <a href="{{ route('sistem.backup.unduh', $b['nama']) }}" class="btn btn-primary btn-sm">Unduh</a>
                         <form method="POST" action="{{ route('sistem.backup.hapus', $b['nama']) }}"
-                              onsubmit="return confirm('Hapus arsip {{ $b['nama'] }}? Tidak bisa dibatalkan.')">
+                              data-konfirmasi="Hapus arsip {{ $b['nama'] }}? Tidak bisa dibatalkan.">
                             @csrf @method('DELETE')
                             <button type="submit" class="btn btn-danger btn-sm">Hapus</button>
                         </form>

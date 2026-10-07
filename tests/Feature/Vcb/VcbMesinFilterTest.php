@@ -101,8 +101,8 @@ class VcbMesinFilterTest extends TestCase
 
         $html = $this->get(route('vcb.mesin'))->assertOk()->getContent();
 
-        $this->assertStringContainsString('mesinFilterComp(_mesinForJs, [])', $html);
-        $this->assertStringContainsString('const _mesinForJs =', $html);
+        $this->assertStringContainsString('mesinFilterComp(window._mesinForJs, [])', $html);
+        $this->assertSame(1, substr_count($html, 'window._mesinForJs ='));
         $this->assertStringContainsString('Line A', $html);
         $this->assertStringContainsString('Line B', $html);
         $this->assertStringContainsString('Semua Mesin', $html);
@@ -156,9 +156,13 @@ class VcbMesinFilterTest extends TestCase
 
         $html = $this->get(route('vcb.produksi'))->assertOk()->getContent();
 
-        $this->assertSame(2, substr_count($html, 'mesinFilterComp(_mesinForJs, [])'));
-        $this->assertStringContainsString('const _mesinForJs =', $html);
-        $this->assertSame(2, substr_count($html, 'input[name="mesin_ids[]"]'));
-        $this->assertSame(4, substr_count($html, 'name="mesin_ids[]"'));
+        // Satu pemilih per mode, data dipasang SEKALI walau komponennya dua.
+        $this->assertSame(2, substr_count($html, 'mesinFilterComp(window._mesinForJs, [])'));
+        $this->assertSame(1, substr_count($html, 'window._mesinForJs ='));
+        $this->assertSame(2, substr_count($html, 'name="mesin_ids[]"'));
+        // Pemuat membaca form utuh lewat FormData — mesin_ids[] ikut tanpa
+        // ditambah manual (dulu ditambah manual; kini akan terkirim dobel).
+        $this->assertSame(2, substr_count($html, 'new URLSearchParams(new FormData('));
+        $this->assertStringNotContainsString("params.append('mesin_ids[]'", $html);
     }
 }

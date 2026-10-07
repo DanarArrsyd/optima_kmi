@@ -19,7 +19,7 @@
 ])
 
 <div id="{{ $panelId }}" class="d-none" style="margin-bottom:12px">
-    <div style="border:1px solid #d1d5db;border-radius:2px;background:#fff">
+    <div style="border:1px solid var(--border);border-radius:2px;background:#fff">
 
         {{-- Panel header --}}
         <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:#1f2937;color:#fff">
@@ -28,7 +28,7 @@
             </span>
             <button type="button"
                     onclick="document.getElementById('{{ $panelId }}').classList.add('d-none')"
-                    style="background:none;border:none;color:#9ca3af;font-size:1rem;cursor:pointer;padding:0;line-height:1">
+                    style="background:none;border:none;color:var(--text-4);font-size:1rem;cursor:pointer;padding:0;line-height:1">
                 <i class="bi bi-x-lg"></i>
             </button>
         </div>
@@ -40,15 +40,15 @@
                 {{-- Tanggal --}}
                 <div style="display:flex;align-items:flex-end;gap:6px">
                     <div>
-                        <label style="display:block;font-size:0.68rem;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Dari Tanggal</label>
+                        <label style="display:block;font-size:0.68rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Dari Tanggal</label>
                         <input type="date" name="date_from"
                                class="form-control form-control-sm"
                                value="{{ $dateFrom }}"
                                style="width:140px;border-radius:2px">
                     </div>
-                    <span style="font-size:0.75rem;color:#9ca3af;padding-bottom:6px">—</span>
+                    <span style="font-size:0.75rem;color:var(--text-4);padding-bottom:6px">—</span>
                     <div>
-                        <label style="display:block;font-size:0.68rem;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Sampai Tanggal</label>
+                        <label style="display:block;font-size:0.68rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Sampai Tanggal</label>
                         <input type="date" name="date_to"
                                class="form-control form-control-sm"
                                value="{{ $dateTo }}"
@@ -57,11 +57,11 @@
                 </div>
 
                 {{-- Divider --}}
-                <div style="width:1px;height:32px;background:#e5e7eb;align-self:flex-end"></div>
+                <div style="width:1px;height:32px;background:var(--border-2);align-self:flex-end"></div>
 
                 {{-- Customer --}}
                 <div>
-                    <label style="display:block;font-size:0.68rem;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Customer</label>
+                    <label style="display:block;font-size:0.68rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Customer</label>
                     <input type="text" name="customer"
                            class="form-control form-control-sm"
                            placeholder="Toyota, DPM…"
@@ -70,7 +70,7 @@
 
                 {{-- Part Name --}}
                 <div>
-                    <label style="display:block;font-size:0.68rem;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Part Name</label>
+                    <label style="display:block;font-size:0.68rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Part Name</label>
                     <input type="text" name="part_name"
                            class="form-control form-control-sm"
                            placeholder="BRACKET…"
@@ -80,7 +80,7 @@
                 {{-- Nama Proses --}}
                 @if($showProses)
                 <div>
-                    <label style="display:block;font-size:0.68rem;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Nama Proses</label>
+                    <label style="display:block;font-size:0.68rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Nama Proses</label>
                     <input type="text" name="nama_proses"
                            class="form-control form-control-sm"
                            placeholder="PROGRESSIVE…"
@@ -98,7 +98,7 @@
 
             </div>
 
-            <div style="padding:4px 14px 8px;font-size:0.7rem;color:#9ca3af;border-top:1px solid #f3f4f6">
+            <div style="padding:4px 14px 8px;font-size:0.7rem;color:var(--text-4);border-top:1px solid var(--surface-3)">
                 <i class="bi bi-info-circle me-1"></i>
                 Semua filter opsional — kosongkan field untuk ekspor semua data
             </div>

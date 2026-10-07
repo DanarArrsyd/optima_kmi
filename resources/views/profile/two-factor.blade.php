@@ -16,13 +16,13 @@
 </div>
 
 @if(session('status') === 'two-factor-disabled')
-<div style="background:#f0fdf4;border:1px solid #86efac;border-left:3px solid #15803d;padding:10px 14px;border-radius:4px;font-size:13px;color:#15803d;margin-bottom:16px">
+<div style="background:var(--c-success-bg);border:1px solid #86efac;border-left:3px solid var(--c-success);padding:10px 14px;border-radius:4px;font-size:13px;color:var(--c-success);margin-bottom:16px">
     2FA dinonaktifkan.
 </div>
 @endif
 
 @if(session('error'))
-<div style="background:#fef2f2;border:1px solid #fca5a5;border-left:3px solid #b91c1c;padding:10px 14px;border-radius:4px;font-size:13px;color:#b91c1c;margin-bottom:16px">
+<div style="background:var(--c-danger-bg);border:1px solid #fca5a5;border-left:3px solid var(--c-danger);padding:10px 14px;border-radius:4px;font-size:13px;color:var(--c-danger);margin-bottom:16px">
     {{ session('error') }}
 </div>
 @endif
@@ -46,7 +46,7 @@
 @if($enabled)
     <div class="erp-panel">
         <div class="erp-panel-body" style="padding:16px">
-            <div style="display:flex;align-items:center;gap:8px;color:#15803d;font-weight:700;margin-bottom:12px">
+            <div style="display:flex;align-items:center;gap:8px;color:var(--c-success);font-weight:700;margin-bottom:12px">
                 <i class="bi bi-shield-check"></i>2FA AKTIF
             </div>
             <div style="font-size:12.5px;color:var(--text-3);margin-bottom:16px">
@@ -54,7 +54,7 @@
             </div>
 
             <form method="POST" action="{{ route('profile.two-factor.destroy') }}"
-                  onsubmit="return confirm('Nonaktifkan 2FA? Login berikutnya cuma butuh password.')">
+                  data-konfirmasi="Nonaktifkan 2FA? Login berikutnya cuma butuh password.">
                 @csrf
                 @method('DELETE')
                 <label class="form-label" for="password" style="font-size:12.5px">Konfirmasi password buat nonaktifkan</label>

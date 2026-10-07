@@ -71,6 +71,16 @@ Route::middleware('auth')->group(function () {
         Route::post('shift/import', [ShiftController::class, 'import'])->name('shift.import');
         Route::get('shift/import-template', [ShiftController::class, 'importTemplate'])->name('shift.import-template');
 
+        // Ekspor sebelum resource: 'export' tidak boleh tertangkap sebagai {id}.
+        Route::get('karyawan/export', [KaryawanController::class, 'export'])->name('karyawan.export');
+        Route::get('mesin/export', [MesinController::class, 'export'])->name('mesin.export');
+        Route::get('losstime/export', [LosstimeController::class, 'export'])->name('losstime.export');
+        Route::get('shift/export', [ShiftController::class, 'export'])->name('shift.export');
+        Route::get('users/export', [UserController::class, 'export'])->name('users.export');
+        Route::get('jenis-ng/export', [JenisNgController::class, 'export'])->name('jenis-ng.export');
+        Route::get('proses-repair/export', [ProsesRepairController::class, 'export'])->name('proses-repair.export');
+        Route::get('proses-repair-produksi/export', [ProsesRepairProduksiController::class, 'export'])->name('proses-repair-produksi.export');
+
         Route::resource('karyawan', KaryawanController::class);
         Route::resource('mesin', MesinController::class);
         Route::resource('part', PartController::class)->except(['show']);
@@ -108,6 +118,7 @@ Route::middleware('auth')->group(function () {
         Route::get('backup/{berkas}/unduh', [BackupController::class, 'unduh'])->name('backup.unduh');
         Route::delete('backup/{berkas}', [BackupController::class, 'hapus'])->name('backup.hapus');
         Route::get('log-aktivitas', [LogAktivitasController::class, 'index'])->name('log-aktivitas.index');
+        Route::get('log-aktivitas/export', [LogAktivitasController::class, 'export'])->name('log-aktivitas.export');
         Route::get('qr-stasiun', [QrStasiunController::class, 'index'])->name('qr-stasiun.index');
     });
 
@@ -146,6 +157,7 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:admin')->name('admin.')->group(function () {
         Route::get('admin/anomali', [AnomalyController::class, 'index'])->name('anomali');
         Route::post('admin/anomali/{transaksi}/approve', [AnomalyController::class, 'approve'])->name('anomali.approve');
+        Route::get('admin/anomali/export', [AnomalyController::class, 'export'])->name('anomali.export');
     });
 
     // --- INPUT & DAFTAR LHR (staff_repair + admin) ---
@@ -154,6 +166,8 @@ Route::middleware('auth')->group(function () {
         Route::get('repair/create', [RepairController::class, 'create'])->name('repair.create');
         Route::post('repair/batch', [RepairController::class, 'batch'])->name('repair.batch');
         Route::get('repair/export', [RepairController::class, 'export'])->name('repair.export');
+        Route::post('repair/import', [RepairController::class, 'import'])->name('repair.import');
+        Route::get('repair/import-template', [RepairController::class, 'importTemplate'])->name('repair.import-template');
     });
 
     // --- INPUT & DAFTAR LHR PRODUKSI (staff_produksi + staff_repair + admin) ---
@@ -162,6 +176,8 @@ Route::middleware('auth')->group(function () {
         Route::get('repair-produksi/create', [RepairProduksiController::class, 'create'])->name('repair-produksi.create');
         Route::post('repair-produksi/batch', [RepairProduksiController::class, 'batch'])->name('repair-produksi.batch');
         Route::get('repair-produksi/export', [RepairProduksiController::class, 'export'])->name('repair-produksi.export');
+        Route::post('repair-produksi/import', [RepairProduksiController::class, 'import'])->name('repair-produksi.import');
+        Route::get('repair-produksi/import-template', [RepairProduksiController::class, 'importTemplate'])->name('repair-produksi.import-template');
     });
 
     // --- EDIT/UPDATE LHP — admin only ---
@@ -220,6 +236,8 @@ Route::middleware('auth')->group(function () {
     // --- VCB DANDORI & DAFTAR NG PROSES EXPORT — guest TIDAK boleh ---
     Route::middleware('role:admin,staff_produksi,manager')->prefix('vcb')->name('vcb.')->group(function () {
         Route::get('dandori/export', [VcbDandoriController::class, 'export'])->name('dandori.export');
+        Route::get('produksi/export', [VcbProduksiController::class, 'export'])->name('produksi.export');
+        Route::get('mesin/export', [VcbMesinController::class, 'export'])->name('mesin.export');
         Route::get('ng-proses/daftar/export', [VcbNgProsesController::class, 'export'])->name('ng-proses.daftar.export');
     });
 
@@ -239,10 +257,20 @@ Route::middleware('auth')->group(function () {
     // atas), sisi QC belum. Isinya GET semua, jadi DenyGuestWrite tidak tersentuh.
     Route::middleware('role:admin,staff_qc,manager')->prefix('vcb')->name('vcb.')->group(function () {
         Route::get('ng-total/daftar/export', [VcbNgTotalController::class, 'export'])->name('ng-total.daftar.export');
+        Route::get('quality/export', [VcbQualityController::class, 'export'])->name('quality.export');
     });
 
     // --- MAINTENANCE: breakdown, import/export, input preventive (guest TIDAK boleh) ---
     Route::middleware('role:admin,staff_maintenance,manager')->prefix('maintenance')->name('maintenance.')->group(function () {
+        // Ekspor analitik — di grup ini (bukan grup baca) supaya guest tidak bisa ekspor.
+        Route::get('mttr/export', [MttrController::class, 'export'])->name('mttr.export');
+        Route::get('mtbf/export', [MtbfController::class, 'export'])->name('mtbf.export');
+        Route::get('availability/export', [AvailabilityController::class, 'export'])->name('availability.export');
+        Route::get('mttr-dies/export', [MttrDiesController::class, 'export'])->name('mttr-dies.export');
+        Route::get('mtbf-dies/export', [MtbfDiesController::class, 'export'])->name('mtbf-dies.export');
+        Route::get('availability-dies/export', [AvailabilityDiesController::class, 'export'])->name('availability-dies.export');
+        Route::get('availability/control-stroke-mesin/export', [ControlStrokeMesinController::class, 'export'])->name('control-stroke-mesin.export');
+        Route::get('availability/control-stroke-dies/export', [ControlStrokeDiesController::class, 'export'])->name('control-stroke-dies.export');
         Route::get('breakdown/last-no-lkm', [BreakdownMesinController::class, 'lastNoLkm'])->name('breakdown.last-no-lkm');
         Route::get('breakdown/export', [BreakdownMesinController::class, 'export'])->name('breakdown.export');
         Route::post('breakdown/import', [BreakdownMesinController::class, 'import'])->name('breakdown.import');

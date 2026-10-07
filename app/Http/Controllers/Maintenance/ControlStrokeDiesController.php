@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Maintenance;
 
+use App\Exports\TabelExport;
 use App\Http\Controllers\Controller;
 use App\Models\DiesPreventiveLog;
 use App\Models\MasterKaryawan;
@@ -16,6 +17,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ControlStrokeDiesController extends Controller
 {
@@ -59,6 +61,36 @@ class ControlStrokeDiesController extends Controller
             'threshold' => MaintenanceDiesDashboardService::STROKE_THRESHOLD,
             'karyawanList' => MasterKaryawan::aktif()->where('departemen', 'Maintenance')->orderBy('nama_karyawan')->get(),
         ]);
+    }
+
+    /**
+     * Export Excel. Halaman ini menyaring & mengurutkan DI KLIEN (render() di
+     * view), jadi tombolnya mengirim state filter itu dan saringan yang sama
+     * diterapkan di sini: cocok-persis per kolom, q = substring tanpa huruf besar.
+     */
+    public function export(Request $request)
+    {
+        $rows = collect($this->data($request)->getData(true)['rows']);
+
+        foreach ([['status', 'status'], ['part', 'kode_mesin'], ['customer', 'customer'], ['proses', 'nama_proses']] as [$param, $kolom]) {
+            if ($request->filled($param)) {
+                $rows = $rows->filter(fn ($r) => (string) ($r[$kolom] ?? '') === (string) $request->input($param));
+            }
+        }
+        if ($request->filled('q')) {
+            $q = mb_strtolower(trim((string) $request->input('q')));
+            $rows = $rows->filter(fn ($r) => str_contains(mb_strtolower(implode(' ', array_map(fn ($k) => (string) ($r[$k] ?? ''), ['kode_mesin', 'nama_mesin', 'nama_proses']))), $q));
+        }
+        $rows = match ($request->input('sort', 'pct_desc')) {
+            'pct_asc' => $rows->sortBy('pct'),
+            'kode_asc' => $rows->sortBy('kode_mesin', SORT_NATURAL | SORT_FLAG_CASE),
+            'nama_asc' => $rows->sortBy('nama_mesin', SORT_NATURAL | SORT_FLAG_CASE),
+            default => $rows->sortByDesc('pct'),
+        };
+
+        $baris = $rows->values()->map(fn ($r) => [$r['kode_mesin'], $r['nama_mesin'], $r['customer'], $r['nama_proses'], $r['current_stroke'], $r['threshold'], $r['pct'], $r['running_time_menit'], $r['status'], $r['last_preventive_date'], $r['last_preventive_pic']])->all();
+
+        return Excel::download(new TabelExport(['Part No', 'Nama Dies', 'Customer', 'Proses', 'Stroke Saat Ini', 'Batas Stroke', '% Stroke', 'Running Time (menit)', 'Status', 'Preventive Terakhir', 'PIC Preventive'], $baris, 'Control Stroke Dies'), 'control-stroke-dies-'.now()->format('Ymd').'.xlsx');
     }
 
     public function data(Request $request)

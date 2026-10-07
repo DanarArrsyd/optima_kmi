@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Exports\TabelExport;
 use App\Http\Controllers\Controller;
 use App\Models\TransaksiProduksi;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Maatwebsite\Excel\Facades\Excel;
 
 class AnomalyController extends Controller
 {
@@ -22,6 +25,25 @@ class AnomalyController extends Controller
     private const MIN_WKJ_DEFAULT = 0.083; // 5 menit dalam jam
 
     public function index(Request $request)
+    {
+        [$anomalies, $dateFrom, $dateTo, $reason] = $this->cariAnomali($request);
+
+        $summary = [
+            'total' => $anomalies->count(),
+            'high_pct' => $anomalies->filter(fn ($a) => in_array('high_pct', $a->types))->count(),
+            'short_wkj' => $anomalies->filter(fn ($a) => in_array('short_wkj', $a->types))->count(),
+            'no_std' => $anomalies->filter(fn ($a) => in_array('no_std', $a->types))->count(),
+        ];
+
+        return view('admin.anomali.index', compact('anomalies', 'summary', 'dateFrom', 'dateTo', 'reason'));
+    }
+
+    /**
+     * Anomali dalam rentang + filter jenis — BERSAMA index() dan export().
+     *
+     * @return array{0: Collection, 1: string, 2: string, 3: string}
+     */
+    private function cariAnomali(Request $request): array
     {
         $dateFrom = $request->input('date_from', date('Y-m-01'));
         $dateTo = $request->input('date_to', date('Y-m-d'));
@@ -79,14 +101,29 @@ class AnomalyController extends Controller
 
         $anomalies = $anomalies->values();
 
-        $summary = [
-            'total' => $anomalies->count(),
-            'high_pct' => $anomalies->filter(fn ($a) => in_array('high_pct', $a->types))->count(),
-            'short_wkj' => $anomalies->filter(fn ($a) => in_array('short_wkj', $a->types))->count(),
-            'no_std' => $anomalies->filter(fn ($a) => in_array('no_std', $a->types))->count(),
-        ];
+        return [$anomalies, $dateFrom, $dateTo, $reason];
+    }
 
-        return view('admin.anomali.index', compact('anomalies', 'summary', 'dateFrom', 'dateTo', 'reason'));
+    /** Export Excel daftar anomali — isi sama dengan tabel, filter ikut. */
+    public function export(Request $request)
+    {
+        [$anomalies, $dateFrom, $dateTo] = $this->cariAnomali($request);
+
+        $baris = $anomalies->map(function ($a) {
+            $t = $a->record;
+
+            return [
+                $t->tanggal_produksi?->format('Y-m-d'), $t->shift?->nama_shift, $t->karyawan?->nama_karyawan,
+                $t->mesin?->id_mesin, $t->partProses?->part?->part_no, $t->partProses?->part?->part_name,
+                $t->partProses?->nama_proses, substr((string) $t->jam_start, 0, 5).'–'.substr((string) $t->jam_finish, 0, 5),
+                round((float) $a->wkj, 2), $t->qty_aktual, $a->sph_std, $a->sph_act, $a->pct, implode('; ', $a->warnings),
+            ];
+        })->all();
+
+        return Excel::download(new TabelExport(
+            ['Tanggal', 'Shift', 'Operator', 'Mesin', 'Part No', 'Part Name', 'Proses', 'Jam', 'W. Kerja (jam)', 'Qty Act', 'SPH Std', 'SPH Aktual', 'Achievement %', 'Anomali'],
+            $baris, 'Anomali LHP',
+        ), 'anomali-lhp-'.$dateFrom.'-'.$dateTo.'.xlsx');
     }
 
     public function approve(TransaksiProduksi $transaksi)
