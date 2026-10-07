@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Input;
 
 use App\Exports\LhpRepairProduksiExport;
 use App\Exports\LhrImportTemplate;
+use App\Http\Controllers\Concerns\MenjagaKembar;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreRepairProduksiBatchRequest;
 use App\Http\Requests\UpdateRepairProduksiRequest;
@@ -19,6 +20,8 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class RepairProduksiController extends Controller
 {
+    use MenjagaKembar;
+
     public function __construct(private RepairProduksiWriteService $repairProduksiWriteService) {}
 
     public function index(Request $request)
@@ -89,6 +92,10 @@ class RepairProduksiController extends Controller
     public function batch(StoreRepairProduksiBatchRequest $request)
     {
         $rows = $request->validated()['rows'];
+
+        if ($tolak = $this->tolakKalauKembar($request, $rows, [['repair_produksi', null]])) {
+            return $tolak;
+        }
 
         DB::transaction(function () use ($rows) {
             foreach ($rows as $row) {

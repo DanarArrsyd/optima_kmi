@@ -40,13 +40,15 @@ class BreakdownMesinBatchTest extends TestCase
         $this->mesinId = $mesin->id;
     }
 
+    /* jam_breakdown ikut nomor_urut: baris dengan mesin/dies + tanggal + jam
+     * sama persis ditahan PenjagaKembar sebagai data dobel. */
     private function baris(array $ubah = []): array
     {
         return [
             'nomor_urut' => 1,
+            'jam_breakdown' => sprintf('08:%02d', $ubah['nomor_urut'] ?? 1),
             'id_mesin' => $this->mesinId,
             'tanggal_breakdown' => '2026-07-28',
-            'jam_breakdown' => '08:00',
             'tanggal_mulai_perbaikan' => '2026-07-28',
             'jam_mulai_perbaikan' => '09:00',
             'tanggal_selesai_perbaikan' => '2026-07-28',

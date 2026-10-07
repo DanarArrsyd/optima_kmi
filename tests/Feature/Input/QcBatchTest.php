@@ -88,7 +88,7 @@ class QcBatchTest extends TestCase
 
     public function test_pesan_sukses_menyebut_jumlah_baris(): void
     {
-        $this->kirim([$this->baris(), $this->baris(['qty_ok' => 10])])
+        $this->kirim([$this->baris(), $this->baris(['qty_ok' => 10, 'jam_start' => '13:00', 'jam_finish' => '15:00'])])
             ->assertSessionHas('batch_tersimpan', 2);
     }
 
@@ -221,7 +221,8 @@ class QcBatchTest extends TestCase
     {
         $rows = [];
         for ($i = 0; $i < 50; $i++) {
-            $rows[] = $this->baris(['qty_ok' => 10 + $i]);
+            $tgl = date('Y-m-d', strtotime("2026-07-28 -{$i} day"));
+            $rows[] = $this->baris(['qty_ok' => 10 + $i, 'tgl_pengecekan' => $tgl, 'tgl_produksi_part' => $tgl]);
         }
 
         $this->kirimJson($rows)->assertRedirect(route('input.qc.index'));

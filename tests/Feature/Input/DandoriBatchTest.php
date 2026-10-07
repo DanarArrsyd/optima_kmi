@@ -99,7 +99,7 @@ class DandoriBatchTest extends TestCase
     {
         $response = $this->kirim([
             $this->baris(),
-            $this->baris(['id_karyawan' => $this->ref['karyawan']]),
+            $this->baris(['id_karyawan' => $this->ref['karyawan'], 'tanggal' => '2026-07-27']),
         ]);
 
         $response->assertRedirect(route('input.dandori.index'));
@@ -141,8 +141,8 @@ class DandoriBatchTest extends TestCase
             ]),
             $this->baris([
                 'rincian' => [
-                    ['id_losstime' => $this->ref['losstime'], 'actual_menit' => 25],
-                    ['id_losstime' => $this->ref['losstimeKedua'], 'actual_menit' => 12],
+                    ['id_losstime' => $this->ref['losstime'], 'actual_menit' => 26],
+                    ['id_losstime' => $this->ref['losstimeKedua'], 'actual_menit' => 13],
                     ['id_losstime' => $this->ref['losstime'], 'actual_menit' => 5],
                 ],
             ]),

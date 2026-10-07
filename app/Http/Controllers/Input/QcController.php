@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Input;
 
 use App\Exports\LhpQcExport;
 use App\Exports\QcImportTemplate;
+use App\Http\Controllers\Concerns\MenjagaKembar;
 use App\Http\Controllers\Concerns\ResolvesStaffNote;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreQcBatchRequest;
@@ -24,6 +25,7 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class QcController extends Controller
 {
+    use MenjagaKembar;
     use ResolvesStaffNote;
 
     public function __construct(
@@ -185,6 +187,10 @@ class QcController extends Controller
     public function batch(StoreQcBatchRequest $request)
     {
         $rows = $request->validated()['rows'];
+
+        if ($tolak = $this->tolakKalauKembar($request, $rows, [['qc', null]])) {
+            return $tolak;
+        }
 
         DB::transaction(function () use ($rows) {
             foreach ($rows as $row) {

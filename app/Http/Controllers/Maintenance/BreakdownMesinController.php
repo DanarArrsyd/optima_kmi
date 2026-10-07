@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Maintenance;
 
 use App\Exports\BreakdownMesinExport;
 use App\Http\Controllers\Concerns\BacaFilterMesin;
+use App\Http\Controllers\Concerns\MenjagaKembar;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreBreakdownMesinBatchRequest;
 use App\Http\Requests\UpdateBreakdownMesinRequest;
@@ -22,6 +23,7 @@ use Maatwebsite\Excel\Facades\Excel;
 class BreakdownMesinController extends Controller
 {
     use BacaFilterMesin;
+    use MenjagaKembar;
 
     public function __construct(
         private BreakdownMesinService $svc,
@@ -143,6 +145,10 @@ class BreakdownMesinController extends Controller
     public function batch(StoreBreakdownMesinBatchRequest $request)
     {
         $rows = $request->validated()['rows'];
+
+        if ($tolak = $this->tolakKalauKembar($request, $rows, [['breakdown_mesin', null]])) {
+            return $tolak;
+        }
 
         $jumlah = DB::transaction(function () use ($rows) {
             foreach ($rows as $row) {

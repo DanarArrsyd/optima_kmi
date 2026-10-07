@@ -11,6 +11,7 @@ use App\Models\MasterPart;
 use App\Models\MasterPartProsesRepair;
 use App\Models\MasterPartProsesRepairProduksi;
 use App\Models\MasterShift;
+use App\Services\PenjagaKembar;
 use App\Services\RepairProduksiWriteService;
 use App\Services\RepairWriteService;
 use Illuminate\Support\Collection;
@@ -79,7 +80,7 @@ class LhrImport implements SkipsEmptyRows, ToCollection, WithHeadingRow, WithSta
 
     private array $cfg;
 
-    public function __construct(string $jenis)
+    public function __construct(private string $jenis)
     {
         abort_unless(isset(self::JENIS[$jenis]), 500, "Jenis LHR tak dikenal: {$jenis}");
         $this->cfg = self::JENIS[$jenis];
@@ -164,6 +165,12 @@ class LhrImport implements SkipsEmptyRows, ToCollection, WithHeadingRow, WithSta
 
             if ($galat !== []) {
                 $this->errors[] = "Baris {$nomor}: ".implode('; ', $galat).'.';
+
+                continue;
+            }
+
+            if ($ada = app(PenjagaKembar::class)->cari($this->jenis, $payload)) {
+                $this->errors[] = "Baris {$nomor}: dilewati — data identik sudah ada ".app(PenjagaKembar::class)->jejak($ada).'.';
 
                 continue;
             }
