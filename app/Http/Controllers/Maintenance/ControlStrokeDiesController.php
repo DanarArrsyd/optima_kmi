@@ -198,11 +198,18 @@ class ControlStrokeDiesController extends Controller
     {
         abort_if(! auth()->user()->hasRole(['admin', 'staff_maintenance']), 403);
 
-        $preventiveSvc->generate('dies', now()->timezone('Asia/Jakarta')->startOfMonth());
+        $schedule = $preventiveSvc->generate('dies', now()->timezone('Asia/Jakarta')->startOfMonth());
+        $items = $schedule->items;
+        $terjadwal = $items->whereNotNull('tanggal_rencana');
 
-        return redirect()->route('maintenance.control-stroke-dies')->with(
-            'success', 'Jadwal preventive dies bulan ini berhasil digenerate ulang.'
-        );
+        // Angka nyata, bukan "berhasil" saja — operator langsung melihat apakah
+        // semua dies SEGERA PREVENTIVE kebagian tanggal PLAN.
+        return redirect()->route('maintenance.control-stroke-dies')->with('success', sprintf(
+            'Jadwal preventive dies digenerate ulang: %d dies terjadwal (%d segera preventive), %d backlog.',
+            $terjadwal->count(),
+            $terjadwal->where('pct_snapshot', '>=', 100)->count(),
+            $items->whereNull('tanggal_rencana')->count(),
+        ));
     }
 
     public function updateScheduleItem(PreventiveScheduleItem $item, Request $request, PreventiveScheduleService $preventiveSvc)

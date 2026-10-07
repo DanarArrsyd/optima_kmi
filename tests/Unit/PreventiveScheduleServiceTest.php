@@ -105,11 +105,10 @@ class PreventiveScheduleServiceTest extends TestCase
 
         $this->assertMatchesRegularExpression('#^PM-DIES/1/VIII/2026$#', $schedule->nomor_dokumen);
 
-        // Kapasitas 5 dies/minggu tidak boleh dilanggar.
-        $perMinggu = $schedule->items()->get()->groupBy('minggu_ke');
-        foreach ($perMinggu as $items) {
-            $this->assertLessThanOrEqual(5, $items->count(), 'Kapasitas 5 dies/minggu dilanggar.');
-        }
+        // Dies overdue tidak lagi dibatasi kuota 5/minggu (semua wajib dapat PLAN),
+        // tapi tetap tersebar seimbang: 6 dies di 8 hari valid → maks 1 per hari.
+        $this->assertSame(6, $schedule->items()->whereNotNull('tanggal_rencana')->count());
+        $this->assertSame(1, $schedule->items()->get()->countBy(fn ($i) => $i->tanggal_rencana->toDateString())->max());
     }
 
     public function test_kapasitas_mesin_satu_per_minggu_membatasi_jumlah_terjadwal(): void
@@ -306,17 +305,17 @@ class PreventiveScheduleServiceTest extends TestCase
      */
     public function test_plan_dies_boleh_jumat_tapi_nol_sabtu_minggu(): void
     {
-        for ($i = 1; $i <= 5; $i++) {
+        // Hari ini Kam 20 Agu 2026 → hari valid dies sisa bulan ini: 20, 21 (Jum),
+        // 24-28 (Sen-Jum), 31 = 8 hari. 8 dies overdue → tersebar 1 per hari, jadi
+        // KEDUA Jumat pasti terpakai dan tidak ada Sabtu/Minggu.
+        for ($i = 1; $i <= 8; $i++) {
             $this->diesDenganStroke("D{$i}", 31000);
         }
 
         $schedule = app(PreventiveScheduleService::class)->generate('dies', Carbon::parse('2026-08-01'));
 
-        $this->assertCount(5, $schedule->items, 'Setup salah: 5 dies overdue harus semua kebagian slot minggu pertama (kapasitas 5).');
-
-        $weekdaysDipakai = $schedule->items->map(fn ($item) => $item->tanggal_rencana->isoWeekday())->sort()->values();
-
-        $this->assertSame([1, 2, 3, 4, 5], $weekdaysDipakai->all(), 'Minggu penuh 5 dies harus makai persis Senin s.d. Jumat.');
+        $tanggal = $schedule->items->map(fn ($item) => $item->tanggal_rencana->toDateString())->sort()->values();
+        $this->assertSame(['2026-08-20', '2026-08-21', '2026-08-24', '2026-08-25', '2026-08-26', '2026-08-27', '2026-08-28', '2026-08-31'], $tanggal->all());
         foreach ($schedule->items as $item) {
             $this->assertNotContains($item->tanggal_rencana->isoWeekday(), [6, 7], 'Dies nol boleh Sabtu/Minggu.');
         }
