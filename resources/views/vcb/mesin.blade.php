@@ -144,7 +144,7 @@ async function loadData() {
         document.querySelectorAll('#filterForm input[name="mesin_ids[]"]').forEach(el => params.append('mesin_ids[]', el.value));
         // Tombol export tidak dirender untuk role guest.
         const exportBtn = document.getElementById('exportExcel');
-        if (exportBtn) exportBtn.href = `/export/produksi?${params}&group=mesin&format=excel`;
+        if (exportBtn) exportBtn.href = `{{ route('vcb.mesin.export') }}?${params}`;
 
         const res  = await fetch(`{{ route('vcb.mesin.data') }}?${params}`);
         const data = await res.json();

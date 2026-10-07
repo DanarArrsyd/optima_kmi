@@ -2,6 +2,7 @@
 
 namespace App\Imports;
 
+use App\Imports\Concerns\LewatiBarisContoh;
 use App\Imports\Concerns\ParsesExcelDateTime;
 use App\Models\MasterPart;
 use App\Models\MasterPartProses;
@@ -14,6 +15,13 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
 class BreakdownDiesImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
 {
+    use LewatiBarisContoh;
+
+    /** Baris contoh template — dibaca juga oleh template-nya. Lihat {@see LewatiBarisContoh}. */
+    public const CONTOH = [
+        [1, 'BT-091A-3', 'OP10', '2026-06-10', '08:00', '2026-06-10', '09:00', '2026-06-10', '11:00', 'Punch patah', 'Material keras', 'Ganti punch', 'Budi'],
+    ];
+
     use ParsesExcelDateTime;
 
     public int $imported = 0;
@@ -30,6 +38,10 @@ class BreakdownDiesImport implements SkipsEmptyRows, ToCollection, WithHeadingRo
 
         foreach ($rows as $i => $row) {
             $line = $i + 2;
+
+            if ($this->barisContoh($row)) {
+                continue;
+            }
 
             $partNo = trim((string) ($row['part_no'] ?? ''));
             $part = MasterPart::whereRaw('LOWER(TRIM(part_no)) = ?', [strtolower($partNo)])->first();

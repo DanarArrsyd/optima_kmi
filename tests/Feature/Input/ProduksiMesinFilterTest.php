@@ -21,6 +21,13 @@ class ProduksiMesinFilterTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * Rentang tanggal eksplisit. Tanpa ini halaman memakai default bulan
+     * berjalan, dan fixture 2026-09-01 jatuh di luar rentang begitu bulan
+     * berganti — test ini merah sendiri sejak 1 Okt 2026.
+     */
+    private const RENTANG = ['date_from' => '2026-09-01', 'date_to' => '2026-09-30'];
+
     private User $admin;
 
     protected function setUp(): void
@@ -74,7 +81,7 @@ class ProduksiMesinFilterTest extends TestCase
     {
         $m = $this->duaMesin();
 
-        $html = $this->get(route('input.produksi.index', ['mesin_ids' => [$m['mesinA']->id]]))
+        $html = $this->get(route('input.produksi.index', [...self::RENTANG, 'mesin_ids' => [$m['mesinA']->id]]))
             ->assertOk()->getContent();
         $tbody = $this->tbodyHtml($html);
 
@@ -86,7 +93,7 @@ class ProduksiMesinFilterTest extends TestCase
     {
         $m = $this->duaMesin();
 
-        $html = $this->get(route('input.produksi.index'))->assertOk()->getContent();
+        $html = $this->get(route('input.produksi.index', self::RENTANG))->assertOk()->getContent();
         $tbody = $this->tbodyHtml($html);
 
         $this->assertStringContainsString($m['mesinA']->id_mesin, $tbody);
@@ -97,7 +104,7 @@ class ProduksiMesinFilterTest extends TestCase
     {
         $m = $this->duaMesin();
 
-        $html = $this->get(route('input.produksi.index', ['mesin_ids' => [$m['mesinA']->id]]))
+        $html = $this->get(route('input.produksi.index', [...self::RENTANG, 'mesin_ids' => [$m['mesinA']->id]]))
             ->assertOk()->getContent();
 
         $this->assertStringContainsString('mesinFilterComp(_mesinForJs, _mesinSelected)', $html);

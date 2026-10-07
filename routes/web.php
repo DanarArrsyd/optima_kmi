@@ -220,6 +220,8 @@ Route::middleware('auth')->group(function () {
     // --- VCB DANDORI & DAFTAR NG PROSES EXPORT — guest TIDAK boleh ---
     Route::middleware('role:admin,staff_produksi,manager')->prefix('vcb')->name('vcb.')->group(function () {
         Route::get('dandori/export', [VcbDandoriController::class, 'export'])->name('dandori.export');
+        Route::get('produksi/export', [VcbProduksiController::class, 'export'])->name('produksi.export');
+        Route::get('mesin/export', [VcbMesinController::class, 'export'])->name('mesin.export');
         Route::get('ng-proses/daftar/export', [VcbNgProsesController::class, 'export'])->name('ng-proses.daftar.export');
     });
 
@@ -239,6 +241,7 @@ Route::middleware('auth')->group(function () {
     // atas), sisi QC belum. Isinya GET semua, jadi DenyGuestWrite tidak tersentuh.
     Route::middleware('role:admin,staff_qc,manager')->prefix('vcb')->name('vcb.')->group(function () {
         Route::get('ng-total/daftar/export', [VcbNgTotalController::class, 'export'])->name('ng-total.daftar.export');
+        Route::get('quality/export', [VcbQualityController::class, 'export'])->name('quality.export');
     });
 
     // --- MAINTENANCE: breakdown, import/export, input preventive (guest TIDAK boleh) ---

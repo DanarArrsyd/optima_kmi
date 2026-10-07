@@ -2,6 +2,7 @@
 
 namespace App\Imports;
 
+use App\Imports\Concerns\LewatiBarisContoh;
 use App\Models\MasterLosstime;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
@@ -10,6 +11,15 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
 class LosstimeImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
 {
+    use LewatiBarisContoh;
+
+    /** Baris contoh template — dibaca juga oleh template-nya. Lihat {@see LewatiBarisContoh}. */
+    public const CONTOH = [
+        ['BK', 'Breakdown Mesin', 30, 15],
+        ['MT', 'Maintenance', 60, 30],
+        ['ST', 'Setup / Dandori', 15, 10],
+    ];
+
     public int $imported = 0;
 
     public int $skipped = 0;
@@ -17,6 +27,10 @@ class LosstimeImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
     public function collection(Collection $rows): void
     {
         foreach ($rows as $row) {
+            if ($this->barisContoh($row)) {
+                continue;
+            }
+
             $kode = trim((string) ($row['kode'] ?? ''));
             $jenis = trim((string) ($row['jenis_losstime'] ?? ''));
             if ($kode === '' || $jenis === '') {

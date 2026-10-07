@@ -2,6 +2,7 @@
 
 namespace App\Imports;
 
+use App\Imports\Concerns\LewatiBarisContoh;
 use App\Imports\Concerns\ParsesExcelDateTime;
 use App\Models\MasterMesin;
 use App\Models\TransaksiBreakdownMesin;
@@ -13,6 +14,13 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
 class BreakdownMesinImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
 {
+    use LewatiBarisContoh;
+
+    /** Baris contoh template — dibaca juga oleh template-nya. Lihat {@see LewatiBarisContoh}. */
+    public const CONTOH = [
+        [1, 'M001', '2026-06-10', '08:00', '2026-06-10', '09:00', '2026-06-10', '11:00', 'Motor overheat', 'Bearing aus', 'Ganti bearing', 'Budi'],
+    ];
+
     use ParsesExcelDateTime;
 
     public int $imported = 0;
@@ -30,6 +38,10 @@ class BreakdownMesinImport implements SkipsEmptyRows, ToCollection, WithHeadingR
 
         foreach ($rows as $i => $row) {
             $line = $i + 2; // baris excel (header = 1)
+
+            if ($this->barisContoh($row)) {
+                continue;
+            }
 
             $kode = trim((string) ($row['id_mesin'] ?? ''));
             $mesinId = $mesinByKode[$kode] ?? null;

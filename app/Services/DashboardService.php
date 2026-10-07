@@ -380,6 +380,16 @@ class DashboardService
         return 'danger';
     }
 
+    /** Label kolom Status untuk tampilan & ekspor — bukan untuk menghitung. */
+    public function labelStatus(string $trafficLight): string
+    {
+        return match ($trafficLight) {
+            'info' => 'EXCEED',
+            'success' => 'ACHIEVED',
+            default => 'UNDER',
+        };
+    }
+
     private function durationHours(string $jamStart, string $jamFinish): float
     {
         $startSec = $this->timeToSeconds($jamStart);

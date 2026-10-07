@@ -135,10 +135,7 @@ class KaryawanController extends Controller
 
             public function array(): array
             {
-                return [
-                    ['K001', 'Ahmad Fauzi', 'Produksi'],
-                    ['K002', 'Siti Rahayu', 'QC'],
-                ];
+                return KaryawanImport::CONTOH;
             }
         };
 

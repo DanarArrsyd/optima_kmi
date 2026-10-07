@@ -79,11 +79,7 @@ class LosstimeController extends Controller
 
             public function array(): array
             {
-                return [
-                    ['BK', 'Breakdown Mesin', 30, 15],
-                    ['MT', 'Maintenance', 60, 30],
-                    ['ST', 'Setup / Dandori', 15, 10],
-                ];
+                return LosstimeImport::CONTOH;
             }
         };
 

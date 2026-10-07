@@ -67,9 +67,7 @@ class BreakdownMesinController extends Controller
 
             public function array(): array
             {
-                return [
-                    [1, 'M001', '2026-06-10', '08:00', '2026-06-10', '09:00', '2026-06-10', '11:00', 'Motor overheat', 'Bearing aus', 'Ganti bearing', 'Budi'],
-                ];
+                return BreakdownMesinImport::CONTOH;
             }
         };
 

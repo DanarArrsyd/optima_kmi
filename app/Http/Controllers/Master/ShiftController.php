@@ -127,11 +127,7 @@ class ShiftController extends Controller
 
             public function array(): array
             {
-                return [
-                    ['Shift Pagi', '07:00', '15:00'],
-                    ['Shift Siang', '15:00', '22:00'],
-                    ['Shift Malam', '22:00', '06:00'],
-                ];
+                return ShiftImport::CONTOH;
             }
         };
 

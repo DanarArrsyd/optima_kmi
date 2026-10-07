@@ -2,6 +2,7 @@
 
 namespace App\Imports;
 
+use App\Imports\Concerns\LewatiBarisContoh;
 use App\Models\MasterShift;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
@@ -10,6 +11,15 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
 class ShiftImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
 {
+    use LewatiBarisContoh;
+
+    /** Baris contoh template — dibaca juga oleh template-nya. Lihat {@see LewatiBarisContoh}. */
+    public const CONTOH = [
+        ['Shift Pagi', '07:00', '15:00'],
+        ['Shift Siang', '15:00', '22:00'],
+        ['Shift Malam', '22:00', '06:00'],
+    ];
+
     public int $imported = 0;
 
     public int $skipped = 0;
@@ -17,6 +27,10 @@ class ShiftImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
     public function collection(Collection $rows): void
     {
         foreach ($rows as $row) {
+            if ($this->barisContoh($row)) {
+                continue;
+            }
+
             $nama = trim((string) ($row['nama_shift'] ?? ''));
             if ($nama === '') {
                 $this->skipped++;
