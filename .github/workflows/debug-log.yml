@@ -33,6 +33,7 @@ on:
           - dandoridup     # duplikat baris dandori + sebaran bulan & tanggal import
           - dandoribaru    # sesi yatim & ambigu KHUSUS era aplikasi (Juni 2026 ke atas)
           - shiftcek       # master_shift + riwayat perubahan (cek korban impor 00:00)
+          - kembar         # baris transaksi kembar per modul (7 modul input)
           - markran        # ⚠️ MENULIS ke tabel migrations
 
 env:
@@ -449,6 +450,16 @@ jobs:
                 echo \"  \", \$x->created_at, \" UTC  \", str_pad((string) \$x->event, 8), \" shift#\", \$x->subject_id, \"  oleh=\", \$x->name ?? \"(sistem/impor)\", \"  \", substr((string) \$x->properties, 0, 220), PHP_EOL;
               }
             " < /dev/null'
+
+      # Sebelum membangun peringatan duplikat saat input: berapa baris kembar
+      # yang SUDAH ada di 7 modul, dan apakah natural key usulannya pas. Skripnya
+      # di scripts/probe/kembar.php (di-stream lewat stdin, hanya SELECT).
+      - name: Hitung baris transaksi kembar (read-only)
+        if: ${{ github.event.inputs.mode == 'kembar' }}
+        run: |
+          ssh -p "${{ secrets.SSH_PORT }}" -i ~/.ssh/deploy_key \
+            "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" \
+            'cd ${{ env.REMOTE_PATH }} && ${{ env.REMOTE_PHP }}' < scripts/probe/kembar.php
 
       # Daftar LENGKAP status migrasi di prod (mode `migstatus` sengaja di-grep sempit).
       # Read-only. Dipakai buat menyusun baseline gerbang CI cakupan migrasi.
