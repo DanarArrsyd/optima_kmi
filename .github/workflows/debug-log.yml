@@ -35,6 +35,7 @@ on:
           - shiftcek       # master_shift + riwayat perubahan (cek korban impor 00:00)
           - kembar         # baris transaksi kembar per modul (7 modul input)
           - kembarrinci    # rincian per baris kembar: kandidat hapus vs disimpan (untuk review)
+          - bersihdry      # dry-run optima:bersih-kembar (rencana hapus, nol tulis)
           - markran        # ⚠️ MENULIS ke tabel migrations
 
 env:
@@ -470,6 +471,18 @@ jobs:
           ssh -p "${{ secrets.SSH_PORT }}" -i ~/.ssh/deploy_key \
             "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" \
             'cd ${{ env.REMOTE_PATH }} && ${{ env.REMOTE_PHP }}' < scripts/probe/kembar-rinci.php
+
+      # Dry-run pembersihan kembar sebelum perintahnya ter-deploy: isi
+      # PembersihKembar.php disisipkan (base64) ke skrip, lalu cuma rencana()
+      # yang dipanggil. Read-only.
+      - name: Dry-run bersih kembar (read-only)
+        if: ${{ github.event.inputs.mode == 'bersihdry' }}
+        run: |
+          layanan=$(sed '1d' app/Services/PembersihKembar.php | base64 -w0)
+          sed "s|__LAYANAN__|${layanan}|" scripts/probe/bersih-kembar-dryrun.php > /tmp/dry.php
+          ssh -p "${{ secrets.SSH_PORT }}" -i ~/.ssh/deploy_key \
+            "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" \
+            'cd ${{ env.REMOTE_PATH }} && ${{ env.REMOTE_PHP }}' < /tmp/dry.php
 
       # Daftar LENGKAP status migrasi di prod (mode `migstatus` sengaja di-grep sempit).
       # Read-only. Dipakai buat menyusun baseline gerbang CI cakupan migrasi.
