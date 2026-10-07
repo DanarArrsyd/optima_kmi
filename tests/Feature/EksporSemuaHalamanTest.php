@@ -10,6 +10,7 @@ use App\Models\MasterShift;
 use App\Models\TransaksiProduksi;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Testing\TestResponse;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -94,6 +95,9 @@ class EksporSemuaHalamanTest extends TestCase
 
     public function test_ekspor_log_menghormati_filter_dan_waktu_wib(): void
     {
+        // 00:22 WIB: tanggal UTC masih kemarin. Default rentang dulu dihitung
+        // dari tanggal UTC, jadi log ini hilang dari ekspor bawaan.
+        $this->travelTo(Carbon::parse('2026-10-07 17:22:00', 'UTC'));
         activity('master_mesin')->event('created')->causedBy(auth()->user())->log('Mesin ALFA dibuat');
         activity('master_part')->event('created')->causedBy(auth()->user())->log('Part BETA dibuat');
 

@@ -67,8 +67,11 @@ class LogAktivitasController extends Controller
     /** Query log + nilai filternya — BERSAMA index() dan export(). */
     private function queryLog(Request $request): array
     {
-        $dateFrom = $request->input('date_from', now()->subDays(7)->toDateString());
-        $dateTo = $request->input('date_to', now()->toDateString());
+        /* Default dihitung dari hari WIB, karena rentang di bawah dibaca WIB.
+         * now() (UTC) membuat log 00:00–07:00 WIB hilang dari tampilan bawaan. */
+        $hariIni = now('Asia/Jakarta');
+        $dateFrom = $request->input('date_from', $hariIni->copy()->subDays(7)->toDateString());
+        $dateTo = $request->input('date_to', $hariIni->toDateString());
         $modul = $request->input('modul', '');
         $event = $request->input('event', '');
         $userId = $request->input('user_id', '');
