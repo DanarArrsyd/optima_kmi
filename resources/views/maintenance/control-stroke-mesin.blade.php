@@ -82,6 +82,7 @@
 
 <div class="erp-ws-main">
 <div class="erp-scroll erp-scroll-pad">
+@include('partials.status-muat', ['id' => 'an'])
 
 {{-- KPI strip: klik sel = filter status. Klik sel yang sama lagi = balik ke semua. --}}
 <div class="kpi-strip mb-2">
@@ -183,7 +184,10 @@ function initFilters() {
     Alpine.$data(document.getElementById('cs_line')).items = uniqueOpts(allRows, r => r.line, r => r.line);
 }
 
-async function loadData() {
+/* Pemuat dibungkus muatDenganStatus (layout): overlay, galat, Coba lagi. */
+function loadData() { return muatDenganStatus('an', loadDataInti); }
+
+async function loadDataInti() {
     const tbody = document.getElementById('strokeTableBody');
     try {
         const res = await fetch(dataUrl);

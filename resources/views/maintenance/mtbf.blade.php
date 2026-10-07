@@ -35,6 +35,7 @@
 
 <div class="erp-ws-main">
 <div class="erp-scroll erp-scroll-pad">
+@include('partials.status-muat', ['id' => 'an'])
 <div class="row g-3 mb-4">
     <div class="col-md-6">
         <div class="erp-panel h-100"><div class="erp-panel-body" style="padding:10px">
@@ -108,11 +109,15 @@ function escHtml(str) {
 
 let mtbfChart = null;
 
-async function loadData() {
+/* Pemuat dibungkus muatDenganStatus (layout): overlay, galat, Coba lagi. */
+function loadData() { return muatDenganStatus('an', loadDataInti); }
+
+async function loadDataInti() {
     const params = new URLSearchParams(new FormData(document.getElementById('filterForm')));
     const exportBtn = document.getElementById('exportExcel');
     if (exportBtn) exportBtn.href = `{{ route('maintenance.mtbf.export') }}?${params}`;
     const res  = await fetch(`{{ route('maintenance.mtbf.data') }}?${params}`);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
     const rows = data.rows || [];
 

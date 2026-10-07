@@ -81,6 +81,7 @@
 
 <div class="erp-ws-main">
 <div class="erp-scroll erp-scroll-pad">
+@include('partials.status-muat', ['id' => 'an'])
 
 <div class="kpi-strip mb-2">
     <div class="kpi-cell active" data-status="" style="border-left-color:#6b7280" role="button" tabindex="0" aria-pressed="true">
@@ -179,7 +180,10 @@ function initFilters() {
     Alpine.$data(document.getElementById('cs_proses')).items = uniqueOpts(allRows, r => r.nama_proses, r => r.nama_proses);
 }
 
-async function loadData() {
+/* Pemuat dibungkus muatDenganStatus (layout): overlay, galat, Coba lagi. */
+function loadData() { return muatDenganStatus('an', loadDataInti); }
+
+async function loadDataInti() {
     const tbody = document.getElementById('strokeTableBody');
     try {
         const res = await fetch(dataUrl);

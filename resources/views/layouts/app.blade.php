@@ -466,6 +466,13 @@
             background: rgba(255, 255, 255, .75);
             z-index: 5;
         }
+        /* Wadah overlay di halaman analitik (partials/status-muat). */
+        .erp-scroll-pad { position: relative; }
+        .erp-galat-muat {
+            display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
+            padding: 8px 10px; border: 1px solid #fecaca; background: #fef2f2; color: #b91c1c;
+        }
+        .erp-galat-muat .erp-btn { margin-left: auto; }
         .erp-loading-overlay .spinner-border {
             color: #374151;
             width: 2.5rem;
@@ -1076,6 +1083,7 @@
         .erp-dd-item.is-act { background: var(--surface-3); }
         .erp-ta { position: relative; }
         .erp-err { color: #b91c1c; font-size: var(--erp-fs-sm); line-height: 1.3; }
+        .erp-in[aria-invalid="true"] { border-color: #b91c1c; border-width: 1.5px; }
         .erp-dd-item .sub {
             display: block; font-size: var(--erp-fs-sm, 11px);
             color: var(--text-4); margin-top: 1px;
@@ -1889,6 +1897,29 @@ function isiFilterTanggal(idFrom, dari, sampai) {
     el.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
+/* muatDenganStatus — bungkus pemuat data halaman AJAX: overlay selama memuat,
+   pesan galat + tombol Coba lagi kalau gagal, tombol Tampilkan dikunci supaya
+   tidak menumpuk permintaan. SEMUA langkah di dalam try: langkah yang melempar
+   di luar try (PR #180) membuat overlay macet menutupi halaman selamanya.
+   Pemuat WAJIB melempar kalau respons !ok — fetch tidak melempar untuk 500. */
+async function muatDenganStatus(idStatus, pemuat) {
+    const ov = document.getElementById(idStatus + 'Overlay');
+    const galat = document.getElementById(idStatus + 'Galat');
+    const tombol = document.querySelectorAll('.erp-dock button[type=submit]');
+    try {
+        if (ov) ov.style.display = 'flex';
+        if (galat) galat.style.display = 'none';
+        tombol.forEach(b => { b.disabled = true; });
+        await pemuat();
+    } catch (e) {
+        console.error('Gagal memuat:', e);
+        if (galat) galat.style.display = '';
+    } finally {
+        if (ov) ov.style.display = 'none';
+        tombol.forEach(b => { b.disabled = false; });
+    }
+}
+
 function erpToggleDock(dockId, btnId) {
     const d = document.getElementById(dockId);
     if (!d) return;
@@ -2490,6 +2521,63 @@ document.querySelectorAll('form').forEach(form => {
         $prog.style.width = '70%';
     });
 });
+
+/* ─ Kunci kirim-ganda (penguncianKirim) ─────────────────────────
+   Klik kedua pada form POST yang masih terkirim dulu mengirim ulang
+   isinya — di jaringan pabrik yang lambat, batch 50 baris LHP masuk
+   dobel, preventive tercatat dua kali. Berlaku untuk SEMUA form POST
+   tanpa disentuh satu per satu; form yang memang boleh dikirim ulang
+   diberi atribut data-kirim-ulang.
+
+   Dua lapis:
+   1. CAPTURE di document (jalan SEBELUM handler form): form yang sudah
+      terkirim → kirim berikutnya diblok total, termasuk handler form
+      seperti pindahkanKeBackup() batch.
+   2. BUBBLE di document (jalan SESUDAH handler form): kalau tidak ada
+      yang membatalkan (form AJAX memanggil preventDefault), tandai
+      terkirim dan kunci tombolnya.
+
+   Tombol dikunci lewat setTimeout, BUKAN langsung: tombol submit yang
+   dinonaktifkan selama event submit berjalan tidak ikut terkirim
+   nama/nilainya. Kuncinya dilepas di pageshow (Back dari bfcache) dan
+   setelah 30 detik — permintaan yang macet tidak boleh mengunci form
+   selamanya. */
+(function () {
+    const LEPAS_MS = 30000;
+    const tombolForm = f => [...f.querySelectorAll('button[type=submit], input[type=submit]'),
+        ...(f.id ? document.querySelectorAll(`button[type=submit][form="${f.id}"]`) : [])];
+    const lepas = f => {
+        delete f.dataset.terkirim;
+        tombolForm(f).forEach(b => {
+            if (b.dataset.teksAsli !== undefined) { b.innerHTML = b.dataset.teksAsli; delete b.dataset.teksAsli; }
+            b.disabled = false;
+            b.removeAttribute('aria-busy');
+        });
+    };
+    const kirimPost = f => (f.getAttribute('method') || 'get').toLowerCase() === 'post' && ! f.hasAttribute('data-kirim-ulang');
+
+    document.addEventListener('submit', e => {
+        if (kirimPost(e.target) && e.target.dataset.terkirim) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+        }
+    }, true);
+
+    document.addEventListener('submit', e => {
+        const f = e.target;
+        if (e.defaultPrevented || ! kirimPost(f)) return;
+        f.dataset.terkirim = '1';
+        setTimeout(() => tombolForm(f).forEach(b => {
+            b.dataset.teksAsli = b.innerHTML;
+            b.disabled = true;
+            b.setAttribute('aria-busy', 'true');
+            b.innerHTML = '<span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>Mengirim…';
+        }), 0);
+        setTimeout(() => lepas(f), LEPAS_MS);
+    });
+
+    window.addEventListener('pageshow', () => document.querySelectorAll('form[data-terkirim]').forEach(lepas));
+})();
 </script>
 
 {{-- ══ Sticky freeze: hitung offset kiri tiap kolom dari lebar NYATA header cell ══

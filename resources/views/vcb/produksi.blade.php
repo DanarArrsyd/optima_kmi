@@ -666,6 +666,18 @@ function toggleDay(di) {
     icon.style.transform = isOpen ? '' : 'rotate(90deg)';
 }
 
+/* Pesan inline, bukan alert(): dock dibuka, pesan di bawah pilihan orang,
+   fokus pindah ke sana — pengguna langsung tahu apa yang harus diisi. */
+function mintaPilihOrang(pesan) {
+    const ws = document.querySelector('.erp-ws');
+    if (ws && window.Alpine) Alpine.$data(ws).filterOpen = true;
+    document.getElementById('one_operator_note').textContent = pesan;
+    const sel = document.getElementById('one_karyawan_id');
+    sel.setAttribute('aria-invalid', 'true');
+    setTimeout(() => sel.focus(), 50);
+}
+document.getElementById('one_karyawan_id').addEventListener('change', e => e.target.removeAttribute('aria-invalid'));
+
 const saringOperator = saringOrangNonaktif('one_karyawan_id', 'one_date_from', 'one_operator_note');
 
 document.getElementById('one_date_from').addEventListener('change', () => saringOperator());
@@ -673,7 +685,7 @@ saringOperator();   // tampilan pertama harus sudah bersih, bukan setelah tangga
 
 async function loadOneOperator() {
     const karyawanId = document.getElementById('one_karyawan_id').value;
-    if (!karyawanId) { alert('Pilih operator terlebih dahulu.'); return; }
+    if (!karyawanId) { mintaPilihOrang('Pilih operator terlebih dahulu.'); return; }
 
     const overlay = document.getElementById('oneLoadingOverlay');
     const errBox  = document.getElementById('oneLoadError');
@@ -689,7 +701,7 @@ async function loadOneOperator() {
 
         const res  = await fetch(`{{ route('vcb.produksi.operator-data') }}?${params}`);
         const data = await res.json();
-        if (data.error) { alert(data.error); return; }
+        if (data.error) { mintaPilihOrang(data.error); return; }
 
         document.getElementById('oneEmpty').style.display       = 'none';
         document.getElementById('oneChartPanel').style.display  = '';

@@ -241,13 +241,18 @@
     <main class="vcbd-main">
 
         {{-- Chart 1: Loss Time per Jenis (vertical bars) --}}
+        <div class="erp-galat-muat" role="alert" x-show="galat" x-cloak>
+            <i class="bi bi-exclamation-octagon-fill" aria-hidden="true"></i>
+            <span>Gagal memuat data. Periksa koneksi lalu coba lagi.</span>
+            <button type="button" class="erp-btn" @click="loadData()">Coba lagi</button>
+        </div>
         <div class="erp-panel">
             <div class="erp-panel-header">
                 <i class="bi bi-bar-chart me-1"></i>
                 Grafik Loss Time per Jenis &mdash; Over Standar (menit)
             </div>
             <div class="erp-panel-body" style="padding:16px">
-                <div x-show="!loading && !hasData"
+                <div x-show="!loading && !hasData && !galat"
                      style="text-align:center;color:#9ca3af;padding:60px 0;font-size:0.85rem">
                     <i class="bi bi-bar-chart" style="font-size:3rem;display:block;margin-bottom:10px;opacity:.2"></i>
                     Belum ada data untuk periode ini.
@@ -266,7 +271,7 @@
                     <i class="bi bi-calendar-week me-1"></i>Grafik Loss Time / Minggu &mdash; Over Standar (menit)
                 </div>
                 <div class="erp-panel-body" style="padding:16px">
-                    <div x-show="!hasData && !loading"
+                    <div x-show="!hasData && !loading && !galat"
                          style="text-align:center;color:#9ca3af;padding:40px 0;font-size:0.82rem">
                         Tidak ada data
                     </div>
@@ -280,7 +285,7 @@
                     <i class="bi bi-calendar-month me-1"></i>Grafik Loss Time / Bulan &mdash; Over Standar (menit)
                 </div>
                 <div class="erp-panel-body" style="padding:16px">
-                    <div x-show="!hasData && !loading"
+                    <div x-show="!hasData && !loading && !galat"
                          style="text-align:center;color:#9ca3af;padding:40px 0;font-size:0.82rem">
                         Tidak ada data
                     </div>
@@ -509,6 +514,7 @@ function vcbDandori() {
         dateTo:   '{{ $defaultTo }}',
         selectedMesin: [],
         loading: false,
+        galat: false,
         hasData: false,
 
         summary: {
@@ -560,11 +566,13 @@ function vcbDandori() {
 
         async loadData() {
             this.loading = true;
-            const p = new URLSearchParams({ date_from: this.dateFrom, date_to: this.dateTo });
-            this.selectedMesin.forEach(id => p.append('mesin_ids[]', id));
-
+            this.galat = false;
             try {
+                const p = new URLSearchParams({ date_from: this.dateFrom, date_to: this.dateTo });
+                this.selectedMesin.forEach(id => p.append('mesin_ids[]', id));
                 const res  = await fetch(`{{ route('vcb.dandori.data') }}?${p}`);
+                // fetch tidak melempar untuk 500 — tanpa ini galat server tampil sebagai "tidak ada data".
+                if (!res.ok) throw new Error('HTTP ' + res.status);
                 const data = await res.json();
 
                 /* Alias total_over → total_loss_time DIHAPUS. Alias itulah
@@ -580,6 +588,7 @@ function vcbDandori() {
                 this.renderTable(data);
             } catch (e) {
                 console.error('VCB Dandori:', e);
+                this.galat = true;
             } finally {
                 this.loading = false;
             }
