@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Maintenance;
 
 use App\Exports\TabelExport;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Maintenance\Concerns\TrenBulananMaintenance;
 use App\Models\MasterPart;
 use App\Services\MaintenanceDiesDashboardService;
 use Illuminate\Http\Request;
@@ -12,6 +13,8 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class MtbfDiesController extends Controller
 {
+    use TrenBulananMaintenance;
+
     public function __construct(private MaintenanceDiesDashboardService $svc) {}
 
     public function index()
@@ -29,18 +32,41 @@ class MtbfDiesController extends Controller
 
     public function data(Request $request)
     {
-        $from = Carbon::parse($request->input('date_from', date('Y-01-01')));
-        $to = Carbon::parse($request->input('date_to', date('Y-m-d')));
-        $partId = (int) $request->input('part_id', 0) ?: null;
-        $customer = trim((string) $request->input('customer', '')) ?: null;
-        $rows = $this->svc->compute($from, $to, $partId, $customer);
+        [$from, $to] = $this->rentang($request);
+        $rows = $this->penghitung($request)($from, $to);
 
         return response()->json([
             'rows' => $rows,
             'summary' => [
-                'avg_mtbf' => round((float) collect($rows)->whereNotNull('mtbf_jam')->avg('mtbf_jam'), 2),
+                'avg_mtbf' => $this->rataMtbf($rows) ?? 0.0,
                 'total_bd' => (int) collect($rows)->sum('count'),
             ],
         ]);
+    }
+
+    /** Tren bulanan rata-rata metrik untuk grafik kiri; filter sama dengan data(). */
+    public function tren(Request $request)
+    {
+        [$from, $to] = $this->rentang($request);
+
+        return response()->json(['tren' => $this->trenBulanan($from, $to, $this->penghitung($request))]);
+    }
+
+    /** @return array{0: Carbon, 1: Carbon} */
+    private function rentang(Request $request): array
+    {
+        return [
+            Carbon::parse($request->input('date_from', date('Y-01-01'))),
+            Carbon::parse($request->input('date_to', date('Y-m-d'))),
+        ];
+    }
+
+    /** compute() dengan filter part/customer dari request, untuk rentang mana pun. */
+    private function penghitung(Request $request): \Closure
+    {
+        $partId = (int) $request->input('part_id', 0) ?: null;
+        $customer = trim((string) $request->input('customer', '')) ?: null;
+
+        return fn (Carbon $from, Carbon $to) => $this->svc->compute($from, $to, $partId, $customer);
     }
 }

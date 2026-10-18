@@ -6,14 +6,16 @@ use App\Exports\TabelExport;
 use App\Http\Controllers\Concerns\BacaFilterMesin;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Maintenance\Concerns\ResolvesMaintenanceRange;
+use App\Http\Controllers\Maintenance\Concerns\TrenBulananMaintenance;
 use App\Models\MasterMesin;
 use App\Services\MaintenanceDashboardService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Maatwebsite\Excel\Facades\Excel;
 
 class MttrController extends Controller
 {
-    use BacaFilterMesin, ResolvesMaintenanceRange;
+    use BacaFilterMesin, ResolvesMaintenanceRange, TrenBulananMaintenance;
 
     public function __construct(private MaintenanceDashboardService $svc) {}
 
@@ -36,18 +38,31 @@ class MttrController extends Controller
     public function data(Request $request)
     {
         [$from, $to] = $this->resolveRange($request);
-        $mesinId = $this->mesinIds($request, 'mesin_id');
-        $tipeMesin = $request->input('tipe_mesin') ?: null;
-        $rows = $this->svc->compute($from, $to, $mesinId, $tipeMesin);
-
-        $withData = collect($rows)->where('count', '>', 0);
+        $rows = $this->penghitung($request)($from, $to);
 
         return response()->json([
             'rows' => $rows,
             'summary' => [
-                'avg_mttr' => round((float) $withData->avg('mttr_jam'), 2),
+                'avg_mttr' => $this->rataMttr($rows) ?? 0.0,
                 'total_bd' => (int) collect($rows)->sum('count'),
             ],
         ]);
+    }
+
+    /** Tren bulanan rata-rata metrik untuk grafik kiri; filter sama dengan data(). */
+    public function tren(Request $request)
+    {
+        [$from, $to] = $this->resolveRange($request);
+
+        return response()->json(['tren' => $this->trenBulanan($from, $to, $this->penghitung($request))]);
+    }
+
+    /** compute() dengan filter mesin/tipe dari request, untuk rentang mana pun. */
+    private function penghitung(Request $request): \Closure
+    {
+        $mesinId = $this->mesinIds($request, 'mesin_id');
+        $tipeMesin = $request->input('tipe_mesin') ?: null;
+
+        return fn (Carbon $from, Carbon $to) => $this->svc->compute($from, $to, $mesinId, $tipeMesin);
     }
 }
