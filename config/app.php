@@ -123,4 +123,17 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Password Akun Admin Seeder
+    |--------------------------------------------------------------------------
+    |
+    | Dibaca AdminUserSeeder. Lewat config (bukan env() langsung di seeder)
+    | karena prod meng-cache config — env() di luar config/ bernilai null.
+    | Kosong di production = seeder menolak jalan.
+    |
+    */
+
+    'admin_seed_password' => env('ADMIN_SEED_PASSWORD'),
+
 ];
