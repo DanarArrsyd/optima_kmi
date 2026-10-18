@@ -305,15 +305,19 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:admin,staff_maintenance,manager,guest')->prefix('maintenance')->name('maintenance.')->group(function () {
         Route::get('mttr', [MttrController::class, 'index'])->name('mttr');
         Route::get('mttr/data', [MttrController::class, 'data'])->name('mttr.data');
+        Route::get('mttr/tren', [MttrController::class, 'tren'])->name('mttr.tren');
         Route::get('mtbf', [MtbfController::class, 'index'])->name('mtbf');
         Route::get('mtbf/data', [MtbfController::class, 'data'])->name('mtbf.data');
+        Route::get('mtbf/tren', [MtbfController::class, 'tren'])->name('mtbf.tren');
         Route::get('availability', [AvailabilityController::class, 'index'])->name('availability');
         Route::get('availability/data', [AvailabilityController::class, 'data'])->name('availability.data');
 
         Route::get('mttr-dies', [MttrDiesController::class, 'index'])->name('mttr-dies');
         Route::get('mttr-dies/data', [MttrDiesController::class, 'data'])->name('mttr-dies.data');
+        Route::get('mttr-dies/tren', [MttrDiesController::class, 'tren'])->name('mttr-dies.tren');
         Route::get('mtbf-dies', [MtbfDiesController::class, 'index'])->name('mtbf-dies');
         Route::get('mtbf-dies/data', [MtbfDiesController::class, 'data'])->name('mtbf-dies.data');
+        Route::get('mtbf-dies/tren', [MtbfDiesController::class, 'tren'])->name('mtbf-dies.tren');
         Route::get('availability-dies', [AvailabilityDiesController::class, 'index'])->name('availability-dies');
         Route::get('availability-dies/data', [AvailabilityDiesController::class, 'data'])->name('availability-dies.data');
 

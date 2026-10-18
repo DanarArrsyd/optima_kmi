@@ -51,14 +51,24 @@
     </div>
 </div>
 
-<div class="erp-panel">
-    {{-- Tinggi dikunci di pembungkus, BUKAN lewat atribut height canvas.
-         Dengan maintainAspectRatio bawaan (true), Chart.js memakai rasio dari
-         atribut canvas (lebar bawaan 300) saat lebar induk belum terukur, dan
-         grafik terkunci kecil selamanya. --}}
-    <div class="erp-panel-body" style="padding:12px">
-        <div style="position:relative;height:320px">
-            <canvas id="mtbfChart"></canvas>
+{{-- Kanan-kiri: tren per bulan | per mesin/dies untuk periode terpilih. --}}
+<div class="row g-3 mb-3">
+    <div class="col-lg-6">
+        @include('maintenance.partials.tren-bulanan', ['judul' => 'Tren Bulanan — Rata-rata MTBF (jam kerja)'])
+    </div>
+    <div class="col-lg-6">
+        <div class="erp-panel h-100" style="margin:0">
+            <div class="erp-panel-header d-flex align-items-center gap-2">
+                <span>MTBF per Mesin — <span id="periodeKanan">Seluruh periode</span></span>
+                <button type="button" id="periodeLepas" class="erp-btn ms-auto" style="display:none"><i class="bi bi-x-lg"></i> Seluruh periode</button>
+            </div>
+            {{-- Tinggi dikunci di pembungkus, BUKAN lewat atribut height canvas
+                 (maintainAspectRatio + atribut height = grafik terkunci kecil). --}}
+            <div class="erp-panel-body" style="padding:12px">
+                <div style="position:relative;height:320px">
+                    <canvas id="mtbfChart"></canvas>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -109,11 +119,27 @@ function escHtml(str) {
 
 let mtbfChart = null;
 
+const tren = trenBulananMtc({
+    url: `{{ route('maintenance.mtbf.tren') }}`, metrik: 'mtbf', label: 'MTBF (jam)',
+    onPilih: () => muatDenganStatus('an', loadTabelInti),
+});
+
+function paramFilter() { return new URLSearchParams(new FormData(document.getElementById('filterForm'))); }
+
 /* Pemuat dibungkus muatDenganStatus (layout): overlay, galat, Coba lagi. */
 function loadData() { return muatDenganStatus('an', loadDataInti); }
 
+/* Filter baru = kembali ke seluruh periode, lalu tren & tabel dimuat paralel. */
 async function loadDataInti() {
-    const params = new URLSearchParams(new FormData(document.getElementById('filterForm')));
+    tren.reset();
+    await Promise.all([tren.muat(paramFilter()), loadTabelInti()]);
+}
+
+/* Grafik kanan + KPI + tabel + link export: rentang filter, atau bulan yang diklik di tren. */
+async function loadTabelInti() {
+    const params = paramFilter();
+    const bulan = tren.bulanTerpilih();
+    if (bulan) { params.set('date_from', bulan.from); params.set('date_to', bulan.to); params.delete('bulan'); }
     const exportBtn = document.getElementById('exportExcel');
     if (exportBtn) exportBtn.href = `{{ route('maintenance.mtbf.export') }}?${params}`;
     const res  = await fetch(`{{ route('maintenance.mtbf.data') }}?${params}`);

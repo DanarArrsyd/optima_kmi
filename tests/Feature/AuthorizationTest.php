@@ -105,7 +105,7 @@ class AuthorizationTest extends TestCase
      * TIDAK ada di sini karena keduanya butuh route-model-binding (perlu record nyata
      * di DB), sedangkan data provider ini statis dan jalan sebelum DB tersedia. Keduanya
      * dites terpisah di test_guest_can_view_control_stroke_history_routes() dengan
-     * fixture dari seedMasterData(). Tapi keduanya TETAP masuk hitungan whitelist 39
+     * fixture dari seedMasterData(). Tapi keduanya TETAP masuk hitungan whitelist 43
      * route di test_guest_route_whitelist_matches_role_middleware_exactly() lewat nama
      * route (guestAllowedRouteNames()), jadi assertion default-deny tidak bolong.
      */
@@ -131,11 +131,11 @@ class AuthorizationTest extends TestCase
             ['vcb.ng-total.data', ['date_from' => '2026-01-01', 'date_to' => '2026-12-31']],
             ['vcb.ng-total.detail', ['bulan' => '2026-03']],
             ['vcb.ng-total.daftar'],
-            ['maintenance.mttr'], ['maintenance.mttr.data'],
-            ['maintenance.mtbf'], ['maintenance.mtbf.data'],
+            ['maintenance.mttr'], ['maintenance.mttr.data'], ['maintenance.mttr.tren'],
+            ['maintenance.mtbf'], ['maintenance.mtbf.data'], ['maintenance.mtbf.tren'],
             ['maintenance.availability'], ['maintenance.availability.data'],
-            ['maintenance.mttr-dies'], ['maintenance.mttr-dies.data'],
-            ['maintenance.mtbf-dies'], ['maintenance.mtbf-dies.data'],
+            ['maintenance.mttr-dies'], ['maintenance.mttr-dies.data'], ['maintenance.mttr-dies.tren'],
+            ['maintenance.mtbf-dies'], ['maintenance.mtbf-dies.data'], ['maintenance.mtbf-dies.tren'],
             ['maintenance.availability-dies'], ['maintenance.availability-dies.data'],
             ['maintenance.control-stroke-mesin'], ['maintenance.control-stroke-mesin.data'],
             ['maintenance.control-stroke-dies'], ['maintenance.control-stroke-dies.data'],
@@ -149,7 +149,7 @@ class AuthorizationTest extends TestCase
     }
 
     /**
-     * Nama 39 route whitelist guest yang dimaksud (dataset lengkap termasuk 2 route
+     * Nama 43 route whitelist guest yang dimaksud (dataset lengkap termasuk 2 route
      * history yang tak bisa masuk guestAllowedRoutes() karena butuh model binding).
      * Dipakai sebagai satu-satunya sumber kebenaran untuk assertion default-deny di
      * test_guest_route_whitelist_matches_role_middleware_exactly().
@@ -304,7 +304,7 @@ class AuthorizationTest extends TestCase
 
     /**
      * Properti default-deny: himpunan route yang BENAR-BENAR bisa diakses guest (lewat
-     * middleware role: yang memuat 'guest') harus SAMA PERSIS dengan whitelist 39 nama
+     * middleware role: yang memuat 'guest') harus SAMA PERSIS dengan whitelist 43 nama
      * di guestAllowedRouteNames(). Ini satu-satunya assertion yang menutup celah "route
      * GET baru ditambahkan ke grup guest yang sudah ada, tapi lupa didaftarkan di test" —
      * guestBlockedRoutes() cuma daftar manual yang tidak pernah tahu soal route baru,
