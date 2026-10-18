@@ -136,7 +136,11 @@ async function loadDataInti() {
 }
 
 /* Grafik kanan + KPI + tabel + link export: rentang filter, atau bulan yang diklik di tren. */
+/* Klik bulan A lalu B cepat-cepat: respons A yang datang belakangan TIDAK boleh
+   menimpa layar B. Hanya permintaan terakhir yang boleh menulis. */
+let generasiTabel = 0;
 async function loadTabelInti() {
+    const generasi = ++generasiTabel;
     const params = paramFilter();
     const bulan = tren.bulanTerpilih();
     if (bulan) { params.set('date_from', bulan.from); params.set('date_to', bulan.to); params.delete('bulan'); }
@@ -145,6 +149,7 @@ async function loadTabelInti() {
     const res  = await fetch(`{{ route('maintenance.mtbf.data') }}?${params}`);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
+    if (generasi !== generasiTabel) return;
     const rows = data.rows || [];
 
     document.getElementById('kpiMtbf').textContent    = data.summary?.avg_mtbf ?? '—';

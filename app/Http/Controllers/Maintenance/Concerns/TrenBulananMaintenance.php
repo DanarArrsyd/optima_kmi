@@ -39,10 +39,17 @@ trait TrenBulananMaintenance
         return $ada->isEmpty() ? null : round((float) $ada->avg('mttr_jam'), 2);
     }
 
-    /** Rata-rata MTBF (jam kerja) antar mesin yang tanggal instalasinya diset. */
+    /**
+     * Rata-rata MTBF (jam kerja) antar mesin yang punya jam terjadwal di rentang itu.
+     *
+     * operating_hours = 0 berarti mesin belum terpasang sepanjang rentang
+     * (tanggal_instalasi > akhir rentang) atau rentangnya nol hari kerja. compute()
+     * mengembalikan mtbf_jam = 0 untuk baris itu, bukan null — tanpa saringan ini,
+     * mesin yang dipasang Juni menyeret rata-rata Jan–Mei ke bawah secara surut.
+     */
     private function rataMtbf(array $rows): ?float
     {
-        $ada = collect($rows)->whereNotNull('mtbf_jam');
+        $ada = collect($rows)->whereNotNull('mtbf_jam')->where('operating_hours', '>', 0);
 
         return $ada->isEmpty() ? null : round((float) $ada->avg('mtbf_jam'), 2);
     }

@@ -29,14 +29,14 @@ class TrenBulananMttrMtbfTest extends TestCase
         return User::factory()->create(['role' => 'admin']);
     }
 
-    private function mesin(string $kode): MasterMesin
+    private function mesin(string $kode, string $instalasi = '2025-01-01'): MasterMesin
     {
         MasterShift::firstOrCreate(['nama_shift' => 'Shift 1'], ['jam_start' => '06:00', 'jam_finish' => '14:00']);
 
         return MasterMesin::create([
             'id_mesin' => $kode, 'nama_mesin' => 'Test '.$kode, 'line' => '1',
             'tipe_mesin' => 'PROGRESSIVE', 'kapasitas_max_stroke' => 100,
-            'tanggal_instalasi' => '2025-01-01',
+            'tanggal_instalasi' => $instalasi,
         ]);
     }
 
@@ -111,6 +111,21 @@ class TrenBulananMttrMtbfTest extends TestCase
         $this->assertNotNull($tren[0]['mtbf'], 'MTBF tetap ada walau nol breakdown (uptime penuh)');
     }
 
+    public function test_mesin_yang_belum_terpasang_tidak_menyeret_mtbf_bulan_sebelumnya(): void
+    {
+        $lama = $this->mesin('A1');
+        $this->mesin('B1', '2026-03-01');
+
+        $tren = $this->tren('maintenance.mtbf.tren', ['date_from' => '2026-01-01', 'date_to' => '2026-03-31']);
+
+        // Jan: hanya A1 yang terpasang. B1 (operating_hours 0, mtbf_jam 0) tidak ikut dirata-rata.
+        $sendiri = $this->actingAs($this->admin())
+            ->getJson(route('maintenance.mtbf.data', ['date_from' => '2026-01-01', 'date_to' => '2026-01-31', 'mesin_ids' => [$lama->id]]))
+            ->json('summary.avg_mtbf');
+        $this->assertGreaterThan(0, $sendiri);
+        $this->assertEqualsWithDelta($sendiri, $tren[0]['mtbf'], 0.001);
+    }
+
     public function test_rentang_panjang_dipotong_ke_36_bulan_terakhir(): void
     {
         $this->mesin('A1');
@@ -183,6 +198,8 @@ class TrenBulananMttrMtbfTest extends TestCase
         $this->assertStringContainsString('url: `'.route($route.'.tren').'`', $html);
         // Bulan terpilih menimpa rentang data tabel/grafik kanan.
         $this->assertStringContainsString("if (bulan) { params.set('date_from', bulan.from); params.set('date_to', bulan.to);", $html);
+        // Respons klik bulan yang basi tidak boleh menimpa bulan yang terakhir diklik.
+        $this->assertMatchesRegularExpression('/const generasi = \+\+generasiTabel;.*?const data = await res\.json\(\);\s*if \(generasi !== generasiTabel\) return;/s', $html);
         // Reset pilihan SINKRON sebelum pemuat paralel jalan.
         $this->assertMatchesRegularExpression('/tren\.reset\(\);\s*await Promise\.all\(\[tren\.muat\(paramFilter\(\)\), loadTabelInti\(\)\]\);/', $html);
     }
