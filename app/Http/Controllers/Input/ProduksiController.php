@@ -6,6 +6,7 @@ use App\Exports\LhpProduksiExport;
 use App\Exports\ProduksiImportTemplate;
 use App\Http\Controllers\Concerns\MenjagaKembar;
 use App\Http\Controllers\Concerns\ResolvesStaffNote;
+use App\Http\Controllers\Concerns\UrlKembaliDaftar;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreProduksiBatchRequest;
 use App\Http\Requests\UpdateProduksiRequest;
@@ -29,6 +30,7 @@ class ProduksiController extends Controller
 {
     use MenjagaKembar;
     use ResolvesStaffNote;
+    use UrlKembaliDaftar;
 
     public function __construct(
         private ProduksiService $produksiService,
@@ -211,6 +213,24 @@ class ProduksiController extends Controller
         return redirect()->route('input.produksi.index')
             ->with('success', "{$jumlah} baris LHP Produksi berhasil disimpan.")
             ->with('batch_tersimpan', $jumlah);
+    }
+
+    /**
+     * View Detail satu LHP Produksi — read-only, terbuka untuk semua role yang
+     * boleh melihat daftar (termasuk guest).
+     */
+    public function show(Request $request, TransaksiProduksi $produksi)
+    {
+        $relations = ['shift', 'karyawan', 'mesin', 'partProses.part', 'jenisNg', 'createdBy', 'updatedBy', 'noteBy', 'noteResolvedBy'];
+        if (NgDetailService::available()) {
+            $relations[] = 'ngDetails.jenisNg';
+        }
+        $produksi->load($relations);
+
+        return view('input.produksi.show', [
+            't' => $produksi,
+            'kembali' => $this->urlKembaliDaftar($request, 'input.produksi.index'),
+        ]);
     }
 
     public function edit(TransaksiProduksi $produksi)

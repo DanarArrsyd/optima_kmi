@@ -142,7 +142,7 @@ $filterActive = $mesinIds || $filterPic !== '' || $filterStatus !== '';
      kepala panel hanya memakan tinggi. Penggulungan dipegang .erp-scroll
      saja — wadah gulung bertumpuk mematikan kepala tabel yang menempel. --}}
 <div class="erp-scroll">
-        <table class="erp-table tbl-freeze @if($isAdmin) ada-aksi @endif" style="min-width:1650px">
+        <table class="erp-table tbl-freeze ada-aksi" style="min-width:1650px">
             <thead style="position:sticky;top:0;z-index:10">
                 <tr>
                     <th class="sc sc-1" style="width:90px">Tanggal</th>
@@ -157,7 +157,7 @@ $filterActive = $mesinIds || $filterPic !== '' || $filterStatus !== '';
                     <th style="min-width:180px">Problem</th>
                     <th style="min-width:180px">Penyebab</th>
                     <th style="min-width:180px">Tindakan</th>
-                    @if($isAdmin)<th style="width:120px">Aksi</th>@endif
+                    <th style="white-space:nowrap">Aksi</th>
                 </tr>
             </thead>
             <tbody>
@@ -182,19 +182,23 @@ $filterActive = $mesinIds || $filterPic !== '' || $filterStatus !== '';
                     <td style="color:#5d7283">{{ \Illuminate\Support\Str::limit($b->problem_mesin,70) }}</td>
                     <td style="color:#5d7283">{{ \Illuminate\Support\Str::limit($b->penyebab_breakdown,70) }}</td>
                     <td style="color:#5d7283">{{ \Illuminate\Support\Str::limit($b->tindakan_perbaikan,70) }}</td>
-                    @if($isAdmin)
                     <td style="white-space:nowrap">
+                        <div class="action-btns">
+                        <a href="{{ route('maintenance.breakdown.show',$b) }}?back_query={{ urlencode(http_build_query(request()->query())) }}"
+                           class="btn btn-outline-secondary btn-sm">View Detail</a>
+                        @if($isAdmin)
                         <a href="{{ route('maintenance.breakdown.edit',$b) }}" class="btn btn-warning btn-sm">Edit</a>
-                        <form method="POST" action="{{ route('maintenance.breakdown.destroy',$b) }}" class="d-inline"
+                        <form method="POST" action="{{ route('maintenance.breakdown.destroy',$b) }}"
                               data-konfirmasi="Hapus breakdown {{ $b->no_lkm }}?">
                             @csrf @method('DELETE')
                             <button class="btn btn-danger btn-sm">Hapus</button>
                         </form>
+                        @endif
+                        </div>
                     </td>
-                    @endif
                 </tr>
             @empty
-                <x-tabel-kosong :kolom="$isAdmin ? 13 : 12" entitas="data breakdown mesin" periode />
+                <x-tabel-kosong kolom="13" entitas="data breakdown mesin" periode />
             @endforelse
             </tbody>
         </table>

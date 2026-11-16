@@ -228,7 +228,7 @@ $lastUrl = $myLastRecord
                     <th style="width:70px;text-align:right">W. Kerja</th>
                     <th style="width:65px;text-align:right">CT Act</th>
                     <th style="width:90px;text-align:right;white-space:nowrap">%</th>
-                    <th style="width:70px">Aksi</th>
+                    <th style="white-space:nowrap">Aksi</th>
                 </tr>
             </thead>
             <tbody>
@@ -298,8 +298,10 @@ $lastUrl = $myLastRecord
                     </td>
                     <td>
                         @php $note = $t->staff_note ?? null; @endphp
-                        @if(auth()->user()->hasRole('admin'))
                         <div class="action-btns">
+                        <a href="{{ route('input.produksi.show', $t) }}?back_query={{ urlencode(http_build_query(request()->query())) }}"
+                           class="btn btn-outline-secondary btn-sm">View Detail</a>
+                        @if(auth()->user()->hasRole('admin'))
                             <a href="{{ route('input.produksi.edit', $t) }}?back_query={{ urlencode(http_build_query(request()->query())) }}" class="btn btn-warning btn-sm">Edit</a>
                             <form method="POST" action="{{ route('input.produksi.destroy', $t) }}"
                                   data-konfirmasi="Hapus data ini?">
@@ -321,7 +323,6 @@ $lastUrl = $myLastRecord
                                 <i class="bi bi-{{ $resolved ? 'check2-circle' : 'chat-left-text-fill' }}"></i> Note
                             </button>
                             @endif
-                        </div>
                         @elseif(! auth()->user()->isGuest())
                         @php $staffResolvedAt = $t->staff_note_resolved_at?->toIso8601String() ?? ''; @endphp
                         <button type="button"
@@ -332,6 +333,7 @@ $lastUrl = $myLastRecord
                             {{ $staffResolvedAt ? 'Selesai' : ($note ? 'Edit Note' : 'Note') }}
                         </button>
                         @endif
+                        </div>
                     </td>
                 </tr>
             @empty
