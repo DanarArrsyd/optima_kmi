@@ -187,7 +187,7 @@ $filterActive = ($search ?? '') !== '' || $filterKarId || $filterJenisNgId
                     <th style="width:70px;text-align:right">W. Kerja</th>
                     <th style="width:65px;text-align:right">CT Act</th>
                     <th style="width:60px;text-align:right">%</th>
-                    <th style="width:70px">Aksi</th>
+                    <th style="white-space:nowrap">Aksi</th>
                 </tr>
             </thead>
             <tbody>
@@ -243,8 +243,10 @@ $filterActive = ($search ?? '') !== '' || $filterKarId || $filterJenisNgId
                     </td>
                     <td>
                         @php $note = $t->staff_note ?? null; @endphp
-                        @if(auth()->user()->hasRole('admin'))
                         <div class="action-btns">
+                        <a href="{{ route('input.qc.show', $t) }}?back_query={{ urlencode(http_build_query(request()->query())) }}"
+                           class="btn btn-outline-secondary btn-sm">View Detail</a>
+                        @if(auth()->user()->hasRole('admin'))
                             <a href="{{ route('input.qc.edit', $t) }}?back_query={{ urlencode(http_build_query(request()->query())) }}"
                                class="btn btn-warning btn-sm">Edit</a>
                             <form method="POST" action="{{ route('input.qc.destroy', $t) }}"
@@ -267,7 +269,6 @@ $filterActive = ($search ?? '') !== '' || $filterKarId || $filterJenisNgId
                                 <i class="bi bi-{{ $resolved ? 'check2-circle' : 'chat-left-text-fill' }}"></i> Note
                             </button>
                             @endif
-                        </div>
                         @elseif(! auth()->user()->isGuest())
                         @php $staffResolvedAt = $t->staff_note_resolved_at?->toIso8601String() ?? ''; @endphp
                         <button type="button"
@@ -278,6 +279,7 @@ $filterActive = ($search ?? '') !== '' || $filterKarId || $filterJenisNgId
                             {{ $staffResolvedAt ? 'Selesai' : ($note ? 'Edit Note' : 'Note') }}
                         </button>
                         @endif
+                        </div>
                     </td>
                 </tr>
             @empty

@@ -159,6 +159,10 @@ class AuthorizationTest extends TestCase
         $names = array_map(static fn (array $row) => $row[0], self::guestAllowedRoutes());
         $names[] = 'maintenance.control-stroke-mesin.history';
         $names[] = 'maintenance.control-stroke-dies.history';
+        // View Detail satu baris LHP (butuh parameter record) — 200-nya untuk
+        // guest dibuktikan ViewDetailBarisTest.
+        $names[] = 'input.produksi.show';
+        $names[] = 'input.qc.show';
 
         return $names;
     }

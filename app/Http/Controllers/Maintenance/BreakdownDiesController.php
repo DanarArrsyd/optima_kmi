@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Maintenance;
 
 use App\Exports\BreakdownDiesExport;
 use App\Http\Controllers\Concerns\MenjagaKembar;
+use App\Http\Controllers\Concerns\UrlKembaliDaftar;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreBreakdownDiesBatchRequest;
 use App\Http\Requests\UpdateBreakdownDiesRequest;
@@ -22,6 +23,7 @@ use Maatwebsite\Excel\Facades\Excel;
 class BreakdownDiesController extends Controller
 {
     use MenjagaKembar;
+    use UrlKembaliDaftar;
 
     public function __construct(
         private BreakdownDiesService $svc,
@@ -171,6 +173,19 @@ class BreakdownDiesController extends Controller
         return redirect()->route('maintenance.breakdown-dies.index')
             ->with('success', "{$jumlah} baris data Breakdown Dies berhasil disimpan.")
             ->with('batch_tersimpan', $jumlah);
+    }
+
+    /**
+     * View Detail satu breakdown dies — read-only, role sama dengan daftar.
+     */
+    public function show(Request $request, TransaksiBreakdownDies $breakdownDy)
+    {
+        $breakdownDy->load('partProses.part');
+
+        return view('maintenance.breakdown-dies.show', [
+            'b' => $breakdownDy,
+            'kembali' => $this->urlKembaliDaftar($request, 'maintenance.breakdown-dies.index'),
+        ]);
     }
 
     public function edit(TransaksiBreakdownDies $breakdownDy)

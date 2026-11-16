@@ -134,6 +134,9 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:admin,staff_produksi,guest')->prefix('input')->name('input.')->group(function () {
         Route::get('produksi', [ProduksiController::class, 'index'])->name('produksi.index');
         Route::get('dandori', [DandoriController::class, 'index'])->name('dandori.index');
+        // View Detail — whereNumber WAJIB: grup ini terdaftar SEBELUM produksi/create,
+        // /export, /import-template; tanpa batasan angka {produksi} menelan rute itu.
+        Route::get('produksi/{produksi}', [ProduksiController::class, 'show'])->whereNumber('produksi')->name('produksi.show');
     });
 
     // --- INPUT PRODUKSI: tulis & export (guest TIDAK boleh) ---
@@ -206,6 +209,7 @@ Route::middleware('auth')->group(function () {
     // --- INPUT QC: daftar (read-only, guest boleh) ---
     Route::middleware('role:admin,staff_qc,guest')->prefix('input')->name('input.')->group(function () {
         Route::get('qc', [QcController::class, 'index'])->name('qc.index');
+        Route::get('qc/{qc}', [QcController::class, 'show'])->whereNumber('qc')->name('qc.show');
     });
 
     // --- INPUT QC: tulis & export (guest TIDAK boleh) ---
@@ -277,6 +281,7 @@ Route::middleware('auth')->group(function () {
         Route::get('breakdown/import-template', [BreakdownMesinController::class, 'importTemplate'])->name('breakdown.import-template');
         Route::post('breakdown/batch', [BreakdownMesinController::class, 'batch'])->name('breakdown.batch');
         Route::resource('breakdown', BreakdownMesinController::class)->only(['index', 'create']);
+        Route::get('breakdown/{breakdown}', [BreakdownMesinController::class, 'show'])->whereNumber('breakdown')->name('breakdown.show');
 
         Route::get('breakdown-dies/last-no-lkd', [BreakdownDiesController::class, 'lastNoLkd'])->name('breakdown-dies.last-no-lkd');
         Route::get('breakdown-dies/export', [BreakdownDiesController::class, 'export'])->name('breakdown-dies.export');
@@ -284,6 +289,7 @@ Route::middleware('auth')->group(function () {
         Route::get('breakdown-dies/import-template', [BreakdownDiesController::class, 'importTemplate'])->name('breakdown-dies.import-template');
         Route::post('breakdown-dies/batch', [BreakdownDiesController::class, 'batch'])->name('breakdown-dies.batch');
         Route::resource('breakdown-dies', BreakdownDiesController::class)->only(['index', 'create']);
+        Route::get('breakdown-dies/{breakdownDy}', [BreakdownDiesController::class, 'show'])->whereNumber('breakdownDy')->name('breakdown-dies.show');
 
         Route::get('availability/control-stroke-mesin/{mesin}/preventive', [ControlStrokeMesinController::class, 'createPreventive'])->name('control-stroke-mesin.preventive.create');
         Route::post('availability/control-stroke-mesin/{mesin}/preventive', [ControlStrokeMesinController::class, 'storePreventive'])->name('control-stroke-mesin.preventive');

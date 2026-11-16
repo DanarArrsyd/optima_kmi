@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Maintenance;
 use App\Exports\BreakdownMesinExport;
 use App\Http\Controllers\Concerns\BacaFilterMesin;
 use App\Http\Controllers\Concerns\MenjagaKembar;
+use App\Http\Controllers\Concerns\UrlKembaliDaftar;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreBreakdownMesinBatchRequest;
 use App\Http\Requests\UpdateBreakdownMesinRequest;
@@ -24,6 +25,7 @@ class BreakdownMesinController extends Controller
 {
     use BacaFilterMesin;
     use MenjagaKembar;
+    use UrlKembaliDaftar;
 
     public function __construct(
         private BreakdownMesinService $svc,
@@ -166,6 +168,19 @@ class BreakdownMesinController extends Controller
         return redirect()->route('maintenance.breakdown.index')
             ->with('success', "{$jumlah} baris data Breakdown Mesin berhasil disimpan.")
             ->with('batch_tersimpan', $jumlah);
+    }
+
+    /**
+     * View Detail satu breakdown mesin — read-only, role sama dengan daftar.
+     */
+    public function show(Request $request, TransaksiBreakdownMesin $breakdown)
+    {
+        $breakdown->load('mesin');
+
+        return view('maintenance.breakdown.show', [
+            'b' => $breakdown,
+            'kembali' => $this->urlKembaliDaftar($request, 'maintenance.breakdown.index'),
+        ]);
     }
 
     public function edit(TransaksiBreakdownMesin $breakdown)

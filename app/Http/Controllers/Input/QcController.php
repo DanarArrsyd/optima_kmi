@@ -6,6 +6,7 @@ use App\Exports\LhpQcExport;
 use App\Exports\QcImportTemplate;
 use App\Http\Controllers\Concerns\MenjagaKembar;
 use App\Http\Controllers\Concerns\ResolvesStaffNote;
+use App\Http\Controllers\Concerns\UrlKembaliDaftar;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreQcBatchRequest;
 use App\Http\Requests\UpdateQcRequest;
@@ -27,6 +28,7 @@ class QcController extends Controller
 {
     use MenjagaKembar;
     use ResolvesStaffNote;
+    use UrlKembaliDaftar;
 
     public function __construct(
         private QcService $qcService,
@@ -208,6 +210,24 @@ class QcController extends Controller
         return redirect()->route('input.qc.index')
             ->with('success', "{$jumlah} baris LHP Quality berhasil disimpan.")
             ->with('batch_tersimpan', $jumlah);
+    }
+
+    /**
+     * View Detail satu LHP Quality — read-only, terbuka untuk semua role yang
+     * boleh melihat daftar (termasuk guest).
+     */
+    public function show(Request $request, TransaksiQc $qc)
+    {
+        $relations = ['shift', 'karyawanQc', 'partProses.part', 'jenisNg', 'createdBy', 'updatedBy', 'noteBy', 'noteResolvedBy'];
+        if (NgDetailService::available()) {
+            $relations[] = 'ngDetails.jenisNg';
+        }
+        $qc->load($relations);
+
+        return view('input.qc.show', [
+            't' => $qc,
+            'kembali' => $this->urlKembaliDaftar($request, 'input.qc.index'),
+        ]);
     }
 
     public function edit(TransaksiQc $qc)
